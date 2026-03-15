@@ -1,0 +1,166 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS custom properties ─────────────────────────────────────────────── */
+:root {
+  --color-background: #0a0a0f;
+  --color-surface: #12121a;
+  --color-surface-2: #1a1a26;
+  --color-border: #1e1e2e;
+  --color-border-bright: #2a2a3e;
+  --color-text: #e2e2f0;
+  --color-muted: #6b6b8a;
+  --color-accent: #7c6aff;
+  --color-accent-dim: #3d3580;
+  --color-accent-glow: rgba(124, 106, 255, 0.15);
+
+  /* Subdomain accent overrides (set per-layout via inline style) */
+  --subdomain-accent: #7c6aff;
+  --subdomain-glow: rgba(124, 106, 255, 0.15);
+  --subdomain-gradient-from: #150f33;
+  --subdomain-gradient-to: #0a0a0f;
+}
+
+/* ─── Base resets ────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-family: "DM Sans", sans-serif;
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* ─── Typography ─────────────────────────────────────────────────────────── */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Syne", sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+code,
+pre,
+.mono {
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-bright);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}
+
+/* ─── Selection ──────────────────────────────────────────────────────────── */
+::selection {
+  background-color: var(--subdomain-accent);
+  color: #fff;
+  opacity: 0.9;
+}
+
+/* ─── Utilities ──────────────────────────────────────────────────────────── */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .grid-bg {
+    background-image: linear-gradient(
+        rgba(124, 106, 255, 0.03) 1px,
+        transparent 1px
+      ),
+      linear-gradient(90deg, rgba(124, 106, 255, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .subdomain-glow {
+    box-shadow: 0 0 40px var(--subdomain-glow);
+  }
+
+  .animate-fade-up {
+    animation: fadeUp 0.45s ease both;
+  }
+
+  .card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-3px);
+    border-color: var(--subdomain-accent) !important;
+    box-shadow: 0 8px 32px var(--subdomain-glow), 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  .tag-pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium font-mono tracking-wide;
+    background: var(--color-surface-2);
+    color: var(--color-muted);
+    border: 1px solid var(--color-border);
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tag-pill:hover {
+    color: var(--subdomain-accent);
+    border-color: var(--subdomain-accent);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Skeleton shimmer ───────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 25%,
+    var(--color-surface-2) 50%,
+    var(--color-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s linear infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
