@@ -429,6 +429,49 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
 }
 
 /* ═══════════════════════════════════════════════════
+   RESPONSIVE LANDING PAGE HELPERS
+═══════════════════════════════════════════════════ */
+
+/* Section padding */
+.lp-section-pad  { padding: 80px 40px; }
+.lp-hero-pad     { padding: 100px 40px 80px; }
+.lp-diff-pad     { padding: 60px 40px; }
+
+/* Two-column grids that collapse to 1 col on mobile */
+.lp-two-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+  gap: 60px;
+}
+
+/* Nav */
+.lp-nav-inner  { padding: 0 40px; }
+.lp-nav-links  { display: flex; align-items: center; gap: 32px; }
+
+/* Hero badge — hide long text on mobile */
+.lp-hero-badge-text { display: inline; }
+
+@media (max-width: 768px) {
+  .lp-section-pad  { padding: 56px 16px; }
+  .lp-hero-pad     { padding: 60px 16px 48px; }
+  .lp-diff-pad     { padding: 48px 16px; }
+
+  .lp-two-col {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .lp-nav-inner  { padding: 0 16px; }
+
+  /* Hide nav links on mobile — keep only the CTA button */
+  .lp-nav-links  { gap: 0; }
+  .lp-nav-links a:not(.lp-nav-cta) { display: none; }
+
+  /* Hero badge: shorten */
+  .lp-hero-badge-text { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════
    LIGHT SUBDOMAIN THEME OVERRIDES
 ═══════════════════════════════════════════════════ */
 .lp-sub-body {
