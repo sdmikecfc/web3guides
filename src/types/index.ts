@@ -46,4 +46,7 @@ export type SubdomainKey =
   | "layer2"
   | "bridge"
   | "beginner"
-  | "security";
+  | "security"
+  | "jobs"
+  | "medium"
+  | "advanced";
