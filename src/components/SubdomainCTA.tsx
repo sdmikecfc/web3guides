@@ -16,33 +16,27 @@ export default function SubdomainCTA({ config }: Props) {
              style={{ background: `radial-gradient(ellipse 60% 80% at 0% 50%, ${config.glowHex}, transparent)` }} />
         <div className="relative">
           <p className="font-mono text-xs uppercase tracking-widest mb-1" style={{ color: config.accentHex }}>
-            🔥 Own a piece of this
+            🔥 Own this space
           </p>
           <p className="font-display text-xl font-bold text-white">
             Want your own {config.label} subdomain?
           </p>
           <p className="text-sm mt-1" style={{ color: "#6272a0" }}>
-            Claim {config.key}.web3guides.com or get a new one — it's an NFT you truly own.
+            Launch on {config.key}.web3guides.com — yours to build on.
           </p>
         </div>
-        <div className="relative flex flex-col sm:flex-row gap-2 shrink-0">
-          <a
-            href="https://app.doma.xyz/subdomain-claim/web3guides.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-xl px-5 py-2.5 text-sm font-bold text-white transition hover:opacity-90 hover:scale-105 active:scale-95 whitespace-nowrap text-center"
-            style={{ background: config.accentHex, boxShadow: `0 0 30px ${config.glowHex}` }}
-          >
-            Claim a subdomain →
-          </a>
-          <a
-            href="/subdomains"
-            className="rounded-xl px-5 py-2.5 text-sm font-semibold transition hover:text-white whitespace-nowrap text-center"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#a0aec0" }}
-          >
-            How it works
-          </a>
-        </div>
+        <a
+          href="https://doma.xyz"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="relative shrink-0 rounded-xl px-6 py-3 text-sm font-bold text-white transition hover:opacity-90 hover:scale-105 active:scale-95 whitespace-nowrap"
+          style={{
+            background: config.accentHex,
+            boxShadow: `0 0 30px ${config.glowHex}`,
+          }}
+        >
+          Get it on Doma.xyz →
+        </a>
       </div>
     </section>
   );
