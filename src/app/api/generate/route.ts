@@ -29,6 +29,56 @@ function slugify(title: string): string {
     .slice(0, 80);
 }
 
+/** Subdomain-specific factual context injected into the generation prompt */
+const SUBDOMAIN_CONTEXT: Partial<Record<string, string>> = {
+  doma: `
+CRITICAL CONTEXT — use these facts exactly. Do NOT invent details or contradict them.
+
+Doma Protocol (built by D3 Global) is the world's first DNS-compliant blockchain for tokenizing traditional internet domains (.com, .ai, .xyz, etc.) as programmable real-world assets. It is an EVM-compatible Layer 2 built on the OP Stack.
+
+KEY FACTS:
+- Doma tokenizes TRADITIONAL INTERNET DOMAINS (like software.ai, yourname.com) — NOT crypto subdomains or web3 naming
+- $25M Series A led by Paradigm (Jan 2025); also Coinbase Ventures, Sandeep Nailwal (Polygon)
+- Mainnet launched: November 25, 2025
+- Testnet: 35M+ transactions, 1.45M addresses (June–Nov 2025)
+- Mainnet stats: $38M+ volume, 3.2M+ transactions, 107,000+ tokenized domains, 25,500+ wallets
+- Base marketplace launched Dec 18, 2025: buy/sell domains with USDC or ETH, 40M+ domain inventory
+- CEO Fred Hsu: 25+ years domain industry; co-founded Oversee.net, Manage.com (acquired by Criteo)
+- Registrar partners: InterNetX (22M+ domains), NicNames, EnCirca, Rumahweb, ConnectReseller, Interstellar
+
+THE DUAL-TOKEN SYSTEM (core innovation):
+- DOTs (Domain Ownership Tokens): ERC-20 representing title and transfer rights — tradeable 24/7 on DEXs
+- DSTs (Domain Service Tokens): ERC-20 controlling DNS records and nameservers — keeps domain functional
+- Separation means: sell ownership while website/email keeps working; or lease DNS control while holding title
+
+DNS COMPLIANCE (key differentiator):
+- Unlike ENS, Handshake, or Unstoppable Domains, Doma domains work on the normal internet
+- No special browser extensions or resolvers needed
+- Full ICANN compliance; works with existing registrars
+- Doma is infrastructure, not a registrar itself
+
+DOMAINFI CAPABILITIES:
+- Fractionalization: lock domain NFT → mint 10,000 fungible ERC-20 tokens → trade on DEXs
+  (Example: software.ai fractionalized into $SOFTWARE tokens)
+- DeFi: use domain tokens as loan collateral, earn yield in liquidity pools, stake for rewards
+- Cross-chain via LayerZero: Ethereum, Base, Solana, Avalanche, ENS
+- 24/7 instant settlement; no escrow, no broker fees (traditional brokers charge 10–20%)
+- Buyback mechanism: accumulate 90–95% of fractional tokens to reconstitute full domain NFT
+
+NEW TLDs IN DEVELOPMENT: .SOL (Solana), .AVAX (Avalanche), .ANIME (Animecoin), .APE
+
+DOMA FORGE: $1M USDC developer grant program at doma.xyz/forge
+
+CRITICAL — DO NOT INCLUDE:
+- There is NO "$DOMA token" or protocol-native token. NEVER mention $DOMA.
+- Do NOT write about "web3guides subdomains" or "staking $DOMA for featured placement"
+- Doma is NOT a registrar, NOT an alternative DNS namespace, NOT NFT-only
+- Do NOT suggest Doma competes with traditional registrars — it partners with them
+
+Where relevant, mention users can explore Doma at: https://app.doma.xyz/join/4urmvv4ouvvsu
+`,
+};
+
 async function generateArticle(
   client: Anthropic,
   subdomain: string,
@@ -41,6 +91,8 @@ async function generateArticle(
     advanced: "advanced level, assume solid Web3 knowledge, cover technical depth and edge cases",
   }[difficulty];
 
+  const extraContext = SUBDOMAIN_CONTEXT[subdomain] ? `\n${SUBDOMAIN_CONTEXT[subdomain]}\n` : "";
+
   const stream = client.messages.stream({
     model: "claude-opus-4-6",
     max_tokens: 4096,
@@ -50,7 +102,7 @@ async function generateArticle(
         content: `Write a comprehensive Web3 guide article about: "${topic}" for the ${subdomain} category.
 
 The article must be ${difficultyDesc}.
-
+${extraContext}
 Return ONLY valid JSON (no markdown, no code blocks) with these exact fields:
 {
   "title": "Article title (engaging, SEO-friendly)",
@@ -351,16 +403,16 @@ function buildTopic(subdomain: string, label: string, difficulty: Difficulty, ar
       "The most important crypto metrics to track",
     ],
     doma: [
-      "What is Doma Protocol and how does subdomain ownership work",
-      "How to mint your first web3guides.com subdomain on Doma Protocol",
-      "Building a content hub on your Web3 subdomain",
-      "Staking $DOMA tokens: how featured placement works",
-      "Doma Protocol vs traditional domain registrars: key differences",
-      "How on-chain domain ownership protects your content",
-      "Monetizing your Web3 subdomain: affiliate links and community revenue",
-      "Doma Protocol smart contracts: what they do and why they matter",
-      "Setting up your subdomain DNS and Vercel deployment with Doma",
-      "The future of Web3 identity and owned domains",
+      "What is Doma Protocol? How internet domains become tradeable blockchain assets",
+      "DOTs vs DSTs: Doma Protocol's dual-token system explained",
+      "DomainFi explained: using premium domains as DeFi collateral and yield assets",
+      "Fractional domain ownership on Doma: how software.ai became tradeable tokens",
+      "How Doma Protocol differs from ENS, Handshake, and Unstoppable Domains",
+      "Buying and trading domains on the Base Names Marketplace with USDC",
+      "How to tokenize a domain on Doma Protocol: step-by-step guide",
+      "Domain investing meets blockchain: the DomainFi opportunity explained",
+      "Doma Forge: building DomainFi applications and the $1M developer grant program",
+      "Cross-chain domain portability: how LayerZero powers Doma's multi-chain strategy",
     ],
   };
 
