@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(GIT_TERMINAL_PROMPT=0 git push -u origin claude/interesting-lewin)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git -c credential.helper=manager push origin claude/interesting-lewin)"
     ]
   }
 }
