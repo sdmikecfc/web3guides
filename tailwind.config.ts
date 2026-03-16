@@ -10,9 +10,9 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        mono: ["'JetBrains Mono'", "monospace"],
-        display: ["'Syne'", "sans-serif"],
-        body: ["'DM Sans'", "sans-serif"],
+        mono: ["'IBM Plex Mono'", "monospace"],
+        display: ["'Bebas Neue'", "sans-serif"],
+        body: ["'IBM Plex Mono'", "monospace"],
       },
       colors: {
         background: "#0a0a0f",
