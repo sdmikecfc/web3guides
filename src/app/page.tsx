@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, type CSSProperties } from "react";
+import React, { useEffect, useRef, useState, type CSSProperties } from "react";
 import { SUBDOMAINS } from "@/lib/subdomains";
 
 /* ─── URLs ───────────────────────────────────────────────────────────── */
@@ -218,12 +218,14 @@ function BrowseSection() {
             if (!cfg) return null;
             return (
               <Reveal key={key}>
-                <a href={subUrl(key)} target="_blank" rel="noopener noreferrer"
+                <a href={subUrl(key)}
                    style={{ display: "flex", flexDirection: "column", gap: 12, padding: 20, borderRadius: 20, background: "#fafafa", border: "1.5px solid #e5e7eb", textDecoration: "none", transition: "transform 0.2s, box-shadow 0.2s, border-color 0.2s", animationDelay: `${i * 40}ms` }}
                    onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(-5px)"; el.style.boxShadow = `0 16px 40px ${cfg.glowHex}`; el.style.borderColor = cfg.accentHex; }}
                    onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(0)"; el.style.boxShadow = "none"; el.style.borderColor = "#e5e7eb"; }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: cfg.glowHex, border: `1px solid ${cfg.accentHex}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>
-                    {cfg.emoji}
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: cfg.glowHex, border: `2px solid ${cfg.accentHex}60`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", overflow: "hidden" }}>
+                    {key === "bigmike"
+                      ? <img src="/bigmike.jpg" alt="Big Mike" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 10 }} />
+                      : cfg.emoji}
                   </div>
                   <div>
                     <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700, color: "#1a1a1a", fontSize: "0.95rem", marginBottom: 4 }}>{cfg.label}</div>
@@ -390,28 +392,39 @@ function LearningPaths() {
 /* ════════════════════════════════════════════════════════════════════════
    ARTICLES
 ════════════════════════════════════════════════════════════════════════ */
-const ARTICLES = [
-  { emoji: "🔐", category: "Security",       title: "Complete Guide to Wallet Security",          excerpt: "Hardware wallets, multi-signature setups, and comprehensive attack prevention strategies.", slug: "wallet-security",       color: "#ff6b35", sub: "security" },
-  { emoji: "💎", category: "DeFi",           title: "Understanding Automated Market Makers",       excerpt: "Deep dive into AMM math, liquidity pool mechanics, and navigating impermanent loss.",      slug: "amm-explained",         color: "#6366f1", sub: "defi"     },
-  { emoji: "⚙️", category: "Development",    title: "Build Your First Smart Contract",             excerpt: "Step-by-step Solidity tutorial covering writing, testing, and deploying your contract.",   slug: "first-smart-contract",  color: "#fbbf24", sub: "eth"      },
-  { emoji: "🎨", category: "NFTs",           title: "NFT Standards: ERC-721 vs ERC-1155",          excerpt: "Key differences between token standards, tradeoffs, and when to use each in your project.", slug: "nft-standards",         color: "#ff6b35", sub: "eth"      },
-  { emoji: "🌐", category: "Infrastructure", title: "Intro to IPFS & Decentralized Storage",       excerpt: "How IPFS works, content addressing, and integrating decentralized storage into your DApp.", slug: "ipfs-guide",            color: "#6366f1", sub: "eth"      },
-  { emoji: "⚡", category: "Scaling",        title: "Layer 2 Solutions Explained",                 excerpt: "Rollups, state channels, and sidechains — the complete guide to Ethereum scaling.",        slug: "layer2-explained",      color: "#fbbf24", sub: "layer2"   },
-  { emoji: "🔗", category: "Development",    title: "Building with Ethers.js: Complete Tutorial",  excerpt: "Connect wallets, read blockchain state, and interact with contracts using ethers.js.",     slug: "ethersjs-tutorial",     color: "#ff6b35", sub: "eth"      },
-  { emoji: "🎯", category: "DAO",            title: "DAO Governance Mechanisms",                   excerpt: "On-chain vs off-chain voting, token-weighted governance, and multi-sig structures.",       slug: "dao-governance",        color: "#6366f1", sub: "defi"     },
-  { emoji: "🛡️", category: "Security",      title: "Common Smart Contract Vulnerabilities",        excerpt: "Reentrancy attacks, integer overflow, front-running, and how to protect against each.",   slug: "contract-vulnerabilities", color: "#fbbf24", sub: "security" },
-  { emoji: "🌉", category: "Infrastructure", title: "Cross-Chain Bridges Deep Dive",               excerpt: "Bridge architectures, trust models, and the security landscape of cross-chain transfers.", slug: "bridges-explained",     color: "#ff6b35", sub: "bridge"   },
-  { emoji: "🔮", category: "Advanced",       title: "Zero-Knowledge Proofs for Developers",        excerpt: "ZK-SNARKs, ZK-STARKs, and how to leverage zero-knowledge cryptography in your dapps.",    slug: "zero-knowledge-proofs", color: "#6366f1", sub: "layer2"   },
-  { emoji: "📊", category: "DeFi",           title: "Yield Farming Strategies & Risks",            excerpt: "APY vs APR, compounding strategies, and the smart contract risks you need to manage.",    slug: "yield-farming",         color: "#fbbf24", sub: "defi"     },
-];
-
 const GRADIENTS = [
   "linear-gradient(135deg, #ff6b35 0%, #ec4899 100%)",
   "linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)",
   "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
 ];
 
+interface FeaturedGuide {
+  id: number;
+  title: string;
+  slug: string;
+  subdomain: string;
+  excerpt: string | null;
+  difficulty: string | null;
+}
+
 function Articles() {
+  const [guides, setGuides] = useState<FeaturedGuide[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/featured-guides")
+      .then(r => r.json())
+      .then(data => { setGuides(data.guides ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const SUBDOMAIN_COLORS: Record<string, string> = {
+    eth: "#627eea", btc: "#f7931a", sol: "#9945ff", defi: "#10b981",
+    staking: "#06b6d4", layer2: "#8b5cf6", security: "#ef4444",
+    rwa: "#f59e0b", bridge: "#3b82f6", legal: "#6366f1", tax: "#ec4899",
+    easy: "#10b981", bigmike: "#ff6b35",
+  };
+
   return (
     <section id="articles" style={{ background: "#fff", padding: "100px 40px" }}>
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
@@ -419,32 +432,41 @@ function Articles() {
           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 3, color: "#ec4899", textTransform: "uppercase", marginBottom: 16 }}>DEEP DIVES</div>
           <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(2rem, 5vw, 3.5rem)", color: "#1a1a1a", marginBottom: 20 }}>Featured Guides</h2>
           <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.1rem", color: "#6b7280", maxWidth: 500, margin: "0 auto", lineHeight: 1.7 }}>
-            Comprehensive, developer-focused guides on the topics that matter most in Web3.
+            Comprehensive guides on the topics that matter most in Web3.
           </p>
         </Reveal>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 30 }}>
-          {ARTICLES.map(({ emoji, category, title, excerpt, slug, color, sub }, i) => (
-            <Reveal key={slug}>
-              <a href={`${subUrl(sub)}/${slug}`} target="_blank" rel="noopener noreferrer"
-                 style={{ display: "block", background: "#fff", borderRadius: 20, overflow: "hidden", border: "1px solid #e5e7eb", textDecoration: "none", transition: "transform 0.25s, box-shadow 0.25s" }}
-                 onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(-6px)"; el.style.boxShadow = "0 16px 50px rgba(0,0,0,0.1)"; }}
-                 onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(0)"; el.style.boxShadow = "none"; }}>
-                <div style={{ height: 200, background: GRADIENTS[i % 3], display: "flex", alignItems: "center", justifyContent: "center", fontSize: "4rem" }}>
-                  {emoji}
-                </div>
-                <div style={{ padding: "24px 28px" }}>
-                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 2, color, textTransform: "uppercase", marginBottom: 10 }}>{category}</div>
-                  <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.15rem", fontWeight: 700, color: "#1a1a1a", marginBottom: 12, lineHeight: 1.4 }}>{title}</h3>
-                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "#6b7280", lineHeight: 1.6, marginBottom: 20 }}>{excerpt}</p>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", fontWeight: 600, color, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    Read Guide →
-                  </span>
-                </div>
-              </a>
-            </Reveal>
-          ))}
-        </div>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "40px 0", fontFamily: "'DM Sans', sans-serif", color: "#9ca3af" }}>Loading guides…</div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 30 }}>
+            {guides.map((guide, i) => {
+              const color = SUBDOMAIN_COLORS[guide.subdomain] ?? "#6366f1";
+              return (
+                <Reveal key={guide.id}>
+                  <a href={`${subUrl(guide.subdomain)}/guides/${guide.slug}`}
+                     style={{ display: "block", background: "#fff", borderRadius: 20, overflow: "hidden", border: "1px solid #e5e7eb", textDecoration: "none", transition: "transform 0.25s, box-shadow 0.25s" }}
+                     onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(-6px)"; el.style.boxShadow = "0 16px 50px rgba(0,0,0,0.1)"; }}
+                     onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(0)"; el.style.boxShadow = "none"; }}>
+                    <div style={{ height: 160, background: GRADIENTS[i % 3], display: "flex", alignItems: "center", justifyContent: "center", fontSize: "3.5rem" }}>
+                      📖
+                    </div>
+                    <div style={{ padding: "24px 28px" }}>
+                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 2, color, textTransform: "uppercase", marginBottom: 10 }}>{guide.subdomain}</div>
+                      <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.1rem", fontWeight: 700, color: "#1a1a1a", marginBottom: 12, lineHeight: 1.4 }}>{guide.title}</h3>
+                      {guide.excerpt && (
+                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "#6b7280", lineHeight: 1.6, marginBottom: 20 }}>{guide.excerpt}</p>
+                      )}
+                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", fontWeight: 600, color, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        Read Guide →
+                      </span>
+                    </div>
+                  </a>
+                </Reveal>
+              );
+            })}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -656,7 +678,7 @@ const FOOTER_LINK_COLS: { head: string; links: { label: string; href: string }[]
       { label: "Bitcoin",         href: subUrl("btc") },
       { label: "Solana",          href: subUrl("sol") },
       { label: "Security",        href: subUrl("security") },
-      { label: "Staking",         href: subUrl("staking") },
+      { label: "All Topics",      href: "#browse" },
     ],
   },
   {
@@ -665,7 +687,15 @@ const FOOTER_LINK_COLS: { head: string; links: { label: string; href: string }[]
       { label: "Get a Subdomain", href: DOMA_REGISTER },
       { label: "Doma Protocol",   href: DOMA_HOME },
       { label: "Big Mike",        href: subUrl("bigmike") },
-      { label: "All Topics",      href: "#browse" },
+      { label: "About",           href: "/about" },
+    ],
+  },
+  {
+    head: "Legal",
+    links: [
+      { label: "Privacy Policy",  href: "/privacy" },
+      { label: "Disclaimer",      href: "/disclaimer" },
+      { label: "Terms of Use",    href: "/terms" },
     ],
   },
 ];
@@ -674,7 +704,7 @@ function Footer() {
   return (
     <footer style={{ background: "#1a1a1a", color: "#fff", padding: "64px 40px 0" }}>
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 48 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", gap: 40, marginBottom: 48 }}>
           <div>
             <div style={{ fontFamily: "'Bungee', cursive", fontSize: "1.8rem", background: "linear-gradient(135deg, #ff6b35, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", marginBottom: 16 }}>
               Web3 Guides
@@ -708,14 +738,19 @@ function Footer() {
           ))}
         </div>
 
-        <div style={{ borderTop: "1px solid #374151", padding: "28px 0", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", color: "#6b7280" }}>
-            © 2026 Web3 Guides. Building the decentralized future, one guide at a time.
+        <div style={{ borderTop: "1px solid #374151", padding: "28px 0" }}>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.75rem", color: "#4b5563", lineHeight: 1.6, marginBottom: 16 }}>
+            ⚠️ <strong style={{ color: "#6b7280" }}>Not financial advice.</strong> All content on Web3 Guides is for educational and informational purposes only. Nothing here constitutes financial, investment, legal, or tax advice. Crypto assets are highly volatile and speculative. Always do your own research and consult a qualified professional before making any financial decisions. AI-generated content may contain inaccuracies — verify independently.
           </p>
-          <a href={DOMA_HOME} target="_blank" rel="noopener noreferrer"
-             style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", color: "#7c6aff", textDecoration: "none", letterSpacing: 1 }}>
-            doma.xyz →
-          </a>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", color: "#6b7280" }}>
+              © 2026 Web3 Guides. Educational content for the decentralized web.
+            </p>
+            <a href={DOMA_HOME} target="_blank" rel="noopener noreferrer"
+               style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", color: "#7c6aff", textDecoration: "none", letterSpacing: 1 }}>
+              doma.xyz →
+            </a>
+          </div>
         </div>
       </div>
     </footer>
