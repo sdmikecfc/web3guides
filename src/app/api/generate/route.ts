@@ -339,7 +339,7 @@ function buildTopic(subdomain: string, label: string, difficulty: Difficulty, ar
       "Crypto scam red flags every beginner should know",
     ],
     bigmike: [
-      "Top crypto portfolios strategies for 2025",
+      "Top crypto portfolio strategies for 2025",
       "On-chain analytics: how to read whale movements",
       "Macro factors affecting crypto markets",
       "How to evaluate new DeFi protocols before investing",
@@ -349,6 +349,18 @@ function buildTopic(subdomain: string, label: string, difficulty: Difficulty, ar
       "How to use DeFiLlama for protocol research",
       "Airdrops in 2025: how to qualify legitimately",
       "The most important crypto metrics to track",
+    ],
+    doma: [
+      "What is Doma Protocol and how does subdomain ownership work",
+      "How to mint your first web3guides.com subdomain on Doma Protocol",
+      "Building a content hub on your Web3 subdomain",
+      "Staking $DOMA tokens: how featured placement works",
+      "Doma Protocol vs traditional domain registrars: key differences",
+      "How on-chain domain ownership protects your content",
+      "Monetizing your Web3 subdomain: affiliate links and community revenue",
+      "Doma Protocol smart contracts: what they do and why they matter",
+      "Setting up your subdomain DNS and Vercel deployment with Doma",
+      "The future of Web3 identity and owned domains",
     ],
   };
 

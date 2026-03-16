@@ -49,4 +49,5 @@ export type SubdomainKey =
   | "security"
   | "jobs"
   | "medium"
-  | "advanced";
+  | "advanced"
+  | "doma";

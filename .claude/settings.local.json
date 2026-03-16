@@ -26,7 +26,8 @@
       "Bash(git remote:*)",
       "Bash(git config:*)",
       "Bash(ls /c/Users/Mike/Desktop/web3guides/.claude/worktrees/sad-hoover/.env*)",
-      "mcp__scheduled-tasks__list_scheduled_tasks"
+      "mcp__scheduled-tasks__list_scheduled_tasks",
+      "WebFetch(domain:www.linkedin.com)"
     ]
   }
 }
