@@ -52,15 +52,16 @@ export function ArticleClient({ accentHex, toc }: Props) {
                    onClick={e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
                    style={{
                      display: "block",
-                     paddingLeft: level === 3 ? 12 : 0,
-                     padding: `5px ${level === 3 ? 12 : 0}px 5px ${level === 3 ? 12 : 0}px`,
+                     paddingTop: 5,
+                     paddingBottom: 5,
+                     paddingLeft: level === 3 ? 16 : 8,
+                     paddingRight: 0,
                      fontFamily: "'DM Sans', sans-serif",
                      fontSize: level === 2 ? "0.8rem" : "0.75rem",
                      fontWeight: level === 2 ? 600 : 400,
                      color: activeId === id ? accentHex : "#6b7280",
                      textDecoration: "none",
                      borderLeft: activeId === id ? `2px solid ${accentHex}` : "2px solid transparent",
-                     paddingLeft: level === 3 ? 16 : 8,
                      lineHeight: 1.4,
                      transition: "color 0.15s, border-color 0.15s",
                    }}>
