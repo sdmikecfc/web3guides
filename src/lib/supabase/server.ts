@@ -1,8 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-export function createClient() {
-  const cookieStore = cookies();
+/**
+ * Works with both Next.js 14 (sync cookies()) and 15 (async cookies()).
+ * Cast to `any` so TypeScript doesn't complain about the overloaded return type.
+ */
+export async function createClient() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cookieStore = await (cookies as any)();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,12 +17,14 @@ export function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: object }[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             );
-          } catch {}
+          } catch {
+            // Called from a Server Component — safe to ignore
+          }
         },
       },
     }
