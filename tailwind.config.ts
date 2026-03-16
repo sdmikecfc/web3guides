@@ -10,80 +10,43 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        mono: ["'IBM Plex Mono'", "monospace"],
-        display: ["'Bebas Neue'", "sans-serif"],
-        body: ["'IBM Plex Mono'", "monospace"],
+        mono:    ["'JetBrains Mono'", "monospace"],
+        display: ["'Syne'", "sans-serif"],
+        body:    ["'DM Sans'", "sans-serif"],
       },
       colors: {
-        background: "#0a0a0f",
-        surface: "#12121a",
-        "surface-2": "#1a1a26",
-        border: "#1e1e2e",
-        "border-bright": "#2a2a3e",
-        text: "#e2e2f0",
-        muted: "#6b6b8a",
+        background: "#080b14",
+        surface:    "#0d1120",
+        "surface-2":"#131826",
+        border:     "#1c2236",
+        "border-2": "#252d42",
+        text:       "#e4e8f5",
+        muted:      "#6272a0",
         accent: {
           DEFAULT: "#7c6aff",
-          dim: "#3d3580",
-          glow: "rgba(124, 106, 255, 0.15)",
+          dim:     "#2d2580",
+          glow:    "rgba(124,106,255,0.18)",
         },
-        green: {
-          DEFAULT: "#00e5a0",
-          dim: "#004d36",
-          glow: "rgba(0, 229, 160, 0.12)",
-        },
-        orange: {
-          DEFAULT: "#ff7c35",
-          dim: "#4d2510",
-          glow: "rgba(255, 124, 53, 0.12)",
-        },
-        blue: {
-          DEFAULT: "#3b9eff",
-          dim: "#0d2d4d",
-          glow: "rgba(59, 158, 255, 0.12)",
-        },
-        yellow: {
-          DEFAULT: "#ffe135",
-          dim: "#4d4209",
-          glow: "rgba(255, 225, 53, 0.12)",
-        },
-        pink: {
-          DEFAULT: "#ff5fa3",
-          dim: "#4d1b31",
-          glow: "rgba(255, 95, 163, 0.12)",
-        },
-        red: {
-          DEFAULT: "#ff4545",
-          dim: "#4d0f0f",
-          glow: "rgba(255, 69, 69, 0.12)",
-        },
-      },
-      backgroundImage: {
-        "grid-pattern":
-          "linear-gradient(rgba(124,106,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(124,106,255,0.03) 1px, transparent 1px)",
-        "noise-overlay": "url('/noise.svg')",
-      },
-      backgroundSize: {
-        grid: "40px 40px",
-      },
-      boxShadow: {
-        glow: "0 0 40px rgba(124, 106, 255, 0.15)",
-        "glow-sm": "0 0 20px rgba(124, 106, 255, 0.1)",
-        card: "0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03)",
       },
       animation: {
-        "fade-up": "fadeUp 0.5s ease forwards",
-        pulse: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        shimmer: "shimmer 2s linear infinite",
+        "fade-up": "fadeUp 0.5s cubic-bezier(.22,1,.36,1) both",
+        shimmer:   "shimmer 1.8s linear infinite",
+        drift:     "drift 22s ease-in-out infinite alternate",
       },
       keyframes: {
         fadeUp: {
-          from: { opacity: "0", transform: "translateY(16px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
+          from: { opacity: "0", transform: "translateY(20px)" },
+          to:   { opacity: "1", transform: "translateY(0)" },
         },
         shimmer: {
-          "0%": { backgroundPosition: "-200% 0" },
-          "100%": { backgroundPosition: "200% 0" },
+          "0%":   { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition:  "200% 0" },
+        },
+        drift: {
+          "0%":   { transform: "translate(0,0) scale(1)" },
+          "33%":  { transform: "translate(3vw,-4vh) scale(1.06)" },
+          "66%":  { transform: "translate(-2vw,3vh) scale(0.97)" },
+          "100%": { transform: "translate(2vw,2vh) scale(1.03)" },
         },
       },
     },

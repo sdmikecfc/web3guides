@@ -5,88 +5,82 @@ import { useCallback } from "react";
 import type { Difficulty } from "@/types";
 
 const DIFFICULTIES: { value: Difficulty | "all"; label: string }[] = [
-  { value: "all", label: "All levels" },
-  { value: "beginner", label: "Beginner" },
+  { value: "all",          label: "All levels" },
+  { value: "beginner",     label: "Beginner" },
   { value: "intermediate", label: "Intermediate" },
-  { value: "advanced", label: "Advanced" },
+  { value: "advanced",     label: "Advanced" },
 ];
 
-interface Props {
-  currentDifficulty?: string;
-  currentTag?: string;
-}
+interface Props { currentDifficulty?: string; currentTag?: string; }
 
 export default function FilterBar({ currentDifficulty, currentTag }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const createQueryString = useCallback(
+  const createQS = useCallback(
     (updates: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams.toString());
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value === null || value === "all") {
-          params.delete(key);
-        } else {
-          params.set(key, value);
-        }
+      const p = new URLSearchParams(searchParams.toString());
+      Object.entries(updates).forEach(([k, v]) => {
+        if (!v || v === "all") p.delete(k); else p.set(k, v);
       });
-      params.delete("page"); // reset to page 1 on filter change
-      return params.toString();
+      p.delete("page");
+      return p.toString();
     },
     [searchParams]
   );
 
   function handleDifficulty(value: Difficulty | "all") {
-    const qs = createQueryString({ difficulty: value });
-    router.push(`?${qs}`, { scroll: false });
+    router.push(`?${createQS({ difficulty: value })}`, { scroll: false });
   }
-
   function clearTag() {
-    const qs = createQueryString({ tag: null });
-    router.push(`?${qs}`, { scroll: false });
+    router.push(`?${createQS({ tag: null })}`, { scroll: false });
   }
 
-  const hasActiveFilters = !!currentDifficulty || !!currentTag;
+  const hasFilters = !!currentDifficulty || !!currentTag;
 
   return (
     <div className="mb-7 flex flex-wrap items-center gap-2">
-      {/* Difficulty pills */}
       {DIFFICULTIES.map(({ value, label }) => {
-        const active =
-          value === "all" ? !currentDifficulty : currentDifficulty === value;
+        const active = value === "all" ? !currentDifficulty : currentDifficulty === value;
         return (
           <button
             key={value}
             onClick={() => handleDifficulty(value)}
-            className={`rounded-full border px-3 py-1 font-mono text-xs transition ${
-              active
-                ? "border-[var(--subdomain-accent)] bg-[var(--subdomain-accent)] text-white font-semibold"
-                : "border-[#1e1e2e] bg-[#12121a] text-[#6b6b8a] hover:border-[var(--subdomain-accent)] hover:text-[var(--subdomain-accent)]"
+            className={`rounded-full px-3.5 py-1.5 font-mono text-xs transition-all duration-200 ${
+              active ? "font-semibold text-white" : "hover:text-white"
             }`}
+            style={
+              active
+                ? { background: "var(--subdomain-accent)", boxShadow: "0 0 20px var(--subdomain-glow)" }
+                : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "var(--color-muted,#6272a0)" }
+            }
           >
             {label}
           </button>
         );
       })}
 
-      {/* Active tag chip */}
       {currentTag && (
         <button
           onClick={clearTag}
-          className="flex items-center gap-1.5 rounded-full border border-[var(--subdomain-accent)] bg-[var(--subdomain-glow)] px-3 py-1 font-mono text-xs text-[var(--subdomain-accent)] transition hover:bg-opacity-80"
+          className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-mono text-xs font-medium transition-all"
+          style={{
+            color: "var(--subdomain-accent)",
+            background: "var(--subdomain-glow)",
+            border: "1px solid var(--subdomain-accent)",
+          }}
         >
-          # {currentTag}
-          <span className="text-[10px] opacity-70">✕</span>
+          #{currentTag} <span className="text-[10px] opacity-60">✕</span>
         </button>
       )}
 
-      {/* Clear all */}
-      {hasActiveFilters && (
+      {hasFilters && (
         <button
           onClick={() => router.push("?", { scroll: false })}
-          className="ml-auto font-mono text-xs text-[#6b6b8a] underline underline-offset-2 transition hover:text-[#e2e2f0]"
+          className="ml-auto font-mono text-xs underline underline-offset-2 transition-colors hover:text-white"
+          style={{ color: "var(--color-muted,#6272a0)" }}
         >
-          Clear filters
+          Clear
         </button>
       )}
     </div>
