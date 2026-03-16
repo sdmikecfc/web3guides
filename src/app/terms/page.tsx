@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { CSSProperties } from "react";
 
 export const metadata: Metadata = {
   title: "Terms of Use | Web3 Guides",
@@ -6,14 +7,14 @@ export const metadata: Metadata = {
 };
 
 const S = {
-  page: { background: "#fefbf6", minHeight: "100vh", padding: "0 0 80px" } as React.CSSProperties,
-  nav: { background: "rgba(254,251,246,0.95)", borderBottom: "1px solid #e5e7eb", padding: "0 40px", height: 60, display: "flex", alignItems: "center" } as React.CSSProperties,
-  logo: { fontFamily: "'Bungee', cursive", fontSize: "1.2rem", background: "linear-gradient(135deg, #ff6b35, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", textDecoration: "none" } as React.CSSProperties,
-  wrap: { maxWidth: 760, margin: "0 auto", padding: "60px 40px" } as React.CSSProperties,
-  h1: { fontFamily: "'Bungee', cursive", fontSize: "2.5rem", color: "#1a1a1a", marginBottom: 8 } as React.CSSProperties,
-  date: { fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", color: "#9ca3af", marginBottom: 40 } as React.CSSProperties,
-  h2: { fontFamily: "'DM Sans', sans-serif", fontSize: "1.2rem", fontWeight: 700, color: "#1a1a1a", marginTop: 40, marginBottom: 12 } as React.CSSProperties,
-  p: { fontFamily: "'DM Sans', sans-serif", fontSize: "0.95rem", color: "#4b5563", lineHeight: 1.8, marginBottom: 16 } as React.CSSProperties,
+  page: { background: "#fefbf6", minHeight: "100vh", padding: "0 0 80px" } as CSSProperties,
+  nav: { background: "rgba(254,251,246,0.95)", borderBottom: "1px solid #e5e7eb", padding: "0 40px", height: 60, display: "flex", alignItems: "center" } as CSSProperties,
+  logo: { fontFamily: "'Bungee', cursive", fontSize: "1.2rem", background: "linear-gradient(135deg, #ff6b35, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", textDecoration: "none" } as CSSProperties,
+  wrap: { maxWidth: 760, margin: "0 auto", padding: "60px 40px" } as CSSProperties,
+  h1: { fontFamily: "'Bungee', cursive", fontSize: "2.5rem", color: "#1a1a1a", marginBottom: 8 } as CSSProperties,
+  date: { fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", color: "#9ca3af", marginBottom: 40 } as CSSProperties,
+  h2: { fontFamily: "'DM Sans', sans-serif", fontSize: "1.2rem", fontWeight: 700, color: "#1a1a1a", marginTop: 40, marginBottom: 12 } as CSSProperties,
+  p: { fontFamily: "'DM Sans', sans-serif", fontSize: "0.95rem", color: "#4b5563", lineHeight: 1.8, marginBottom: 16 } as CSSProperties,
 };
 
 export default function TermsPage() {
