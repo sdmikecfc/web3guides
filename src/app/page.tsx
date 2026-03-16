@@ -99,11 +99,11 @@ function Reveal({ children, className = "", style }: { children: React.ReactNode
 function Nav() {
   return (
     <nav style={{ background: "rgba(254,251,246,0.95)", backdropFilter: "blur(12px)", borderBottom: "1px solid #e5e7eb", position: "sticky", top: 0, zIndex: 100 }}>
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 40px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 70 }}>
+      <div className="lp-nav-inner" style={{ maxWidth: 1400, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 70 }}>
         <a href="/" style={{ fontFamily: "'Bungee', cursive", fontSize: "1.4rem", background: "linear-gradient(135deg, #ff6b35, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", textDecoration: "none" }}>
           Web3 Guides
         </a>
-        <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+        <div className="lp-nav-links">
           <a href="#browse" style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", fontSize: "0.95rem", textDecoration: "none", transition: "color 0.2s" }}
              onMouseEnter={e => (e.currentTarget.style.color = "#1a1a1a")}
              onMouseLeave={e => (e.currentTarget.style.color = "#6b7280")}>Topics</a>
@@ -116,7 +116,7 @@ function Nav() {
           <a href="#subdomains" style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", fontSize: "0.95rem", textDecoration: "none", transition: "color 0.2s" }}
              onMouseEnter={e => (e.currentTarget.style.color = "#1a1a1a")}
              onMouseLeave={e => (e.currentTarget.style.color = "#6b7280")}>Subdomains</a>
-          <a href="#browse"
+          <a href="#browse" className="lp-nav-cta"
              style={{ fontFamily: "'DM Sans', sans-serif", background: "linear-gradient(135deg, #ff6b35, #ec4899)", color: "#fff", padding: "10px 24px", borderRadius: 50, fontSize: "0.9rem", fontWeight: 600, textDecoration: "none", transition: "transform 0.2s, box-shadow 0.2s", boxShadow: "0 4px 15px rgba(255,107,53,0.3)" }}
              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 25px rgba(255,107,53,0.4)"; }}
              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 15px rgba(255,107,53,0.3)"; }}>
@@ -133,7 +133,7 @@ function Nav() {
 ════════════════════════════════════════════════════════════════════════ */
 function Hero() {
   return (
-    <section style={{ background: "linear-gradient(135deg, #ff6b35 0%, #ec4899 100%)", position: "relative", overflow: "hidden", padding: "100px 40px 80px" }}>
+    <section className="lp-hero-pad" style={{ background: "linear-gradient(135deg, #ff6b35 0%, #ec4899 100%)", position: "relative", overflow: "hidden" }}>
       <div className="lp-float" style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(1.5px 1.5px at 10% 20%, rgba(255,255,255,0.4) 0%, transparent 100%), radial-gradient(1px 1px at 75% 10%, rgba(255,255,255,0.35) 0%, transparent 100%), radial-gradient(2px 2px at 40% 60%, rgba(255,255,255,0.25) 0%, transparent 100%), radial-gradient(1px 1px at 90% 45%, rgba(255,255,255,0.4) 0%, transparent 100%), radial-gradient(1.5px 1.5px at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 100%), radial-gradient(1px 1px at 60% 85%, rgba(255,255,255,0.35) 0%, transparent 100%), radial-gradient(2px 2px at 85% 75%, rgba(255,255,255,0.28) 0%, transparent 100%), radial-gradient(1px 1px at 5% 50%, rgba(255,255,255,0.32) 0%, transparent 100%)", pointerEvents: "none" }} aria-hidden="true" />
       {/* Rolling clouds */}
       <div className="cloud cloud-1" aria-hidden="true" />
@@ -223,7 +223,7 @@ const DIFF_TILES = [
 
 function DifficultyTiles() {
   return (
-    <section style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%)", padding: "60px 40px" }}>
+    <section className="lp-diff-pad" style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%)" }}>
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
         <Reveal style={{ textAlign: "center", marginBottom: 36 }}>
           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 3, color: "#10b981", textTransform: "uppercase", marginBottom: 12 }}>FILTER BY LEVEL</div>
@@ -263,7 +263,7 @@ const BROWSE_ORDER = [
 
 function BrowseSection() {
   return (
-    <section id="browse" style={{ background: "#fff", padding: "80px 40px" }}>
+    <section id="browse" className="lp-section-pad" style={{ background: "#fff" }}>
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
         <Reveal style={{ textAlign: "center", marginBottom: 48 }}>
           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 3, color: "#ff6b35", textTransform: "uppercase", marginBottom: 16 }}>FREE CONTENT</div>
@@ -337,7 +337,7 @@ const BENEFITS = [
 
 function Benefits() {
   return (
-    <section style={{ background: "#fefbf6", padding: "100px 40px" }}>
+    <section className="lp-section-pad" style={{ background: "#fefbf6" }}>
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
         <Reveal style={{ textAlign: "center", marginBottom: 64 }}>
           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 3, color: "#ff6b35", textTransform: "uppercase", marginBottom: 16 }}>WHY WEB3?</div>
@@ -402,7 +402,7 @@ const PATHS = [
 
 function LearningPaths() {
   return (
-    <section id="paths" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%)", padding: "100px 40px", position: "relative", overflow: "hidden" }}>
+    <section id="paths" className="lp-section-pad" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%)", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle, #93c5fd 1px, transparent 1px)", backgroundSize: "30px 30px", opacity: 0.3, pointerEvents: "none" }} aria-hidden="true" />
 
       <div style={{ maxWidth: 1400, margin: "0 auto", position: "relative", zIndex: 1 }}>
@@ -487,7 +487,7 @@ function Articles() {
   };
 
   return (
-    <section id="articles" style={{ background: "#fff", padding: "100px 40px" }}>
+    <section id="articles" className="lp-section-pad" style={{ background: "#fff" }}>
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
         <Reveal style={{ textAlign: "center", marginBottom: 64 }}>
           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 3, color: "#ec4899", textTransform: "uppercase", marginBottom: 16 }}>DEEP DIVES</div>
@@ -547,7 +547,7 @@ const DOMA_FEATURES = [
 
 function DomaSection() {
   return (
-    <section style={{ background: "linear-gradient(135deg, #0f0c29 0%, #1a1040 50%, #0f0c29 100%)", padding: "100px 40px", position: "relative", overflow: "hidden" }}>
+    <section className="lp-section-pad" style={{ background: "linear-gradient(135deg, #0f0c29 0%, #1a1040 50%, #0f0c29 100%)", position: "relative", overflow: "hidden" }}>
       {/* Subtle grid overlay */}
       <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(124,106,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(124,106,255,0.05) 1px, transparent 1px)", backgroundSize: "48px 48px", pointerEvents: "none" }} aria-hidden="true" />
 
@@ -616,7 +616,7 @@ const SUB_BENEFITS = [
 
 function SubdomainSection() {
   return (
-    <section id="subdomains" style={{ background: "linear-gradient(135deg, #1a0533 0%, #302b63 50%, #24243e 100%)", padding: "100px 40px", position: "relative", overflow: "hidden" }}>
+    <section id="subdomains" className="lp-section-pad" style={{ background: "linear-gradient(135deg, #1a0533 0%, #302b63 50%, #24243e 100%)", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "80vw", height: "80vh", background: "radial-gradient(ellipse at center, rgba(99,102,241,0.12) 0%, transparent 70%)", pointerEvents: "none" }} aria-hidden="true" />
 
       <div style={{ maxWidth: 1400, margin: "0 auto", position: "relative", zIndex: 1 }}>
@@ -632,7 +632,7 @@ function SubdomainSection() {
           </p>
         </Reveal>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(440px, 1fr))", gap: 60 }}>
+        <div className="lp-two-col">
           <Reveal>
             <h3 style={{ fontFamily: "'Bungee', cursive", fontSize: "1.5rem", color: "#fff", marginBottom: 32 }}>How It Works</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -686,7 +686,7 @@ function SubdomainSection() {
 ════════════════════════════════════════════════════════════════════════ */
 function CTABanner() {
   return (
-    <section style={{ background: "linear-gradient(135deg, #ff6b35 0%, #ec4899 100%)", padding: "80px 40px", position: "relative", overflow: "hidden" }}>
+    <section className="lp-section-pad" style={{ background: "linear-gradient(135deg, #ff6b35 0%, #ec4899 100%)", position: "relative", overflow: "hidden" }}>
       <div className="lp-float" style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px)", backgroundSize: "32px 32px", pointerEvents: "none" }} aria-hidden="true" />
 
       <Reveal style={{ maxWidth: 700, margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1 }}>
@@ -763,7 +763,7 @@ const FOOTER_LINK_COLS: { head: string; links: { label: string; href: string }[]
 
 function Footer() {
   return (
-    <footer style={{ background: "#1a1a1a", color: "#fff", padding: "64px 40px 0" }}>
+    <footer className="lp-section-pad" style={{ background: "#1a1a1a", color: "#fff", paddingBottom: 0 }}>
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", gap: 40, marginBottom: 48 }}>
           <div>
