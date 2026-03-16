@@ -1,33 +1,28 @@
 import type { Difficulty } from "@/types";
-import { cn } from "@/lib/utils";
 
-const CONFIG: Record<
-  Difficulty,
-  { label: string; classes: string; dot: string }
-> = {
+const CONFIG: Record<Difficulty, { label: string; bg: string; color: string; dot: string }> = {
   beginner: {
-    label: "Beginner",
-    classes:
-      "bg-[#00291e] text-[#00e5a0] border border-[#004d36]",
-    dot: "bg-[#00e5a0]",
+    label: "Easy",
+    bg: "rgba(16,185,129,0.12)",
+    color: "#059669",
+    dot: "#10b981",
   },
   intermediate: {
-    label: "Intermediate",
-    classes:
-      "bg-[#2d1505] text-[#ff7c35] border border-[#4d2510]",
-    dot: "bg-[#ff7c35]",
+    label: "Medium",
+    bg: "rgba(255,107,53,0.12)",
+    color: "#ea580c",
+    dot: "#ff6b35",
   },
   advanced: {
     label: "Advanced",
-    classes:
-      "bg-[#2d0a0a] text-[#ff4545] border border-[#4d0f0f]",
-    dot: "bg-[#ff4545]",
+    bg: "rgba(99,102,241,0.12)",
+    color: "#4f46e5",
+    dot: "#6366f1",
   },
 };
 
 interface Props {
   difficulty: Difficulty;
-  /** Render as a small dot-only badge */
   compact?: boolean;
 }
 
@@ -36,26 +31,28 @@ export default function DifficultyBadge({ difficulty, compact = false }: Props) 
 
   if (compact) {
     return (
-      <span
-        title={cfg.label}
-        className={cn(
-          "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
-          cfg.classes
-        )}
-      >
-        <span className={cn("h-1.5 w-1.5 rounded-full", cfg.dot)} />
+      <span title={cfg.label} style={{ display: "inline-flex", width: 20, height: 20, borderRadius: "50%", background: cfg.bg, alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.dot, display: "block" }} />
       </span>
     );
   }
 
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider",
-        cfg.classes
-      )}
-    >
-      <span className={cn("h-1.5 w-1.5 rounded-full", cfg.dot)} />
+    <span style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+      borderRadius: 50,
+      padding: "3px 10px",
+      fontFamily: "'Space Mono', monospace",
+      fontSize: "0.7rem",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase" as const,
+      background: cfg.bg,
+      color: cfg.color,
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.dot, display: "inline-block" }} />
       {cfg.label}
     </span>
   );

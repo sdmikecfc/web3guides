@@ -346,3 +346,104 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
 .lp-card-border:hover::before {
   transform: scaleX(1);
 }
+
+/* ═══════════════════════════════════════════════════
+   ROLLING CLOUDS
+═══════════════════════════════════════════════════ */
+.cloud {
+  position: absolute;
+  background: rgba(255,255,255,0.18);
+  border-radius: 50px;
+  pointer-events: none;
+}
+.cloud::before {
+  content: "";
+  position: absolute;
+  background: inherit;
+  border-radius: 50%;
+}
+.cloud::after {
+  content: "";
+  position: absolute;
+  background: inherit;
+  border-radius: 50%;
+}
+
+/* Cloud sizes + shapes */
+.cloud-1 { width: 220px; height: 60px; top: 18%; }
+.cloud-1::before { width: 90px; height: 90px; top: -45px; left: 30px; }
+.cloud-1::after  { width: 70px; height: 70px; top: -35px; left: 90px; }
+
+.cloud-2 { width: 160px; height: 45px; top: 55%; }
+.cloud-2::before { width: 70px; height: 70px; top: -35px; left: 20px; }
+.cloud-2::after  { width: 55px; height: 55px; top: -28px; left: 70px; }
+
+.cloud-3 { width: 280px; height: 70px; top: 75%; }
+.cloud-3::before { width: 110px; height: 110px; top: -55px; left: 40px; }
+.cloud-3::after  { width: 85px;  height: 85px;  top: -42px; left: 115px; }
+
+.cloud-4 { width: 130px; height: 38px; top: 35%; }
+.cloud-4::before { width: 55px; height: 55px; top: -28px; left: 15px; }
+.cloud-4::after  { width: 45px; height: 45px; top: -22px; left: 55px; }
+
+.cloud-5 { width: 200px; height: 55px; top: 88%; }
+.cloud-5::before { width: 80px; height: 80px; top: -40px; left: 25px; }
+.cloud-5::after  { width: 65px; height: 65px; top: -32px; left: 85px; }
+
+@keyframes cloudDrift1 {
+  from { transform: translateX(110vw); }
+  to   { transform: translateX(-320px); }
+}
+@keyframes cloudDrift2 {
+  from { transform: translateX(110vw); }
+  to   { transform: translateX(-250px); }
+}
+
+.cloud-1 { animation: cloudDrift1 35s linear infinite; }
+.cloud-2 { animation: cloudDrift2 28s linear infinite 8s; }
+.cloud-3 { animation: cloudDrift1 45s linear infinite 3s; }
+.cloud-4 { animation: cloudDrift2 22s linear infinite 15s; }
+.cloud-5 { animation: cloudDrift1 38s linear infinite 20s; }
+
+/* ═══════════════════════════════════════════════════
+   NEW BADGE
+═══════════════════════════════════════════════════ */
+@keyframes newPop {
+  0%, 100% { transform: rotate(-2deg) scale(1); }
+  50%       { transform: rotate(2deg) scale(1.08); }
+}
+.badge-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #ff6b35, #ec4899);
+  color: #fff;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 50px;
+  animation: newPop 2s ease-in-out infinite;
+  box-shadow: 0 2px 8px rgba(255,107,53,0.4);
+}
+
+/* ═══════════════════════════════════════════════════
+   LIGHT SUBDOMAIN THEME OVERRIDES
+═══════════════════════════════════════════════════ */
+.lp-sub-body {
+  background: #fefbf6;
+  color: #1a1a1a;
+  min-height: 100vh;
+}
+
+.lp-sub-card {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 20px;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.lp-sub-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.08);
+}

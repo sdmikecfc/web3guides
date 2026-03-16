@@ -11,99 +11,89 @@ interface Props {
   index?: number;
 }
 
+function isNew(publishedAt: string): boolean {
+  const twoWeeksAgo = new Date();
+  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+  return new Date(publishedAt) > twoWeeksAgo;
+}
+
 export default function GuideCard({ guide, config, index = 0 }: Props) {
-  const delay = Math.min(index * 55, 450);
+  const articleIsNew = isNew(guide.published_at);
 
   return (
     <article
-      className="card-hover group relative flex flex-col rounded-2xl glass overflow-hidden animate-fade-up"
+      className="lp-sub-card animate-fade-up"
       style={{
-        animationDelay: `${delay}ms`,
-        "--subdomain-accent": config.accentHex,
-        "--subdomain-glow":   config.glowHex,
-      } as React.CSSProperties}
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        animationDelay: `${Math.min(index * 55, 450)}ms`,
+      }}
     >
-      {/* Top accent bar — glows on hover */}
-      <div
-        className="h-[2px] w-full shrink-0 transition-opacity duration-300"
-        style={{
-          background: `linear-gradient(to right, ${config.accentHex}, ${config.accentHex}30, transparent)`,
-        }}
-      />
+      {/* Gradient accent bar */}
+      <div style={{ height: 4, background: `linear-gradient(to right, ${config.accentHex}, ${config.accentHex}40)` }} />
 
-      {/* Corner glow on hover */}
-      <div
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        style={{
-          background: `radial-gradient(ellipse 70% 50% at 0% 0%, ${config.glowHex}, transparent)`,
-        }}
-      />
-
-      <div className="relative flex flex-1 flex-col p-5">
+      <div style={{ padding: "20px 22px", flex: 1, display: "flex", flexDirection: "column" }}>
         {/* Meta row */}
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <DifficultyBadge difficulty={guide.difficulty} />
-          <time
-            dateTime={guide.published_at}
-            className="shrink-0 font-mono text-[11px]"
-            style={{ color: "var(--color-muted,#6272a0)" }}
-          >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, gap: 8, flexWrap: "wrap" as const }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <DifficultyBadge difficulty={guide.difficulty} />
+            {articleIsNew && (
+              <span className="badge-new">✨ NEW</span>
+            )}
+          </div>
+          <time dateTime={guide.published_at} style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#9ca3af" }}>
             {formatDate(guide.published_at)}
           </time>
         </div>
 
-        {/* Title — links to guide detail */}
-        <h2 className="mb-2 font-display text-[15px] font-bold leading-snug text-white line-clamp-2 transition-colors duration-200 group-hover:text-[var(--subdomain-accent)]">
-          <Link href={`/guides/${guide.slug}`} className="focus:outline-none">
-            <span className="absolute inset-0" aria-hidden="true" />
+        {/* Title */}
+        <h2 style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: "1rem", lineHeight: 1.4, color: "#1a1a1a", marginBottom: 10 }}>
+          <Link href={`/guides/${guide.slug}`} style={{ color: "inherit", textDecoration: "none" }}>
             {guide.title}
           </Link>
         </h2>
 
         {/* Summary */}
-        <p
-          className="mb-4 flex-1 text-sm leading-relaxed line-clamp-3"
-          style={{ color: "var(--color-muted,#6272a0)" }}
-        >
-          {truncate(guide.summary, 160)}
+        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.875rem", color: "#6b7280", lineHeight: 1.6, marginBottom: 16, flex: 1 }}>
+          {truncate(guide.summary, 150)}
         </p>
 
         {/* Tags */}
         {guide.tags && guide.tags.length > 0 && (
-          <div className="mb-4 flex flex-wrap gap-1.5">
-            {guide.tags.slice(0, 4).map((tag) => (
-              <span key={tag} className="tag-pill">#{tag}</span>
+          <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 16 }}>
+            {guide.tags.slice(0, 4).map(tag => (
+              <span key={tag} style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", background: `${config.accentHex}12`, color: config.accentHex, border: `1px solid ${config.accentHex}30`, borderRadius: 50, padding: "2px 8px" }}>
+                #{tag}
+              </span>
             ))}
             {guide.tags.length > 4 && (
-              <span className="tag-pill">+{guide.tags.length - 4}</span>
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", color: "#9ca3af" }}>+{guide.tags.length - 4}</span>
             )}
           </div>
         )}
 
         {/* Footer */}
-        <div
-          className="flex items-center justify-between border-t pt-3 mt-auto"
-          style={{ borderColor: "rgba(255,255,255,0.06)" }}
-        >
-          <span className="font-mono text-[11px]" style={{ color: "var(--color-muted,#6272a0)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid #f3f4f6", paddingTop: 14, marginTop: "auto" }}>
+          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#9ca3af" }}>
             {guide.read_time_minutes ? `${guide.read_time_minutes} min read` : "Guide"}
           </span>
-
-          <a
-            href={guide.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="relative z-10 flex items-center gap-1 rounded-lg px-3 py-1.5 font-mono text-xs font-semibold transition-all duration-200 hover:brightness-110 active:scale-95"
+          <Link
+            href={`/guides/${guide.slug}`}
             style={{
-              color:   config.accentHex,
-              background: config.glowHex,
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: "0.8rem",
+              fontWeight: 700,
+              color: config.accentHex,
+              background: `${config.accentHex}12`,
               border: `1px solid ${config.accentHex}30`,
+              borderRadius: 8,
+              padding: "5px 14px",
+              textDecoration: "none",
             }}
-            aria-label={`Read "${guide.title}" at source`}
           >
-            Read ↗
-          </a>
+            Read →
+          </Link>
         </div>
       </div>
     </article>

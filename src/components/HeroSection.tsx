@@ -7,65 +7,55 @@ interface Props {
 
 export default function HeroSection({ config, total }: Props) {
   return (
-    <section className="relative overflow-hidden px-4 pt-14 pb-12 sm:px-6 lg:px-8">
+    <section style={{ position: "relative", overflow: "hidden", padding: "56px 24px 48px", background: "#fefbf6" }}>
 
-      {/* Inline radial spotlight — punches through the global background */}
+      {/* Subtle radial spotlight */}
       <div
-        className="pointer-events-none absolute inset-0"
         style={{
-          background: `
-            radial-gradient(ellipse 80% 100% at 50% -10%,
-              ${config.accentHex}30 0%,
-              ${config.accentHex}08 40%,
-              transparent 70%
-            )
-          `,
+          position: "absolute", inset: 0, pointerEvents: "none",
+          background: `radial-gradient(ellipse 70% 80% at 50% 0%, ${config.accentHex}18 0%, transparent 70%)`,
         }}
       />
 
-      {/* Horizontal beam line */}
+      {/* Top accent line */}
       <div
-        className="pointer-events-none absolute top-0 left-0 right-0 h-px"
         style={{
-          background: `linear-gradient(to right, transparent, ${config.accentHex}60, transparent)`,
+          position: "absolute", top: 0, left: 0, right: 0, height: 3, pointerEvents: "none",
+          background: `linear-gradient(to right, transparent, ${config.accentHex}80, transparent)`,
         }}
       />
 
-      <div className="relative mx-auto max-w-7xl">
+      <div style={{ position: "relative", margin: "0 auto", maxWidth: 1280 }}>
         {/* Subdomain badge */}
         <div
-          className="mb-5 inline-flex items-center gap-2.5 rounded-full px-4 py-1.5 font-mono text-xs font-medium"
           style={{
-            background: config.glowHex,
-            border: `1px solid ${config.accentHex}40`,
+            display: "inline-flex", alignItems: "center", gap: 10, borderRadius: 50,
+            padding: "6px 16px", marginBottom: 20,
+            background: `${config.accentHex}12`,
+            border: `1px solid ${config.accentHex}30`,
             color: config.accentHex,
+            fontFamily: "'Space Mono', monospace", fontSize: "0.7rem",
           }}
         >
-          <span className="text-sm leading-none">{config.emoji}</span>
-          <span className="opacity-60">{config.key}.web3guides.com</span>
+          <span style={{ fontSize: "1rem", lineHeight: 1 }}>{config.emoji}</span>
+          <span style={{ opacity: 0.7 }}>{config.key}.web3guides.com</span>
         </div>
 
         {/* Headline */}
-        <h1 className="mb-3 font-display text-balance text-5xl font-extrabold tracking-tight text-white sm:text-6xl lg:text-7xl">
-          {config.label}
-          <br />
-          <span style={{ color: config.accentHex }} className="text-glow">
-            Guides
-          </span>
+        <h1 style={{ fontFamily: "'Bungee', cursive", fontWeight: 400, fontSize: "clamp(2.5rem, 6vw, 4.5rem)", lineHeight: 1.05, color: "#1a1a1a", marginBottom: 16 }}>
+          {config.label}{" "}
+          <span style={{ color: config.accentHex }}>Guides</span>
         </h1>
 
-        <p className="max-w-lg text-base sm:text-lg leading-relaxed" style={{ color: "var(--color-muted,#6272a0)" }}>
+        <p style={{ fontFamily: "'DM Sans', sans-serif", maxWidth: 520, fontSize: "1.05rem", lineHeight: 1.65, color: "#6b7280" }}>
           {config.description}
         </p>
 
         {/* Guide count pill */}
         {total > 0 && (
-          <div className="mt-6 flex items-center gap-3">
-            <div
-              className="h-px w-12 rounded"
-              style={{ background: config.accentHex, opacity: 0.4 }}
-            />
-            <span className="font-mono text-xs" style={{ color: config.accentHex }}>
+          <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ height: 2, width: 40, borderRadius: 2, background: config.accentHex, opacity: 0.5 }} />
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: config.accentHex }}>
               {total} {total === 1 ? "guide" : "guides"} available
             </span>
           </div>

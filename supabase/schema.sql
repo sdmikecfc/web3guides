@@ -23,6 +23,7 @@ create table if not exists guides (
   tags             text[] not null default '{}',
   source_url       text not null,
   slug             text not null,
+  content          text,
   cover_image      text,
   read_time_minutes integer,
   author           text,
