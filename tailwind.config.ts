@@ -10,9 +10,11 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        mono:    ["'JetBrains Mono'", "monospace"],
-        display: ["'Syne'", "sans-serif"],
-        body:    ["'DM Sans'", "sans-serif"],
+        mono:      ["'JetBrains Mono'", "monospace"],
+        spacemono: ["'Space Mono'", "monospace"],
+        display:   ["'Syne'", "sans-serif"],
+        bungee:    ["'Bungee'", "cursive"],
+        body:      ["'DM Sans'", "sans-serif"],
       },
       colors: {
         background: "#080b14",
