@@ -1,12 +1,11 @@
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
 import { getSubdomainConfig } from "@/lib/subdomains";
 import { getGuidesBySubdomain, countGuides } from "@/lib/guides";
 import GuideCard from "@/components/GuideCard";
-import GuideFeedSkeleton from "@/components/GuideFeedSkeleton";
 import FilterBar from "@/components/FilterBar";
 import HeroSection from "@/components/HeroSection";
-import type { Difficulty } from "@/types";
+import DomaCallout from "@/components/DomaCallout";
+import type { Difficulty, SubdomainKey } from "@/types";
 
 interface Props {
   params: { subdomain: string };
@@ -16,6 +15,11 @@ interface Props {
 const PAGE_SIZE = 12;
 
 export const revalidate = 60; // ISR: revalidate every 60 seconds
+
+/* Subdomains that get inline Doma Protocol content between hero and guide grid */
+const DOMA_RELEVANT: SubdomainKey[] = [
+  "eth", "rwa", "defi", "layer2", "bridge", "legal", "security", "beginner", "easy", "sol", "staking",
+];
 
 export default async function SubdomainPage({ params, searchParams }: Props) {
   const cfg = getSubdomainConfig(params.subdomain);
@@ -35,12 +39,21 @@ export default async function SubdomainPage({ params, searchParams }: Props) {
   ]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
+  const showDoma = DOMA_RELEVANT.includes(params.subdomain as SubdomainKey);
 
   return (
     <>
       <HeroSection config={cfg} total={total} />
 
       <section className="mx-auto w-full max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
+
+        {/* ── Doma Protocol callout (relevant categories only) ──────────── */}
+        {showDoma && (
+          <div className="mb-8">
+            <DomaCallout subdomainKey={params.subdomain as SubdomainKey} />
+          </div>
+        )}
+
         <FilterBar
           currentDifficulty={searchParams.difficulty}
           currentTag={searchParams.tag}
@@ -60,6 +73,13 @@ export default async function SubdomainPage({ params, searchParams }: Props) {
                 />
               ))}
             </div>
+
+            {/* ── Mid-feed Doma compact callout (after guide list if > 6) ── */}
+            {showDoma && guides.length > 6 && (
+              <div className="my-8">
+                <DomaCallout subdomainKey={params.subdomain as SubdomainKey} compact />
+              </div>
+            )}
 
             {totalPages > 1 && (
               <Pagination
@@ -84,7 +104,7 @@ function EmptyState() {
       <p className="font-display text-xl font-bold text-white/60">
         No guides yet
       </p>
-      <p className="mt-1 text-sm text-[var(--color-muted,#6b6b8a)]">
+      <p className="mt-1 text-sm" style={{ color: "var(--color-muted, #7a94a8)" }}>
         Check back soon — content is being added.
       </p>
     </div>
@@ -120,7 +140,8 @@ function Pagination({
       {currentPage > 1 && (
         <a
           href={pageHref(currentPage - 1)}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1e1e2e] bg-[#12121a] text-sm text-[#6b6b8a] transition hover:border-[var(--subdomain-accent)] hover:text-[var(--subdomain-accent)]"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1e2d3d] bg-[#0d1117] text-sm transition hover:border-[var(--subdomain-accent)] hover:text-[var(--subdomain-accent)]"
+          style={{ color: "#7a94a8" }}
         >
           ←
         </a>
@@ -133,8 +154,9 @@ function Pagination({
           className={`flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-mono font-medium transition ${
             p === currentPage
               ? "border-[var(--subdomain-accent)] bg-[var(--subdomain-accent)] text-white"
-              : "border-[#1e1e2e] bg-[#12121a] text-[#6b6b8a] hover:border-[var(--subdomain-accent)] hover:text-[var(--subdomain-accent)]"
+              : "border-[#1e2d3d] bg-[#0d1117] hover:border-[var(--subdomain-accent)] hover:text-[var(--subdomain-accent)]"
           }`}
+          style={p !== currentPage ? { color: "#7a94a8" } : {}}
         >
           {p}
         </a>
@@ -143,7 +165,8 @@ function Pagination({
       {currentPage < totalPages && (
         <a
           href={pageHref(currentPage + 1)}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1e1e2e] bg-[#12121a] text-sm text-[#6b6b8a] transition hover:border-[var(--subdomain-accent)] hover:text-[var(--subdomain-accent)]"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1e2d3d] bg-[#0d1117] text-sm transition hover:border-[var(--subdomain-accent)] hover:text-[var(--subdomain-accent)]"
+          style={{ color: "#7a94a8" }}
         >
           →
         </a>
