@@ -13,11 +13,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const cfg = getSubdomainConfig(params.subdomain);
   if (!cfg) return {};
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "web3guides.com";
+  const color = cfg.accentHex.replace("#", "%23");
   return {
-    title: { default: `${cfg.label} Guides — Web3Guides`, template: `%s | ${cfg.label} · Web3Guides` },
+    title: { default: `${cfg.label} Guides`, template: `%s | ${cfg.label} · Web3Guides` },
     description: cfg.description,
     metadataBase: new URL(`https://${cfg.key}.${rootDomain}`),
-    openGraph: { siteName: "Web3Guides", title: `${cfg.label} Guides`, description: cfg.description },
+    icons: {
+      icon: [
+        { url: `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='${color}'/><text y='.9em' font-size='65' x='10'>${cfg.emoji}</text></svg>` },
+      ],
+    },
+    openGraph: {
+      siteName: "Web3Guides",
+      title: `${cfg.label} Guides`,
+      description: cfg.description,
+    },
     twitter: { card: "summary_large_image" },
   };
 }
@@ -27,7 +37,6 @@ export default function SubdomainLayout({ children, params }: Props) {
   if (!cfg) notFound();
 
   return (
-    // Inject per-subdomain CSS vars — picked up by bg-canvas blobs and all components
     <div
       className="min-h-screen flex flex-col page-content"
       style={{

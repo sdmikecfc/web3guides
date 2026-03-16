@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { SUBDOMAINS, VALID_SUBDOMAINS } from "@/lib/subdomains";
 
 export default function ApexHomePage() {
@@ -12,33 +11,70 @@ export default function ApexHomePage() {
   }
 
   return (
-    <div className="page-content min-h-screen">
-      {/* ── Hero ───────────────────────────────────────────── */}
-      <section className="relative px-6 pt-28 pb-16 text-center">
-        <div className="relative mx-auto max-w-3xl">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full glass px-4 py-2 text-xs font-mono"
-               style={{ color: "var(--subdomain-accent, #7c6aff)" }}>
-            <span className="h-1.5 w-1.5 rounded-full bg-[#00e5a0] animate-pulse" />
-            14 specialist crypto education hubs
-          </div>
+    <div className="page-content min-h-screen flex flex-col">
 
-          <h1 className="mb-5 font-display text-6xl font-extrabold tracking-tight text-white text-glow md:text-8xl">
-            Web3
-            <span style={{ color: "var(--subdomain-accent,#7c6aff)" }}>Guides</span>
-          </h1>
+      {/* ── Nav ──────────────────────────────────────────────── */}
+      <nav className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+        <span className="font-display font-bold text-white text-lg">W3G</span>
+        <a
+          href="https://doma.xyz"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-full px-4 py-1.5 text-xs font-mono font-semibold text-white transition hover:opacity-90"
+          style={{ background: "linear-gradient(135deg, #7c6aff, #3b9eff)" }}
+        >
+          Get your subdomain →
+        </a>
+      </nav>
 
-          <p className="mx-auto max-w-lg text-lg leading-relaxed" style={{ color: "var(--color-muted,#6272a0)" }}>
-            The most comprehensive crypto education network on the internet.
-            Pick your topic and go deep.
-          </p>
+      {/* ── Hero ─────────────────────────────────────────────── */}
+      <section className="flex flex-col items-center justify-center text-center px-6 pt-20 pb-12">
 
-          {/* Decorative accent line */}
-          <div className="mt-10 accent-line w-48 mx-auto" />
+        <div className="mb-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-mono"
+             style={{ background: "rgba(124,106,255,0.12)", border: "1px solid rgba(124,106,255,0.3)", color: "#7c6aff" }}>
+          <span className="h-1.5 w-1.5 rounded-full bg-[#00e5a0] animate-pulse" />
+          14 specialist crypto education hubs
         </div>
+
+        <h1 className="font-display font-extrabold tracking-tight text-white mb-4"
+            style={{ fontSize: "clamp(3rem, 10vw, 7rem)", lineHeight: 1.05, textShadow: "0 0 80px rgba(124,106,255,0.4)" }}>
+          Web3<span style={{ color: "#7c6aff" }}>Guides</span>
+        </h1>
+
+        <p className="max-w-lg text-lg leading-relaxed mb-8" style={{ color: "#6272a0" }}>
+          The most comprehensive crypto education network on the internet.
+          Pick your topic and go deep.
+        </p>
+
+        {/* CTA buttons */}
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
+          <a
+            href="https://doma.xyz"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-xl px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 hover:scale-105 active:scale-95"
+            style={{ background: "linear-gradient(135deg, #7c6aff 0%, #3b9eff 100%)", boxShadow: "0 0 40px rgba(124,106,255,0.3)" }}
+          >
+            🌐 Claim your crypto subdomain
+          </a>
+          <a
+            href="#topics"
+            className="rounded-xl px-6 py-3 text-sm font-semibold transition hover:text-white"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#a0aec0" }}
+          >
+            Browse topics ↓
+          </a>
+        </div>
+
+        {/* Accent line */}
+        <div className="w-32 h-px" style={{ background: "linear-gradient(to right, transparent, #7c6aff, transparent)" }} />
       </section>
 
-      {/* ── Subdomain grid ──────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-6 pb-28">
+      {/* ── Subdomain grid ───────────────────────────────────── */}
+      <section id="topics" className="mx-auto w-full max-w-6xl px-6 pb-16">
+        <p className="text-center font-mono text-xs uppercase tracking-widest mb-8" style={{ color: "#6272a0" }}>
+          Choose your topic
+        </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {VALID_SUBDOMAINS.map((key, i) => {
             const cfg = SUBDOMAINS[key];
@@ -46,39 +82,42 @@ export default function ApexHomePage() {
               <a
                 key={key}
                 href={subdomainHref(key)}
-                className="group relative flex flex-col gap-3 rounded-2xl glass card-hover p-5"
+                className="group relative flex flex-col gap-3 rounded-2xl p-5 transition-all duration-200 hover:-translate-y-1"
                 style={{
+                  background: "rgba(13,17,32,0.7)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  backdropFilter: "blur(16px)",
                   animationDelay: `${i * 45}ms`,
-                  "--subdomain-accent": cfg.accentHex,
-                  "--subdomain-glow":   cfg.glowHex,
-                } as React.CSSProperties}
+                }}
               >
-                {/* Accent corner glow */}
+                {/* Hover glow */}
                 <div
                   className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                  style={{ background: `radial-gradient(ellipse 80% 60% at 0% 0%, ${cfg.glowHex}, transparent)` }}
+                  style={{ background: `radial-gradient(ellipse 80% 60% at 0% 0%, ${cfg.glowHex}, transparent)`, boxShadow: `inset 0 0 0 1px ${cfg.accentHex}40` }}
                 />
 
                 <div
                   className="relative flex h-11 w-11 items-center justify-center rounded-xl text-xl transition-transform duration-200 group-hover:scale-110"
-                  style={{ background: cfg.glowHex, border: `1px solid ${cfg.accentHex}30` }}
+                  style={{ background: cfg.glowHex, border: `1px solid ${cfg.accentHex}40` }}
                 >
                   {cfg.emoji}
                 </div>
 
-                <div className="relative">
-                  <p className="font-display font-bold text-white transition-colors duration-200 group-hover:text-[var(--subdomain-accent)]">
+                <div className="relative flex-1">
+                  <p className="font-display font-bold text-white mb-1 transition-colors duration-200 group-hover:text-[var(--acc)]"
+                     style={{ "--acc": cfg.accentHex } as React.CSSProperties}>
                     {cfg.label}
                   </p>
-                  <p className="mt-1 text-sm leading-snug line-clamp-2" style={{ color: "var(--color-muted,#6272a0)" }}>
+                  <p className="text-sm leading-snug line-clamp-2" style={{ color: "#6272a0" }}>
                     {cfg.description}
                   </p>
                 </div>
 
-                <div className="relative mt-auto flex items-center gap-1 font-mono text-xs"
-                     style={{ color: cfg.accentHex }}>
-                  <span>{key}.web3guides.com</span>
-                  <span className="opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">→</span>
+                <div className="relative flex items-center justify-between">
+                  <span className="font-mono text-xs" style={{ color: cfg.accentHex }}>
+                    {key}.web3guides.com
+                  </span>
+                  <span className="text-xs opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" style={{ color: cfg.accentHex }}>→</span>
                 </div>
               </a>
             );
@@ -86,9 +125,48 @@ export default function ApexHomePage() {
         </div>
       </section>
 
-      <footer className="border-t py-8 text-center text-sm"
-              style={{ borderColor: "var(--color-border,#1c2236)", color: "var(--color-muted,#6272a0)" }}>
-        © {new Date().getFullYear()} Web3Guides · Built on Next.js 14 &amp; Supabase
+      {/* ── Subdomain purchase banner ─────────────────────────── */}
+      <section className="mx-auto w-full max-w-6xl px-6 pb-16">
+        <div
+          className="relative overflow-hidden rounded-3xl p-8 md:p-12 text-center"
+          style={{ background: "linear-gradient(135deg, rgba(124,106,255,0.15) 0%, rgba(59,158,255,0.10) 100%)", border: "1px solid rgba(124,106,255,0.25)" }}
+        >
+          <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,106,255,0.15), transparent)" }} />
+          <div className="relative">
+            <p className="font-mono text-xs uppercase tracking-widest mb-3" style={{ color: "#7c6aff" }}>
+              🔥 Available now via Doma.xyz
+            </p>
+            <h2 className="font-display text-3xl md:text-4xl font-extrabold text-white mb-3">
+              Own your corner of Web3
+            </h2>
+            <p className="max-w-lg mx-auto mb-8" style={{ color: "#6272a0" }}>
+              Crypto-native subdomains on web3guides.com. Launch your own guide site, newsletter, or community hub with instant credibility.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              <a
+                href="https://doma.xyz"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-xl px-8 py-3.5 text-sm font-bold text-white transition hover:opacity-90 hover:scale-105"
+                style={{ background: "linear-gradient(135deg, #7c6aff, #3b9eff)", boxShadow: "0 0 40px rgba(124,106,255,0.35)" }}
+              >
+                Browse available subdomains →
+              </a>
+              <div className="flex items-center gap-2 text-sm" style={{ color: "#6272a0" }}>
+                <span className="h-1.5 w-1.5 rounded-full bg-[#00e5a0]" />
+                Subdomains still available
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t py-8 text-center text-sm mt-auto"
+              style={{ borderColor: "rgba(255,255,255,0.05)", color: "#6272a0" }}>
+        © {new Date().getFullYear()} Web3Guides · Built on Next.js &amp; Supabase ·{" "}
+        <a href="https://doma.xyz" className="hover:text-white transition-colors" style={{ color: "#7c6aff" }}>
+          Get a subdomain
+        </a>
       </footer>
     </div>
   );

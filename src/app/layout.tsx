@@ -6,9 +6,12 @@ export const metadata: Metadata = {
     default: "Web3Guides — Crypto Education Network",
     template: "%s | Web3Guides",
   },
-  description:
-    "A network of expert crypto education resources covering Ethereum, Bitcoin, DeFi, Solana, staking, Layer 2, security, tax, legal, and more.",
-  keywords: ["crypto", "web3", "blockchain", "DeFi", "Bitcoin", "Ethereum"],
+  description: "A network of expert crypto education resources covering Ethereum, Bitcoin, DeFi, Solana, staking, Layer 2, security, tax, legal, and more.",
+  icons: {
+    icon: [
+      { url: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%237c6aff'/><text y='.9em' font-size='70' x='15'>W3</text></svg>" },
+    ],
+  },
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_ROOT_DOMAIN
       ? `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
@@ -21,13 +24,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark">
       <head />
       <body className="antialiased">
-        {/* Layered animated background — CSS only, no JS */}
         <div className="bg-canvas" aria-hidden="true" />
         <div className="bg-orb"    aria-hidden="true" />
         <div className="bg-stars"  aria-hidden="true" />
         <div className="bg-grid"   aria-hidden="true" />
         <div className="bg-vignette" aria-hidden="true" />
-        {/* All page content sits above via z-index:1 on .page-content */}
         {children}
       </body>
     </html>

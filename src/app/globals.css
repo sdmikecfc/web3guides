@@ -4,23 +4,20 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── CSS custom properties ────────────────────────────────── */
 :root {
-  --color-bg:       #080b14;
+  --color-bg:       #07090f;
   --color-surface:  #0d1120;
   --color-surface2: #131826;
   --color-border:   #1c2236;
   --color-border2:  #252d42;
   --color-text:     #e4e8f5;
   --color-muted:    #6272a0;
-
   --subdomain-accent: #7c6aff;
-  --subdomain-glow:   rgba(124,106,255,0.18);
+  --subdomain-glow:   rgba(124,106,255,0.25);
   --subdomain-a:      #7c6aff;
   --subdomain-b:      #4f3cc9;
 }
 
-/* ─── Base ──────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
 html {
@@ -47,130 +44,133 @@ h1,h2,h3,h4,h5,h6 {
 
 code, pre, .mono { font-family: "JetBrains Mono", monospace; }
 
-/* ─── ANIMATED BACKGROUND ───────────────────────────────────── */
+/* ═══════════════════════════════════════════════════
+   ANIMATED BACKGROUND
+═══════════════════════════════════════════════════ */
 
-/* The canvas that sits behind everything */
 .bg-canvas {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  overflow: hidden;
-  background: radial-gradient(ellipse 120% 80% at 50% -10%,
-    #0e1630 0%,
-    #080b14 55%,
-    #060810 100%
-  );
+  background: #07090f;
 }
 
-/* Floating aurora blobs — pure CSS, zero JS */
+/* Two large aurora blobs */
 .bg-canvas::before,
 .bg-canvas::after {
   content: "";
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
-  animation: drift 18s ease-in-out infinite alternate;
+  animation: drift ease-in-out infinite alternate;
 }
 
+/* Top-left purple blob */
 .bg-canvas::before {
-  width: 70vw;
-  height: 60vh;
-  top: -20vh;
-  left: -15vw;
+  width: 80vw;
+  height: 70vh;
+  top: -25vh;
+  left: -20vw;
   background: radial-gradient(ellipse at center,
-    var(--subdomain-a, #3b4fd8) 0%,
+    var(--subdomain-a, #5b4dd4) 0%,
+    rgba(91,77,212,0.4) 35%,
     transparent 70%
   );
-  opacity: 0.28;
-  animation-duration: 22s;
-  animation-delay: 0s;
+  filter: blur(60px);
+  opacity: 0.55;
+  animation-duration: 20s;
 }
 
+/* Bottom-right teal/blue blob */
 .bg-canvas::after {
-  width: 65vw;
-  height: 55vh;
-  bottom: -15vh;
-  right: -10vw;
+  width: 70vw;
+  height: 65vh;
+  bottom: -20vh;
+  right: -15vw;
   background: radial-gradient(ellipse at center,
-    var(--subdomain-b, #6c2eb9) 0%,
+    var(--subdomain-b, #1a3a8f) 0%,
+    rgba(26,58,143,0.4) 35%,
     transparent 70%
   );
-  opacity: 0.22;
-  animation-duration: 28s;
-  animation-delay: -8s;
+  filter: blur(70px);
+  opacity: 0.45;
+  animation-duration: 26s;
+  animation-delay: -10s;
   animation-direction: alternate-reverse;
 }
 
-/* Third blob — mid-screen accent */
+/* Third mid-screen orb */
 .bg-orb {
   position: fixed;
   z-index: 0;
   pointer-events: none;
   border-radius: 50%;
-  filter: blur(100px);
-  width: 55vw;
-  height: 40vh;
-  top: 30vh;
-  left: 20vw;
+  width: 50vw;
+  height: 45vh;
+  top: 25vh;
+  left: 25vw;
   background: radial-gradient(ellipse at center,
     var(--subdomain-accent, #7c6aff) 0%,
-    transparent 65%
+    rgba(124,106,255,0.2) 40%,
+    transparent 70%
   );
-  opacity: 0.10;
-  animation: drift 34s ease-in-out infinite alternate;
-  animation-delay: -14s;
+  filter: blur(90px);
+  opacity: 0.20;
+  animation: drift 32s ease-in-out infinite alternate;
+  animation-delay: -16s;
 }
 
-/* Subtle star-field noise — SVG data URL */
+/* Star field */
 .bg-stars {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   background-image:
-    radial-gradient(1px 1px at 15% 22%, rgba(255,255,255,0.35) 0%, transparent 100%),
-    radial-gradient(1px 1px at 72% 8%,  rgba(255,255,255,0.25) 0%, transparent 100%),
-    radial-gradient(1px 1px at 38% 55%, rgba(255,255,255,0.20) 0%, transparent 100%),
-    radial-gradient(1px 1px at 91% 40%, rgba(255,255,255,0.30) 0%, transparent 100%),
-    radial-gradient(1px 1px at 5%  80%, rgba(255,255,255,0.18) 0%, transparent 100%),
-    radial-gradient(1px 1px at 60% 71%, rgba(255,255,255,0.22) 0%, transparent 100%),
-    radial-gradient(1px 1px at 82% 88%, rgba(255,255,255,0.28) 0%, transparent 100%),
-    radial-gradient(1px 1px at 27% 93%, rgba(255,255,255,0.15) 0%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 50% 15%, rgba(255,255,255,0.40) 0%, transparent 100%),
-    radial-gradient(1px 1px at 45% 35%, rgba(200,180,255,0.30) 0%, transparent 100%),
-    radial-gradient(1px 1px at 33% 67%, rgba(180,210,255,0.25) 0%, transparent 100%),
-    radial-gradient(1px 1px at 78% 58%, rgba(200,240,255,0.20) 0%, transparent 100%);
-  animation: starTwinkle 6s ease-in-out infinite alternate;
+    radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 68% 9%,  rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 35% 52%, rgba(255,255,255,0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 88% 38%, rgba(255,255,255,0.45) 0%, transparent 100%),
+    radial-gradient(1px 1px at 7%  77%, rgba(255,255,255,0.30) 0%, transparent 100%),
+    radial-gradient(1px 1px at 57% 68%, rgba(255,255,255,0.38) 0%, transparent 100%),
+    radial-gradient(1px 1px at 79% 85%, rgba(255,255,255,0.42) 0%, transparent 100%),
+    radial-gradient(1px 1px at 24% 91%, rgba(255,255,255,0.28) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 50% 13%, rgba(255,255,255,0.55) 0%, transparent 100%),
+    radial-gradient(1px 1px at 42% 32%, rgba(200,180,255,0.45) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 64%, rgba(180,210,255,0.40) 0%, transparent 100%),
+    radial-gradient(1px 1px at 75% 55%, rgba(200,240,255,0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 92% 72%, rgba(255,255,255,0.32) 0%, transparent 100%),
+    radial-gradient(1px 1px at 18% 45%, rgba(255,255,255,0.28) 0%, transparent 100%);
+  animation: starTwinkle 5s ease-in-out infinite alternate;
 }
 
-/* Moving scan-line grid for depth */
+/* Subtle grid */
 .bg-grid {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(120,140,255,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(120,140,255,0.025) 1px, transparent 1px);
+    linear-gradient(rgba(120,140,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120,140,255,0.04) 1px, transparent 1px);
   background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black 30%, transparent 80%);
-  animation: gridPan 60s linear infinite;
+  mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black 20%, transparent 75%);
+  animation: gridPan 50s linear infinite;
 }
 
-/* Vignette at edges */
+/* Vignette */
 .bg-vignette {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse 100% 100% at 50% 50%,
-    transparent 55%,
-    rgba(4,6,16,0.55) 100%
+  background: radial-gradient(ellipse 120% 120% at 50% 50%,
+    transparent 50%,
+    rgba(4,5,14,0.65) 100%
   );
 }
 
-/* Ensure all page content sits above background layers */
+/* All content above the background */
 .page-content {
   position: relative;
   z-index: 1;
@@ -178,15 +178,16 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
 
 @keyframes drift {
   0%   { transform: translate(0, 0) scale(1); }
-  33%  { transform: translate(3vw, -4vh) scale(1.06); }
-  66%  { transform: translate(-2vw, 3vh) scale(0.97); }
-  100% { transform: translate(2vw, 2vh) scale(1.03); }
+  25%  { transform: translate(4vw, -5vh) scale(1.08); }
+  50%  { transform: translate(-3vw, 4vh) scale(0.95); }
+  75%  { transform: translate(5vw, 2vh) scale(1.05); }
+  100% { transform: translate(-2vw, -3vh) scale(1.02); }
 }
 
 @keyframes starTwinkle {
-  0%   { opacity: 0.7; }
+  0%   { opacity: 0.6; }
   50%  { opacity: 1; }
-  100% { opacity: 0.6; }
+  100% { opacity: 0.65; }
 }
 
 @keyframes gridPan {
@@ -194,31 +195,33 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
   100% { background-position: 48px 48px; }
 }
 
-/* ─── Scrollbar ─────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════════════════ */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--color-bg); }
-::-webkit-scrollbar-thumb { background: var(--color-border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #252d42; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-muted); }
-
 ::selection { background: var(--subdomain-accent); color: #fff; }
 
-/* ─── Component utilities ───────────────────────────────────── */
+/* ═══════════════════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════════════════ */
 @layer utilities {
   .text-balance { text-wrap: balance; }
 
-  /* Glassmorphism card */
   .glass {
-    background: rgba(13,17,32,0.65);
-    backdrop-filter: blur(16px) saturate(140%);
-    -webkit-backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(13,17,32,0.70);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border: 1px solid rgba(255,255,255,0.08);
   }
 
   .glass-bright {
-    background: rgba(19,24,38,0.75);
-    backdrop-filter: blur(20px) saturate(150%);
-    -webkit-backdrop-filter: blur(20px) saturate(150%);
-    border: 1px solid rgba(255,255,255,0.09);
+    background: rgba(19,24,38,0.80);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.10);
   }
 
   .card-hover {
@@ -228,16 +231,16 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
     transform: translateY(-4px);
     border-color: var(--subdomain-accent) !important;
     box-shadow:
-      0 12px 40px var(--subdomain-glow),
-      0 2px 8px rgba(0,0,0,0.5),
-      inset 0 1px 0 rgba(255,255,255,0.05);
+      0 16px 48px var(--subdomain-glow),
+      0 2px 8px rgba(0,0,0,0.6),
+      inset 0 1px 0 rgba(255,255,255,0.06);
   }
 
   .tag-pill {
     @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium font-mono tracking-wide;
-    background: rgba(255,255,255,0.04);
+    background: rgba(255,255,255,0.05);
     color: var(--color-muted);
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.09);
     transition: color 0.15s, border-color 0.15s, background 0.15s;
   }
   .tag-pill:hover {
@@ -248,20 +251,13 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
 
   .animate-fade-up { animation: fadeUp 0.5s cubic-bezier(.22,1,.36,1) both; }
 
-  /* Accent glow line */
   .accent-line {
     height: 2px;
-    background: linear-gradient(
-      to right,
-      var(--subdomain-accent),
-      rgba(255,255,255,0.1) 60%,
-      transparent
-    );
+    background: linear-gradient(to right, var(--subdomain-accent), rgba(255,255,255,0.08) 60%, transparent);
   }
 
-  /* Glowing text */
   .text-glow {
-    text-shadow: 0 0 40px var(--subdomain-glow);
+    text-shadow: 0 0 60px var(--subdomain-glow);
   }
 }
 
@@ -270,11 +266,13 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ─── Skeleton shimmer ──────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════
+   SKELETON
+═══════════════════════════════════════════════════ */
 .skeleton {
   background: linear-gradient(90deg,
     rgba(255,255,255,0.04) 25%,
-    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.09) 50%,
     rgba(255,255,255,0.04) 75%
   );
   background-size: 200% 100%;
