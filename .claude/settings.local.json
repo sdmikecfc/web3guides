@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(GIT_TERMINAL_PROMPT=0 git push -u origin claude/interesting-lewin)",
+      "Bash(gh auth:*)"
+    ]
+  }
+}

@@ -512,7 +512,7 @@ export default function ApexHomePage() {
               fontFamily: '"IBM Plex Mono", monospace',
               fontSize: '10px',
               letterSpacing: '0.18em',
-              color: i % 5 === 0 ? '#00F5D4' : i % 5 === 2 ? '#F5A623' : '#2a3a45',
+              color: i % 5 === 0 ? '#00F5D4' : i % 5 === 2 ? '#F5A623' : '#4a6478',
             }}>
               {item}
             </span>
@@ -524,7 +524,7 @@ export default function ApexHomePage() {
       <section style={{ maxWidth: '1200px', margin: '52px auto 0', padding: '0 24px' }}>
         {/* Label row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
-          <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: '10px', letterSpacing: '0.15em', color: '#2a3a45' }}>
+          <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: '10px', letterSpacing: '0.15em', color: '#4a6478' }}>
             FEATURED HUB
           </span>
           <div style={{ display: 'flex', gap: '5px' }}>
@@ -619,7 +619,7 @@ export default function ApexHomePage() {
       <section id="hubs" style={{ maxWidth: '1200px', margin: '52px auto 96px', padding: '0 24px' }}>
         {/* Section label */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-          <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: '10px', letterSpacing: '0.15em', color: '#2a3a45' }}>
+          <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: '10px', letterSpacing: '0.15em', color: '#4a6478' }}>
             ALL HUBS &mdash; {filtered.length} OF {VALID_SUBDOMAINS.length}
           </span>
           {query && (
@@ -759,7 +759,7 @@ export default function ApexHomePage() {
             <div style={{
               textAlign: 'center', padding: '80px 0',
               fontFamily: '"IBM Plex Mono", monospace',
-              fontSize: '12px', color: '#2a3a45',
+              fontSize: '12px', color: '#4a6478',
               letterSpacing: '0.08em',
             }}>
               NO HUBS FOUND FOR &ldquo;{query.toUpperCase()}&rdquo;
@@ -770,8 +770,8 @@ export default function ApexHomePage() {
 
       {/* ── Footer ──────────────────────────────────────────────────────────── */}
       <footer style={{
-        borderTop: '1px solid rgba(255,255,255,0.05)',
-        padding: '36px 24px',
+        borderTop: '1px solid rgba(255,255,255,0.07)',
+        padding: '40px 24px',
         textAlign: 'center',
         position: 'relative',
         overflow: 'hidden',
@@ -779,13 +779,42 @@ export default function ApexHomePage() {
         {/* Scan-line texture */}
         <div style={{
           position: 'absolute', inset: 0, pointerEvents: 'none',
-          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.012) 3px, rgba(255,255,255,0.012) 4px)',
+          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.015) 3px, rgba(255,255,255,0.015) 4px)',
           zIndex: 0,
         }} />
+
+        {/* Doma Protocol CTA */}
+        <div style={{ position: 'relative', zIndex: 1, marginBottom: '18px' }}>
+          <a
+            href="https://app.doma.xyz/domain/web3guides.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              padding: '8px 18px',
+              border: '1px solid rgba(245,166,35,0.3)',
+              borderRadius: '20px',
+              background: 'rgba(245,166,35,0.06)',
+              color: '#F5A623',
+              fontFamily: '"IBM Plex Mono", monospace',
+              fontSize: '11px',
+              letterSpacing: '0.08em',
+              textDecoration: 'none',
+              transition: 'background 0.2s ease, border-color 0.2s ease',
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2 L22 12 L12 22 L2 12 Z" stroke="#F5A623" strokeWidth="1.5" fill="none" />
+              <circle cx="12" cy="12" r="2" fill="#F5A623" opacity="0.8" />
+            </svg>
+            OWN WEB3GUIDES.COM ON DOMA PROTOCOL ↗
+          </a>
+        </div>
+
         <p style={{
           fontFamily: '"IBM Plex Mono", monospace',
           fontSize: '11px',
-          color: '#2a3a45',
+          color: '#4a6478',
           letterSpacing: '0.1em',
           margin: 0,
           position: 'relative', zIndex: 1,

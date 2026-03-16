@@ -9,13 +9,14 @@
   --color-background: #080C10;
   --color-surface: #0d1117;
   --color-surface-2: #131a21;
-  --color-border: #1a2332;
-  --color-border-bright: #243040;
-  --color-text: #e2e8f0;
-  --color-muted: #4a6070;
+  --color-border: #1e2d3d;
+  --color-border-bright: #2a3f55;
+  --color-text: #eef2f8;
+  --color-muted: #7a94a8;
+  --color-muted-dim: #4a6478;
   --color-accent: #00F5D4;
   --color-accent-dim: rgba(0, 245, 212, 0.12);
-  --color-accent-glow: rgba(0, 245, 212, 0.2);
+  --color-accent-glow: rgba(0, 245, 212, 0.25);
   --color-amber: #F5A623;
 
   /* Subdomain accent overrides (set per-layout via inline style) */
@@ -125,16 +126,22 @@ code, pre, .mono {
   100% { background-position: 200% 0; }
 }
 
+@keyframes doma-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 166, 35, 0); }
+  50%       { box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.12); }
+}
+
 /* ─── Utilities ──────────────────────────────────────────────────────────── */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
 
+  /* Brighter grid lines to wake up the visual */
   .grid-bg {
     background-image:
-      linear-gradient(rgba(0, 245, 212, 0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 245, 212, 0.025) 1px, transparent 1px);
+      linear-gradient(rgba(0, 245, 212, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 245, 212, 0.04) 1px, transparent 1px);
     background-size: 48px 48px;
   }
 
@@ -167,6 +174,41 @@ code, pre, .mono {
     color: var(--subdomain-accent);
     border-color: var(--subdomain-accent);
   }
+}
+
+/* ─── Doma callout card ──────────────────────────────────────────────────── */
+.doma-callout {
+  border: 1px solid rgba(245, 166, 35, 0.22);
+  background: linear-gradient(135deg, rgba(245,166,35,0.07) 0%, rgba(8,12,16,0.95) 60%);
+  border-radius: 16px;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.doma-callout:hover {
+  border-color: rgba(245, 166, 35, 0.45);
+  box-shadow: 0 0 32px rgba(245, 166, 35, 0.1);
+}
+.doma-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(245,166,35,0.5);
+  background: rgba(245,166,35,0.1);
+  color: #F5A623;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+  animation: doma-pulse 2.8s ease infinite;
+}
+.doma-cta-btn:hover {
+  background: rgba(245,166,35,0.18);
+  border-color: rgba(245,166,35,0.8);
+  transform: translateY(-1px);
+  animation: none;
+  box-shadow: 0 4px 20px rgba(245,166,35,0.2);
 }
 
 /* ─── Hub card hover ─────────────────────────────────────────────────────── */
