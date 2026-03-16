@@ -8,7 +8,7 @@ export async function GET() {
     // Try featured first
     const { data: featured } = await supabase
       .from("guides")
-      .select("id, title, slug, subdomain, excerpt, difficulty")
+      .select("id, title, slug, subdomain, summary, difficulty")
       .eq("featured", true)
       .order("published_at", { ascending: false })
       .limit(12);
@@ -20,7 +20,7 @@ export async function GET() {
     // Fall back to most recent articles that have content
     const { data: recent, error } = await supabase
       .from("guides")
-      .select("id, title, slug, subdomain, excerpt, difficulty")
+      .select("id, title, slug, subdomain, summary, difficulty")
       .not("content", "is", null)
       .order("published_at", { ascending: false })
       .limit(12);

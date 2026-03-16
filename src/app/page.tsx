@@ -474,7 +474,7 @@ interface FeaturedGuide {
   title: string;
   slug: string;
   subdomain: string;
-  excerpt: string | null;
+  summary: string | null;
   difficulty: string | null;
 }
 
@@ -525,8 +525,8 @@ function Articles() {
                     <div style={{ padding: "24px 28px" }}>
                       <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 2, color, textTransform: "uppercase", marginBottom: 10 }}>{guide.subdomain}</div>
                       <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.1rem", fontWeight: 700, color: "#1a1a1a", marginBottom: 12, lineHeight: 1.4 }}>{guide.title}</h3>
-                      {guide.excerpt && (
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "#6b7280", lineHeight: 1.6, marginBottom: 20 }}>{guide.excerpt}</p>
+                      {guide.summary && (
+                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "#6b7280", lineHeight: 1.6, marginBottom: 20 }}>{guide.summary}</p>
                       )}
                       <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", fontWeight: 600, color, display: "inline-flex", alignItems: "center", gap: 6 }}>
                         Read Guide →
