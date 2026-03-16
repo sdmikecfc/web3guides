@@ -3,6 +3,67 @@
 import React, { useEffect, useRef, useState, type CSSProperties } from "react";
 import { SUBDOMAINS } from "@/lib/subdomains";
 
+/* ─── Subdomain SVG Icons ────────────────────────────────────────────── */
+function SubdomainIcon({ sdKey, color }: { sdKey: string; color: string }) {
+  const s = { stroke: color, fill: "none", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  const f = { fill: color };
+  switch (sdKey) {
+    case "eth": return (
+      <svg viewBox="0 0 24 24" width="26" height="26"><polygon points="12,2 20,12 12,16 4,12" {...s}/><polygon points="12,16 20,12 12,22 4,12" style={{ ...s, opacity: 0.6 }}/></svg>
+    );
+    case "btc": return (
+      <svg viewBox="0 0 24 24" width="26" height="26"><circle cx="12" cy="12" r="10" {...s}/><text x="12" y="17" textAnchor="middle" style={{ fontWeight: 900, fontSize: 14 }} fill={color} stroke="none">₿</text></svg>
+    );
+    case "sol": return (
+      <svg viewBox="0 0 24 24" width="26" height="26">
+        <line x1="3" y1="7" x2="21" y2="7" {...s} strokeWidth={2.5}/>
+        <line x1="6" y1="12" x2="21" y2="12" {...s} strokeWidth={2.5}/>
+        <line x1="3" y1="17" x2="18" y2="17" {...s} strokeWidth={2.5}/>
+      </svg>
+    );
+    case "defi": return (
+      <svg viewBox="0 0 24 24" width="26" height="26"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" {...s}/></svg>
+    );
+    case "staking": return (
+      <svg viewBox="0 0 24 24" width="26" height="26"><rect x="5" y="11" width="14" height="10" rx="2" {...s}/><path d="M8 11V7a4 4 0 018 0v4" {...s}/><circle cx="12" cy="16" r="1.5" {...f}/></svg>
+    );
+    case "layer2": return (
+      <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 2L2 7l10 5 10-5-10-5z" {...s}/><path d="M2 12l10 5 10-5" {...s}/><path d="M2 17l10 5 10-5" {...s}/></svg>
+    );
+    case "bridge": return (
+      <svg viewBox="0 0 24 24" width="26" height="26"><path d="M3 17 Q3 10 12 10 Q21 10 21 17" {...s}/><line x1="3" y1="17" x2="3" y2="21" {...s}/><line x1="21" y1="17" x2="21" y2="21" {...s}/><line x1="8" y1="10" x2="8" y2="17" {...s}/><line x1="16" y1="10" x2="16" y2="17" {...s}/></svg>
+    );
+    case "rwa": return (
+      <svg viewBox="0 0 24 24" width="26" height="26"><path d="M3 22V10l9-8 9 8v12" {...s}/><rect x="9" y="14" width="6" height="8" {...s}/><line x1="3" y1="22" x2="21" y2="22" {...s}/></svg>
+    );
+    case "legal": return (
+      <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 3v18" {...s}/><path d="M5 21h14" {...s}/><path d="M5 8l-3 6h6L5 8z" {...s}/><path d="M19 8l-3 6h6L19 8z" {...s}/></svg>
+    );
+    case "tax": return (
+      <svg viewBox="0 0 24 24" width="26" height="26"><rect x="4" y="2" width="16" height="20" rx="2" {...s}/><line x1="8" y1="7" x2="16" y2="7" {...s}/><line x1="8" y1="11" x2="16" y2="11" {...s}/><line x1="8" y1="15" x2="12" y2="15" {...s}/></svg>
+    );
+    case "security": return (
+      <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 2l8 4v6c0 5-4 9-8 10C8 21 4 17 4 12V6l8-4z" {...s}/><path d="M9 12l2 2 4-4" {...s}/></svg>
+    );
+    case "easy": return (
+      <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 2l2 7h7l-6 4 2 7-5-4-5 4 2-7-6-4h7z" {...s}/></svg>
+    );
+    case "jobs": return (
+      <svg viewBox="0 0 24 24" width="26" height="26"><rect x="2" y="7" width="20" height="14" rx="2" {...s}/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" {...s}/><line x1="12" y1="12" x2="12" y2="16" {...s}/><line x1="10" y1="14" x2="14" y2="14" {...s}/></svg>
+    );
+    case "medium": return (
+      <svg viewBox="0 0 24 24" width="26" height="26"><rect x="3" y="14" width="4" height="7" rx="1" {...s}/><rect x="10" y="9" width="4" height="12" rx="1" {...s}/><rect x="17" y="5" width="4" height="16" rx="1" {...s}/></svg>
+    );
+    case "advanced": return (
+      <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 2a7 7 0 017 7c0 3-2 5-3 6l-1 3H9l-1-3c-1-1-3-3-3-6a7 7 0 017-7z" {...s}/><line x1="9" y1="21" x2="15" y2="21" {...s}/><line x1="9" y1="18" x2="15" y2="18" {...s}/></svg>
+    );
+    case "beginner": return (
+      <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 2L8 8H3l4 4-2 6 7-4 7 4-2-6 4-4h-5L12 2z" {...s}/></svg>
+    );
+    default: return <span style={{ fontSize: "1.4rem" }}>📄</span>;
+  }
+}
+
 /* ─── URLs ───────────────────────────────────────────────────────────── */
 const DOMA_REGISTER = "https://app.doma.xyz/domain/web3guides.com/subdomains";
 const DOMA_HOME     = "https://doma.xyz";
@@ -222,10 +283,10 @@ function BrowseSection() {
                    style={{ display: "flex", flexDirection: "column", gap: 12, padding: 20, borderRadius: 20, background: "#fafafa", border: "1.5px solid #e5e7eb", textDecoration: "none", transition: "transform 0.2s, box-shadow 0.2s, border-color 0.2s", animationDelay: `${i * 40}ms` }}
                    onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(-5px)"; el.style.boxShadow = `0 16px 40px ${cfg.glowHex}`; el.style.borderColor = cfg.accentHex; }}
                    onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(0)"; el.style.boxShadow = "none"; el.style.borderColor = "#e5e7eb"; }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: cfg.glowHex, border: `2px solid ${cfg.accentHex}60`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", overflow: "hidden" }}>
+                  <div style={{ width: 52, height: 52, borderRadius: 14, background: `${cfg.accentHex}18`, border: `2px solid ${cfg.accentHex}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
                     {key === "bigmike"
-                      ? <img src="/bigmike.jpg" alt="Big Mike" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 10 }} />
-                      : cfg.emoji}
+                      ? <img src="/bigmike.jpg" alt="Big Mike" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 12 }} />
+                      : <SubdomainIcon sdKey={key} color={cfg.accentHex} />}
                   </div>
                   <div>
                     <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700, color: "#1a1a1a", fontSize: "0.95rem", marginBottom: 4 }}>{cfg.label}</div>
