@@ -60,6 +60,16 @@ function SubdomainIcon({ sdKey, color }: { sdKey: string; color: string }) {
     case "beginner": return (
       <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 2L8 8H3l4 4-2 6 7-4 7 4-2-6 4-4h-5L12 2z" {...s}/></svg>
     );
+    case "doma": return (
+      <svg viewBox="0 0 24 24" width="26" height="26">
+        <circle cx="12" cy="12" r="9" {...s}/>
+        <circle cx="12" cy="12" r="3" {...f} opacity={0.9}/>
+        <line x1="12" y1="3" x2="12" y2="9" {...s}/>
+        <line x1="12" y1="15" x2="12" y2="21" {...s}/>
+        <line x1="3" y1="12" x2="9" y2="12" {...s}/>
+        <line x1="15" y1="12" x2="21" y2="12" {...s}/>
+      </svg>
+    );
     default: return <span style={{ fontSize: "1.4rem" }}>📄</span>;
   }
 }
@@ -258,7 +268,7 @@ function DifficultyTiles() {
 // 'beginner' subdomain excluded — not managed by this platform
 const BROWSE_ORDER = [
   "easy", "eth", "btc", "sol", "defi", "staking",
-  "layer2", "security", "rwa", "bridge", "legal", "tax", "bigmike",
+  "layer2", "security", "rwa", "bridge", "legal", "tax", "bigmike", "doma",
 ];
 
 function BrowseSection() {
