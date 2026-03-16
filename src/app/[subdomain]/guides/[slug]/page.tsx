@@ -335,7 +335,7 @@ function sectionToHtml(md: string): string {
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/`(.+?)`/g, "<code style=\"font-family:'Space Mono',monospace;font-size:0.85em;background:#f3f4f6;border-radius:4px;padding:2px 6px\">$1</code>")
     .replace(/^- (.+)$/gm, "<li style=\"margin:6px 0\">$1</li>")
-    .replace(/(<li[^>]*>.*?<\/li>\n?)+/gs, (match) => `<ul style="padding-left:20px;margin:16px 0">${match}</ul>`)
+    .replace(/(<li[^>]*>[\s\S]*?<\/li>\n?)+/g, (match) => `<ul style="padding-left:20px;margin:16px 0">${match}</ul>`)
     .replace(/\n{2,}/g, "</p><p style=\"margin:16px 0\">")
     .replace(/^(?!<[hHuUlLpP])(.+)$/gm, "<p style=\"margin:16px 0\">$1</p>")
     .replace(/<p style="margin:16px 0"><\/p>/g, "");
