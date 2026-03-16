@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" fill="#080C10" rx="5"/>
+  <polygon points="16,4 28,12 28,20 16,28 4,20 4,12" fill="none" stroke="#00F5D4" stroke-width="1.2" opacity="0.6"/>
+  <text x="16" y="21" text-anchor="middle" fill="#00F5D4"
+    font-family="Arial Black,Impact,sans-serif"
+    font-weight="900" font-size="11" letter-spacing="-0.5">W3G</text>
+</svg>
