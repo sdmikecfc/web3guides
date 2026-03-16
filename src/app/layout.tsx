@@ -24,11 +24,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark">
       <head />
       <body className="antialiased">
-        <div className="bg-canvas" aria-hidden="true" />
-        <div className="bg-orb"    aria-hidden="true" />
-        <div className="bg-stars"  aria-hidden="true" />
-        <div className="bg-grid"   aria-hidden="true" />
-        <div className="bg-vignette" aria-hidden="true" />
         {children}
       </body>
     </html>

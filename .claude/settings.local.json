@@ -5,7 +5,12 @@
       "Bash(gh auth:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git -c credential.helper=manager push origin claude/interesting-lewin)"
+      "Bash(git -c credential.helper=manager push origin claude/interesting-lewin)",
+      "Bash(ls /c/Users/Mike/Desktop/web3guides/.claude/worktrees/sad-hoover/src/app/[subdomain])",
+      "Bash(npx tsc:*)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(mkdir -p /c/Users/Mike/.claude/projects/C--Users-Mike-Desktop-web3guides/memory)",
+      "Read(//c/Users/Mike/.claude/projects/C--Users-Mike-Desktop-web3guides/**)"
     ]
   }
 }
