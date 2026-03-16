@@ -490,3 +490,92 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
   transform: translateY(-5px);
   box-shadow: 0 16px 48px rgba(0,0,0,0.08);
 }
+
+/* ═══════════════════════════════════════════════════
+   ARTICLE DASHBOARD LAYOUT
+═══════════════════════════════════════════════════ */
+.article-page-wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.article-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 28px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+}
+
+/* 3-column grid: TOC | article | sidebar */
+.article-grid {
+  display: grid;
+  grid-template-columns: 220px 1fr 220px;
+  gap: 32px;
+  align-items: start;
+}
+
+.article-toc-col {
+  /* Spacer column — the actual TOC is rendered by ArticleClient as a fixed aside */
+  width: 220px;
+}
+
+.article-main {
+  min-width: 0;
+  max-width: 720px;
+}
+
+.article-sidebar {
+  width: 220px;
+}
+
+/* Article body typography */
+.article-body {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1rem;
+  line-height: 1.85;
+  color: #374151;
+  margin-bottom: 40px;
+}
+.article-body h1,
+.article-body h2,
+.article-body h3 {
+  margin-top: 0; /* spacing applied inline */
+}
+.article-body a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.article-body code {
+  font-size: 0.85em;
+}
+
+/* Hide right sidebar on tablet, show mobile related below */
+@media (max-width: 1100px) {
+  .article-grid {
+    grid-template-columns: 200px 1fr;
+    gap: 24px;
+  }
+  .article-sidebar { display: none; }
+  .article-related-mobile { display: block !important; }
+}
+
+/* Collapse to single column on mobile */
+@media (max-width: 768px) {
+  .article-page-wrap { padding: 20px 16px 60px; }
+
+  .article-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  /* Hide the TOC spacer col and the ArticleClient aside */
+  .article-toc-col { display: none; }
+  .article-toc     { display: none !important; }
+  .article-sidebar { display: none; }
+
+  .article-related-mobile { display: block !important; }
+}
