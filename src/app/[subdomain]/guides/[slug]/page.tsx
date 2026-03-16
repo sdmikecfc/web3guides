@@ -7,7 +7,8 @@ import { formatDate } from "@/lib/utils";
 import DifficultyBadge from "@/components/DifficultyBadge";
 import { ArticleClient } from "@/components/ArticleClient";
 import { extractToc } from "@/lib/extractToc";
-import { ArticleInfographic } from "@/components/ArticleInfographic";
+import { parseArticleSections } from "@/lib/parseArticleSections";
+import { SectionInfographic } from "@/components/SectionInfographic";
 
 export const dynamic = "force-dynamic";
 
@@ -38,12 +39,40 @@ export default async function GuidePage({ params }: Props) {
   const toc = guide.content ? extractToc(guide.content) : [];
   const hasContent = !!guide.content;
 
+  // Parse article into sections for section-level infographics
+  const { intro, sections } = hasContent
+    ? parseArticleSections(guide.content!)
+    : { intro: "", sections: [] };
+
+  // Pick which section indices get infographics (max 3, spaced apart)
+  // Map: sectionIndex → infographicIndex (0, 1, 2) so we know which variant to render
+  const infographicAt = new Map<number, number>();
+  let placed = 0;
+  for (let i = 0; i < sections.length && placed < 3; i++) {
+    const s = sections[i];
+    const hasData =
+      s.bullets.length >= 2 || s.stats.length >= 2 || s.concepts.length >= 3;
+    if (hasData && i > 0 && i % 2 === 1) {
+      infographicAt.set(i, placed);
+      placed++;
+    }
+  }
+  // Always try to show at least 1 infographic if there's any usable section
+  if (infographicAt.size === 0 && sections.length > 0) {
+    for (let i = 0; i < sections.length; i++) {
+      const s = sections[i];
+      if (s.bullets.length >= 2 || s.stats.length >= 2) {
+        infographicAt.set(i, 0);
+        break;
+      }
+    }
+  }
+
   return (
     <>
-      {/* Full-width dashboard wrapper */}
       <div className="article-page-wrap">
 
-        {/* ── Breadcrumb ── */}
+        {/* Breadcrumb */}
         <nav className="article-breadcrumb">
           <Link href="/" style={{ color: "#9ca3af", textDecoration: "none" }}>
             {cfg.emoji} {cfg.label}
@@ -54,15 +83,15 @@ export default async function GuidePage({ params }: Props) {
           </span>
         </nav>
 
-        {/* ── 3-column layout ── */}
+        {/* 3-column layout */}
         <div className="article-grid">
 
-          {/* ── Left: ArticleClient renders progress bar (fixed) + sticky TOC ── */}
+          {/* Left: sticky TOC + progress bar */}
           <div className="article-toc-col">
             <ArticleClient accentHex={cfg.accentHex} toc={toc} />
           </div>
 
-          {/* ── Center: Main article ── */}
+          {/* Center: article */}
           <main className="article-main">
 
             {/* Header */}
@@ -118,34 +147,64 @@ export default async function GuidePage({ params }: Props) {
             {/* Accent divider */}
             <div style={{ marginBottom: 32, height: 2, background: `linear-gradient(to right, ${cfg.accentHex}60, transparent)`, borderRadius: 2 }} />
 
-            {/* Infographic — only for AI articles with content */}
-            {hasContent && (
-              <div style={{
-                marginBottom: 32,
-                borderRadius: 16,
-                background: "#fafafa",
-                border: `1px solid ${cfg.accentHex}20`,
-                padding: "20px 24px",
-              }}>
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.6rem", letterSpacing: 2, color: "#9ca3af", textTransform: "uppercase", marginBottom: 12 }}>
-                  At a glance
-                </div>
-                <ArticleInfographic
-                  subdomain={params.subdomain}
-                  tags={guide.tags ?? []}
-                  difficulty={guide.difficulty}
-                  accentHex={cfg.accentHex}
-                  title={guide.title}
-                />
-              </div>
-            )}
-
-            {/* Article content */}
+            {/* Article body */}
             {hasContent ? (
-              <article
-                className="article-body"
-                dangerouslySetInnerHTML={{ __html: markdownToHtml(guide.content!) }}
-              />
+              <article className="article-body">
+                {/* Intro (content before first H2) */}
+                {intro.trim() && (
+                  <div dangerouslySetInnerHTML={{ __html: sectionToHtml(intro) }} />
+                )}
+
+                {/* Sections with infographics */}
+                {sections.map((section, i) => (
+                  <div key={section.id}>
+                    {/* Section heading */}
+                    {section.level === 2 ? (
+                      <h2
+                        id={section.id}
+                        style={{
+                          fontFamily: "'Bungee', cursive",
+                          fontWeight: 400,
+                          fontSize: "1.35rem",
+                          color: "#1a1a1a",
+                          margin: "40px 0 16px",
+                          scrollMarginTop: 100,
+                        }}
+                      >
+                        {section.heading}
+                      </h2>
+                    ) : (
+                      <h3
+                        id={section.id}
+                        style={{
+                          fontFamily: "'Bungee', cursive",
+                          fontWeight: 400,
+                          fontSize: "1.1rem",
+                          color: "#1a1a1a",
+                          margin: "28px 0 12px",
+                          scrollMarginTop: 100,
+                        }}
+                      >
+                        {section.heading}
+                      </h3>
+                    )}
+
+                    {/* Section body */}
+                    <div dangerouslySetInnerHTML={{ __html: sectionToHtml(section.bodyLines.join("\n")) }} />
+
+                    {/* Infographic after this section */}
+                    {infographicAt.has(i) && (
+                      <div style={{ margin: "32px 0" }}>
+                        <SectionInfographic
+                          section={section}
+                          accentHex={cfg.accentHex}
+                          index={infographicAt.get(i) ?? 0}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </article>
             ) : (
               <div style={{ marginBottom: 40, borderRadius: 16, background: `${cfg.accentHex}08`, border: `1px solid ${cfg.accentHex}25`, padding: 24 }}>
                 <p style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.08em", color: cfg.accentHex, marginBottom: 8 }}>
@@ -171,7 +230,7 @@ export default async function GuidePage({ params }: Props) {
               </p>
             )}
 
-            {/* Mobile-only related guides (below article) */}
+            {/* Mobile related */}
             {relatedGuides.length > 0 && (
               <section className="article-related-mobile" style={{ marginTop: 48, borderTop: "1px solid #e5e7eb", paddingTop: 32 }}>
                 <h2 style={{ fontFamily: "'Bungee', cursive", fontWeight: 400, fontSize: "1rem", color: "#1a1a1a", marginBottom: 16 }}>
@@ -196,11 +255,10 @@ export default async function GuidePage({ params }: Props) {
             )}
           </main>
 
-          {/* ── Right: Related sidebar (desktop only) ── */}
+          {/* Right: desktop sidebar */}
           <aside className="article-sidebar">
             <div style={{ position: "sticky", top: 80 }}>
-              {/* Guide meta card */}
-              <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: "16px", marginBottom: 16 }}>
+              <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 16 }}>
                 <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.6rem", letterSpacing: 2, color: "#9ca3af", textTransform: "uppercase", marginBottom: 12 }}>
                   About this guide
                 </div>
@@ -228,9 +286,8 @@ export default async function GuidePage({ params }: Props) {
                 </div>
               </div>
 
-              {/* Related guides */}
               {relatedGuides.length > 0 && (
-                <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: "16px" }}>
+                <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16 }}>
                   <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.6rem", letterSpacing: 2, color: "#9ca3af", textTransform: "uppercase", marginBottom: 14 }}>
                     More {cfg.label}
                   </div>
@@ -270,20 +327,20 @@ export default async function GuidePage({ params }: Props) {
   );
 }
 
-/** Minimal markdown-to-HTML converter — adds IDs to headings for TOC linking */
-function markdownToHtml(md: string): string {
-  function slugId(text: string) {
-    return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  }
+/** Convert a markdown section body (no headings) to HTML */
+function sectionToHtml(md: string): string {
   return md
     .replace(/^### (.+)$/gm, (_, t) => `<h3 id="${slugId(t)}" style="font-family:'Bungee',cursive;font-weight:400;font-size:1.1rem;color:#1a1a1a;margin:28px 0 12px;scroll-margin-top:100px">${t}</h3>`)
-    .replace(/^## (.+)$/gm, (_, t) => `<h2 id="${slugId(t)}" style="font-family:'Bungee',cursive;font-weight:400;font-size:1.35rem;color:#1a1a1a;margin:36px 0 16px;scroll-margin-top:100px">${t}</h2>`)
-    .replace(/^# (.+)$/gm, (_, t) => `<h1 id="${slugId(t)}" style="font-family:'Bungee',cursive;font-weight:400;font-size:1.6rem;color:#1a1a1a;margin:40px 0 20px;scroll-margin-top:100px">${t}</h1>`)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/`(.+?)`/g, "<code style=\"font-family:'Space Mono',monospace;font-size:0.85em;background:#f3f4f6;border-radius:4px;padding:2px 6px\">$1</code>")
     .replace(/^- (.+)$/gm, "<li style=\"margin:6px 0\">$1</li>")
-    .replace(/(<li[^>]*>.*<\/li>\n?)+/g, "<ul style=\"padding-left:20px;margin:16px 0\">$&</ul>")
-    .replace(/\n\n/g, "</p><p style=\"margin:16px 0\">")
-    .replace(/^(?!<[h|u|l|p])(.+)$/gm, "<p style=\"margin:16px 0\">$1</p>");
+    .replace(/(<li[^>]*>.*?<\/li>\n?)+/gs, (match) => `<ul style="padding-left:20px;margin:16px 0">${match}</ul>`)
+    .replace(/\n{2,}/g, "</p><p style=\"margin:16px 0\">")
+    .replace(/^(?!<[hHuUlLpP])(.+)$/gm, "<p style=\"margin:16px 0\">$1</p>")
+    .replace(/<p style="margin:16px 0"><\/p>/g, "");
+}
+
+function slugId(t: string) {
+  return t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
