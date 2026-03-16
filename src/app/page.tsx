@@ -1,8 +1,15 @@
 "use client";
 
 import React, { useEffect, useRef, type CSSProperties } from "react";
+import { SUBDOMAINS } from "@/lib/subdomains";
 
-const APP_BASE = "https://app.doma.xyz/domain/web3guides.com";
+/* ─── URLs ───────────────────────────────────────────────────────────── */
+const DOMA_REGISTER = "https://app.doma.xyz/domain/web3guides.com/subdomains";
+const DOMA_HOME     = "https://doma.xyz";
+
+function subUrl(key: string) {
+  return `https://${key}.web3guides.com`;
+}
 
 /* ─── Scroll-reveal hook ─────────────────────────────────────────────── */
 function useReveal() {
@@ -20,7 +27,6 @@ function useReveal() {
   return ref;
 }
 
-/* ─── Reveal wrapper ─────────────────────────────────────────────────── */
 function Reveal({ children, className = "", style }: { children: React.ReactNode; className?: string; style?: CSSProperties }) {
   const ref = useReveal();
   return <div ref={ref} className={`lp-reveal ${className}`} style={style}>{children}</div>;
@@ -37,6 +43,9 @@ function Nav() {
           Web3 Guides
         </a>
         <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+          <a href="#browse" style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", fontSize: "0.95rem", textDecoration: "none", transition: "color 0.2s" }}
+             onMouseEnter={e => (e.currentTarget.style.color = "#1a1a1a")}
+             onMouseLeave={e => (e.currentTarget.style.color = "#6b7280")}>Topics</a>
           <a href="#paths" style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", fontSize: "0.95rem", textDecoration: "none", transition: "color 0.2s" }}
              onMouseEnter={e => (e.currentTarget.style.color = "#1a1a1a")}
              onMouseLeave={e => (e.currentTarget.style.color = "#6b7280")}>Learn</a>
@@ -46,7 +55,7 @@ function Nav() {
           <a href="#subdomains" style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", fontSize: "0.95rem", textDecoration: "none", transition: "color 0.2s" }}
              onMouseEnter={e => (e.currentTarget.style.color = "#1a1a1a")}
              onMouseLeave={e => (e.currentTarget.style.color = "#6b7280")}>Subdomains</a>
-          <a href={APP_BASE} target="_blank" rel="noopener noreferrer"
+          <a href="#browse"
              style={{ fontFamily: "'DM Sans', sans-serif", background: "linear-gradient(135deg, #ff6b35, #ec4899)", color: "#fff", padding: "10px 24px", borderRadius: 50, fontSize: "0.9rem", fontWeight: 600, textDecoration: "none", transition: "transform 0.2s, box-shadow 0.2s", boxShadow: "0 4px 15px rgba(255,107,53,0.3)" }}
              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 25px rgba(255,107,53,0.4)"; }}
              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 15px rgba(255,107,53,0.3)"; }}>
@@ -64,14 +73,12 @@ function Nav() {
 function Hero() {
   return (
     <section style={{ background: "linear-gradient(135deg, #ff6b35 0%, #ec4899 100%)", position: "relative", overflow: "hidden", padding: "100px 40px 80px" }}>
-      {/* Animated star pattern */}
       <div className="lp-float" style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(1.5px 1.5px at 10% 20%, rgba(255,255,255,0.4) 0%, transparent 100%), radial-gradient(1px 1px at 75% 10%, rgba(255,255,255,0.35) 0%, transparent 100%), radial-gradient(2px 2px at 40% 60%, rgba(255,255,255,0.25) 0%, transparent 100%), radial-gradient(1px 1px at 90% 45%, rgba(255,255,255,0.4) 0%, transparent 100%), radial-gradient(1.5px 1.5px at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 100%), radial-gradient(1px 1px at 60% 85%, rgba(255,255,255,0.35) 0%, transparent 100%), radial-gradient(2px 2px at 85% 75%, rgba(255,255,255,0.28) 0%, transparent 100%), radial-gradient(1px 1px at 5% 50%, rgba(255,255,255,0.32) 0%, transparent 100%)", pointerEvents: "none" }} aria-hidden="true" />
 
       <div style={{ maxWidth: 1400, margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1 }}>
-        {/* Badge */}
         <div className="lp-fade-in" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 50, padding: "8px 20px", marginBottom: 32 }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#fff", display: "inline-block" }} />
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.8rem", color: "#fff", letterSpacing: 1 }}>BLOCKCHAIN EDUCATION PLATFORM</span>
+          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.8rem", color: "#fff", letterSpacing: 1 }}>BLOCKCHAIN EDUCATION PLATFORM · POWERED BY DOMA PROTOCOL</span>
         </div>
 
         <h1 className="lp-slide-down" style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(2.5rem, 7vw, 5rem)", color: "#fff", lineHeight: 1.1, marginBottom: 24, textShadow: "0 4px 20px rgba(0,0,0,0.2)" }}>
@@ -82,9 +89,9 @@ function Hero() {
           Master blockchain development, decentralized finance, and the technologies reshaping the internet. Join a global community of builders creating tomorrow's decentralized world.
         </p>
 
-        {/* CTAs */}
         <div className="lp-fade-in" style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center", marginBottom: 64 }}>
-          <a href={APP_BASE} target="_blank" rel="noopener noreferrer"
+          {/* Scrolls to topic grid — free content, no purchase */}
+          <a href="#browse"
              style={{ fontFamily: "'DM Sans', sans-serif", background: "#fff", color: "#ff6b35", padding: "16px 36px", borderRadius: 50, fontSize: "1rem", fontWeight: 700, textDecoration: "none", transition: "transform 0.2s, box-shadow 0.2s", boxShadow: "0 8px 30px rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", gap: 8 }}
              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 16px 40px rgba(0,0,0,0.2)"; }}
              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 30px rgba(0,0,0,0.15)"; }}>
@@ -98,7 +105,6 @@ function Hero() {
           </a>
         </div>
 
-        {/* Stats */}
         <div className="lp-fade-in" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20, maxWidth: 700, margin: "0 auto" }}>
           {[
             { value: "$93-169K", label: "Avg Developer Salary" },
@@ -112,6 +118,59 @@ function Hero() {
               <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", color: "rgba(255,255,255,0.8)", letterSpacing: 0.5 }}>{label}</div>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   BROWSE TOPICS (subdomain tile grid)
+════════════════════════════════════════════════════════════════════════ */
+
+// Ordered intentionally: easy entry points first, then chains, then specialisms
+// 'beginner' subdomain excluded — not managed by this platform
+const BROWSE_ORDER = [
+  "easy", "eth", "btc", "sol", "defi", "staking",
+  "layer2", "security", "rwa", "bridge", "legal", "tax", "bigmike",
+];
+
+function BrowseSection() {
+  return (
+    <section id="browse" style={{ background: "#fff", padding: "80px 40px" }}>
+      <div style={{ maxWidth: 1400, margin: "0 auto" }}>
+        <Reveal style={{ textAlign: "center", marginBottom: 48 }}>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 3, color: "#ff6b35", textTransform: "uppercase", marginBottom: 16 }}>FREE CONTENT</div>
+          <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(2rem, 5vw, 3rem)", color: "#1a1a1a", marginBottom: 16 }}>Choose Your Topic</h2>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.05rem", color: "#6b7280", maxWidth: 500, margin: "0 auto", lineHeight: 1.7 }}>
+            Each topic is a dedicated knowledge hub. Pick one and go deep — no signup required.
+          </p>
+        </Reveal>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
+          {BROWSE_ORDER.map((key, i) => {
+            const cfg = SUBDOMAINS[key as keyof typeof SUBDOMAINS];
+            if (!cfg) return null;
+            return (
+              <Reveal key={key}>
+                <a href={subUrl(key)} target="_blank" rel="noopener noreferrer"
+                   style={{ display: "flex", flexDirection: "column", gap: 12, padding: 20, borderRadius: 20, background: "#fafafa", border: "1.5px solid #e5e7eb", textDecoration: "none", transition: "transform 0.2s, box-shadow 0.2s, border-color 0.2s", animationDelay: `${i * 40}ms` }}
+                   onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(-5px)"; el.style.boxShadow = `0 16px 40px ${cfg.glowHex}`; el.style.borderColor = cfg.accentHex; }}
+                   onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(0)"; el.style.boxShadow = "none"; el.style.borderColor = "#e5e7eb"; }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: cfg.glowHex, border: `1px solid ${cfg.accentHex}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>
+                    {cfg.emoji}
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700, color: "#1a1a1a", fontSize: "0.95rem", marginBottom: 4 }}>{cfg.label}</div>
+                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.8rem", color: "#6b7280", lineHeight: 1.5 }}>{cfg.description}</div>
+                  </div>
+                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: cfg.accentHex, marginTop: "auto" }}>
+                    {key}.web3guides.com →
+                  </div>
+                </a>
+              </Reveal>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -150,7 +209,7 @@ const BENEFITS = [
 
 function Benefits() {
   return (
-    <section style={{ background: "#fff", padding: "100px 40px" }}>
+    <section style={{ background: "#fefbf6", padding: "100px 40px" }}>
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
         <Reveal style={{ textAlign: "center", marginBottom: 64 }}>
           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 3, color: "#ff6b35", textTransform: "uppercase", marginBottom: 16 }}>WHY WEB3?</div>
@@ -164,8 +223,8 @@ function Benefits() {
           {BENEFITS.map(({ emoji, title, gradient, body }) => (
             <Reveal key={title}>
               <div className="lp-card-border" style={{ position: "relative", background: "#fff", border: "2px solid #e5e7eb", borderRadius: 24, padding: 40, transition: "transform 0.25s, box-shadow 0.25s, border-color 0.25s", overflow: "hidden" }}
-                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-8px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 20px 60px rgba(0,0,0,0.1)"; (e.currentTarget as HTMLElement).style.borderColor = "#ff6b35"; }}
-                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "none"; (e.currentTarget as HTMLElement).style.borderColor = "#e5e7eb"; }}>
+                   onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(-8px)"; el.style.boxShadow = "0 20px 60px rgba(0,0,0,0.1)"; el.style.borderColor = "#ff6b35"; }}
+                   onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(0)"; el.style.boxShadow = "none"; el.style.borderColor = "#e5e7eb"; }}>
                 <div style={{ width: 64, height: 64, borderRadius: 16, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", marginBottom: 24 }}>
                   {emoji}
                 </div>
@@ -190,7 +249,7 @@ const PATHS = [
     gradient: "linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)",
     subtitle: "Start from zero. No prior blockchain knowledge required.",
     topics: ["What is Blockchain & How It Works", "Understanding Cryptocurrencies", "Setting Up Your First Wallet", "Introduction to DeFi & NFTs", "Web3 Security Basics"],
-    href: `${APP_BASE}/beginner`,
+    href: subUrl("easy"),   // easy.web3guides.com — plain-English explainers
     cta: "Start Beginner Path →",
   },
   {
@@ -199,7 +258,7 @@ const PATHS = [
     gradient: "linear-gradient(135deg, #ff6b35 0%, #ec4899 100%)",
     subtitle: "Build real applications on blockchain networks.",
     topics: ["Solidity Smart Contract Development", "Web3.js & ethers.js Integration", "Building DApps with React", "Testing & Deploying Contracts", "Advanced DeFi Protocols"],
-    href: `${APP_BASE}/developer`,
+    href: subUrl("eth"),    // eth.web3guides.com — Ethereum dev focus
     cta: "Start Developer Path →",
   },
   {
@@ -208,7 +267,7 @@ const PATHS = [
     gradient: "linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)",
     subtitle: "Master cutting-edge Web3 technologies and architecture.",
     topics: ["Layer 2 Scaling Solutions", "Cross-Chain Development", "MEV & Transaction Ordering", "Zero-Knowledge Proofs", "Protocol Design & Economics"],
-    href: `${APP_BASE}/advanced`,
+    href: subUrl("layer2"), // layer2.web3guides.com — advanced scaling content
     cta: "Start Advanced Path →",
   },
 ];
@@ -216,7 +275,6 @@ const PATHS = [
 function LearningPaths() {
   return (
     <section id="paths" style={{ background: "linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%)", padding: "100px 40px", position: "relative", overflow: "hidden" }}>
-      {/* Dot pattern */}
       <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle, #93c5fd 1px, transparent 1px)", backgroundSize: "30px 30px", opacity: 0.3, pointerEvents: "none" }} aria-hidden="true" />
 
       <div style={{ maxWidth: 1400, margin: "0 auto", position: "relative", zIndex: 1 }}>
@@ -232,15 +290,13 @@ function LearningPaths() {
           {PATHS.map(({ emoji, title, gradient, subtitle, topics, href, cta }) => (
             <Reveal key={title}>
               <div style={{ background: "#fff", borderRadius: 24, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.06)", transition: "transform 0.25s, box-shadow 0.25s", display: "flex", flexDirection: "column" }}
-                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-8px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 20px 60px rgba(0,0,0,0.12)"; }}
-                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 20px rgba(0,0,0,0.06)"; }}>
-                {/* Header */}
+                   onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(-8px)"; el.style.boxShadow = "0 20px 60px rgba(0,0,0,0.12)"; }}
+                   onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(0)"; el.style.boxShadow = "0 4px 20px rgba(0,0,0,0.06)"; }}>
                 <div style={{ background: gradient, padding: 30 }}>
                   <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>{emoji}</div>
                   <h3 style={{ fontFamily: "'Bungee', cursive", fontSize: "1.6rem", color: "#fff", marginBottom: 8 }}>{title}</h3>
                   <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>{subtitle}</p>
                 </div>
-                {/* Topics */}
                 <div style={{ padding: "28px 30px", flex: 1 }}>
                   <ul style={{ listStyle: "none", padding: 0, margin: "0 0 28px", display: "flex", flexDirection: "column", gap: 12 }}>
                     {topics.map(t => (
@@ -270,18 +326,18 @@ function LearningPaths() {
    ARTICLES
 ════════════════════════════════════════════════════════════════════════ */
 const ARTICLES = [
-  { emoji: "🔐", category: "Security", title: "Complete Guide to Wallet Security", excerpt: "Hardware wallets, multi-signature setups, and comprehensive attack prevention strategies.", slug: "wallet-security", color: "#ff6b35" },
-  { emoji: "💎", category: "DeFi", title: "Understanding Automated Market Makers", excerpt: "Deep dive into AMM math, liquidity pool mechanics, and navigating impermanent loss.", slug: "amm-explained", color: "#6366f1" },
-  { emoji: "⚙️", category: "Development", title: "Build Your First Smart Contract", excerpt: "Step-by-step Solidity tutorial covering writing, testing, and deploying your contract.", slug: "first-smart-contract", color: "#fbbf24" },
-  { emoji: "🎨", category: "NFTs", title: "NFT Standards: ERC-721 vs ERC-1155", excerpt: "Key differences between token standards, tradeoffs, and when to use each in your project.", slug: "nft-standards", color: "#ff6b35" },
-  { emoji: "🌐", category: "Infrastructure", title: "Intro to IPFS and Decentralized Storage", excerpt: "How IPFS works, content addressing, and integrating decentralized storage into your DApp.", slug: "ipfs-guide", color: "#6366f1" },
-  { emoji: "⚡", category: "Scaling", title: "Layer 2 Solutions Explained", excerpt: "Rollups, state channels, and sidechains — the complete guide to Ethereum scaling.", slug: "layer2-explained", color: "#fbbf24" },
-  { emoji: "🔗", category: "Development", title: "Building with Ethers.js: Complete Tutorial", excerpt: "Connect wallets, read blockchain state, and interact with contracts using ethers.js.", slug: "ethersjs-tutorial", color: "#ff6b35" },
-  { emoji: "🎯", category: "DAO", title: "DAO Governance Mechanisms", excerpt: "On-chain vs off-chain voting, token-weighted governance, and multi-sig structures.", slug: "dao-governance", color: "#6366f1" },
-  { emoji: "🛡️", category: "Security", title: "Common Smart Contract Vulnerabilities", excerpt: "Reentrancy attacks, integer overflow, front-running, and how to protect against each.", slug: "contract-vulnerabilities", color: "#fbbf24" },
-  { emoji: "🌉", category: "Infrastructure", title: "Cross-Chain Bridges Deep Dive", excerpt: "Bridge architectures, trust models, and the security landscape of cross-chain transfers.", slug: "bridges-explained", color: "#ff6b35" },
-  { emoji: "🔮", category: "Advanced", title: "Zero-Knowledge Proofs for Developers", excerpt: "ZK-SNARKs, ZK-STARKs, and how to leverage zero-knowledge cryptography in your dapps.", slug: "zero-knowledge-proofs", color: "#6366f1" },
-  { emoji: "📊", category: "DeFi", title: "Yield Farming Strategies & Risks", excerpt: "APY vs APR, compounding strategies, and the smart contract risks you need to manage.", slug: "yield-farming", color: "#fbbf24" },
+  { emoji: "🔐", category: "Security",       title: "Complete Guide to Wallet Security",          excerpt: "Hardware wallets, multi-signature setups, and comprehensive attack prevention strategies.", slug: "wallet-security",       color: "#ff6b35", sub: "security" },
+  { emoji: "💎", category: "DeFi",           title: "Understanding Automated Market Makers",       excerpt: "Deep dive into AMM math, liquidity pool mechanics, and navigating impermanent loss.",      slug: "amm-explained",         color: "#6366f1", sub: "defi"     },
+  { emoji: "⚙️", category: "Development",    title: "Build Your First Smart Contract",             excerpt: "Step-by-step Solidity tutorial covering writing, testing, and deploying your contract.",   slug: "first-smart-contract",  color: "#fbbf24", sub: "eth"      },
+  { emoji: "🎨", category: "NFTs",           title: "NFT Standards: ERC-721 vs ERC-1155",          excerpt: "Key differences between token standards, tradeoffs, and when to use each in your project.", slug: "nft-standards",         color: "#ff6b35", sub: "eth"      },
+  { emoji: "🌐", category: "Infrastructure", title: "Intro to IPFS & Decentralized Storage",       excerpt: "How IPFS works, content addressing, and integrating decentralized storage into your DApp.", slug: "ipfs-guide",            color: "#6366f1", sub: "eth"      },
+  { emoji: "⚡", category: "Scaling",        title: "Layer 2 Solutions Explained",                 excerpt: "Rollups, state channels, and sidechains — the complete guide to Ethereum scaling.",        slug: "layer2-explained",      color: "#fbbf24", sub: "layer2"   },
+  { emoji: "🔗", category: "Development",    title: "Building with Ethers.js: Complete Tutorial",  excerpt: "Connect wallets, read blockchain state, and interact with contracts using ethers.js.",     slug: "ethersjs-tutorial",     color: "#ff6b35", sub: "eth"      },
+  { emoji: "🎯", category: "DAO",            title: "DAO Governance Mechanisms",                   excerpt: "On-chain vs off-chain voting, token-weighted governance, and multi-sig structures.",       slug: "dao-governance",        color: "#6366f1", sub: "defi"     },
+  { emoji: "🛡️", category: "Security",      title: "Common Smart Contract Vulnerabilities",        excerpt: "Reentrancy attacks, integer overflow, front-running, and how to protect against each.",   slug: "contract-vulnerabilities", color: "#fbbf24", sub: "security" },
+  { emoji: "🌉", category: "Infrastructure", title: "Cross-Chain Bridges Deep Dive",               excerpt: "Bridge architectures, trust models, and the security landscape of cross-chain transfers.", slug: "bridges-explained",     color: "#ff6b35", sub: "bridge"   },
+  { emoji: "🔮", category: "Advanced",       title: "Zero-Knowledge Proofs for Developers",        excerpt: "ZK-SNARKs, ZK-STARKs, and how to leverage zero-knowledge cryptography in your dapps.",    slug: "zero-knowledge-proofs", color: "#6366f1", sub: "layer2"   },
+  { emoji: "📊", category: "DeFi",           title: "Yield Farming Strategies & Risks",            excerpt: "APY vs APR, compounding strategies, and the smart contract risks you need to manage.",    slug: "yield-farming",         color: "#fbbf24", sub: "defi"     },
 ];
 
 const GRADIENTS = [
@@ -292,7 +348,7 @@ const GRADIENTS = [
 
 function Articles() {
   return (
-    <section id="articles" style={{ background: "#fefbf6", padding: "100px 40px" }}>
+    <section id="articles" style={{ background: "#fff", padding: "100px 40px" }}>
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
         <Reveal style={{ textAlign: "center", marginBottom: 64 }}>
           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 3, color: "#ec4899", textTransform: "uppercase", marginBottom: 16 }}>DEEP DIVES</div>
@@ -303,22 +359,21 @@ function Articles() {
         </Reveal>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 30 }}>
-          {ARTICLES.map(({ emoji, category, title, excerpt, slug, color }, i) => (
+          {ARTICLES.map(({ emoji, category, title, excerpt, slug, color, sub }, i) => (
             <Reveal key={slug}>
-              <a href={`${APP_BASE}/${slug}`} target="_blank" rel="noopener noreferrer" style={{ display: "block", background: "#fff", borderRadius: 20, overflow: "hidden", border: "1px solid #e5e7eb", textDecoration: "none", transition: "transform 0.25s, box-shadow 0.25s" }}
-                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-6px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 16px 50px rgba(0,0,0,0.1)"; }}
-                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}>
-                {/* Image area */}
+              <a href={`${subUrl(sub)}/${slug}`} target="_blank" rel="noopener noreferrer"
+                 style={{ display: "block", background: "#fff", borderRadius: 20, overflow: "hidden", border: "1px solid #e5e7eb", textDecoration: "none", transition: "transform 0.25s, box-shadow 0.25s" }}
+                 onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(-6px)"; el.style.boxShadow = "0 16px 50px rgba(0,0,0,0.1)"; }}
+                 onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(0)"; el.style.boxShadow = "none"; }}>
                 <div style={{ height: 200, background: GRADIENTS[i % 3], display: "flex", alignItems: "center", justifyContent: "center", fontSize: "4rem" }}>
                   {emoji}
                 </div>
-                {/* Content */}
                 <div style={{ padding: "24px 28px" }}>
                   <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 2, color, textTransform: "uppercase", marginBottom: 10 }}>{category}</div>
                   <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.15rem", fontWeight: 700, color: "#1a1a1a", marginBottom: 12, lineHeight: 1.4 }}>{title}</h3>
                   <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "#6b7280", lineHeight: 1.6, marginBottom: 20 }}>{excerpt}</p>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", fontWeight: 600, color, display: "inline-flex", alignItems: "center", gap: 6, transition: "gap 0.2s" }}>
-                    Read Guide <span>→</span>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", fontWeight: 600, color, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    Read Guide →
                   </span>
                 </div>
               </a>
@@ -331,59 +386,123 @@ function Articles() {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
+   DOMA PROTOCOL SECTION
+════════════════════════════════════════════════════════════════════════ */
+const DOMA_FEATURES = [
+  { emoji: "⛓️", title: "On-Chain Ownership",       body: "Subdomains are minted as on-chain assets — your subdomain is owned by your wallet, not a platform." },
+  { emoji: "🔑", title: "Wallet-Controlled",         body: "Transfer, sell, or stake your subdomain directly from your wallet with no middlemen or approval queues." },
+  { emoji: "💸", title: "Stake to Get Featured",     body: "Stake $DOMA tokens against your subdomain to get promoted across the Web3 Guides platform and earn distribution." },
+  { emoji: "🌐", title: "ENS & DNS Integration",     body: "Doma subdomains work with ENS and standard DNS so your content is reachable from both Web3 and the open web." },
+  { emoji: "📈", title: "Creator Revenue Share",     body: "Use your own affiliate links, referral codes, and sponsorships. Doma Protocol takes nothing — 100% of revenue is yours." },
+  { emoji: "🛡️", title: "Censorship-Resistant",     body: "No central authority can revoke your subdomain. Ownership is enforced by smart contracts, not a company's terms of service." },
+];
+
+function DomaSection() {
+  return (
+    <section style={{ background: "linear-gradient(135deg, #0f0c29 0%, #1a1040 50%, #0f0c29 100%)", padding: "100px 40px", position: "relative", overflow: "hidden" }}>
+      {/* Subtle grid overlay */}
+      <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(124,106,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(124,106,255,0.05) 1px, transparent 1px)", backgroundSize: "48px 48px", pointerEvents: "none" }} aria-hidden="true" />
+
+      <div style={{ maxWidth: 1400, margin: "0 auto", position: "relative", zIndex: 1 }}>
+        <Reveal style={{ textAlign: "center", marginBottom: 64 }}>
+          {/* Doma logo pill */}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "rgba(124,106,255,0.15)", border: "1px solid rgba(124,106,255,0.35)", borderRadius: 50, padding: "10px 24px", marginBottom: 28 }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#7c6aff", display: "inline-block" }} />
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.8rem", color: "#7c6aff", letterSpacing: 1 }}>POWERED BY DOMA PROTOCOL</span>
+          </div>
+          <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(2rem, 5vw, 3.5rem)", color: "#fff", marginBottom: 20 }}>
+            What is Doma Protocol?
+          </h2>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.1rem", color: "rgba(255,255,255,0.7)", maxWidth: 640, margin: "0 auto", lineHeight: 1.8 }}>
+            Doma Protocol is the on-chain infrastructure that powers Web3 Guides subdomains. Instead of renting a subdomain from a company, you <strong style={{ color: "#fff" }}>own it as a blockchain asset</strong> — mintable, transferable, and unstoppable. Stake $DOMA to boost your reach across the entire platform.
+          </p>
+        </Reveal>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24, marginBottom: 56 }}>
+          {DOMA_FEATURES.map(({ emoji, title, body }) => (
+            <Reveal key={title}>
+              <div style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(12px)", border: "1px solid rgba(124,106,255,0.2)", borderRadius: 20, padding: 28, transition: "border-color 0.2s, background 0.2s" }}
+                   onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = "rgba(124,106,255,0.5)"; el.style.background = "rgba(124,106,255,0.1)"; }}
+                   onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = "rgba(124,106,255,0.2)"; el.style.background = "rgba(255,255,255,0.05)"; }}>
+                <div style={{ fontSize: "2rem", marginBottom: 14 }}>{emoji}</div>
+                <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#fff", marginBottom: 8 }}>{title}</h3>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>{body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+
+        <Reveal style={{ textAlign: "center" }}>
+          <a href={DOMA_HOME} target="_blank" rel="noopener noreferrer"
+             style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "linear-gradient(135deg, #7c6aff, #3b9eff)", color: "#fff", padding: "16px 40px", borderRadius: 50, fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: "1rem", textDecoration: "none", transition: "transform 0.2s, box-shadow 0.2s", boxShadow: "0 8px 30px rgba(124,106,255,0.35)" }}
+             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 16px 40px rgba(124,106,255,0.5)"; }}
+             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 30px rgba(124,106,255,0.35)"; }}>
+            Learn more at doma.xyz →
+          </a>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", color: "rgba(255,255,255,0.4)", marginTop: 16 }}>
+            Subdomain registration and $DOMA staking happen on the Doma Protocol platform.
+          </p>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
    SUBDOMAIN SECTION
 ════════════════════════════════════════════════════════════════════════ */
 const STEPS = [
   { n: "1", title: "Choose Your Topic", body: "Pick a niche within Web3—DeFi protocols, NFT development, DAO tooling, or any specialized area you're passionate about." },
-  { n: "2", title: "Claim Your Subdomain", body: "Register your unique subdomain (e.g., defi.web3guides.com) and establish your presence in the ecosystem." },
-  { n: "3", title: "Stake & Launch", body: "Stake just 1% of the token supply to get your subdomain promoted across the platform.", badge: "Coming Soon" },
-  { n: "4", title: "Create & Monetize", body: "Publish content, use your affiliate links, build your community, and earn from your expertise. Your subdomain, your rules, your revenue." },
+  { n: "2", title: "Register via Doma Protocol", body: "Connect your wallet on doma.xyz and mint your subdomain as an on-chain asset. You own it — not a platform." },
+  { n: "3", title: "Stake $DOMA to Get Featured", body: "Stake $DOMA tokens against your subdomain to unlock promotion across Web3 Guides and boost your reach.", badge: "Coming Soon" },
+  { n: "4", title: "Create & Monetize", body: "Publish content, use your own affiliate links, build your community, and earn from your expertise. 100% of revenue is yours." },
 ];
 
 const SUB_BENEFITS = [
-  { title: "Your Brand, Your Domain", body: "Get a professional subdomain that positions you as an authority in your niche." },
-  { title: "Monetization Freedom", body: "Use your own affiliate links, referral codes, and sponsorship deals. Keep 100% of revenue." },
-  { title: "Platform Distribution", body: "When you stake, your content gets featured on the main platform, reaching thousands of learners." },
-  { title: "Community Ownership", body: "Be part of the web3guides ecosystem. Early subdomains build lasting authority." },
-  { title: "Decentralized & Unstoppable", body: "Your content lives on-chain. No platform can delete you. True digital ownership." },
+  { title: "Your Brand, Your Domain",      body: "Get a professional subdomain that positions you as an authority in your niche." },
+  { title: "Monetization Freedom",         body: "Your own affiliate links, referral codes, sponsorships. Doma takes nothing — keep 100% of what you earn." },
+  { title: "Platform Distribution",        body: "Staking $DOMA gets your content featured on the main platform, reaching thousands of learners." },
+  { title: "On-Chain Ownership",           body: "Your subdomain is a blockchain asset. Transfer it, sell it, or hold it — no permission required." },
+  { title: "Censorship-Resistant Content", body: "No platform can delete you. Content and ownership are enforced by smart contracts." },
 ];
 
 function SubdomainSection() {
   return (
-    <section id="subdomains" style={{ background: "linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)", padding: "100px 40px", position: "relative", overflow: "hidden" }}>
-      {/* Pulsing overlay */}
-      <div className="lp-pulse" style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "80vw", height: "80vh", background: "radial-gradient(ellipse at center, rgba(99,102,241,0.15) 0%, transparent 70%)", pointerEvents: "none" }} aria-hidden="true" />
+    <section id="subdomains" style={{ background: "linear-gradient(135deg, #1a0533 0%, #302b63 50%, #24243e 100%)", padding: "100px 40px", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "80vw", height: "80vh", background: "radial-gradient(ellipse at center, rgba(99,102,241,0.12) 0%, transparent 70%)", pointerEvents: "none" }} aria-hidden="true" />
 
       <div style={{ maxWidth: 1400, margin: "0 auto", position: "relative", zIndex: 1 }}>
         <Reveal style={{ textAlign: "center", marginBottom: 64 }}>
+          {/* Doma badge */}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(124,106,255,0.15)", border: "1px solid rgba(124,106,255,0.3)", borderRadius: 50, padding: "6px 16px", marginBottom: 20 }}>
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#7c6aff", letterSpacing: 1 }}>POWERED BY DOMA PROTOCOL</span>
+          </div>
           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 3, color: "#06b6d4", textTransform: "uppercase", marginBottom: 16 }}>OWN YOUR CORNER OF WEB3</div>
           <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(2rem, 5vw, 3.5rem)", color: "#fff", marginBottom: 20 }}>Get Your Subdomain</h2>
           <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.1rem", color: "rgba(255,255,255,0.7)", maxWidth: 560, margin: "0 auto", lineHeight: 1.7 }}>
-            Become a verified Web3 educator. Launch your own guide site, newsletter, or community hub under web3guides.com.
+            Become a verified Web3 educator. Launch your own guide site, newsletter, or community hub under web3guides.com — owned by your wallet through Doma Protocol.
           </p>
         </Reveal>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(440px, 1fr))", gap: 60 }}>
-          {/* Steps */}
           <Reveal>
             <h3 style={{ fontFamily: "'Bungee', cursive", fontSize: "1.5rem", color: "#fff", marginBottom: 32 }}>How It Works</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {STEPS.map(({ n, title, body, badge }) => (
-                <div key={n} style={{ background: "rgba(255,255,255,0.08)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 16, padding: 24, display: "flex", gap: 20, alignItems: "flex-start" }}>
+                <div key={n} style={{ background: "rgba(255,255,255,0.07)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 24, display: "flex", gap: 20, alignItems: "flex-start" }}>
                   <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg, #ff6b35, #ec4899)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bungee', cursive", fontSize: "1.1rem", color: "#fff", flexShrink: 0 }}>{n}</div>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                       <h4 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1rem", fontWeight: 700, color: "#fff" }}>{title}</h4>
                       {badge && <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", background: "rgba(6,182,212,0.2)", border: "1px solid rgba(6,182,212,0.4)", color: "#06b6d4", padding: "2px 10px", borderRadius: 50 }}>{badge}</span>}
                     </div>
-                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "rgba(255,255,255,0.65)", lineHeight: 1.6 }}>{body}</p>
+                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>{body}</p>
                   </div>
                 </div>
               ))}
             </div>
           </Reveal>
 
-          {/* Benefits */}
           <Reveal>
             <h3 style={{ fontFamily: "'Bungee', cursive", fontSize: "1.5rem", color: "#fff", marginBottom: 32 }}>Why Get a Subdomain?</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 24, marginBottom: 40 }}>
@@ -392,18 +511,21 @@ function SubdomainSection() {
                   <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#06b6d4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", color: "#fff", flexShrink: 0 }}>✓</div>
                   <div>
                     <h4 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1rem", fontWeight: 700, color: "#fff", marginBottom: 4 }}>{title}</h4>
-                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "rgba(255,255,255,0.65)", lineHeight: 1.6 }}>{body}</p>
+                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>{body}</p>
                   </div>
                 </div>
               ))}
             </div>
 
-            <a href={`${APP_BASE}/subdomains`} target="_blank" rel="noopener noreferrer"
+            <a href={DOMA_REGISTER} target="_blank" rel="noopener noreferrer"
                style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg, #ff6b35, #ec4899)", color: "#fff", padding: "16px 36px", borderRadius: 50, fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: "1rem", textDecoration: "none", transition: "transform 0.2s, box-shadow 0.2s", boxShadow: "0 8px 30px rgba(255,107,53,0.35)" }}
                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 16px 40px rgba(255,107,53,0.5)"; }}
                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 30px rgba(255,107,53,0.35)"; }}>
-              Claim Your Subdomain →
+              Register on Doma Protocol →
             </a>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.8rem", color: "rgba(255,255,255,0.4)", marginTop: 12 }}>
+              Opens app.doma.xyz — subdomain registration requires a wallet &amp; $DOMA
+            </p>
           </Reveal>
         </div>
       </div>
@@ -427,19 +549,24 @@ function CTABanner() {
           Join thousands of developers and creators learning the technologies that will power the next generation of the internet.
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center" }}>
-          <a href={APP_BASE} target="_blank" rel="noopener noreferrer"
+          {/* Free content — scrolls to topic grid */}
+          <a href="#browse"
              style={{ background: "#fff", color: "#ff6b35", padding: "16px 36px", borderRadius: 50, fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: "1rem", textDecoration: "none", transition: "transform 0.2s, box-shadow 0.2s", boxShadow: "0 8px 25px rgba(0,0,0,0.15)" }}
              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 16px 40px rgba(0,0,0,0.2)"; }}
              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 25px rgba(0,0,0,0.15)"; }}>
-            Start Learning Now →
+            Browse Free Topics →
           </a>
-          <a href="#subdomains"
+          {/* Subdomain registration via Doma Protocol */}
+          <a href={DOMA_REGISTER} target="_blank" rel="noopener noreferrer"
              style={{ background: "transparent", color: "#fff", padding: "16px 36px", borderRadius: 50, fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: "1rem", textDecoration: "none", border: "2px solid rgba(255,255,255,0.6)", transition: "transform 0.2s, background 0.2s" }}
              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.15)"; }}
              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
-            Claim Your Subdomain
+            Get a Subdomain via Doma
           </a>
         </div>
+        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.8rem", color: "rgba(255,255,255,0.6)", marginTop: 20 }}>
+          Subdomain registration opens on app.doma.xyz and requires a wallet &amp; $DOMA tokens.
+        </p>
       </Reveal>
     </section>
   );
@@ -452,28 +579,28 @@ const FOOTER_LINK_COLS: { head: string; links: { label: string; href: string }[]
   {
     head: "Learn",
     links: [
-      { label: "Beginner Path", href: `${APP_BASE}/beginner` },
-      { label: "Developer Path", href: `${APP_BASE}/developer` },
-      { label: "Advanced Path", href: `${APP_BASE}/advanced` },
-      { label: "All Tutorials", href: `${APP_BASE}/tutorials` },
+      { label: "Easy Mode",       href: subUrl("easy") },
+      { label: "Ethereum",        href: subUrl("eth") },
+      { label: "DeFi",            href: subUrl("defi") },
+      { label: "Layer 2",         href: subUrl("layer2") },
     ],
   },
   {
-    head: "Resources",
+    head: "Explore",
     links: [
-      { label: "Developer Tools", href: `${APP_BASE}/tools` },
-      { label: "Glossary", href: `${APP_BASE}/glossary` },
-      { label: "Community", href: `${APP_BASE}/community` },
-      { label: "Blog", href: `${APP_BASE}/blog` },
+      { label: "Bitcoin",         href: subUrl("btc") },
+      { label: "Solana",          href: subUrl("sol") },
+      { label: "Security",        href: subUrl("security") },
+      { label: "Staking",         href: subUrl("staking") },
     ],
   },
   {
     head: "Platform",
     links: [
-      { label: "Get a Subdomain", href: `${APP_BASE}/subdomains` },
-      { label: "About", href: `${APP_BASE}/about` },
-      { label: "Contact", href: `${APP_BASE}/contact` },
-      { label: "Visit App", href: APP_BASE },
+      { label: "Get a Subdomain", href: DOMA_REGISTER },
+      { label: "Doma Protocol",   href: DOMA_HOME },
+      { label: "Big Mike",        href: subUrl("bigmike") },
+      { label: "All Topics",      href: "#browse" },
     ],
   },
 ];
@@ -483,26 +610,30 @@ function Footer() {
     <footer style={{ background: "#1a1a1a", color: "#fff", padding: "64px 40px 0" }}>
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 48 }}>
-          {/* Brand col */}
           <div>
             <div style={{ fontFamily: "'Bungee', cursive", fontSize: "1.8rem", background: "linear-gradient(135deg, #ff6b35, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", marginBottom: 16 }}>
               Web3 Guides
             </div>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "#9ca3af", lineHeight: 1.7, maxWidth: 280 }}>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "#9ca3af", lineHeight: 1.7, maxWidth: 280, marginBottom: 20 }}>
               Your comprehensive resource for mastering blockchain development, DeFi, NFTs, and the decentralized web. Built by developers, for developers.
             </p>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(124,106,255,0.15)", border: "1px solid rgba(124,106,255,0.3)", borderRadius: 50, padding: "6px 14px" }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#7c6aff", display: "inline-block" }} />
+              <a href={DOMA_HOME} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#7c6aff", textDecoration: "none", letterSpacing: 1 }}>
+                Powered by Doma Protocol
+              </a>
+            </div>
           </div>
-          {/* Link cols */}
           {FOOTER_LINK_COLS.map(({ head, links }) => (
             <div key={head}>
               <h4 style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 2, color: "#9ca3af", textTransform: "uppercase", marginBottom: 20 }}>{head}</h4>
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
                 {links.map(({ label, href }) => (
                   <li key={label}>
-                    <a href={href} target="_blank" rel="noopener noreferrer"
+                    <a href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer"
                        style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "#6b7280", textDecoration: "none", transition: "color 0.2s, padding-left 0.2s" }}
-                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#fff"; (e.currentTarget as HTMLElement).style.paddingLeft = "4px"; }}
-                       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#6b7280"; (e.currentTarget as HTMLElement).style.paddingLeft = "0"; }}>
+                       onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.color = "#fff"; el.style.paddingLeft = "4px"; }}
+                       onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.color = "#6b7280"; el.style.paddingLeft = "0"; }}>
                       {label}
                     </a>
                   </li>
@@ -512,14 +643,13 @@ function Footer() {
           ))}
         </div>
 
-        {/* Bottom bar */}
         <div style={{ borderTop: "1px solid #374151", padding: "28px 0", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", color: "#6b7280" }}>
             © 2026 Web3 Guides. Building the decentralized future, one guide at a time.
           </p>
-          <a href={APP_BASE} target="_blank" rel="noopener noreferrer"
-             style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", color: "#ff6b35", textDecoration: "none", letterSpacing: 1 }}>
-            app.doma.xyz →
+          <a href={DOMA_HOME} target="_blank" rel="noopener noreferrer"
+             style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", color: "#7c6aff", textDecoration: "none", letterSpacing: 1 }}>
+            doma.xyz →
           </a>
         </div>
       </div>
@@ -535,10 +665,12 @@ export default function HomePage() {
     <div style={{ background: "#fff", minHeight: "100vh" }}>
       <Nav />
       <Hero />
+      <BrowseSection />
       <Benefits />
       <LearningPaths />
       <Articles />
       <SubdomainSection />
+      <DomaSection />
       <CTABanner />
       <Footer />
     </div>
