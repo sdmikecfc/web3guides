@@ -5,7 +5,8 @@ import { getSubdomainConfig } from "@/lib/subdomains";
 import { getGuide, getGuidesBySubdomain } from "@/lib/guides";
 import { formatDate } from "@/lib/utils";
 import DifficultyBadge from "@/components/DifficultyBadge";
-import { ArticleClient, extractToc } from "@/components/ArticleClient";
+import { ArticleClient } from "@/components/ArticleClient";
+import { extractToc } from "@/lib/extractToc";
 import { ArticleInfographic } from "@/components/ArticleInfographic";
 
 export const dynamic = "force-dynamic";
