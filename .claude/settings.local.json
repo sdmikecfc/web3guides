@@ -10,7 +10,22 @@
       "Bash(npx tsc:*)",
       "Bash(node_modules/.bin/tsc --noEmit)",
       "Bash(mkdir -p /c/Users/Mike/.claude/projects/C--Users-Mike-Desktop-web3guides/memory)",
-      "Read(//c/Users/Mike/.claude/projects/C--Users-Mike-Desktop-web3guides/**)"
+      "Read(//c/Users/Mike/.claude/projects/C--Users-Mike-Desktop-web3guides/**)",
+      "Bash(ls /c/Users/Mike/Desktop/web3guides/.claude/worktrees/sad-hoover/src/app/[subdomain]/guides/)",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "Bash(npm install:*)",
+      "Read(//c/Users/Mike/AppData/Roaming/npm//**)",
+      "Read(//c/Users/Mike/.nvm/versions/**)",
+      "Bash(\"/c/Program Files/nodejs/npm.cmd\" install @anthropic-ai/sdk --save --prefix \"/c/Users/Mike/Desktop/web3guides/.claude/worktrees/sad-hoover\")",
+      "Bash(cmd.exe /c \"where node 2>nul\")",
+      "Bash(cmd.exe /c \"node --version && npm --version\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\Mike\\\\Desktop\\\\web3guides\\\\.claude\\\\worktrees\\\\sad-hoover && npm install @anthropic-ai/sdk\")",
+      "Read(//c/Users/Mike/**)",
+      "Bash(git push:*)",
+      "Bash(git remote:*)",
+      "Bash(git config:*)",
+      "Bash(ls /c/Users/Mike/Desktop/web3guides/.claude/worktrees/sad-hoover/.env*)"
     ]
   }
 }

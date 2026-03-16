@@ -44,7 +44,6 @@ async function generateArticle(
   const stream = client.messages.stream({
     model: "claude-opus-4-6",
     max_tokens: 4096,
-    thinking: { type: "adaptive" },
     messages: [
       {
         role: "user",
