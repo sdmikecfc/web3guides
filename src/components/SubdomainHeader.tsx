@@ -19,51 +19,49 @@ export default function SubdomainHeader({ subdomain }: Props) {
     return `https://${key}.${rootDomain}`;
   }
 
+  const homeHref = isDev ? `http://${devRoot}` : `https://${rootDomain}`;
+
   return (
-    <header className="sticky top-0 z-50 glass-bright border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+    <header style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", borderBottom: "1px solid #e5e7eb" }}>
+      <div style={{ margin: "0 auto", maxWidth: 1280, display: "flex", height: 56, alignItems: "center", justifyContent: "space-between", gap: 16, padding: "0 24px" }}>
 
         {/* Left — brand + subdomain */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
           <a
-            href={isDev ? `http://${devRoot}` : `https://${rootDomain}`}
-            className="shrink-0 font-display text-sm font-bold text-white/80 hover:text-white transition-colors"
+            href={homeHref}
+            style={{ fontFamily: "'Bungee', cursive", fontSize: "1.1rem", fontWeight: 400, background: "linear-gradient(135deg, #ff6b35, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", textDecoration: "none", flexShrink: 0 }}
           >
             W3G
           </a>
-          <span className="hidden text-white/20 sm:block">/</span>
-          <div className="hidden items-center gap-2 sm:flex">
+          <span style={{ color: "#d1d5db" }}>/</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span
-              className="flex h-6 w-6 items-center justify-center rounded-md text-sm"
-              style={{ background: subdomain.glowHex, border: `1px solid ${subdomain.accentHex}30` }}
+              style={{ display: "flex", height: 28, width: 28, alignItems: "center", justifyContent: "center", borderRadius: 8, fontSize: "0.95rem", background: `${subdomain.accentHex}15`, border: `1px solid ${subdomain.accentHex}30` }}
             >
               {subdomain.emoji}
             </span>
-            <span className="font-display text-sm font-semibold" style={{ color: subdomain.accentHex }}>
+            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", fontWeight: 700, color: subdomain.accentHex }}>
               {subdomain.label}
             </span>
           </div>
         </div>
 
         {/* Right — nav */}
-        <nav className="flex items-center gap-2">
+        <nav style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {/* Topic switcher dropdown */}
-          <div className="relative hidden lg:block">
+          <div style={{ position: "relative" }}>
             <button
               onClick={() => setMenuOpen((v) => !v)}
-              className="flex items-center gap-1.5 rounded-lg glass px-3 py-1.5 text-xs font-mono transition-colors hover:text-white"
-              style={{ color: "var(--color-muted,#6272a0)" }}
+              style={{ display: "flex", alignItems: "center", gap: 6, borderRadius: 8, background: "#f9fafb", border: "1px solid #e5e7eb", padding: "6px 12px", fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#6b7280", cursor: "pointer" }}
             >
               Switch topic
-              <span className={`inline-block transition-transform duration-200 ${menuOpen ? "rotate-180" : ""}`}>▾</span>
+              <span style={{ display: "inline-block", transform: menuOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▾</span>
             </button>
 
             {menuOpen && (
               <>
-                {/* Backdrop */}
-                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-full z-20 mt-2 w-56 rounded-2xl glass-bright p-2 shadow-2xl"
-                     style={{ boxShadow: `0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)` }}>
+                <div style={{ position: "fixed", inset: 0, zIndex: 10 }} onClick={() => setMenuOpen(false)} />
+                <div style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 20, width: 220, borderRadius: 16, background: "#fff", border: "1px solid #e5e7eb", boxShadow: "0 20px 40px rgba(0,0,0,0.12)", padding: 8 }}>
                   {VALID_SUBDOMAINS.map((key) => {
                     const cfg = SUBDOMAINS[key];
                     const active = key === subdomain.key;
@@ -72,15 +70,12 @@ export default function SubdomainHeader({ subdomain }: Props) {
                         key={key}
                         href={subdomainHref(key)}
                         onClick={() => setMenuOpen(false)}
-                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                          active ? "font-medium text-white" : "hover:bg-white/5 hover:text-white"
-                        }`}
-                        style={{ color: active ? cfg.accentHex : undefined }}
+                        style={{ display: "flex", alignItems: "center", gap: 10, borderRadius: 8, padding: "8px 12px", textDecoration: "none", fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", fontWeight: active ? 700 : 400, color: active ? cfg.accentHex : "#374151", background: active ? `${cfg.accentHex}10` : "transparent", transition: "background 0.15s" }}
                       >
                         <span>{cfg.emoji}</span>
-                        <span className="flex-1">{cfg.label}</span>
+                        <span style={{ flex: 1 }}>{cfg.label}</span>
                         {active && (
-                          <span className="h-1.5 w-1.5 rounded-full" style={{ background: cfg.accentHex }} />
+                          <span style={{ height: 6, width: 6, borderRadius: "50%", background: cfg.accentHex, flexShrink: 0 }} />
                         )}
                       </a>
                     );
@@ -91,9 +86,8 @@ export default function SubdomainHeader({ subdomain }: Props) {
           </div>
 
           <a
-            href={isDev ? `http://${devRoot}` : `https://${rootDomain}`}
-            className="hidden rounded-lg glass px-3 py-1.5 text-xs font-mono transition-colors hover:text-white sm:block"
-            style={{ color: "var(--color-muted,#6272a0)" }}
+            href={homeHref}
+            style={{ borderRadius: 8, background: "#f9fafb", border: "1px solid #e5e7eb", padding: "6px 12px", fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#6b7280", textDecoration: "none" }}
           >
             All topics
           </a>
@@ -102,9 +96,9 @@ export default function SubdomainHeader({ subdomain }: Props) {
 
       {/* Accent underline */}
       <div
-        className="h-px w-full"
         style={{
-          background: `linear-gradient(to right, ${subdomain.accentHex}60, ${subdomain.accentHex}20 40%, transparent)`,
+          height: 2,
+          background: `linear-gradient(to right, ${subdomain.accentHex}80, ${subdomain.accentHex}20 50%, transparent)`,
         }}
       />
     </header>

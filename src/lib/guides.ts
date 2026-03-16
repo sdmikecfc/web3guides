@@ -44,6 +44,35 @@ export async function countGuides(subdomain: string): Promise<number> {
   } catch (e) { console.error("[countGuides] unexpected:", e); return 0; }
 }
 
+export async function getGuidesByDifficulty(
+  difficulty: string,
+  options?: { limit?: number; offset?: number }
+): Promise<Guide[]> {
+  try {
+    const supabase = await createClient();
+    const { limit = 24, offset = 0 } = options ?? {};
+    const { data, error } = await supabase
+      .from("guides")
+      .select("*")
+      .eq("difficulty", difficulty)
+      .order("published_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (error) { console.error("[getGuidesByDifficulty]", error.message); return []; }
+    return (data ?? []) as Guide[];
+  } catch (e) { console.error("[getGuidesByDifficulty] unexpected:", e); return []; }
+}
+
+export async function countGuidesByDifficulty(difficulty: string): Promise<number> {
+  try {
+    const supabase = await createClient();
+    const { count, error } = await supabase
+      .from("guides").select("*", { count: "exact", head: true })
+      .eq("difficulty", difficulty);
+    if (error) { console.error("[countGuidesByDifficulty]", error.message); return 0; }
+    return count ?? 0;
+  } catch (e) { console.error("[countGuidesByDifficulty] unexpected:", e); return 0; }
+}
+
 export async function getAllRecentGuides(limit = 50): Promise<Guide[]> {
   try {
     const supabase = await createClient();

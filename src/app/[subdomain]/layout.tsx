@@ -43,16 +43,13 @@ export default function SubdomainLayout({ children, params }: Props) {
         "--subdomain-glow":   cfg.glowHex,
         "--subdomain-a":      cfg.accentHex,
         "--subdomain-b":      cfg.gradientFrom,
+        background: "#fefbf6",
+        minHeight: "100vh",
       } as React.CSSProperties}
     >
-      <div className="bg-canvas" aria-hidden="true" />
-      <div className="bg-orb"    aria-hidden="true" />
-      <div className="bg-stars"  aria-hidden="true" />
-      <div className="bg-grid"   aria-hidden="true" />
-      <div className="bg-vignette" aria-hidden="true" />
-      <div className="min-h-screen flex flex-col page-content">
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <SubdomainHeader subdomain={cfg} />
-        <main className="flex-1">{children}</main>
+        <main style={{ flex: 1 }}>{children}</main>
         <SubdomainFooter subdomain={cfg} />
       </div>
     </div>

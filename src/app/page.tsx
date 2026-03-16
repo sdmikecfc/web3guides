@@ -74,6 +74,12 @@ function Hero() {
   return (
     <section style={{ background: "linear-gradient(135deg, #ff6b35 0%, #ec4899 100%)", position: "relative", overflow: "hidden", padding: "100px 40px 80px" }}>
       <div className="lp-float" style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(1.5px 1.5px at 10% 20%, rgba(255,255,255,0.4) 0%, transparent 100%), radial-gradient(1px 1px at 75% 10%, rgba(255,255,255,0.35) 0%, transparent 100%), radial-gradient(2px 2px at 40% 60%, rgba(255,255,255,0.25) 0%, transparent 100%), radial-gradient(1px 1px at 90% 45%, rgba(255,255,255,0.4) 0%, transparent 100%), radial-gradient(1.5px 1.5px at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 100%), radial-gradient(1px 1px at 60% 85%, rgba(255,255,255,0.35) 0%, transparent 100%), radial-gradient(2px 2px at 85% 75%, rgba(255,255,255,0.28) 0%, transparent 100%), radial-gradient(1px 1px at 5% 50%, rgba(255,255,255,0.32) 0%, transparent 100%)", pointerEvents: "none" }} aria-hidden="true" />
+      {/* Rolling clouds */}
+      <div className="cloud cloud-1" aria-hidden="true" />
+      <div className="cloud cloud-2" aria-hidden="true" />
+      <div className="cloud cloud-3" aria-hidden="true" />
+      <div className="cloud cloud-4" aria-hidden="true" />
+      <div className="cloud cloud-5" aria-hidden="true" />
 
       <div style={{ maxWidth: 1400, margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1 }}>
         <div className="lp-fade-in" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 50, padding: "8px 20px", marginBottom: 32 }}>
@@ -117,6 +123,65 @@ function Hero() {
               <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "1.8rem", fontWeight: 700, color: "#fff", marginBottom: 6 }}>{value}</div>
               <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", color: "rgba(255,255,255,0.8)", letterSpacing: 0.5 }}>{label}</div>
             </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   DIFFICULTY TILES
+════════════════════════════════════════════════════════════════════════ */
+const DIFF_TILES = [
+  {
+    label: "Easy",
+    emoji: "🌱",
+    slug: "/easy",
+    gradient: "linear-gradient(135deg, #10b981 0%, #06b6d4 100%)",
+    glow: "rgba(16,185,129,0.15)",
+    desc: "Plain-English explainers. No prior knowledge required.",
+  },
+  {
+    label: "Medium",
+    emoji: "⚡",
+    slug: "/medium",
+    gradient: "linear-gradient(135deg, #ff6b35 0%, #fbbf24 100%)",
+    glow: "rgba(255,107,53,0.15)",
+    desc: "Core concepts and hands-on tutorials for growing builders.",
+  },
+  {
+    label: "Advanced",
+    emoji: "🔮",
+    slug: "/advanced",
+    gradient: "linear-gradient(135deg, #6366f1 0%, #ec4899 100%)",
+    glow: "rgba(99,102,241,0.15)",
+    desc: "Deep dives, protocol internals, and cutting-edge research.",
+  },
+];
+
+function DifficultyTiles() {
+  return (
+    <section style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%)", padding: "60px 40px" }}>
+      <div style={{ maxWidth: 1400, margin: "0 auto" }}>
+        <Reveal style={{ textAlign: "center", marginBottom: 36 }}>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 3, color: "#10b981", textTransform: "uppercase", marginBottom: 12 }}>FILTER BY LEVEL</div>
+          <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.8rem, 4vw, 2.5rem)", color: "#1a1a1a" }}>Browse All Articles by Difficulty</h2>
+        </Reveal>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
+          {DIFF_TILES.map(({ label, emoji, slug, gradient, glow, desc }) => (
+            <Reveal key={label}>
+              <a href={slug} style={{ display: "flex", alignItems: "center", gap: 20, padding: "24px 28px", borderRadius: 20, background: "#fff", border: "1.5px solid #e5e7eb", textDecoration: "none", transition: "transform 0.2s, box-shadow 0.2s, border-color 0.2s" }}
+                 onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(-5px)"; el.style.boxShadow = `0 16px 40px ${glow}`; el.style.borderColor = "transparent"; }}
+                 onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(0)"; el.style.boxShadow = "none"; el.style.borderColor = "#e5e7eb"; }}>
+                <div style={{ width: 56, height: 56, borderRadius: 16, background: gradient, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.6rem", flexShrink: 0 }}>{emoji}</div>
+                <div>
+                  <div style={{ fontFamily: "'Bungee', cursive", fontSize: "1.2rem", color: "#1a1a1a", marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", color: "#6b7280", lineHeight: 1.5 }}>{desc}</div>
+                </div>
+                <div style={{ marginLeft: "auto", fontSize: "1.2rem", color: "#d1d5db" }}>→</div>
+              </a>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -666,6 +731,7 @@ export default function HomePage() {
       <Nav />
       <Hero />
       <BrowseSection />
+      <DifficultyTiles />
       <Benefits />
       <LearningPaths />
       <Articles />

@@ -40,7 +40,7 @@ export default async function SubdomainPage({ params, searchParams }: Props) {
     <>
       <HeroSection config={cfg} total={total} />
 
-      <section className="mx-auto w-full max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
+      <section style={{ margin: "0 auto", width: "100%", maxWidth: 1280, padding: "0 24px 48px" }}>
         <FilterBar
           currentDifficulty={searchParams.difficulty}
           currentTag={searchParams.tag}
@@ -69,10 +69,10 @@ export default async function SubdomainPage({ params, searchParams }: Props) {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="mb-4 text-5xl opacity-30">📭</div>
-      <p className="font-display text-xl font-bold text-white/60">No guides yet</p>
-      <p className="mt-1 text-sm" style={{ color: "#6272a0" }}>Check back soon — content is being added.</p>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "96px 0", textAlign: "center" }}>
+      <div style={{ fontSize: "3rem", opacity: 0.3, marginBottom: 16 }}>📭</div>
+      <p style={{ fontFamily: "'Bungee', cursive", fontSize: "1.3rem", color: "#9ca3af", marginBottom: 8 }}>No guides yet</p>
+      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "#9ca3af" }}>Check back soon — content is being added.</p>
     </div>
   );
 }
@@ -91,19 +91,21 @@ function Pagination({ currentPage, totalPages, searchParams }: {
   }
   const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
   return (
-    <nav className="mt-12 flex items-center justify-center gap-2">
+    <nav style={{ marginTop: 48, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
       {currentPage > 1 && (
-        <a href={pageHref(currentPage - 1)} className="flex h-9 w-9 items-center justify-center rounded-lg text-sm transition glass hover:border-[var(--subdomain-accent)] hover:text-[var(--subdomain-accent)]" style={{ color: "#6272a0" }}>←</a>
+        <a href={pageHref(currentPage - 1)} style={{ display: "flex", height: 36, width: 36, alignItems: "center", justifyContent: "center", borderRadius: 8, fontFamily: "'Space Mono', monospace", fontSize: "0.8rem", color: "#6b7280", background: "#f9fafb", border: "1px solid #e5e7eb", textDecoration: "none" }}>←</a>
       )}
       {pages.map((p) => (
         <a key={p} href={pageHref(p)}
-           className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-mono font-medium transition ${p === currentPage ? "text-white" : "hover:text-[var(--subdomain-accent)] glass"}`}
-           style={p === currentPage ? { background: "var(--subdomain-accent)", color: "#fff" } : { color: "#6272a0" }}>
+           style={p === currentPage
+             ? { display: "flex", height: 36, width: 36, alignItems: "center", justifyContent: "center", borderRadius: 8, fontFamily: "'Space Mono', monospace", fontSize: "0.8rem", fontWeight: 700, color: "#fff", background: "var(--subdomain-accent)", textDecoration: "none" }
+             : { display: "flex", height: 36, width: 36, alignItems: "center", justifyContent: "center", borderRadius: 8, fontFamily: "'Space Mono', monospace", fontSize: "0.8rem", color: "#6b7280", background: "#f9fafb", border: "1px solid #e5e7eb", textDecoration: "none" }
+           }>
           {p}
         </a>
       ))}
       {currentPage < totalPages && (
-        <a href={pageHref(currentPage + 1)} className="flex h-9 w-9 items-center justify-center rounded-lg text-sm transition glass hover:text-[var(--subdomain-accent)]" style={{ color: "#6272a0" }}>→</a>
+        <a href={pageHref(currentPage + 1)} style={{ display: "flex", height: 36, width: 36, alignItems: "center", justifyContent: "center", borderRadius: 8, fontFamily: "'Space Mono', monospace", fontSize: "0.8rem", color: "#6b7280", background: "#f9fafb", border: "1px solid #e5e7eb", textDecoration: "none" }}>→</a>
       )}
     </nav>
   );

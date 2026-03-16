@@ -6,8 +6,8 @@ import type { Difficulty } from "@/types";
 
 const DIFFICULTIES: { value: Difficulty | "all"; label: string }[] = [
   { value: "all",          label: "All levels" },
-  { value: "beginner",     label: "Beginner" },
-  { value: "intermediate", label: "Intermediate" },
+  { value: "beginner",     label: "Easy" },
+  { value: "intermediate", label: "Medium" },
   { value: "advanced",     label: "Advanced" },
 ];
 
@@ -39,20 +39,17 @@ export default function FilterBar({ currentDifficulty, currentTag }: Props) {
   const hasFilters = !!currentDifficulty || !!currentTag;
 
   return (
-    <div className="mb-7 flex flex-wrap items-center gap-2">
+    <div style={{ marginBottom: 28, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
       {DIFFICULTIES.map(({ value, label }) => {
         const active = value === "all" ? !currentDifficulty : currentDifficulty === value;
         return (
           <button
             key={value}
             onClick={() => handleDifficulty(value)}
-            className={`rounded-full px-3.5 py-1.5 font-mono text-xs transition-all duration-200 ${
-              active ? "font-semibold text-white" : "hover:text-white"
-            }`}
             style={
               active
-                ? { background: "var(--subdomain-accent)", boxShadow: "0 0 20px var(--subdomain-glow)" }
-                : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "var(--color-muted,#6272a0)" }
+                ? { borderRadius: 50, padding: "6px 16px", fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", fontWeight: 700, color: "#fff", background: "var(--subdomain-accent)", border: "none", cursor: "pointer" }
+                : { borderRadius: 50, padding: "6px 16px", fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#6b7280", background: "#f9fafb", border: "1px solid #e5e7eb", cursor: "pointer" }
             }
           >
             {label}
@@ -63,22 +60,23 @@ export default function FilterBar({ currentDifficulty, currentTag }: Props) {
       {currentTag && (
         <button
           onClick={clearTag}
-          className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-mono text-xs font-medium transition-all"
           style={{
+            display: "flex", alignItems: "center", gap: 6, borderRadius: 50, padding: "6px 16px",
+            fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", fontWeight: 700,
             color: "var(--subdomain-accent)",
-            background: "var(--subdomain-glow)",
+            background: "color-mix(in srgb, var(--subdomain-accent) 12%, transparent)",
             border: "1px solid var(--subdomain-accent)",
+            cursor: "pointer",
           }}
         >
-          #{currentTag} <span className="text-[10px] opacity-60">✕</span>
+          #{currentTag} <span style={{ fontSize: "0.6rem", opacity: 0.6 }}>✕</span>
         </button>
       )}
 
       {hasFilters && (
         <button
           onClick={() => router.push("?", { scroll: false })}
-          className="ml-auto font-mono text-xs underline underline-offset-2 transition-colors hover:text-white"
-          style={{ color: "var(--color-muted,#6272a0)" }}
+          style={{ marginLeft: "auto", fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#9ca3af", background: "none", border: "none", textDecoration: "underline", cursor: "pointer" }}
         >
           Clear
         </button>

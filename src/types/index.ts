@@ -15,6 +15,7 @@ export interface Guide {
   cover_image?: string | null;
   read_time_minutes?: number | null;
   author?: string | null;
+  content?: string | null;
 }
 
 // ─── Subdomain config ────────────────────────────────────────────────────────
