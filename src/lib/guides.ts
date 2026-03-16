@@ -25,11 +25,22 @@ export async function getGuidesBySubdomain(
 export async function getGuide(subdomain: string, slug: string): Promise<Guide | null> {
   try {
     const supabase = await createClient();
+    // First: exact subdomain+slug match (fast path)
     const { data, error } = await supabase
       .from("guides").select("*")
       .eq("subdomain", subdomain).eq("slug", slug).single();
-    if (error) { console.error("[getGuide]", error.message); return null; }
-    return data as Guide;
+    if (!error && data) return data as Guide;
+
+    // Fallback: slug-only lookup across all subdomains.
+    // Needed when a guide from subdomain X is linked from subdomain Y's listing
+    // (e.g. easy.web3guides.com shows all-difficulty articles from every subdomain).
+    const { data: fallback, error: fallbackError } = await supabase
+      .from("guides").select("*")
+      .eq("slug", slug)
+      .limit(1)
+      .single();
+    if (fallbackError) { console.error("[getGuide fallback]", fallbackError.message); return null; }
+    return fallback as Guide;
   } catch (e) { console.error("[getGuide] unexpected:", e); return null; }
 }
 

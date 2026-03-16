@@ -122,20 +122,20 @@ export default async function SubdomainPage({ params, searchParams }: Props) {
 
 const DOMA_REFERRAL = "https://app.doma.xyz/join/4urmvv4ouvvsu";
 
-const DOMA_STEPS = [
-  { n: "1", title: "Connect Your Wallet", body: "Head to doma.xyz and connect your Web3 wallet. Doma supports MetaMask, WalletConnect, and most major wallets." },
-  { n: "2", title: "Choose Your Subdomain", body: "Browse available subdomains under web3guides.com. Pick a topic you know — eth, defi, sol, or carve your own niche." },
-  { n: "3", title: "Mint It On-Chain", body: "Mint your subdomain as a blockchain asset. You own it — not a platform. Transfer it, sell it, or hold it indefinitely." },
-  { n: "4", title: "Publish & Earn", body: "Your subdomain goes live as a guide site. Add your affiliate links, build your audience, and keep 100% of what you earn." },
+const DOMA_HOW_IT_WORKS = [
+  { n: "1", title: "Tokenize a Domain", body: "Connect your wallet at app.doma.xyz, select any .com, .ai, .xyz, or other ICANN-compliant domain, and mint it as a blockchain asset on Doma's OP Stack L2." },
+  { n: "2", title: "Get DOTs + DSTs", body: "Every tokenized domain produces two ERC-20 tokens: a DOT (Domain Ownership Token) representing title, and a DST (Domain Service Token) controlling DNS records." },
+  { n: "3", title: "Trade or DeFi", body: "Trade DOTs 24/7 on DEXs, use them as loan collateral, earn yield in liquidity pools, or fractionalize a premium domain into thousands of micro-tokens." },
+  { n: "4", title: "Domain Still Works", body: "Because DOTs and DSTs are separate, you can sell ownership while the website and email keep running — or lease DNS control while holding the title." },
 ];
 
-const DOMA_BENEFITS = [
-  { emoji: "🔒", title: "True Ownership", body: "Your subdomain is enforced by smart contracts, not a platform TOS. No one can delete or deactivate it." },
-  { emoji: "💰", title: "100% Revenue", body: "Every affiliate link, referral code, and sponsorship on your subdomain is yours. Doma takes nothing." },
-  { emoji: "📡", title: "Featured Distribution", body: "Stake $DOMA against your subdomain to get featured placement across web3guides.com — reaching thousands of learners." },
-  { emoji: "🌐", title: "Instant Web Presence", body: "Your subdomain launches as a fully functional guide site with AI-generated content, no dev skills required." },
-  { emoji: "🤝", title: "Community Network", body: "Join a network of Web3 educators. Cross-promote, collaborate, and build alongside other subdomain owners." },
-  { emoji: "⚡", title: "AI-Powered Content", body: "New articles generated automatically for your subdomain every few days — always fresh, always relevant." },
+const DOMA_FEATURES = [
+  { emoji: "🌐", title: "Real Domains, On-Chain", body: "Doma tokenizes traditional internet domains (.com, .ai, .xyz) — not crypto namespaces. Your domain works on the normal web with no special browser extensions." },
+  { emoji: "🔑", title: "Dual-Token System", body: "DOTs = ownership & transfer rights. DSTs = DNS control & nameserver access. Split ownership from DNS control — a first in the domain industry." },
+  { emoji: "💎", title: "DomainFi", body: "Use premium domains as DeFi collateral, earn yield in liquidity pools, or fractionalize a single domain (e.g. software.ai → $SOFTWARE tokens) for fractional trading." },
+  { emoji: "⚡", title: "Instant Settlement", body: "Sell a domain in seconds with no escrow, no brokers, and no 10–20% commission fees. 24/7 trading on the Base Names Marketplace with USDC or ETH." },
+  { emoji: "🔗", title: "Cross-Chain via LayerZero", body: "Doma domains are portable across Ethereum, Base, Solana, Avalanche, and ENS — powered by LayerZero omnichain messaging." },
+  { emoji: "🏗", title: "Build with Doma Forge", body: "Developers can tap $1M USDC in grants at doma.xyz/forge to build DomainFi applications on top of the Doma Protocol infrastructure." },
 ];
 
 function DomaPage() {
@@ -146,30 +146,47 @@ function DomaPage() {
         <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle at 50% 50%, rgba(124,106,255,0.2) 0%, transparent 70%)", pointerEvents: "none" }} />
         <div style={{ maxWidth: 720, margin: "0 auto", position: "relative", zIndex: 1 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(124,106,255,0.15)", border: "1px solid rgba(124,106,255,0.3)", borderRadius: 50, padding: "6px 16px", marginBottom: 24 }}>
-            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#7c6aff", letterSpacing: 1 }}>POWERED BY DOMA PROTOCOL</span>
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#7c6aff", letterSpacing: 1 }}>BUILT BY D3 GLOBAL · $25M SERIES A · PARADIGM-BACKED</span>
           </div>
           <h1 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(2rem, 5vw, 3.5rem)", color: "#fff", marginBottom: 20, lineHeight: 1.1 }}>
-            Own Your Corner of Web3
+            Your Domain.<br />On the Blockchain.
           </h1>
           <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.1rem", color: "rgba(255,255,255,0.75)", lineHeight: 1.7, marginBottom: 40 }}>
-            Mint a subdomain under web3guides.com as an on-chain asset. Launch your own guide site, build your audience, and keep every dollar you earn — enforced by smart contracts, not platform rules.
+            Doma Protocol tokenizes traditional internet domains (.com, .ai, .xyz) as programmable real-world assets. Trade 24/7, use as DeFi collateral, or fractionalize premium domains — while your website keeps running normally.
           </p>
           <a href={DOMA_REFERRAL} target="_blank" rel="noopener noreferrer"
              style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg, #ff6b35, #ec4899)", color: "#fff", padding: "16px 40px", borderRadius: 50, fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: "1rem", textDecoration: "none", boxShadow: "0 8px 30px rgba(255,107,53,0.35)" }}>
-            Claim Your Subdomain →
+            Explore Doma Protocol →
           </a>
           <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.8rem", color: "rgba(255,255,255,0.4)", marginTop: 12 }}>
-            Opens app.doma.xyz — wallet &amp; $DOMA required
+            Opens app.doma.xyz — connect your wallet to get started
           </p>
+        </div>
+      </section>
+
+      {/* Stats bar */}
+      <section style={{ background: "#fff", borderBottom: "1px solid #f0ece4" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", padding: "32px 24px", display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 32 }}>
+          {[
+            { value: "$38M+", label: "Trading Volume" },
+            { value: "107K+", label: "Tokenized Domains" },
+            { value: "3.2M+", label: "Transactions" },
+            { value: "40M+", label: "Domain Inventory" },
+          ].map(({ value, label }) => (
+            <div key={label} style={{ textAlign: "center" }}>
+              <div style={{ fontFamily: "'Bungee', cursive", fontSize: "1.8rem", color: "#7c6aff" }}>{value}</div>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", color: "#9ca3af", letterSpacing: 1, textTransform: "uppercase", marginTop: 4 }}>{label}</div>
+            </div>
+          ))}
         </div>
       </section>
 
       {/* How it works */}
       <section style={{ maxWidth: 900, margin: "0 auto", padding: "64px 24px 48px" }}>
-        <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "1.6rem", color: "#1a1a2e", marginBottom: 8 }}>How It Works</h2>
-        <p style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", marginBottom: 40 }}>Four steps from wallet connect to live guide site.</p>
+        <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "1.6rem", color: "#1a1a2e", marginBottom: 8 }}>How Doma Works</h2>
+        <p style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", marginBottom: 40 }}>Turn any internet domain into a tradeable on-chain asset in four steps.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {DOMA_STEPS.map(({ n, title, body }) => (
+          {DOMA_HOW_IT_WORKS.map(({ n, title, body }) => (
             <div key={n} style={{ display: "flex", gap: 20, alignItems: "flex-start", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 24 }}>
               <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg, #7c6aff, #3b9eff)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bungee', cursive", fontSize: "1.1rem", color: "#fff", flexShrink: 0 }}>{n}</div>
               <div>
@@ -181,13 +198,13 @@ function DomaPage() {
         </div>
       </section>
 
-      {/* Benefits */}
+      {/* Features */}
       <section style={{ background: "#fff", borderTop: "1px solid #f0ece4", borderBottom: "1px solid #f0ece4" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "64px 24px" }}>
-          <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "1.6rem", color: "#1a1a2e", marginBottom: 8 }}>Why Get a Subdomain?</h2>
-          <p style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", marginBottom: 40 }}>Everything a traditional domain gives you, plus on-chain ownership and built-in distribution.</p>
+          <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "1.6rem", color: "#1a1a2e", marginBottom: 8 }}>What Makes Doma Different</h2>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", marginBottom: 40 }}>Unlike ENS, Handshake, or Unstoppable Domains — Doma works with the real internet.</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20 }}>
-            {DOMA_BENEFITS.map(({ emoji, title, body }) => (
+            {DOMA_FEATURES.map(({ emoji, title, body }) => (
               <div key={title} style={{ background: "#fefbf6", border: "1px solid #f0ece4", borderRadius: 16, padding: 24 }}>
                 <div style={{ fontSize: "1.8rem", marginBottom: 12 }}>{emoji}</div>
                 <h3 style={{ fontFamily: "'Bungee', cursive", fontSize: "1rem", color: "#1a1a2e", marginBottom: 8 }}>{title}</h3>
@@ -200,13 +217,13 @@ function DomaPage() {
 
       {/* CTA */}
       <section style={{ maxWidth: 720, margin: "0 auto", padding: "80px 24px", textAlign: "center" }}>
-        <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "1.8rem", color: "#1a1a2e", marginBottom: 16 }}>Ready to Own Your Piece of the Web?</h2>
+        <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "1.8rem", color: "#1a1a2e", marginBottom: 16 }}>Start Exploring DomainFi</h2>
         <p style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", marginBottom: 32, lineHeight: 1.7 }}>
-          Subdomains are limited. The best topics go first. Mint yours on Doma Protocol and start building your audience today.
+          Mainnet is live. $38M+ in trading volume. 107,000+ domains already tokenized. Browse the marketplace and see what your domain could be worth on-chain.
         </p>
         <a href={DOMA_REFERRAL} target="_blank" rel="noopener noreferrer"
            style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg, #7c6aff, #3b9eff)", color: "#fff", padding: "16px 40px", borderRadius: 50, fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: "1rem", textDecoration: "none", boxShadow: "0 8px 30px rgba(124,106,255,0.3)" }}>
-          Mint on Doma Protocol →
+          Open app.doma.xyz →
         </a>
       </section>
     </div>

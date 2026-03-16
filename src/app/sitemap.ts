@@ -6,7 +6,7 @@ const rootDomain =
   process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "web3guides.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const guides = await getAllRecentGuides(500);
+  const guides = await getAllRecentGuides(1000);
 
   // Subdomain homepages
   const subdomainRoutes: MetadataRoute.Sitemap = VALID_SUBDOMAINS.map((key) => ({
