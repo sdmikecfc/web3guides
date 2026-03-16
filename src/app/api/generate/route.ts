@@ -85,35 +85,90 @@ async function generateArticle(
   topic: string,
   difficulty: Difficulty
 ): Promise<GeneratedArticle> {
-  const difficultyDesc = {
-    beginner: "beginner-friendly (no prior crypto knowledge required), use simple analogies and avoid jargon",
-    intermediate: "intermediate level, assume basic crypto familiarity, explain technical concepts clearly",
-    advanced: "advanced level, assume solid Web3 knowledge, cover technical depth and edge cases",
+  const difficultyInstructions = {
+    beginner: `
+AUDIENCE: New to crypto, not new to thinking. They've tried to learn this before and got lost in jargon. Write the explanation that finally makes it click.
+TONE: Direct and confident. No forced enthusiasm, no cheerleading. Just clear thinking explained clearly.
+VOICE:
+- Treat the reader as intelligent. The topic is unfamiliar, not the person.
+- Define every technical term the first time it appears — not as a textbook gloss, but woven into the sentence naturally
+- When something is widely misunderstood, say so plainly: "This is where most explanations go wrong..."
+- Never patronise. Never over-explain what's obvious. Only explain what genuinely isn't.
+FORMAT:
+- Open by stating exactly what this article covers and why it matters — no preamble
+- Each ## section: a tight explanatory paragraph, then 3-5 specific bullets, then one "What this means practically:" line
+- Numbered steps for any process — each step includes what you do and the reason the order matters
+- Close with a "Quick recap" section: 3-4 sharp bullets summarising the core points
+- Target length: 900–1100 words`,
+
+    intermediate: `
+AUDIENCE: Has bought crypto, used a wallet, maybe tried DeFi. Knows the vocabulary but often misuses it. Missing the mechanics behind what they're doing.
+TONE: Straight, specific, no filler. Skip the 101. Go directly to the layer most guides skip.
+VOICE:
+- Acknowledge what they likely already know, then go past it
+- Call out the common assumption that's slightly wrong: "The standard explanation says X — what's actually happening is Y"
+- Use real protocol names, real numbers, real on-chain behaviour — not hypotheticals
+- Credibility comes from specificity, not from hedging everything
+FORMAT:
+- Open with the specific problem or gap this article closes
+- Each ## section: the real explanation (2-3 paragraphs) → specific details with actual numbers/protocols → one "⚠ Common mistake:" callout
+- Steps include the reasoning — what breaks if you skip or reorder them
+- Include "How to check this yourself" references: Etherscan, DeFiLlama, protocol dashboards
+- Close with "Next steps" — 3-4 concrete directions to go deeper
+- Target length: 1000–1300 words`,
+
+    advanced: `
+AUDIENCE: Deep in the space. Has read the docs, understands the protocols, follows the research. Write for the reader who will notice if you get something wrong.
+TONE: Precise and dense. No setup, no context they already have. Get to the substance.
+VOICE:
+- Lead with the non-obvious angle — the edge case, the design trade-off, the thing most people in the space have backwards
+- Every claim should be defensible. If there's uncertainty, be specific about what's uncertain and why.
+- Acknowledge protocol limitations and failure modes honestly — the advanced reader trusts you more when you do
+- Bullets carry information density. Not "X is important" — but "X does Y because of Z, which means..."
+FORMAT:
+- Open with the thesis or the under-examined angle — not background context
+- Each ## section: mechanism → trade-offs → real-world behaviour → edge cases or implications
+- At minimum one section on failure modes, known risks, or attack vectors — with specifics
+- Steps are complete and sequenced with the reasoning for the sequence made explicit
+- Close with "Verify / Go Deeper" — actual on-chain references, dashboards, or primary docs
+- Target length: 1100–1400 words`,
   }[difficulty];
 
   const extraContext = SUBDOMAIN_CONTEXT[subdomain] ? `\n${SUBDOMAIN_CONTEXT[subdomain]}\n` : "";
 
   const stream = client.messages.stream({
     model: "claude-opus-4-6",
-    max_tokens: 4096,
+    max_tokens: 5000,
     messages: [
       {
         role: "user",
-        content: `Write a comprehensive Web3 guide article about: "${topic}" for the ${subdomain} category.
+        content: `You are a writer for web3guides.com. The site publishes accurate, no-filler crypto education. The standard is high: every claim is correct, every explanation earns its word count, nothing is padded.
 
-The article must be ${difficultyDesc}.
+You never fabricate facts, invent numbers, or guess at protocol behaviour. If something is genuinely uncertain, say so precisely. Accuracy is the floor, not the goal — the goal is accuracy plus clarity.
+
+Write a guide article about: "${topic}"
+Category: ${subdomain}
 ${extraContext}
-Return ONLY valid JSON (no markdown, no code blocks) with these exact fields:
+${difficultyInstructions}
+
+GLOBAL FORMAT RULES:
+- Use ## for main sections (4–7 per article). Each section should be self-contained and digestible on its own.
+- Use ### only when a sub-concept genuinely requires its own block
+- Bullet points use "- " prefix. Every bullet must carry real information — cut any that don't
+- Bold the first use of key terms with **double asterisks**
+- Never write: "In conclusion", "It's worth noting", "As we can see", "Remember that", "It's important to understand", "Simply put", "At the end of the day"
+- No rhetorical questions used as filler. If you ask a question, answer it in the same breath.
+- Write like an expert who can also explain things — not like someone performing expertise
+
+Return ONLY valid JSON (no markdown fences, no extra text outside the JSON):
 {
-  "title": "Article title (engaging, SEO-friendly)",
-  "summary": "2-3 sentence summary (under 200 chars)",
-  "content": "Full markdown article (800-1200 words). Use ## headings, bullet points, and practical examples.",
+  "title": "Specific title that states what the reader will understand after reading. Not generic, not clickbait.",
+  "summary": "2 sentences. What this covers. Why it matters or what changes after reading it. Under 200 chars total.",
+  "content": "Full markdown article per all rules above",
   "tags": ["tag1", "tag2", "tag3", "tag4"],
   "difficulty": "${difficulty}",
-  "read_time_minutes": <number between 4 and 10>
-}
-
-Make the content accurate, educational, and up-to-date with current Web3 practices as of 2025.`,
+  "read_time_minutes": <integer 5–10>
+}`,
       },
     ],
   });
