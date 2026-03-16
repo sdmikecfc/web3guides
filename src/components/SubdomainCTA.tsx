@@ -19,17 +19,17 @@ export default function SubdomainCTA({ config }: Props) {
 
         <div style={{ position: "relative" }}>
           <p style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", color: config.accentHex, marginBottom: 8 }}>
-            🔥 Own this space
+            🌐 Powered by Doma Protocol
           </p>
           <p style={{ fontFamily: "'Bungee', cursive", fontWeight: 400, fontSize: "1.4rem", color: "#1a1a1a", marginBottom: 6 }}>
-            Want your own {config.label} subdomain?
+            Build your own Web3 knowledge hub
           </p>
           <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "#6b7280" }}>
-            Launch <strong>{config.key}.web3guides.com</strong> — yours to build on via Doma Protocol.
+            Claim a subdomain on web3guides.com and publish your own guides — powered by Doma Protocol.
           </p>
         </div>
         <a
-          href="https://doma.xyz"
+          href="https://app.doma.xyz/domain/web3guides.com/subdomains"
           target="_blank"
           rel="noopener noreferrer"
           style={{
@@ -41,7 +41,7 @@ export default function SubdomainCTA({ config }: Props) {
             whiteSpace: "nowrap",
           }}
         >
-          Get it on Doma.xyz →
+          Get a subdomain →
         </a>
       </div>
     </section>

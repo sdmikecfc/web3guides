@@ -25,7 +25,8 @@
       "Bash(git push:*)",
       "Bash(git remote:*)",
       "Bash(git config:*)",
-      "Bash(ls /c/Users/Mike/Desktop/web3guides/.claude/worktrees/sad-hoover/.env*)"
+      "Bash(ls /c/Users/Mike/Desktop/web3guides/.claude/worktrees/sad-hoover/.env*)",
+      "mcp__scheduled-tasks__list_scheduled_tasks"
     ]
   }
 }
