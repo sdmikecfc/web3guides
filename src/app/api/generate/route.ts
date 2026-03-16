@@ -6,6 +6,12 @@ import { VALID_SUBDOMAINS, SUBDOMAINS } from "@/lib/subdomains";
 // Only allow internal calls via a secret key
 const GENERATE_SECRET = process.env.GENERATE_SECRET ?? "";
 
+// Subdomains that represent difficulty levels, not content topics — skip during bulk generation
+const DIFFICULTY_SUBDOMAINS = new Set(["easy", "beginner", "medium", "advanced"]);
+
+// Subdomains that get articles generated
+const CONTENT_SUBDOMAINS = VALID_SUBDOMAINS.filter((s) => !DIFFICULTY_SUBDOMAINS.has(s));
+
 type Difficulty = "beginner" | "intermediate" | "advanced";
 
 interface GeneratedArticle {
@@ -209,13 +215,18 @@ export async function POST(req: NextRequest) {
     subdomain: requestedSubdomain,
     topic: requestedTopic,
     difficulty: requestedDifficulty,
+    count: requestedCount = 1,
     dry_run = false,
   } = body as {
     subdomain?: string;
     topic?: string;
     difficulty?: Difficulty;
+    count?: number;
     dry_run?: boolean;
   };
+
+  // Cap at 10 per call to avoid timeout
+  const articlesPerSubdomain = Math.min(Math.max(1, requestedCount), 10);
 
   const supabase = await createClient();
   const client = new Anthropic({ apiKey });
@@ -223,75 +234,72 @@ export async function POST(req: NextRequest) {
   const results: Array<{ subdomain: string; slug: string; title: string; status: string }> = [];
   const errors: string[] = [];
 
-  // Determine which subdomains to target
   const targetSubdomains = requestedSubdomain
     ? [requestedSubdomain]
-    : VALID_SUBDOMAINS;
+    : CONTENT_SUBDOMAINS;
 
   for (const subdomain of targetSubdomains) {
     if (!VALID_SUBDOMAINS.includes(subdomain as any)) continue;
     const cfg = SUBDOMAINS[subdomain as keyof typeof SUBDOMAINS];
     if (!cfg) continue;
 
-    try {
-      // Check article count for this subdomain
-      const { count } = await supabase
-        .from("guides")
-        .select("*", { count: "exact", head: true })
-        .eq("subdomain", subdomain);
+    // Get current count once, increment locally as articles are added
+    const { count: dbCount } = await supabase
+      .from("guides")
+      .select("*", { count: "exact", head: true })
+      .eq("subdomain", subdomain);
 
-      const currentCount = count ?? 0;
+    let articleIndex = dbCount ?? 0;
 
-      // Pick difficulty — rotate through difficulties for balance
-      const difficulty: Difficulty = requestedDifficulty
-        ?? DIFFICULTY_DISTRIBUTION[currentCount % DIFFICULTY_DISTRIBUTION.length];
+    for (let i = 0; i < articlesPerSubdomain; i++) {
+      try {
+        const difficulty: Difficulty = requestedDifficulty
+          ?? DIFFICULTY_DISTRIBUTION[articleIndex % DIFFICULTY_DISTRIBUTION.length];
 
-      // Pick topic
-      const topic = requestedTopic ?? buildTopic(subdomain, cfg.label, difficulty, currentCount);
+        const topic = requestedTopic ?? buildTopic(subdomain, cfg.label, difficulty, articleIndex);
 
-      // Generate article
-      const article = await generateArticle(client, subdomain, topic, difficulty);
+        const article = await generateArticle(client, subdomain, topic, difficulty);
+        const slug = slugify(article.title);
 
-      const slug = slugify(article.title);
+        if (dry_run) {
+          results.push({ subdomain, slug, title: article.title, status: "dry_run" });
+          articleIndex++;
+          continue;
+        }
 
-      if (dry_run) {
-        results.push({ subdomain, slug, title: article.title, status: "dry_run" });
-        continue;
+        const { data: existing } = await supabase
+          .from("guides")
+          .select("id")
+          .eq("subdomain", subdomain)
+          .eq("slug", slug)
+          .single();
+
+        const finalSlug = existing ? `${slug}-${Date.now()}` : slug;
+
+        const { error: insertError } = await supabase.from("guides").insert({
+          subdomain,
+          title: article.title,
+          summary: article.summary,
+          content: article.content,
+          tags: article.tags,
+          difficulty: article.difficulty,
+          read_time_minutes: article.read_time_minutes,
+          slug: finalSlug,
+          source_url: `https://${subdomain}.web3guides.com/guides/${finalSlug}`,
+          author: "Web3Guides AI",
+          published_at: new Date().toISOString(),
+        });
+
+        if (insertError) {
+          errors.push(`${subdomain}[${i + 1}]: ${insertError.message}`);
+        } else {
+          results.push({ subdomain, slug: finalSlug, title: article.title, status: "created" });
+          articleIndex++;
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        errors.push(`${subdomain}[${i + 1}]: ${msg}`);
       }
-
-      // Check slug uniqueness
-      const { data: existing } = await supabase
-        .from("guides")
-        .select("id")
-        .eq("subdomain", subdomain)
-        .eq("slug", slug)
-        .single();
-
-      const finalSlug = existing ? `${slug}-${Date.now()}` : slug;
-
-      // Insert into Supabase
-      const { error: insertError } = await supabase.from("guides").insert({
-        subdomain,
-        title: article.title,
-        summary: article.summary,
-        content: article.content,
-        tags: article.tags,
-        difficulty: article.difficulty,
-        read_time_minutes: article.read_time_minutes,
-        slug: finalSlug,
-        source_url: `https://${subdomain}.web3guides.com/guides/${finalSlug}`,
-        author: "Web3Guides AI",
-        published_at: new Date().toISOString(),
-      });
-
-      if (insertError) {
-        errors.push(`${subdomain}: ${insertError.message}`);
-      } else {
-        results.push({ subdomain, slug: finalSlug, title: article.title, status: "created" });
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      errors.push(`${subdomain}: ${msg}`);
     }
   }
 
