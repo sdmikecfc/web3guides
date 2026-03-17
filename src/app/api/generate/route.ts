@@ -145,9 +145,12 @@ FORMAT:
 
   const extraContext = SUBDOMAIN_CONTEXT[subdomain] ? `\n${SUBDOMAIN_CONTEXT[subdomain]}\n` : "";
 
+  // Subdomains with long context prompts get a tighter token cap to avoid connection timeouts
+  const maxTokens = SUBDOMAIN_CONTEXT[subdomain] ? 4000 : 5000;
+
   const stream = client.messages.stream({
     model: "claude-opus-4-6",
-    max_tokens: 5000,
+    max_tokens: maxTokens,
     messages: [
       {
         role: "user",
