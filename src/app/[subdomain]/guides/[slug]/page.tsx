@@ -25,6 +25,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+/** Hex → [r, g, b] */
+function hexRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
 export default async function GuidePage({ params }: Props) {
   const cfg = getSubdomainConfig(params.subdomain);
   if (!cfg) notFound();
@@ -40,17 +46,18 @@ export default async function GuidePage({ params }: Props) {
   const toc = guide.content ? extractToc(guide.content) : [];
   const hasContent = !!guide.content;
 
-  // Split content into sections (for heading rendering + visual injection)
   const { intro, sections } = hasContent
     ? parseArticleSections(guide.content!)
     : { intro: "", sections: [] };
 
-  // Structured visuals authored by the AI — keyed by normalised heading for fast lookup
   const rawVisuals: ArticleVisual[] = Array.isArray(guide.visuals) ? guide.visuals : [];
   const visualsByHeading = new Map<string, ArticleVisual>();
   for (const v of rawVisuals) {
     visualsByHeading.set(v.after_section.toLowerCase().trim(), v);
   }
+
+  const h2SectionIds = sections.filter((s) => s.level === 2).map((s) => s.id);
+  const [r, g, b] = hexRgb(cfg.accentHex);
 
   return (
     <>
@@ -78,118 +85,222 @@ export default async function GuidePage({ params }: Props) {
           {/* Center: article */}
           <main className="article-main">
 
-            {/* Header */}
-            <header style={{ marginBottom: 28 }}>
-              <div style={{ marginBottom: 14, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
-                <DifficultyBadge difficulty={guide.difficulty} />
-                {guide.read_time_minutes && (
-                  <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#9ca3af" }}>
-                    {guide.read_time_minutes} min read
+            {/* ── HERO PANEL ────────────────────────────────────────── */}
+            <div style={{
+              borderRadius: 24,
+              overflow: "hidden",
+              background: "linear-gradient(140deg, #0d0d1f 0%, #111827 100%)",
+              position: "relative",
+              padding: "44px 52px 40px",
+              marginBottom: 24,
+            }}>
+              {/* Glow blob top-left */}
+              <div style={{
+                position: "absolute", top: -100, left: -80,
+                width: 380, height: 380, borderRadius: "50%",
+                background: `rgba(${r},${g},${b},0.22)`,
+                pointerEvents: "none",
+              }} />
+              {/* Glow blob bottom-right */}
+              <div style={{
+                position: "absolute", bottom: -100, right: -60,
+                width: 300, height: 300, borderRadius: "50%",
+                background: `rgba(${r},${g},${b},0.15)`,
+                pointerEvents: "none",
+              }} />
+              {/* Accent left line */}
+              <div style={{
+                position: "absolute", left: 0, top: 0, bottom: 0, width: 4,
+                background: `linear-gradient(to bottom, ${cfg.accentHex}, transparent)`,
+              }} />
+
+              {/* Content */}
+              <div style={{ position: "relative" }}>
+                {/* Subdomain badge */}
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                  background: `rgba(${r},${g},${b},0.18)`,
+                  border: `1px solid rgba(${r},${g},${b},0.35)`,
+                  borderRadius: 8, padding: "5px 14px", marginBottom: 18,
+                }}>
+                  <span style={{ fontSize: 16 }}>{cfg.emoji}</span>
+                  <span style={{
+                    fontFamily: "'Space Mono', monospace", fontSize: "0.65rem",
+                    letterSpacing: 3, color: cfg.accentHex, fontWeight: 700,
+                  }}>
+                    {cfg.label.toUpperCase()}
                   </span>
+                </div>
+
+                {/* Meta row */}
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                  <DifficultyBadge difficulty={guide.difficulty} />
+                  {guide.read_time_minutes && (
+                    <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "rgba(255,255,255,0.45)" }}>
+                      {guide.read_time_minutes} min read
+                    </span>
+                  )}
+                  <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "rgba(255,255,255,0.35)" }}>
+                    {formatDate(guide.published_at)}
+                  </span>
+                </div>
+
+                {/* Title */}
+                <h1 style={{
+                  fontFamily: "'Bungee', cursive", fontWeight: 400,
+                  fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)",
+                  lineHeight: 1.1, color: "#ffffff",
+                  marginBottom: 16, letterSpacing: "-0.01em",
+                }}>
+                  {guide.title}
+                </h1>
+
+                {/* Summary */}
+                <p style={{
+                  fontFamily: "'DM Sans', sans-serif", fontSize: "1.05rem",
+                  lineHeight: 1.65, color: "rgba(255,255,255,0.6)",
+                  marginBottom: guide.tags?.length > 0 ? 20 : 0, maxWidth: 560,
+                }}>
+                  {guide.summary}
+                </p>
+
+                {/* Tags */}
+                {guide.tags?.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
+                    {guide.tags.map((tag: string) => (
+                      <Link key={tag} href={`/?tag=${encodeURIComponent(tag)}`}
+                        style={{
+                          fontFamily: "'Space Mono', monospace", fontSize: "0.62rem",
+                          padding: "3px 10px", borderRadius: 50,
+                          background: `rgba(${r},${g},${b},0.15)`,
+                          color: cfg.accentHex,
+                          border: `1px solid rgba(${r},${g},${b},0.3)`,
+                          textDecoration: "none",
+                        }}>
+                        #{tag}
+                      </Link>
+                    ))}
+                  </div>
                 )}
-                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#9ca3af" }}>
-                  {formatDate(guide.published_at)}
-                </span>
-              </div>
 
-              <h1 style={{
-                fontFamily: "'Bungee', cursive",
-                fontWeight: 400,
-                fontSize: "clamp(1.7rem, 3.5vw, 2.4rem)",
-                lineHeight: 1.1,
-                color: "#1a1a1a",
-                marginBottom: 14,
-              }}>
-                {guide.title}
-              </h1>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.05rem", lineHeight: 1.65, color: "#6b7280" }}>
-                {guide.summary}
-              </p>
-            </header>
-
-            {/* Tags */}
-            {guide.tags?.length > 0 && (
-              <div style={{ marginBottom: 24, display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {guide.tags.map((tag: string) => (
-                  <Link key={tag} href={`/?tag=${encodeURIComponent(tag)}`}
-                    style={{
-                      fontFamily: "'Space Mono', monospace",
-                      fontSize: "0.65rem",
-                      padding: "3px 10px",
-                      borderRadius: 50,
-                      background: `${cfg.accentHex}12`,
-                      color: cfg.accentHex,
-                      border: `1px solid ${cfg.accentHex}30`,
-                      textDecoration: "none",
+                {/* Key points — "What you'll learn" */}
+                {guide.key_points && guide.key_points.length > 0 && (
+                  <div style={{
+                    borderTop: `1px solid rgba(${r},${g},${b},0.22)`,
+                    marginTop: 24, paddingTop: 22,
+                  }}>
+                    <div style={{
+                      fontFamily: "'Space Mono', monospace", fontSize: "0.58rem",
+                      letterSpacing: 3, color: "rgba(255,255,255,0.35)",
+                      textTransform: "uppercase", marginBottom: 14,
                     }}>
-                    #{tag}
-                  </Link>
-                ))}
+                      What you&apos;ll learn
+                    </div>
+                    <div className="hero-key-points">
+                      {guide.key_points.slice(0, 4).map((point: string, i: number) => (
+                        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                          <span style={{
+                            color: cfg.accentHex, flexShrink: 0,
+                            fontSize: "0.8rem", marginTop: 2, fontWeight: 700,
+                          }}>→</span>
+                          <span style={{
+                            fontFamily: "'DM Sans', sans-serif",
+                            fontSize: "0.85rem", color: "rgba(255,255,255,0.7)",
+                            lineHeight: 1.5,
+                          }}>
+                            {point}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-
-            {/* Article banner */}
-            <div style={{ marginBottom: 32, borderRadius: 16, overflow: "hidden", width: "100%" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`/api/og?sub=${encodeURIComponent(params.subdomain)}&t=${encodeURIComponent(guide.title)}`}
-                alt=""
-                width={1200}
-                height={420}
-                style={{ width: "100%", height: "auto", display: "block" }}
-              />
             </div>
 
-            {/* Article body */}
+            {/* ── ARTICLE BODY ──────────────────────────────────────── */}
             {hasContent ? (
-              <article className="article-body">
-                {/* Intro (content before first H2) */}
+              <article>
+
+                {/* Intro — content before first H2 */}
                 {intro.trim() && (
-                  <div dangerouslySetInnerHTML={{ __html: sectionToHtml(intro) }} />
+                  <div style={{
+                    borderLeft: `4px solid ${cfg.accentHex}`,
+                    background: `${cfg.accentHex}06`,
+                    borderRadius: "0 16px 16px 0",
+                    padding: "22px 28px",
+                    marginBottom: 16,
+                  }}>
+                    <div className="article-body" style={{ margin: 0 }}
+                      dangerouslySetInnerHTML={{ __html: sectionToHtml(intro) }} />
+                  </div>
                 )}
 
-                {/* Sections with AI-authored visuals */}
+                {/* Sections */}
                 {sections.map((section) => {
                   const visual = visualsByHeading.get(section.heading.toLowerCase().trim());
+                  const isH2 = section.level === 2;
+                  const h2Num = isH2 ? h2SectionIds.indexOf(section.id) + 1 : null;
+
+                  if (isH2) {
+                    return (
+                      <div key={section.id} style={{
+                        background: "#fafafa",
+                        border: "1px solid #f0ece4",
+                        borderRadius: 20,
+                        padding: "30px 36px",
+                        marginBottom: 16,
+                      }}>
+                        {/* Section header: number badge + heading */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 22 }}>
+                          <span style={{
+                            fontFamily: "'Space Mono', monospace",
+                            fontSize: "0.58rem", fontWeight: 700,
+                            color: cfg.accentHex,
+                            background: `${cfg.accentHex}10`,
+                            border: `1px solid ${cfg.accentHex}25`,
+                            borderRadius: 6, padding: "4px 8px",
+                            letterSpacing: 1, flexShrink: 0,
+                          }}>
+                            {String(h2Num).padStart(2, "0")}
+                          </span>
+                          <h2 id={section.id} style={{
+                            fontFamily: "'Bungee', cursive", fontWeight: 400,
+                            fontSize: "1.3rem", color: "#1a1a1a",
+                            scrollMarginTop: 100, margin: 0, lineHeight: 1.2,
+                          }}>
+                            {section.heading}
+                          </h2>
+                        </div>
+
+                        {/* Body */}
+                        <div className="article-body" style={{ margin: 0, marginBottom: visual ? 24 : 0 }}
+                          dangerouslySetInnerHTML={{ __html: sectionToHtml(section.bodyLines.join("\n")) }} />
+
+                        {/* AI-authored visual */}
+                        {visual && (
+                          <ArticleVisualBlock visual={visual} accentHex={cfg.accentHex} />
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // H3 — lightweight, indented, no card
                   return (
-                    <div key={section.id}>
-                      {/* Section heading */}
-                      {section.level === 2 ? (
-                        <h2
-                          id={section.id}
-                          style={{
-                            fontFamily: "'Bungee', cursive",
-                            fontWeight: 400,
-                            fontSize: "1.35rem",
-                            color: "#1a1a1a",
-                            margin: "40px 0 16px",
-                            scrollMarginTop: 100,
-                          }}
-                        >
-                          {section.heading}
-                        </h2>
-                      ) : (
-                        <h3
-                          id={section.id}
-                          style={{
-                            fontFamily: "'Bungee', cursive",
-                            fontWeight: 400,
-                            fontSize: "1.1rem",
-                            color: "#1a1a1a",
-                            margin: "28px 0 12px",
-                            scrollMarginTop: 100,
-                          }}
-                        >
-                          {section.heading}
-                        </h3>
-                      )}
-
-                      {/* Section body */}
-                      <div dangerouslySetInnerHTML={{ __html: sectionToHtml(section.bodyLines.join("\n")) }} />
-
-                      {/* AI-authored visual for this section */}
+                    <div key={section.id} style={{ paddingLeft: 8, marginBottom: 12 }}>
+                      <h3 id={section.id} style={{
+                        fontFamily: "'Bungee', cursive", fontWeight: 400,
+                        fontSize: "1.05rem", color: "#374151",
+                        margin: "20px 0 10px", scrollMarginTop: 100,
+                        borderLeft: `3px solid ${cfg.accentHex}40`,
+                        paddingLeft: 14,
+                      }}>
+                        {section.heading}
+                      </h3>
+                      <div className="article-body" style={{ margin: 0, paddingLeft: 17 }}
+                        dangerouslySetInnerHTML={{ __html: sectionToHtml(section.bodyLines.join("\n")) }} />
                       {visual && (
-                        <div style={{ margin: "28px 0 36px" }}>
+                        <div style={{ marginTop: 20, paddingLeft: 17 }}>
                           <ArticleVisualBlock visual={visual} accentHex={cfg.accentHex} />
                         </div>
                       )}
@@ -198,6 +309,7 @@ export default async function GuidePage({ params }: Props) {
                 })}
               </article>
             ) : (
+              /* External guide fallback */
               <div style={{ marginBottom: 40, borderRadius: 16, background: `${cfg.accentHex}08`, border: `1px solid ${cfg.accentHex}25`, padding: 24 }}>
                 <p style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.08em", color: cfg.accentHex, marginBottom: 8 }}>
                   Read the full guide
@@ -207,8 +319,7 @@ export default async function GuidePage({ params }: Props) {
                 </p>
                 <a
                   href={guide.source_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  target="_blank" rel="noopener noreferrer"
                   style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 12, padding: "10px 20px", fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", fontWeight: 700, color: "#fff", textDecoration: "none", background: cfg.accentHex }}
                 >
                   Open guide ↗
@@ -216,8 +327,9 @@ export default async function GuidePage({ params }: Props) {
               </div>
             )}
 
+            {/* Author */}
             {guide.author && (
-              <p style={{ marginTop: 32, marginBottom: 12, fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#9ca3af" }}>
+              <p style={{ marginTop: 24, marginBottom: 12, fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#9ca3af" }}>
                 Written by <span style={{ color: "#374151", fontWeight: 700 }}>{guide.author}</span>
               </p>
             )}
@@ -287,8 +399,7 @@ export default async function GuidePage({ params }: Props) {
                     {relatedGuides.map((g, i) => (
                       <Link key={g.id} href={`/guides/${g.slug}`}
                         style={{
-                          display: "block",
-                          padding: "10px 0",
+                          display: "block", padding: "10px 0",
                           borderBottom: i < relatedGuides.length - 1 ? "1px solid #f3f4f6" : "none",
                           textDecoration: "none",
                         }}>
@@ -322,12 +433,12 @@ export default async function GuidePage({ params }: Props) {
 /** Convert a markdown section body (no headings) to HTML */
 function sectionToHtml(md: string): string {
   return md
-    .replace(/^### (.+)$/gm, (_, t) => `<h3 id="${slugId(t)}" style="font-family:'Bungee',cursive;font-weight:400;font-size:1.1rem;color:#1a1a1a;margin:28px 0 12px;scroll-margin-top:100px">${t}</h3>`)
+    .replace(/^### (.+)$/gm, (_, t) => `<h3 id="${slugId(t)}" style="font-family:'Bungee',cursive;font-weight:400;font-size:1.05rem;color:#374151;margin:24px 0 10px;scroll-margin-top:100px;padding-left:14px;border-left:3px solid rgba(0,0,0,0.1)">${t}</h3>`)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`(.+?)`/g, "<code style=\"font-family:'Space Mono',monospace;font-size:0.85em;background:#f3f4f6;border-radius:4px;padding:2px 6px\">$1</code>")
-    .replace(/^- (.+)$/gm, "<li style=\"margin:6px 0\">$1</li>")
-    .replace(/(<li[^>]*>[\s\S]*?<\/li>\n?)+/g, (match) => `<ul style="padding-left:20px;margin:16px 0">${match}</ul>`)
+    .replace(/`(.+?)`/g, "<code style=\"font-family:'Space Mono',monospace;font-size:0.82em;background:#f0ece4;border-radius:4px;padding:2px 6px;color:#374151\">$1</code>")
+    .replace(/^- (.+)$/gm, "<li style=\"margin:7px 0;padding-left:4px\">$1</li>")
+    .replace(/(<li[^>]*>[\s\S]*?<\/li>\n?)+/g, (match) => `<ul style="padding-left:20px;margin:16px 0;list-style:none">${match}</ul>`)
     .replace(/\n{2,}/g, "</p><p style=\"margin:16px 0\">")
     .replace(/^(?!<[hHuUlLpP])(.+)$/gm, "<p style=\"margin:16px 0\">$1</p>")
     .replace(/<p style="margin:16px 0"><\/p>/g, "");

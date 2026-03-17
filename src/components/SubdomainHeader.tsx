@@ -29,7 +29,7 @@ export default function SubdomainHeader({ subdomain }: Props) {
         <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
           <a
             href={homeHref}
-            style={{ fontFamily: "'Bungee', cursive", fontSize: "1.1rem", fontWeight: 400, background: "linear-gradient(135deg, #ff6b35, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", textDecoration: "none", flexShrink: 0 }}
+            style={{ fontFamily: "'Bungee', cursive", fontSize: "1.1rem", fontWeight: 400, background: "linear-gradient(135deg, #ff6b35, #ec4899)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "transparent", textDecoration: "none", flexShrink: 0 }}
           >
             W3G
           </a>

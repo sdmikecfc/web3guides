@@ -18,6 +18,7 @@ type Difficulty = "beginner" | "intermediate" | "advanced";
 interface GeneratedArticle {
   title: string;
   summary: string;
+  key_points: string[];
   content: string;
   tags: string[];
   difficulty: Difficulty;
@@ -202,6 +203,7 @@ Return ONLY valid JSON (no markdown fences, no extra text outside the JSON):
 {
   "title": "Specific title that states what the reader will understand after reading. Not generic, not clickbait.",
   "summary": "2 sentences. What this covers. Why it matters or what changes after reading it. Under 200 chars total.",
+  "key_points": ["Exactly 4 items. What the reader will specifically know after reading. Each under 10 words. Start with a verb. No padding — real takeaways only."],
   "content": "Full markdown article per all rules above",
   "tags": ["tag1", "tag2", "tag3", "tag4"],
   "difficulty": "${difficulty}",
@@ -322,6 +324,7 @@ export async function POST(req: NextRequest) {
           author: "Web3Guides AI",
           published_at: new Date().toISOString(),
           visuals: article.visuals ?? [],
+          key_points: article.key_points ?? [],
         });
 
         if (insertError) {

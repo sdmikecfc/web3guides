@@ -31,6 +31,7 @@ export interface Guide {
   author?: string | null;
   content?: string | null;
   visuals?: ArticleVisual[] | null;
+  key_points?: string[] | null;
 }
 
 // ─── Subdomain config ────────────────────────────────────────────────────────

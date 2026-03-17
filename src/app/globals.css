@@ -553,6 +553,22 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
   font-size: 0.85em;
 }
 
+/* ── Key points grid inside hero ─── */
+.hero-key-points {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px 28px;
+}
+
+/* ── Article section block list bullets ─── */
+.article-body ul li::before {
+  content: "→";
+  color: currentColor;
+  opacity: 0.4;
+  margin-right: 8px;
+  font-size: 0.75em;
+}
+
 /* Hide right sidebar on tablet, show mobile related below */
 @media (max-width: 1100px) {
   .article-grid {
@@ -566,6 +582,7 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
 /* Collapse to single column on mobile */
 @media (max-width: 768px) {
   .article-page-wrap { padding: 20px 16px 60px; }
+  .hero-key-points { grid-template-columns: 1fr; }
 
   .article-grid {
     grid-template-columns: 1fr;
