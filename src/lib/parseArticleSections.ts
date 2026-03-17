@@ -91,17 +91,23 @@ const STAT_RE =
   /(\$[\d,.]+\s*[KMBTkmbt]?|\d+(?:[,.]\d+)*(?:\.\d+)?\s*(?:[KMBTkmbt%]|x|X|\s+(?:million|billion|trillion|thousand|hours|days|years|minutes|seconds))?)/g;
 
 function extractStats(text: string): StatItem[] {
+  // Strip fenced code blocks and inline code before extracting — prevents
+  // gas costs / bytecode values from producing nonsense infographic labels
+  const cleanText = text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`[^`]+`/g, " ");
+
   const results: StatItem[] = [];
   let m: RegExpExecArray | null;
   const re = new RegExp(STAT_RE.source, "g");
 
-  while ((m = re.exec(text)) !== null && results.length < 4) {
+  while ((m = re.exec(cleanText)) !== null && results.length < 4) {
     const value = m[1].trim();
     if (value.length < 2 || /^\d$/.test(value)) continue;
 
     const start = Math.max(0, m.index - 40);
-    const end = Math.min(text.length, m.index + m[0].length + 50);
-    const ctx = text
+    const end = Math.min(cleanText.length, m.index + m[0].length + 50);
+    const ctx = cleanText
       .slice(start, end)
       .replace(value, "")
       .replace(/[^a-zA-Z\s]/g, " ")

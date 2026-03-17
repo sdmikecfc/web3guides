@@ -7,7 +7,7 @@ import { VALID_SUBDOMAINS, SUBDOMAINS } from "@/lib/subdomains";
 const GENERATE_SECRET = process.env.GENERATE_SECRET ?? "";
 
 // Subdomains that represent difficulty levels, not content topics — skip during bulk generation
-const DIFFICULTY_SUBDOMAINS = new Set(["easy", "beginner", "medium", "advanced"]);
+const DIFFICULTY_SUBDOMAINS = new Set(["easy", "beginner", "medium", "advanced", "bigmike"]);
 
 // Subdomains that get articles generated
 const CONTENT_SUBDOMAINS = VALID_SUBDOMAINS.filter((s) => !DIFFICULTY_SUBDOMAINS.has(s));
@@ -165,6 +165,7 @@ GLOBAL FORMAT RULES:
 - Never write: "In conclusion", "It's worth noting", "As we can see", "Remember that", "It's important to understand", "Simply put", "At the end of the day"
 - No rhetorical questions used as filler. If you ask a question, answer it in the same breath.
 - Write like an expert who can also explain things — not like someone performing expertise
+- NO raw code blocks (no triple-backtick fenced code). Explain what code does in plain English — never paste it. If a specific value matters (e.g. a gas cost, a parameter), state it inline as a fact, not as code.
 
 Return ONLY valid JSON (no markdown fences, no extra text outside the JSON):
 {
