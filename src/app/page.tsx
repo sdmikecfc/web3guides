@@ -75,7 +75,7 @@ function SubdomainIcon({ sdKey, color }: { sdKey: string; color: string }) {
 }
 
 /* ─── URLs ───────────────────────────────────────────────────────────── */
-const DOMA_REGISTER = "https://app.doma.xyz/domain/web3guides.com/subdomains";
+const DOMA_REGISTER = "https://app.doma.xyz/domain/web3guides.com/#subdomains";
 const DOMA_HOME     = "https://doma.xyz";
 
 function subUrl(key: string) {

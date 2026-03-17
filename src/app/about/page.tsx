@@ -45,7 +45,7 @@ export default function AboutPage() {
         <h2 style={S.h2}>Powered by Doma Protocol</h2>
         <p style={S.p}>The subdomain infrastructure is powered by <a href="https://doma.xyz" target="_blank" rel="noopener noreferrer" style={{ color: "#ff6b35" }}>Doma Protocol</a> — an on-chain subdomain ownership platform. This means each web3guides.com subdomain can be owned, transferred, and built on by its creator, with no central authority able to revoke access.</p>
 
-        <p style={S.p}>Want your own subdomain on web3guides.com? <a href="https://app.doma.xyz/domain/web3guides.com/subdomains" target="_blank" rel="noopener noreferrer" style={{ color: "#ff6b35" }}>Claim one on Doma →</a></p>
+        <p style={S.p}>Want your own subdomain on web3guides.com? <a href="https://app.doma.xyz/domain/web3guides.com/#subdomains" target="_blank" rel="noopener noreferrer" style={{ color: "#ff6b35" }}>Claim one on Doma →</a></p>
 
         <h2 style={S.h2}>Disclaimer</h2>
         <p style={S.p}>Nothing on Web3 Guides constitutes financial, investment, legal, or tax advice. All content is for educational purposes only. See our full <a href="/disclaimer" style={{ color: "#ff6b35" }}>disclaimer</a>.</p>

@@ -29,7 +29,7 @@ export default function SubdomainCTA({ config }: Props) {
           </p>
         </div>
         <a
-          href="https://app.doma.xyz/domain/web3guides.com/subdomains"
+          href="https://app.doma.xyz/domain/web3guides.com/#subdomains"
           target="_blank"
           rel="noopener noreferrer"
           style={{
