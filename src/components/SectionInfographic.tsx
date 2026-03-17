@@ -11,6 +11,8 @@ type InfographicType = "keypoints" | "stats" | "process" | "concepts";
 
 function detectType(section: ParsedSection): InfographicType {
   const h = section.heading.toLowerCase();
+  // "Key Numbers" section is always stats — the AI writes it explicitly for infographics
+  if (/key numbers?|by the numbers?/i.test(h) && section.stats.length >= 2) return "stats";
   if (section.stats.length >= 2) return "stats";
   if (/how|step|guide|process|start|begin|set up|create|install|connect|transfer/i.test(h) && section.bullets.length >= 2)
     return "process";

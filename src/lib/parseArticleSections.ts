@@ -91,8 +91,15 @@ const STAT_RE =
   /(\$[\d,.]+\s*[KMBTkmbt]?|\d+(?:[,.]\d+)*(?:\.\d+)?\s*(?:[KMBTkmbt%]|x|X|\s+(?:million|billion|trillion|thousand|hours|days|years|minutes|seconds))?)/g;
 
 function extractStats(text: string): StatItem[] {
-  // Strip fenced code blocks and inline code before extracting — prevents
-  // gas costs / bytecode values from producing nonsense infographic labels
+  // Prefer explicit "**value** — label" format written by the AI for the Key Numbers section.
+  // This is unambiguous and produces clean, meaningful infographic data.
+  const explicit = Array.from(
+    text.matchAll(/^[-*]\s+\*\*([^*\n]{1,25})\*\*\s*[—–-]+\s*(.{4,80})/gm)
+  ).map((m) => ({ value: m[1].trim(), label: m[2].trim() }));
+  if (explicit.length >= 2) return explicit.slice(0, 4);
+
+  // Fall back: strip fenced code blocks and inline code before heuristic extraction —
+  // prevents gas costs / bytecode values from producing nonsense infographic labels
   const cleanText = text
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`[^`]+`/g, " ");

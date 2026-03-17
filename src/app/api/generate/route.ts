@@ -167,6 +167,18 @@ GLOBAL FORMAT RULES:
 - Write like an expert who can also explain things — not like someone performing expertise
 - NO raw code blocks (no triple-backtick fenced code). Explain what code does in plain English — never paste it. If a specific value matters (e.g. a gas cost, a parameter), state it inline as a fact, not as code.
 
+REQUIRED INFOGRAPHIC SECTION:
+Include exactly one ## section titled "Key Numbers" somewhere after the 2nd main section.
+It must contain exactly 4 bullets in this exact format — nothing else in that section:
+- **[value]** — [plain-English description, 4–6 words]
+Use only real, specific, verifiable numbers (TVL figures, percentages, times, counts, fees, etc.).
+Example of correct format:
+- **2.1M** — Active Ethereum validators today
+- **32 ETH** — Minimum required to solo stake
+- **~4%** — Average staking APY in 2025
+- **12 seconds** — Average block finality time
+Never invent numbers. If a real number doesn't exist, use a well-known approximation and note it plainly.
+
 Return ONLY valid JSON (no markdown fences, no extra text outside the JSON):
 {
   "title": "Specific title that states what the reader will understand after reading. Not generic, not clickbait.",
