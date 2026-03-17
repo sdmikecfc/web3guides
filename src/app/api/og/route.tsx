@@ -47,8 +47,6 @@ export async function GET(req: NextRequest) {
   const display = bannerText(title);
 
   const [r, g, b] = hexRgb(accent);
-  const accentDim = `rgba(${r},${g},${b},0.55)`;
-  const accentFaint = `rgba(${r},${g},${b},0.15)`;
 
   const fontSize = display.length > 42 ? 52 : display.length > 28 ? 64 : 76;
 
@@ -64,59 +62,86 @@ export async function GET(req: NextRequest) {
           background: `linear-gradient(140deg, #0d0d1f 0%, #111827 100%)`,
         }}
       >
-        {/* Accent glow blob — top left */}
+        {/* Glow blob — top left (solid semi-transparent circle, satori-safe) */}
         <div
           style={{
             position: "absolute",
-            top: -120,
-            left: -80,
-            width: 500,
-            height: 500,
+            top: -140,
+            left: -100,
+            width: 480,
+            height: 480,
             borderRadius: "50%",
-            background: `radial-gradient(circle, ${accent}55 0%, transparent 70%)`,
+            background: `rgba(${r},${g},${b},0.22)`,
             display: "flex",
           }}
         />
 
-        {/* Accent glow blob — bottom right */}
+        {/* Glow blob — bottom right */}
         <div
           style={{
             position: "absolute",
-            bottom: -140,
-            right: -60,
-            width: 420,
-            height: 420,
+            bottom: -160,
+            right: -80,
+            width: 400,
+            height: 400,
             borderRadius: "50%",
-            background: `radial-gradient(circle, ${accentDim} 0%, transparent 70%)`,
+            background: `rgba(${r},${g},${b},0.18)`,
             display: "flex",
           }}
         />
 
-        {/* Decorative ring — top right */}
+        {/* Decorative ring top-right: outer circle */}
         <div
           style={{
             position: "absolute",
-            top: 30,
-            right: 80,
-            width: 180,
-            height: 180,
+            top: 28,
+            right: 78,
+            width: 184,
+            height: 184,
             borderRadius: "50%",
-            border: `2px solid ${accentFaint}`,
+            background: `rgba(${r},${g},${b},0.12)`,
             display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
-        />
+        >
+          {/* inner cutout to fake a ring */}
+          <div
+            style={{
+              width: 160,
+              height: 160,
+              borderRadius: "50%",
+              background: "#0d0d1f",
+              display: "flex",
+            }}
+          />
+        </div>
+
+        {/* Smaller ring */}
         <div
           style={{
             position: "absolute",
-            top: 60,
-            right: 110,
-            width: 120,
-            height: 120,
+            top: 62,
+            right: 112,
+            width: 116,
+            height: 116,
             borderRadius: "50%",
-            border: `1px solid ${accentFaint}`,
+            background: `rgba(${r},${g},${b},0.08)`,
             display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
-        />
+        >
+          <div
+            style={{
+              width: 98,
+              height: 98,
+              borderRadius: "50%",
+              background: "#0d0d1f",
+              display: "flex",
+            }}
+          />
+        </div>
 
         {/* Thin accent line left edge */}
         <div
