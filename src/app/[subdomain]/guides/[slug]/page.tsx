@@ -8,7 +8,8 @@ import DifficultyBadge from "@/components/DifficultyBadge";
 import { ArticleClient } from "@/components/ArticleClient";
 import { extractToc } from "@/lib/extractToc";
 import { parseArticleSections } from "@/lib/parseArticleSections";
-import { SectionInfographic } from "@/components/SectionInfographic";
+import { ArticleVisualBlock } from "@/components/ArticleVisual";
+import type { ArticleVisual } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -39,33 +40,16 @@ export default async function GuidePage({ params }: Props) {
   const toc = guide.content ? extractToc(guide.content) : [];
   const hasContent = !!guide.content;
 
-  // Parse article into sections for section-level infographics
+  // Split content into sections (for heading rendering + visual injection)
   const { intro, sections } = hasContent
     ? parseArticleSections(guide.content!)
     : { intro: "", sections: [] };
 
-  // Pick which section indices get infographics (max 3, spaced apart)
-  // Map: sectionIndex → infographicIndex (0, 1, 2) so we know which variant to render
-  const infographicAt = new Map<number, number>();
-  let placed = 0;
-  for (let i = 0; i < sections.length && placed < 3; i++) {
-    const s = sections[i];
-    const hasData =
-      s.bullets.length >= 2 || s.stats.length >= 2 || s.concepts.length >= 3;
-    if (hasData && i > 0 && i % 2 === 1) {
-      infographicAt.set(i, placed);
-      placed++;
-    }
-  }
-  // Always try to show at least 1 infographic if there's any usable section
-  if (infographicAt.size === 0 && sections.length > 0) {
-    for (let i = 0; i < sections.length; i++) {
-      const s = sections[i];
-      if (s.bullets.length >= 2 || s.stats.length >= 2) {
-        infographicAt.set(i, 0);
-        break;
-      }
-    }
+  // Structured visuals authored by the AI — keyed by normalised heading for fast lookup
+  const rawVisuals: ArticleVisual[] = Array.isArray(guide.visuals) ? guide.visuals : [];
+  const visualsByHeading = new Map<string, ArticleVisual>();
+  for (const v of rawVisuals) {
+    visualsByHeading.set(v.after_section.toLowerCase().trim(), v);
   }
 
   return (
@@ -155,55 +139,54 @@ export default async function GuidePage({ params }: Props) {
                   <div dangerouslySetInnerHTML={{ __html: sectionToHtml(intro) }} />
                 )}
 
-                {/* Sections with infographics */}
-                {sections.map((section, i) => (
-                  <div key={section.id}>
-                    {/* Section heading */}
-                    {section.level === 2 ? (
-                      <h2
-                        id={section.id}
-                        style={{
-                          fontFamily: "'Bungee', cursive",
-                          fontWeight: 400,
-                          fontSize: "1.35rem",
-                          color: "#1a1a1a",
-                          margin: "40px 0 16px",
-                          scrollMarginTop: 100,
-                        }}
-                      >
-                        {section.heading}
-                      </h2>
-                    ) : (
-                      <h3
-                        id={section.id}
-                        style={{
-                          fontFamily: "'Bungee', cursive",
-                          fontWeight: 400,
-                          fontSize: "1.1rem",
-                          color: "#1a1a1a",
-                          margin: "28px 0 12px",
-                          scrollMarginTop: 100,
-                        }}
-                      >
-                        {section.heading}
-                      </h3>
-                    )}
+                {/* Sections with AI-authored visuals */}
+                {sections.map((section) => {
+                  const visual = visualsByHeading.get(section.heading.toLowerCase().trim());
+                  return (
+                    <div key={section.id}>
+                      {/* Section heading */}
+                      {section.level === 2 ? (
+                        <h2
+                          id={section.id}
+                          style={{
+                            fontFamily: "'Bungee', cursive",
+                            fontWeight: 400,
+                            fontSize: "1.35rem",
+                            color: "#1a1a1a",
+                            margin: "40px 0 16px",
+                            scrollMarginTop: 100,
+                          }}
+                        >
+                          {section.heading}
+                        </h2>
+                      ) : (
+                        <h3
+                          id={section.id}
+                          style={{
+                            fontFamily: "'Bungee', cursive",
+                            fontWeight: 400,
+                            fontSize: "1.1rem",
+                            color: "#1a1a1a",
+                            margin: "28px 0 12px",
+                            scrollMarginTop: 100,
+                          }}
+                        >
+                          {section.heading}
+                        </h3>
+                      )}
 
-                    {/* Section body */}
-                    <div dangerouslySetInnerHTML={{ __html: sectionToHtml(section.bodyLines.join("\n")) }} />
+                      {/* Section body */}
+                      <div dangerouslySetInnerHTML={{ __html: sectionToHtml(section.bodyLines.join("\n")) }} />
 
-                    {/* Infographic after this section */}
-                    {infographicAt.has(i) && (
-                      <div style={{ margin: "32px 0" }}>
-                        <SectionInfographic
-                          section={section}
-                          accentHex={cfg.accentHex}
-                          index={infographicAt.get(i) ?? 0}
-                        />
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      {/* AI-authored visual for this section */}
+                      {visual && (
+                        <div style={{ margin: "28px 0 36px" }}>
+                          <ArticleVisualBlock visual={visual} accentHex={cfg.accentHex} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </article>
             ) : (
               <div style={{ marginBottom: 40, borderRadius: 16, background: `${cfg.accentHex}08`, border: `1px solid ${cfg.accentHex}25`, padding: 24 }}>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { VALID_SUBDOMAINS, SUBDOMAINS } from "@/lib/subdomains";
+import type { ArticleVisual } from "@/types";
 
 // Only allow internal calls via a secret key
 const GENERATE_SECRET = process.env.GENERATE_SECRET ?? "";
@@ -21,6 +22,7 @@ interface GeneratedArticle {
   tags: string[];
   difficulty: Difficulty;
   read_time_minutes: number;
+  visuals: ArticleVisual[];
 }
 
 const DIFFICULTY_DISTRIBUTION: Difficulty[] = ["beginner", "intermediate", "advanced"];
@@ -167,17 +169,34 @@ GLOBAL FORMAT RULES:
 - Write like an expert who can also explain things — not like someone performing expertise
 - NO raw code blocks (no triple-backtick fenced code). Explain what code does in plain English — never paste it. If a specific value matters (e.g. a gas cost, a parameter), state it inline as a fact, not as code.
 
-REQUIRED INFOGRAPHIC SECTION:
-Include exactly one ## section titled "Key Numbers" somewhere after the 2nd main section.
-It must contain exactly 4 bullets in this exact format — nothing else in that section:
-- **[value]** — [plain-English description, 4–6 words]
-Use only real, specific, verifiable numbers (TVL figures, percentages, times, counts, fees, etc.).
-Example of correct format:
-- **2.1M** — Active Ethereum validators today
-- **32 ETH** — Minimum required to solo stake
-- **~4%** — Average staking APY in 2025
-- **12 seconds** — Average block finality time
-Never invent numbers. If a real number doesn't exist, use a well-known approximation and note it plainly.
+VISUALS — Required: include a "visuals" array in the JSON.
+Choose 2–4 visuals for the article. Place each after an ## section that genuinely suits that visual type.
+Pick the type that fits — do not force a type that doesn't fit. Use "after_section" with the EXACT ## heading text.
+
+Available types:
+
+"stats" — 4 meaningful numbers about the topic. Use when real data exists.
+  after_section: exact ## heading | items: [{value, label}] × 4
+  value = short ("2.1M", "~4%", "$38M", "12s"). label = 3–6 plain-English words.
+  Never invent numbers. Use approximations only if well-established and note with "~".
+
+"comparison" — Two things compared side by side (e.g. two protocols, two approaches).
+  after_section: exact ## heading
+  left: {label, points: string[]} | right: {label, points: string[]}
+  3–5 points each side. Parallel structure. Short, specific — no padding.
+
+"steps" — A process with a clear sequence. Use when order genuinely matters.
+  after_section: exact ## heading | heading: short title | items: [{step, detail}] × 3–6
+  step = short verb phrase ("Deposit ETH"). detail = one specific sentence with real info.
+
+"callout" — One important point that deserves to stand alone (warning, non-obvious insight, actionable tip).
+  after_section: exact ## heading | variant: "warning" | "insight" | "tip"
+  heading: short (4–7 words) | body: 1–3 sentences, accurate and specific.
+  Use "warning" for risks/gotchas. "insight" for non-obvious truths. "tip" for practical actions.
+
+"checklist" — What to verify, check, or prepare. Use for pre/post action checklists.
+  after_section: exact ## heading | heading: short title | items: string[] × 4–7
+  Each item is a short, specific, actionable statement.
 
 Return ONLY valid JSON (no markdown fences, no extra text outside the JSON):
 {
@@ -186,7 +205,8 @@ Return ONLY valid JSON (no markdown fences, no extra text outside the JSON):
   "content": "Full markdown article per all rules above",
   "tags": ["tag1", "tag2", "tag3", "tag4"],
   "difficulty": "${difficulty}",
-  "read_time_minutes": <integer 5–10>
+  "read_time_minutes": <integer 5–10>,
+  "visuals": []
 }`,
       },
     ],
@@ -301,6 +321,7 @@ export async function POST(req: NextRequest) {
           source_url: `https://${subdomain}.web3guides.com/guides/${finalSlug}`,
           author: "Web3Guides AI",
           published_at: new Date().toISOString(),
+          visuals: article.visuals ?? [],
         });
 
         if (insertError) {
