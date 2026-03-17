@@ -128,8 +128,17 @@ export default async function GuidePage({ params }: Props) {
               </div>
             )}
 
-            {/* Accent divider */}
-            <div style={{ marginBottom: 32, height: 2, background: `linear-gradient(to right, ${cfg.accentHex}60, transparent)`, borderRadius: 2 }} />
+            {/* Article banner */}
+            <div style={{ marginBottom: 32, borderRadius: 16, overflow: "hidden", width: "100%" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/api/og?sub=${encodeURIComponent(params.subdomain)}&t=${encodeURIComponent(guide.title)}`}
+                alt=""
+                width={1200}
+                height={420}
+                style={{ width: "100%", height: "auto", display: "block" }}
+              />
+            </div>
 
             {/* Article body */}
             {hasContent ? (

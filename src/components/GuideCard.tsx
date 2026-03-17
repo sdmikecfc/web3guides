@@ -30,8 +30,17 @@ export default function GuideCard({ guide, config, index = 0 }: Props) {
         animationDelay: `${Math.min(index * 55, 450)}ms`,
       }}
     >
-      {/* Gradient accent bar */}
-      <div style={{ height: 4, background: `linear-gradient(to right, ${config.accentHex}, ${config.accentHex}40)` }} />
+      {/* Article banner */}
+      <div style={{ width: "100%", height: 160, overflow: "hidden", flexShrink: 0 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`/api/og?sub=${encodeURIComponent(guide.subdomain)}&t=${encodeURIComponent(guide.title)}`}
+          alt=""
+          width={1200}
+          height={420}
+          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "left center", display: "block" }}
+        />
+      </div>
 
       <div style={{ padding: "20px 22px", flex: 1, display: "flex", flexDirection: "column" }}>
         {/* Meta row */}
