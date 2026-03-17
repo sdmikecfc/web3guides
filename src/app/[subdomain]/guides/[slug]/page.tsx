@@ -74,26 +74,15 @@ export default async function GuidePage({ params }: Props) {
           </span>
         </nav>
 
-        {/* 3-column layout */}
-        <div className="article-grid">
-
-          {/* Left: sticky TOC + progress bar */}
-          <div className="article-toc-col">
-            <ArticleClient accentHex={cfg.accentHex} toc={toc} />
-          </div>
-
-          {/* Center: article */}
-          <main className="article-main">
-
-            {/* ── HERO PANEL ────────────────────────────────────────── */}
-            <div style={{
-              borderRadius: 24,
-              overflow: "hidden",
-              background: "linear-gradient(140deg, #0d0d1f 0%, #111827 100%)",
-              position: "relative",
-              padding: "44px 52px 40px",
-              marginBottom: 24,
-            }}>
+        {/* ── HERO PANEL — full width, outside the 3-col grid ── */}
+        <div style={{
+          borderRadius: 24,
+          overflow: "hidden",
+          background: "linear-gradient(140deg, #0d0d1f 0%, #111827 100%)",
+          position: "relative",
+          padding: "52px 64px 48px",
+          marginBottom: 32,
+        }}>
               {/* Glow blob top-left */}
               <div style={{
                 position: "absolute", top: -100, left: -80,
@@ -216,7 +205,18 @@ export default async function GuidePage({ params }: Props) {
                   </div>
                 )}
               </div>
-            </div>
+        </div>
+
+        {/* ── 3-column layout — starts below the hero ── */}
+        <div className="article-grid">
+
+          {/* Left: sticky TOC + progress bar */}
+          <div className="article-toc-col">
+            <ArticleClient accentHex={cfg.accentHex} toc={toc} />
+          </div>
+
+          {/* Center: article body */}
+          <main className="article-main">
 
             {/* ── ARTICLE BODY ──────────────────────────────────────── */}
             {hasContent ? (

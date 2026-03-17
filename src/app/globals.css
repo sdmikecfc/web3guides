@@ -495,9 +495,9 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
    ARTICLE DASHBOARD LAYOUT
 ═══════════════════════════════════════════════════ */
 .article-page-wrap {
-  max-width: 1200px;
+  max-width: 1380px;
   margin: 0 auto;
-  padding: 32px 24px 80px;
+  padding: 32px 32px 80px;
 }
 
 .article-breadcrumb {
@@ -512,23 +512,21 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
 /* 3-column grid: TOC | article | sidebar */
 .article-grid {
   display: grid;
-  grid-template-columns: 220px 1fr 220px;
-  gap: 32px;
+  grid-template-columns: 240px 1fr 240px;
+  gap: 36px;
   align-items: start;
 }
 
 .article-toc-col {
-  /* Spacer column — the actual TOC is rendered by ArticleClient as a fixed aside */
-  width: 220px;
+  width: 240px;
 }
 
 .article-main {
   min-width: 0;
-  max-width: 720px;
 }
 
 .article-sidebar {
-  width: 220px;
+  width: 240px;
 }
 
 /* Article body typography */
@@ -557,7 +555,8 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
 .hero-key-points {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px 28px;
+  gap: 12px 48px;
+  max-width: 700px;
 }
 
 /* ── Article section block list bullets ─── */
@@ -570,10 +569,10 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
 }
 
 /* Hide right sidebar on tablet, show mobile related below */
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
   .article-grid {
-    grid-template-columns: 200px 1fr;
-    gap: 24px;
+    grid-template-columns: 220px 1fr;
+    gap: 28px;
   }
   .article-sidebar { display: none; }
   .article-related-mobile { display: block !important; }

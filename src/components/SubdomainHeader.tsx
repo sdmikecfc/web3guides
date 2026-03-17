@@ -23,7 +23,7 @@ export default function SubdomainHeader({ subdomain }: Props) {
 
   return (
     <header style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", borderBottom: "1px solid #e5e7eb" }}>
-      <div style={{ margin: "0 auto", maxWidth: 1280, display: "flex", height: 56, alignItems: "center", justifyContent: "space-between", gap: 16, padding: "0 24px" }}>
+      <div style={{ margin: "0 auto", maxWidth: 1380, display: "flex", height: 56, alignItems: "center", justifyContent: "space-between", gap: 16, padding: "0 24px" }}>
 
         {/* Left — brand + subdomain */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
