@@ -32,9 +32,15 @@ export default async function SubdomainPage({ params, searchParams }: Props) {
     return <JobsPage />;
   }
 
-  // Doma subdomain: custom page with referral
+  // Doma subdomain: custom page with referral + guides
   if (params.subdomain === "doma") {
-    return <DomaPage />;
+    const page = Math.max(1, parseInt(searchParams.page ?? "1", 10));
+    const offset = (page - 1) * PAGE_SIZE;
+    const [guides, total] = await Promise.all([
+      getGuidesBySubdomain("doma", { limit: PAGE_SIZE, offset }),
+      countGuides("doma"),
+    ]);
+    return <DomaPage guides={guides} cfg={cfg} />;
   }
 
   // Medium/Advanced: filter by difficulty across all subdomains
@@ -138,7 +144,7 @@ const DOMA_FEATURES = [
   { emoji: "🏗", title: "Build with Doma Forge", body: "Developers can tap $1M USDC in grants at doma.xyz/forge to build DomainFi applications on top of the Doma Protocol infrastructure." },
 ];
 
-function DomaPage() {
+function DomaPage({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: import("@/types").SubdomainConfig }) {
   return (
     <div style={{ background: "#fefbf6", minHeight: "100vh" }}>
       {/* Hero */}
@@ -214,6 +220,24 @@ function DomaPage() {
           </div>
         </div>
       </section>
+
+      {/* Guides */}
+      {guides.length > 0 && (
+        <section style={{ maxWidth: 1200, margin: "0 auto", padding: "64px 24px 48px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 12 }}>
+            <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "1.6rem", color: "#1a1a2e", margin: 0 }}>Doma Guides</h2>
+            <a href="/guides" style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", color: "#7c6aff", textDecoration: "none" }}>View all guides →</a>
+          </div>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", marginBottom: 40 }}>
+            Practical walkthroughs for building and trading on Doma Protocol.
+          </p>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {guides.map((guide, i) => (
+              <GuideCard key={guide.id} guide={guide} config={cfg} index={i} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* CTA */}
       <section style={{ maxWidth: 720, margin: "0 auto", padding: "80px 24px", textAlign: "center" }}>
