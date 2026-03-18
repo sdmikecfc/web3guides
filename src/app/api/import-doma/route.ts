@@ -58,7 +58,7 @@ function extractLinks(html: string, pattern: RegExp): string[] {
   while ((m = re.exec(html)) !== null) {
     if (pattern.test(m[1])) matches.push(m[1]);
   }
-  return [...new Set(matches)];
+  return Array.from(new Set(matches));
 }
 
 /** Extract first src from an img tag */
