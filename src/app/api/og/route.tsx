@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
 
   const fontSize = display.length > 42 ? 52 : display.length > 28 ? 64 : 76;
 
-  return new ImageResponse(
+  const imageResponse = new ImageResponse(
     (
       <div
         style={{
@@ -187,7 +187,14 @@ export async function GET(req: NextRequest) {
                 padding: "6px 16px",
               }}
             >
-              <span style={{ fontSize: 18 }}>{emoji}</span>
+              {/* No emoji — satori edge has no emoji font, causes silent failures */}
+              <div style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: accent,
+                display: "flex",
+              }} />
               <span
                 style={{
                   fontSize: 13,
@@ -261,4 +268,11 @@ export async function GET(req: NextRequest) {
     ),
     { width: W, height: H }
   );
+
+  // Twitter/X requires a publicly cacheable image — without this header it often fails to load
+  imageResponse.headers.set(
+    "Cache-Control",
+    "public, immutable, no-transform, max-age=86400"
+  );
+  return imageResponse;
 }
