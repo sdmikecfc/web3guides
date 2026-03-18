@@ -379,8 +379,38 @@ export default async function GuidePage({ params }: Props) {
               </div>
             )}
 
+            {/* Attribution banner — shown for articles syndicated from blog.doma.xyz */}
+            {guide.source_url?.startsWith("https://blog.doma.xyz") && (
+              <div style={{
+                marginTop: 32,
+                borderRadius: 16,
+                border: `1px solid ${cfg.accentHex}30`,
+                background: `${cfg.accentHex}08`,
+                padding: "20px 24px",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 16,
+              }}>
+                <span style={{ fontSize: "1.4rem", flexShrink: 0, marginTop: 2 }}>✍️</span>
+                <div>
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", fontWeight: 700, color: "#1a1a1a", margin: "0 0 4px 0" }}>
+                    Originally published by {guide.author ?? "Doma Foundation"}
+                  </p>
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.8rem", color: "#6b7280", margin: 0, lineHeight: 1.5 }}>
+                    This article was first published on the{" "}
+                    <a href={guide.source_url} target="_blank" rel="noopener noreferrer"
+                      style={{ color: cfg.accentHex, fontWeight: 600, textDecoration: "none" }}>
+                      Doma Blog
+                    </a>
+                    . Republished on web3guides.com with attribution to support the Doma community.
+                    All credit to the original authors.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Author */}
-            {guide.author && (
+            {guide.author && !guide.source_url?.startsWith("https://blog.doma.xyz") && (
               <p style={{ marginTop: 24, marginBottom: 12, fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#9ca3af" }}>
                 Written by <span style={{ color: "#374151", fontWeight: 700 }}>{guide.author}</span>
               </p>
@@ -437,6 +467,15 @@ export default async function GuidePage({ params }: Props) {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.78rem", color: "#9ca3af" }}>Author</span>
                       <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.78rem", fontWeight: 700, color: "#374151" }}>{guide.author}</span>
+                    </div>
+                  )}
+                  {guide.source_url?.startsWith("https://blog.doma.xyz") && (
+                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #f3f4f6" }}>
+                      <a href={guide.source_url} target="_blank" rel="noopener noreferrer"
+                        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none" }}>
+                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.78rem", color: "#9ca3af" }}>Original source</span>
+                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.78rem", fontWeight: 700, color: cfg.accentHex }}>Doma Blog ↗</span>
+                      </a>
                     </div>
                   )}
                 </div>
