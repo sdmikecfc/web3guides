@@ -86,7 +86,7 @@ export default async function GuidePage({ params }: Props) {
     description: guide.summary,
     url: canonical,
     datePublished: guide.published_at,
-    dateModified: guide.updated_at ?? guide.published_at,
+    dateModified: guide.published_at,
     author: { "@type": "Organization", name: "Web3Guides", url: `https://${rootDomain}` },
     publisher: {
       "@type": "Organization",
