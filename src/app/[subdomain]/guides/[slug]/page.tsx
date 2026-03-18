@@ -18,10 +18,28 @@ interface Props { params: { subdomain: string; slug: string }; }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const guide = await getGuide(params.subdomain, params.slug);
   if (!guide) return {};
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "web3guides.com";
+  const canonical = `https://${params.subdomain}.${rootDomain}/guides/${params.slug}`;
+  // Absolute URL on www — subdomain URLs are unreliable for social media crawlers
+  const ogImage = `https://www.${rootDomain}/api/og?sub=${encodeURIComponent(params.subdomain)}&t=${encodeURIComponent(guide.title)}`;
   return {
     title: guide.title,
     description: guide.summary,
-    openGraph: { title: guide.title, description: guide.summary, type: "article", publishedTime: guide.published_at },
+    alternates: { canonical },
+    openGraph: {
+      title: guide.title,
+      description: guide.summary,
+      type: "article",
+      publishedTime: guide.published_at,
+      url: canonical,
+      images: [{ url: ogImage, width: 1200, height: 420, alt: guide.title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: guide.title,
+      description: guide.summary,
+      images: [ogImage],
+    },
   };
 }
 
@@ -59,8 +77,42 @@ export default async function GuidePage({ params }: Props) {
   const h2SectionIds = sections.filter((s) => s.level === 2).map((s) => s.id);
   const [r, g, b] = hexRgb(cfg.accentHex);
 
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "web3guides.com";
+  const canonical = `https://${params.subdomain}.${rootDomain}/guides/${params.slug}`;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: guide.title,
+    description: guide.summary,
+    url: canonical,
+    datePublished: guide.published_at,
+    dateModified: guide.updated_at ?? guide.published_at,
+    author: { "@type": "Organization", name: "Web3Guides", url: `https://${rootDomain}` },
+    publisher: {
+      "@type": "Organization",
+      name: "Web3Guides",
+      url: `https://${rootDomain}`,
+      logo: { "@type": "ImageObject", url: `https://${rootDomain}/favicon.svg` },
+    },
+    image: `https://www.${rootDomain}/api/og?sub=${encodeURIComponent(params.subdomain)}&t=${encodeURIComponent(guide.title)}`,
+    keywords: (guide.tags ?? []).join(", "),
+    articleSection: cfg.label,
+    breadcrumb: {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Web3Guides", item: `https://${rootDomain}` },
+        { "@type": "ListItem", position: 2, name: cfg.label, item: `https://${params.subdomain}.${rootDomain}` },
+        { "@type": "ListItem", position: 3, name: guide.title, item: canonical },
+      ],
+    },
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="article-page-wrap">
 
         {/* Breadcrumb */}
