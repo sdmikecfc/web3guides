@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,6 +25,11 @@ export const metadata: Metadata = {
     title: "Web3Guides — Free Crypto & Web3 Education",
     description: "Free guides on Ethereum, Bitcoin, DeFi, Solana, Layer 2, staking, crypto security, and tax.",
     images: ["/og-image.png"],
+  },
+  // Paste your Google Search Console verification code below (HTML tag method)
+  // verification: { google: "paste-your-code-here" },
+  other: {
+    "coinzilla": "c5add955032d4717c663298e0e38e816",
   },
   robots: {
     index: true,
@@ -54,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head />
       <body className="antialiased">
         {children}
+        <Analytics />
       </body>
     </html>
   );
