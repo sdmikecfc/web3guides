@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getSubdomainConfig } from "@/lib/subdomains";
 import { getGuidesBySubdomain, countGuides, getGuidesByDifficulty, countGuidesByDifficulty } from "@/lib/guides";
 import GuideCard from "@/components/GuideCard";
@@ -9,6 +10,38 @@ import type { Difficulty } from "@/types";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "web3guides.com";
+
+export async function generateMetadata({ params }: { params: { subdomain: string } }): Promise<Metadata> {
+  const cfg = getSubdomainConfig(params.subdomain);
+  if (!cfg) return {};
+  const canonical = `https://${params.subdomain}.${ROOT}`;
+  const ogImage = `https://www.${ROOT}/api/og?sub=${encodeURIComponent(params.subdomain)}&t=${encodeURIComponent(cfg.label + " Guides")}`;
+  return {
+    title: `${cfg.label} Guides — Web3Guides`,
+    description: cfg.description,
+    alternates: {
+      canonical,
+      types: {
+        "application/rss+xml": `https://${ROOT}/api/rss/${params.subdomain}`,
+      },
+    },
+    openGraph: {
+      title: `${cfg.label} Guides — Free Web3 Education`,
+      description: cfg.description,
+      url: canonical,
+      type: "website",
+      images: [{ url: ogImage, width: 1200, height: 420, alt: `${cfg.label} Guides on Web3Guides` }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${cfg.label} Guides — Web3Guides`,
+      description: cfg.description,
+      images: [ogImage],
+    },
+  };
+}
 
 interface Props {
   params: { subdomain: string };
@@ -143,8 +176,19 @@ export default async function SubdomainPage({ params, searchParams }: Props) {
       </a>
     ) : null;
 
+  const collectionJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: `${cfg.label} Guides`,
+    description: cfg.description,
+    url: `https://${params.subdomain}.${ROOT}`,
+    numberOfItems: total,
+    publisher: { "@type": "Organization", name: "Web3Guides", url: `https://${ROOT}` },
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }} />
       <HeroSection config={cfg} total={total} />
 
       <section style={{ margin: "0 auto", width: "100%", maxWidth: 1280, padding: "0 24px 48px" }}>

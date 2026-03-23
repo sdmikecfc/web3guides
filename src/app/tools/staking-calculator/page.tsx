@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import StakingCalculator from "@/components/StakingCalculator";
+import ToolShell from "@/components/ToolShell";
 
 export const metadata: Metadata = {
   title: "Crypto Staking Rewards Calculator — ETH, SOL, ADA, DOT & More",
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
 
 export default function StakingCalculatorPage() {
   return (
-    <main style={{ minHeight: "100vh", background: "#0d0d1f", padding: "60px 24px 80px" }}>
+    <ToolShell toolLabel="Staking Calculator" accentColor="#0ea5e9">
+    <div style={{ padding: "60px 24px 80px" }}>
       <div style={{ maxWidth: 820, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <div style={{
@@ -37,6 +39,7 @@ export default function StakingCalculatorPage() {
           <p style={{ fontSize: 12, color: "#334155", marginTop: 24 }}>APY figures are estimates only. Staking returns are not guaranteed and assets can lose value. This is not financial advice.</p>
         </div>
       </div>
-    </main>
+    </div>
+    </ToolShell>
   );
 }

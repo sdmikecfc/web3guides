@@ -54,11 +54,53 @@ export const metadata: Metadata = {
   ),
 };
 
+const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "web3guides.com";
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `https://${ROOT}/#website`,
+      name: "Web3Guides",
+      url: `https://${ROOT}`,
+      description: "Free crypto and web3 education guides. No signup required.",
+      potentialAction: {
+        "@type": "SearchAction",
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: `https://${ROOT}/search?q={search_term_string}`,
+        },
+        "query-input": "required name=search_term_string",
+      },
+      inLanguage: "en-GB",
+    },
+    {
+      "@type": "Organization",
+      "@id": `https://${ROOT}/#organization`,
+      name: "Web3Guides",
+      url: `https://${ROOT}`,
+      logo: {
+        "@type": "ImageObject",
+        url: `https://${ROOT}/og-image.png`,
+        width: 1200,
+        height: 630,
+      },
+    },
+  ],
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
-      <head />
+      <head>
+        <link rel="alternate" type="application/rss+xml" title="Web3Guides — All Guides" href={`https://${ROOT}/api/rss`} />
+      </head>
       <body className="antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
         {children}
         <Analytics />
       </body>

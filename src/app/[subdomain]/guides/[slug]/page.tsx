@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSubdomainConfig } from "@/lib/subdomains";
-import { getGuide, getGuidesBySubdomain } from "@/lib/guides";
+import { getGuide, getGuidesBySubdomain, getRelatedGuides } from "@/lib/guides";
 import { formatDate } from "@/lib/utils";
 import DifficultyBadge from "@/components/DifficultyBadge";
 import { ArticleClient } from "@/components/ArticleClient";
@@ -10,6 +10,7 @@ import { extractToc } from "@/lib/extractToc";
 import { parseArticleSections } from "@/lib/parseArticleSections";
 import { ArticleVisualBlock } from "@/components/ArticleVisual";
 import ArticleAffiliatePanel from "@/components/ArticleAffiliatePanel";
+import RelatedArticles from "@/components/RelatedArticles";
 import type { ArticleVisual } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -54,14 +55,22 @@ export default async function GuidePage({ params }: Props) {
   const cfg = getSubdomainConfig(params.subdomain);
   if (!cfg) notFound();
 
-  const [guide, related] = await Promise.all([
+  const [guide, sidebarRelated] = await Promise.all([
     getGuide(params.subdomain, params.slug),
     getGuidesBySubdomain(params.subdomain, { limit: 6 }),
   ]);
 
   if (!guide) notFound();
 
-  const relatedGuides = related.filter((g) => g.slug !== guide.slug).slice(0, 4);
+  const relatedGuides = sidebarRelated.filter((g) => g.slug !== guide.slug).slice(0, 4);
+
+  // Tag-scored related articles for the below-body panel (fetched after guide is known)
+  const bottomRelated = await getRelatedGuides(
+    params.subdomain,
+    params.slug,
+    guide.tags ?? [],
+    3
+  );
   const toc = guide.content ? extractToc(guide.content) : [];
   const hasContent = !!guide.content;
 
@@ -361,6 +370,7 @@ export default async function GuidePage({ params }: Props) {
                   );
                 })}
               <ArticleAffiliatePanel tags={guide.tags ?? []} accentHex={cfg.accentHex} />
+              <RelatedArticles guides={bottomRelated} cfg={cfg} />
               </article>
             ) : (
               /* External guide fallback */

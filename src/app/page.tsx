@@ -120,12 +120,18 @@ function Nav() {
           <a href="#paths" style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", fontSize: "0.95rem", textDecoration: "none", transition: "color 0.2s" }}
              onMouseEnter={e => (e.currentTarget.style.color = "#1a1a1a")}
              onMouseLeave={e => (e.currentTarget.style.color = "#6b7280")}>Learn</a>
-          <a href="#articles" style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", fontSize: "0.95rem", textDecoration: "none", transition: "color 0.2s" }}
+          <a href="/tools" style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", fontSize: "0.95rem", textDecoration: "none", transition: "color 0.2s" }}
              onMouseEnter={e => (e.currentTarget.style.color = "#1a1a1a")}
-             onMouseLeave={e => (e.currentTarget.style.color = "#6b7280")}>Guides</a>
+             onMouseLeave={e => (e.currentTarget.style.color = "#6b7280")}>Tools</a>
           <a href="#subdomains" style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", fontSize: "0.95rem", textDecoration: "none", transition: "color 0.2s" }}
              onMouseEnter={e => (e.currentTarget.style.color = "#1a1a1a")}
              onMouseLeave={e => (e.currentTarget.style.color = "#6b7280")}>Subdomains</a>
+          <a href="/search" style={{ fontFamily: "'DM Sans', sans-serif", color: "#6b7280", fontSize: "0.95rem", textDecoration: "none", display: "flex", alignItems: "center", gap: 5, transition: "color 0.2s" }}
+             onMouseEnter={e => (e.currentTarget.style.color = "#1a1a1a")}
+             onMouseLeave={e => (e.currentTarget.style.color = "#6b7280")}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            Search
+          </a>
           <a href="#browse" className="lp-nav-cta"
              style={{ fontFamily: "'DM Sans', sans-serif", background: "linear-gradient(135deg, #ff6b35, #ec4899)", color: "#fff", padding: "10px 24px", borderRadius: 50, fontSize: "0.9rem", fontWeight: 600, textDecoration: "none", transition: "transform 0.2s, box-shadow 0.2s", boxShadow: "0 4px 15px rgba(255,107,53,0.3)" }}
              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 25px rgba(255,107,53,0.4)"; }}

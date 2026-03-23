@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import CryptoTaxCalculator from "@/components/CryptoTaxCalculator";
+import ToolShell from "@/components/ToolShell";
 
 export const metadata: Metadata = {
   title: "UK Crypto Tax Calculator 2024/25 — Free CGT Estimator",
@@ -14,10 +15,9 @@ export const metadata: Metadata = {
 
 export default function TaxCalculatorPage() {
   return (
-    <main
+    <ToolShell toolLabel="UK CGT Calculator" accentColor="#6366f1">
+    <div
       style={{
-        minHeight: "100vh",
-        background: "#0d0d1f",
         padding: "60px 24px 80px",
       }}
     >
@@ -132,6 +132,7 @@ export default function TaxCalculatorPage() {
           </p>
         </div>
       </div>
-    </main>
+    </div>
+    </ToolShell>
   );
 }

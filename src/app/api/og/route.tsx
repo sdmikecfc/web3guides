@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
 
   const fontSize = display.length > 42 ? 52 : display.length > 28 ? 64 : 76;
 
-  const imageResponse = new ImageResponse(
+  return new ImageResponse(
     (
       <div
         style={{
@@ -266,13 +266,12 @@ export async function GET(req: NextRequest) {
         </div>
       </div>
     ),
-    { width: W, height: H }
+    {
+      width: W,
+      height: H,
+      headers: {
+        "Cache-Control": "public, immutable, no-transform, max-age=86400",
+      },
+    }
   );
-
-  // Twitter/X requires a publicly cacheable image — without this header it often fails to load
-  imageResponse.headers.set(
-    "Cache-Control",
-    "public, immutable, no-transform, max-age=86400"
-  );
-  return imageResponse;
 }
