@@ -173,6 +173,14 @@ GLOBAL FORMAT RULES:
 - Write like an expert who can also explain things — not like someone performing expertise
 - NO raw code blocks (no triple-backtick fenced code). Explain what code does in plain English — never paste it. If a specific value matters (e.g. a gas cost, a parameter), state it inline as a fact, not as code.
 
+AFFILIATE LINKS — Weave in naturally where relevant. Use markdown link syntax. Never force them.
+- Crypto tax, CGT, HMRC, self-assessment → mention [Koinly](/go/koinly) as the tool UK investors use for HMRC-compliant reports. Also link to [our free CGT calculator](/tools/tax-calculator) if the topic is gains/losses.
+- Trading, altcoins, spot trading, finding tokens → mention [MEXC](/go/mexc) (1,500+ pairs, zero maker fees) or [KuCoin](/go/kucoin) (strong altcoin selection) as appropriate.
+- Swapping, bridging, no-KYC exchanges → mention [ChangeNOW](/go/changenow) as a non-custodial option.
+- Hardware wallets, cold storage, securing crypto → mention [Ledger](/go/ledger) as the go-to hardware wallet.
+- Staking, APY, yield → link to [our staking calculator](/tools/staking-calculator).
+- Insert at most 2 affiliate links per article. Place them contextually within a relevant section, not clustered at the end.
+
 VISUALS — Required: include a "visuals" array in the JSON.
 Choose 2–4 visuals for the article. Place each after an ## section that genuinely suits that visual type.
 Pick the type that fits — do not force a type that doesn't fit. Use "after_section" with the EXACT ## heading text.

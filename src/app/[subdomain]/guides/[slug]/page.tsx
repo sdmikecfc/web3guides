@@ -9,6 +9,7 @@ import { ArticleClient } from "@/components/ArticleClient";
 import { extractToc } from "@/lib/extractToc";
 import { parseArticleSections } from "@/lib/parseArticleSections";
 import { ArticleVisualBlock } from "@/components/ArticleVisual";
+import ArticleAffiliatePanel from "@/components/ArticleAffiliatePanel";
 import type { ArticleVisual } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -359,6 +360,7 @@ export default async function GuidePage({ params }: Props) {
                     </div>
                   );
                 })}
+              <ArticleAffiliatePanel tags={guide.tags ?? []} accentHex={cfg.accentHex} />
               </article>
             ) : (
               /* External guide fallback */
