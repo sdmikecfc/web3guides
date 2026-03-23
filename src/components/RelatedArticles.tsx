@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import type { Guide } from "@/types";
 import type { SubdomainConfig } from "@/types";

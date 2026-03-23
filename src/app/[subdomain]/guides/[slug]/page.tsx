@@ -81,7 +81,9 @@ export default async function GuidePage({ params }: Props) {
   const rawVisuals: ArticleVisual[] = Array.isArray(guide.visuals) ? guide.visuals : [];
   const visualsByHeading = new Map<string, ArticleVisual>();
   for (const v of rawVisuals) {
-    visualsByHeading.set(v.after_section.toLowerCase().trim(), v);
+    if (v.after_section) {
+      visualsByHeading.set(v.after_section.replace(/^#+\s*/, "").toLowerCase().trim(), v);
+    }
   }
 
   const h2SectionIds = sections.filter((s) => s.level === 2).map((s) => s.id);

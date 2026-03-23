@@ -1,10 +1,7 @@
-import type { Metadata } from "next";
+"use client";
+// metadata exported from layout — this page uses event handlers so must be a client component
 import ToolShell from "@/components/ToolShell";
 
-export const metadata: Metadata = {
-  title: "Free Crypto Tools — Web3Guides",
-  description: "Free tools for UK crypto investors. Calculate capital gains tax and staking rewards. No signup, no cost.",
-};
 
 const TOOLS = [
   {
