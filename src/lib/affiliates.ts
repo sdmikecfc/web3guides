@@ -48,7 +48,7 @@ export const AFFILIATE_LINKS: AffiliateLink[] = [
     label: "Koinly",
     description: "HMRC-compliant crypto tax reports. Supports 700+ exchanges and wallets.",
     category: "tax",
-    destination_url: "https://koinly.io/?via=YOURCODE",
+    destination_url: "https://koinly.io/?via=26589A66&utm_source=friend",
   },
   {
     slug: "ledger",
