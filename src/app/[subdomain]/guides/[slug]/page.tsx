@@ -590,15 +590,15 @@ function sectionToHtml(md: string, accent: string = "#6b7280"): string {
     }</code></pre>`
   );
 
-  // 2. Images — must come before link regex so ![ is not swallowed
+  // 2. Images — must come before link regex so ![ is not consumed by link pattern
   s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_, alt, src) =>
     `<figure style="margin:24px 0 20px"><img src="${src}" alt="${alt}" style="width:100%;border-radius:14px;display:block;border:1px solid #e5e7eb" loading="lazy" />${
       alt ? `<figcaption style="text-align:center;font-size:0.72rem;color:#9ca3af;margin-top:8px;font-family:'Space Mono',monospace">${alt}</figcaption>` : ""
     }</figure>`
   );
 
-  // 3. Inline links — affiliate links become real anchors
-  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, text, href) => {
+  // 3. Inline links — negative lookbehind for ! prevents re-matching already-processed images
+  s = s.replace(/(?<!!)\[([^\]]+)\]\(([^)\s]+)\)/g, (_, text, href) => {
     const ext = href.startsWith("http");
     return `<a href="${href}"${ext ? ' target="_blank" rel="noopener noreferrer sponsored"' : ""} style="color:${accent};font-weight:600;text-decoration:underline;text-underline-offset:2px;text-decoration-color:${accent}60">${text}</a>`;
   });
@@ -608,30 +608,41 @@ function sectionToHtml(md: string, accent: string = "#6b7280"): string {
     `<h3 id="${slugId(t)}" style="font-family:'Bungee',cursive;font-weight:400;font-size:1.05rem;color:#374151;margin:24px 0 10px;scroll-margin-top:100px;padding-left:14px;border-left:3px solid ${accent}40">${t}</h3>`
   );
 
-  // 5. Bold → italic → inline code (bold first so ** isn't caught by *)
+  // 5. Bold → italic → inline code (bold first so ** isn't accidentally caught by single-* rule)
   s = s
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/`([^`\n]+)`/g, `<code style="font-family:'Space Mono',monospace;font-size:0.82em;background:#f0ece4;border-radius:4px;padding:2px 6px;color:#374151">$1</code>`);
 
-  // 6. Blockquotes → pull-quote style
+  // 6. Blockquotes → styled pull-quotes
   s = s.replace(/^> (.+)$/gm, (_, text) =>
     `<blockquote style="border-left:4px solid ${accent};background:${accent}0d;margin:20px 0;padding:14px 22px;border-radius:0 14px 14px 0;font-style:italic;color:#374151;font-size:1.02rem;line-height:1.65">${text}</blockquote>`
   );
 
-  // 7. Unordered list items
-  s = s.replace(/^[*-] (.+)$/gm,
-    `<li style="margin:7px 0;padding-left:4px;display:flex;align-items:flex-start;gap:8px"><span style="color:${accent};flex-shrink:0;margin-top:2px">›</span><span>$1</span></li>`
-  );
-  // Wrap consecutive UL items
-  s = s.replace(/((?:<li style="margin:7px 0;padding[^>]*>.*?<\/li>\n?)+)/g, (match) =>
-    `<ul style="padding-left:0;margin:16px 0;list-style:none">${match}</ul>`
-  );
+  // 7. Unordered list items — mark with a unique sentinel class
+  const LI = `<li class="md-li" style="margin:7px 0;display:flex;align-items:flex-start;gap:8px"><span style="color:${accent};flex-shrink:0;margin-top:2px">›</span><span>`;
+  s = s.replace(/^[*-] (.+)$/gm, (_, item) => `${LI}${item}</span></li>`);
 
-  // 8. Paragraph breaks
+  // 8. Wrap consecutive <li class="md-li"> lines in <ul> — O(n) line-split, no backtracking
+  {
+    const lines = s.split("\n");
+    const out: string[] = [];
+    let inList = false;
+    for (const line of lines) {
+      const isLi = line.startsWith(`<li class="md-li"`);
+      if (isLi && !inList) { out.push(`<ul style="padding-left:0;margin:16px 0;list-style:none">`); inList = true; }
+      if (!isLi && inList)  { out.push(`</ul>`); inList = false; }
+      out.push(line);
+    }
+    if (inList) out.push(`</ul>`);
+    s = out.join("\n");
+  }
+
+  // 9. Paragraph breaks — exclude ALL block-level tags from being double-wrapped
+  //    Exclusion covers: h(eadings), u(l), o(l), l(i), p(re), b(lockquote), f(igure), d(iv)
   s = s
     .replace(/\n{2,}/g, `</p><p style="margin:16px 0">`)
-    .replace(/^(?!<[hHuUoOpPbBfFpP])(.+)$/gm, `<p style="margin:16px 0">$1</p>`)
+    .replace(/^(?!<[hHuUoOlLpPbBfFdD])(.+)$/gm, `<p style="margin:16px 0">$1</p>`)
     .replace(/<p style="margin:16px 0"><\/p>/g, "");
 
   return s;
