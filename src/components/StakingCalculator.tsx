@@ -110,7 +110,7 @@ export default function StakingCalculator() {
         <div>
           <label style={labelStyle}>Amount ({asset.symbol})</label>
           <input
-            type="number" min="0" step="any"
+            type="text" inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             style={inputStyle}
@@ -120,7 +120,7 @@ export default function StakingCalculator() {
         <div>
           <label style={labelStyle}>Price per {asset.symbol} (£ optional)</label>
           <input
-            type="number" min="0" step="any"
+            type="text" inputMode="decimal"
             value={priceGbp}
             onChange={(e) => setPriceGbp(e.target.value)}
             style={inputStyle}
@@ -130,7 +130,7 @@ export default function StakingCalculator() {
         <div>
           <label style={labelStyle}>Custom APY % (optional)</label>
           <input
-            type="number" min="0" step="0.1"
+            type="text" inputMode="decimal"
             value={customApy}
             onChange={(e) => setCustomApy(e.target.value)}
             style={inputStyle}

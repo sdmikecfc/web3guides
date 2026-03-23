@@ -194,27 +194,24 @@ export default function CryptoTaxCalculator() {
             />
             <input
               placeholder="0.00"
-              type="number"
-              min="0"
-              step="any"
+              type="text"
+              inputMode="decimal"
               value={t.buyPrice}
               onChange={(e) => updateTrade(t.id, "buyPrice", e.target.value)}
               style={{ ...inputStyle, marginLeft: 8 }}
             />
             <input
               placeholder="0.00"
-              type="number"
-              min="0"
-              step="any"
+              type="text"
+              inputMode="decimal"
               value={t.sellPrice}
               onChange={(e) => updateTrade(t.id, "sellPrice", e.target.value)}
               style={{ ...inputStyle, marginLeft: 8 }}
             />
             <input
               placeholder="0"
-              type="number"
-              min="0"
-              step="any"
+              type="text"
+              inputMode="decimal"
               value={t.quantity}
               onChange={(e) => updateTrade(t.id, "quantity", e.target.value)}
               style={{ ...inputStyle, marginLeft: 8 }}
