@@ -93,11 +93,62 @@ export default async function SubdomainPage({ params, searchParams }: Props) {
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
+  // Tool banners for specific subdomains
+  const toolBanner =
+    params.subdomain === "tax" ? (
+      <a
+        href="/tools/tax-calculator"
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          background: "linear-gradient(135deg, #1a0a14, #2d0a24)",
+          border: "1px solid rgba(236,72,153,0.25)", borderRadius: 16,
+          padding: "20px 28px", marginBottom: 28, textDecoration: "none", gap: 20,
+          boxShadow: "0 4px 30px rgba(236,72,153,0.08)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <span style={{ fontSize: 32 }}>🇬🇧</span>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#ec4899", textTransform: "uppercase" as const, letterSpacing: 1, marginBottom: 3 }}>Free Tool</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>UK Crypto CGT Calculator</div>
+            <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>Estimate your 2024/25 capital gains tax in seconds. No signup.</div>
+          </div>
+        </div>
+        <span style={{ flexShrink: 0, background: "#ec4899", color: "#fff", fontWeight: 700, fontSize: 14, padding: "10px 22px", borderRadius: 10 }}>
+          Calculate →
+        </span>
+      </a>
+    ) : params.subdomain === "staking" ? (
+      <a
+        href="/tools/staking-calculator"
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          background: "linear-gradient(135deg, #030f1a, #0c2a3e)",
+          border: "1px solid rgba(14,165,233,0.25)", borderRadius: 16,
+          padding: "20px 28px", marginBottom: 28, textDecoration: "none", gap: 20,
+          boxShadow: "0 4px 30px rgba(14,165,233,0.08)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <span style={{ fontSize: 32 }}>📈</span>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#0ea5e9", textTransform: "uppercase" as const, letterSpacing: 1, marginBottom: 3 }}>Free Tool</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>Staking Rewards Calculator</div>
+            <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>ETH, SOL, ADA, DOT, MATIC and more. Project your returns over 5 years.</div>
+          </div>
+        </div>
+        <span style={{ flexShrink: 0, background: "#0ea5e9", color: "#fff", fontWeight: 700, fontSize: 14, padding: "10px 22px", borderRadius: 10 }}>
+          Calculate →
+        </span>
+      </a>
+    ) : null;
+
   return (
     <>
       <HeroSection config={cfg} total={total} />
 
       <section style={{ margin: "0 auto", width: "100%", maxWidth: 1280, padding: "0 24px 48px" }}>
+        {toolBanner}
         <FilterBar
           currentDifficulty={searchParams.difficulty}
           currentTag={searchParams.tag}

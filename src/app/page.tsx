@@ -692,6 +692,124 @@ function SubdomainSection() {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
+   FREE TOOLS
+════════════════════════════════════════════════════════════════════════ */
+function FreeTools() {
+  const tools = [
+    {
+      icon: "🇬🇧",
+      label: "Free Tool",
+      labelColor: "#22c55e",
+      labelBg: "rgba(34,197,94,0.12)",
+      title: "UK Crypto Tax Calculator",
+      body: "Estimate your capital gains tax liability for 2024/25. Enter your disposals, pick your income band, and get an instant CGT figure. No signup.",
+      accent: "#ec4899",
+      accentBg: "linear-gradient(135deg, #1a0a14, #2d0a24)",
+      border: "rgba(236,72,153,0.2)",
+      href: "/tools/tax-calculator",
+      cta: "Calculate My Tax →",
+      stats: [
+        { value: "£3,000", label: "Annual exempt amount" },
+        { value: "18%", label: "Basic rate CGT 2024/25" },
+        { value: "24%", label: "Higher rate CGT 2024/25" },
+      ],
+    },
+    {
+      icon: "📈",
+      label: "Free Tool",
+      labelColor: "#0ea5e9",
+      labelBg: "rgba(14,165,233,0.12)",
+      title: "Staking Rewards Calculator",
+      body: "See how much you could earn staking ETH, SOL, ADA, DOT, MATIC and more. Compare timeframes, toggle compounding, and view projected GBP returns.",
+      accent: "#0ea5e9",
+      accentBg: "linear-gradient(135deg, #030f1a, #0c2a3e)",
+      border: "rgba(14,165,233,0.2)",
+      href: "/tools/staking-calculator",
+      cta: "Calculate Staking Rewards →",
+      stats: [
+        { value: "8", label: "Assets supported" },
+        { value: "16%", label: "Top APY (ATOM)" },
+        { value: "5yr", label: "Max projection" },
+      ],
+    },
+  ];
+
+  return (
+    <section
+      className="lp-section-pad"
+      style={{ background: "#080812", borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+    >
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        {/* heading */}
+        <Reveal style={{ textAlign: "center", marginBottom: 48 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 20, padding: "4px 14px", marginBottom: 16 }}>
+            <span style={{ fontSize: 14 }}>🔧</span>
+            <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, fontWeight: 700, color: "#818cf8", letterSpacing: 1, textTransform: "uppercase" }}>Free Tools</span>
+          </div>
+          <h2 style={{ fontFamily: "'Bungee',cursive", fontSize: "clamp(1.6rem,3.5vw,2.4rem)", color: "#fff", margin: "0 0 12px" }}>
+            Tools Built for Crypto Investors
+          </h2>
+          <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: "1rem", color: "#64748b", maxWidth: 480, margin: "0 auto" }}>
+            No signup. No paywalls. Just useful calculators.
+          </p>
+        </Reveal>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(460px, 1fr))", gap: 24 }}>
+          {tools.map((t) => (
+            <Reveal key={t.href}>
+              <a
+                href={t.href}
+                style={{
+                  display: "block",
+                  background: t.accentBg,
+                  border: `1px solid ${t.border}`,
+                  borderRadius: 20,
+                  padding: "32px 32px 28px",
+                  textDecoration: "none",
+                  transition: "transform 0.2s, box-shadow 0.2s",
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)"; (e.currentTarget as HTMLElement).style.boxShadow = `0 20px 60px ${t.border}`; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
+              >
+                {/* Glow orb */}
+                <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: "50%", background: `${t.accent}18`, filter: "blur(40px)", pointerEvents: "none" }} />
+
+                {/* Label + icon */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                  <span style={{ fontSize: 28 }}>{t.icon}</span>
+                  <span style={{ background: t.labelBg, color: t.labelColor, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, letterSpacing: 0.5, textTransform: "uppercase" as const, fontFamily: "'Space Mono',monospace" }}>
+                    {t.label}
+                  </span>
+                </div>
+
+                <h3 style={{ fontFamily: "'Bungee',cursive", fontSize: "1.35rem", color: "#fff", margin: "0 0 12px", lineHeight: 1.2 }}>{t.title}</h3>
+                <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: "0.95rem", color: "#94a3b8", lineHeight: 1.7, margin: "0 0 24px" }}>{t.body}</p>
+
+                {/* Mini stats */}
+                <div style={{ display: "flex", gap: 16, marginBottom: 24 }}>
+                  {t.stats.map((s) => (
+                    <div key={s.label} style={{ borderLeft: `2px solid ${t.accent}40`, paddingLeft: 10 }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: t.accent, fontFamily: "'Space Mono',monospace" }}>{s.value}</div>
+                      <div style={{ fontSize: 11, color: "#475569" }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <span style={{ fontFamily: "'DM Sans',sans-serif", fontSize: "0.9rem", fontWeight: 700, color: t.accent }}>
+                  {t.cta}
+                </span>
+              </a>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
    CTA BANNER
 ════════════════════════════════════════════════════════════════════════ */
 function CTABanner() {
@@ -843,6 +961,7 @@ export default function HomePage() {
       <Articles />
       <SubdomainSection />
       <DomaSection />
+      <FreeTools />
       <CTABanner />
       <Footer />
     </div>
