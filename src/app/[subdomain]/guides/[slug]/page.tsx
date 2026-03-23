@@ -86,6 +86,17 @@ export default async function GuidePage({ params }: Props) {
     }
   }
 
+  // Premium detection — flagship articles have key_points or "flagship" tag
+  const isPremium = !!(
+    (guide.key_points && guide.key_points.length >= 4) ||
+    guide.tags?.includes("flagship")
+  );
+
+  // First stats visual for the "at a glance" bar
+  const statsVisual = rawVisuals.find((v) => v.type === "stats") as
+    | { type: "stats"; after_section: string; items: { value: string; label: string }[] }
+    | undefined;
+
   const h2SectionIds = sections.filter((s) => s.level === 2).map((s) => s.id);
   const [r, g, b] = hexRgb(cfg.accentHex);
 
@@ -271,6 +282,34 @@ export default async function GuidePage({ params }: Props) {
               </div>
         </div>
 
+        {/* ── Premium: stats at a glance bar ── */}
+        {isPremium && statsVisual && statsVisual.items?.length > 0 && (
+          <div style={{
+            display: "flex", flexWrap: "wrap", gap: 2,
+            marginBottom: 24, borderRadius: 16, overflow: "hidden",
+            border: `1px solid ${cfg.accentHex}25`,
+          }}>
+            {statsVisual.items.slice(0, 4).map((item, i) => (
+              <div key={i} style={{
+                flex: "1 1 120px",
+                background: i % 2 === 0 ? `${cfg.accentHex}08` : `${cfg.accentHex}04`,
+                padding: "18px 20px",
+                textAlign: "center",
+              }}>
+                <div style={{
+                  fontFamily: "'Bungee', cursive", fontWeight: 400,
+                  fontSize: "1.5rem", color: cfg.accentHex, lineHeight: 1,
+                }}>{item.value}</div>
+                <div style={{
+                  fontFamily: "'Space Mono', monospace", fontSize: "0.6rem",
+                  color: "#6b7280", marginTop: 6, letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                }}>{item.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* ── 3-column layout — starts below the hero ── */}
         <div className="article-grid">
 
@@ -296,7 +335,7 @@ export default async function GuidePage({ params }: Props) {
                     marginBottom: 16,
                   }}>
                     <div className="article-body" style={{ margin: 0 }}
-                      dangerouslySetInnerHTML={{ __html: sectionToHtml(intro) }} />
+                      dangerouslySetInnerHTML={{ __html: sectionToHtml(intro, cfg.accentHex) }} />
                   </div>
                 )}
 
@@ -309,8 +348,13 @@ export default async function GuidePage({ params }: Props) {
                   if (isH2) {
                     return (
                       <div key={section.id} style={{
-                        background: "#fafafa",
-                        border: "1px solid #f0ece4",
+                        background: isPremium
+                          ? `linear-gradient(145deg, ${cfg.accentHex}06 0%, #fafafa 100%)`
+                          : "#fafafa",
+                        border: isPremium
+                          ? `1px solid ${cfg.accentHex}30`
+                          : "1px solid #f0ece4",
+                        borderLeft: isPremium ? `3px solid ${cfg.accentHex}` : undefined,
                         borderRadius: 20,
                         padding: "30px 36px",
                         marginBottom: 16,
@@ -339,7 +383,7 @@ export default async function GuidePage({ params }: Props) {
 
                         {/* Body */}
                         <div className="article-body" style={{ margin: 0, marginBottom: visual ? 24 : 0 }}
-                          dangerouslySetInnerHTML={{ __html: sectionToHtml(section.bodyLines.join("\n")) }} />
+                          dangerouslySetInnerHTML={{ __html: sectionToHtml(section.bodyLines.join("\n"), cfg.accentHex) }} />
 
                         {/* AI-authored visual */}
                         {visual && (
@@ -362,7 +406,7 @@ export default async function GuidePage({ params }: Props) {
                         {section.heading}
                       </h3>
                       <div className="article-body" style={{ margin: 0, paddingLeft: 17 }}
-                        dangerouslySetInnerHTML={{ __html: sectionToHtml(section.bodyLines.join("\n")) }} />
+                        dangerouslySetInnerHTML={{ __html: sectionToHtml(section.bodyLines.join("\n"), cfg.accentHex) }} />
                       {visual && (
                         <div style={{ marginTop: 20, paddingLeft: 17 }}>
                           <ArticleVisualBlock visual={visual} accentHex={cfg.accentHex} />
@@ -535,18 +579,62 @@ export default async function GuidePage({ params }: Props) {
   );
 }
 
-/** Convert a markdown section body (no headings) to HTML */
-function sectionToHtml(md: string): string {
-  return md
-    .replace(/^### (.+)$/gm, (_, t) => `<h3 id="${slugId(t)}" style="font-family:'Bungee',cursive;font-weight:400;font-size:1.05rem;color:#374151;margin:24px 0 10px;scroll-margin-top:100px;padding-left:14px;border-left:3px solid rgba(0,0,0,0.1)">${t}</h3>`)
+/** Convert markdown to HTML — supports links, images, code blocks, blockquotes, lists */
+function sectionToHtml(md: string, accent: string = "#6b7280"): string {
+  let s = md;
+
+  // 1. Fenced code blocks — protect before any other processing
+  s = s.replace(/```[\w]*\n([\s\S]*?)```/g, (_, code) =>
+    `<pre style="background:#1a1a2e;border-radius:10px;padding:18px 22px;overflow-x:auto;margin:20px 0;border:1px solid rgba(255,255,255,0.1)"><code style="font-family:'Space Mono',monospace;font-size:0.8em;color:#e2e8f0;line-height:1.7;white-space:pre">${
+      code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    }</code></pre>`
+  );
+
+  // 2. Images — must come before link regex so ![ is not swallowed
+  s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_, alt, src) =>
+    `<figure style="margin:24px 0 20px"><img src="${src}" alt="${alt}" style="width:100%;border-radius:14px;display:block;border:1px solid #e5e7eb" loading="lazy" />${
+      alt ? `<figcaption style="text-align:center;font-size:0.72rem;color:#9ca3af;margin-top:8px;font-family:'Space Mono',monospace">${alt}</figcaption>` : ""
+    }</figure>`
+  );
+
+  // 3. Inline links — affiliate links become real anchors
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, text, href) => {
+    const ext = href.startsWith("http");
+    return `<a href="${href}"${ext ? ' target="_blank" rel="noopener noreferrer sponsored"' : ""} style="color:${accent};font-weight:600;text-decoration:underline;text-underline-offset:2px;text-decoration-color:${accent}60">${text}</a>`;
+  });
+
+  // 4. H3 sub-headings
+  s = s.replace(/^### (.+)$/gm, (_, t) =>
+    `<h3 id="${slugId(t)}" style="font-family:'Bungee',cursive;font-weight:400;font-size:1.05rem;color:#374151;margin:24px 0 10px;scroll-margin-top:100px;padding-left:14px;border-left:3px solid ${accent}40">${t}</h3>`
+  );
+
+  // 5. Bold → italic → inline code (bold first so ** isn't caught by *)
+  s = s
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`(.+?)`/g, "<code style=\"font-family:'Space Mono',monospace;font-size:0.82em;background:#f0ece4;border-radius:4px;padding:2px 6px;color:#374151\">$1</code>")
-    .replace(/^- (.+)$/gm, "<li style=\"margin:7px 0;padding-left:4px\">$1</li>")
-    .replace(/(<li[^>]*>[\s\S]*?<\/li>\n?)+/g, (match) => `<ul style="padding-left:20px;margin:16px 0;list-style:none">${match}</ul>`)
-    .replace(/\n{2,}/g, "</p><p style=\"margin:16px 0\">")
-    .replace(/^(?!<[hHuUlLpP])(.+)$/gm, "<p style=\"margin:16px 0\">$1</p>")
+    .replace(/`([^`\n]+)`/g, `<code style="font-family:'Space Mono',monospace;font-size:0.82em;background:#f0ece4;border-radius:4px;padding:2px 6px;color:#374151">$1</code>`);
+
+  // 6. Blockquotes → pull-quote style
+  s = s.replace(/^> (.+)$/gm, (_, text) =>
+    `<blockquote style="border-left:4px solid ${accent};background:${accent}0d;margin:20px 0;padding:14px 22px;border-radius:0 14px 14px 0;font-style:italic;color:#374151;font-size:1.02rem;line-height:1.65">${text}</blockquote>`
+  );
+
+  // 7. Unordered list items
+  s = s.replace(/^[*-] (.+)$/gm,
+    `<li style="margin:7px 0;padding-left:4px;display:flex;align-items:flex-start;gap:8px"><span style="color:${accent};flex-shrink:0;margin-top:2px">›</span><span>$1</span></li>`
+  );
+  // Wrap consecutive UL items
+  s = s.replace(/((?:<li style="margin:7px 0;padding[^>]*>.*?<\/li>\n?)+)/g, (match) =>
+    `<ul style="padding-left:0;margin:16px 0;list-style:none">${match}</ul>`
+  );
+
+  // 8. Paragraph breaks
+  s = s
+    .replace(/\n{2,}/g, `</p><p style="margin:16px 0">`)
+    .replace(/^(?!<[hHuUoOpPbBfFpP])(.+)$/gm, `<p style="margin:16px 0">$1</p>`)
     .replace(/<p style="margin:16px 0"><\/p>/g, "");
+
+  return s;
 }
 
 function slugId(t: string) {
