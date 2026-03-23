@@ -9,11 +9,18 @@ export interface AffiliateLink {
 
 export const AFFILIATE_LINKS: AffiliateLink[] = [
   {
-    slug: "bybit",
-    label: "Bybit",
-    description: "Trade crypto with up to 100x leverage. Top-tier derivatives exchange.",
+    slug: "mexc",
+    label: "MEXC",
+    description: "1,500+ trading pairs, zero maker fees, and instant signup.",
     category: "exchange",
-    destination_url: "https://www.bybit.com/invite?ref=YOURCODE",
+    destination_url: "https://promote.mexc.com/r/VA9alYyjkL",
+  },
+  {
+    slug: "kucoin",
+    label: "KuCoin",
+    description: "Trade 700+ altcoins with low fees. Great for finding early gems.",
+    category: "exchange",
+    destination_url: "https://www.kucoin.com/r/rf/QBSY7JZL",
   },
   {
     slug: "okx",
@@ -21,13 +28,6 @@ export const AFFILIATE_LINKS: AffiliateLink[] = [
     description: "One of the world's largest crypto exchanges with a built-in Web3 wallet.",
     category: "exchange",
     destination_url: "https://www.okx.com/join/YOURCODE",
-  },
-  {
-    slug: "mexc",
-    label: "MEXC",
-    description: "1,500+ trading pairs, zero maker fees, and instant signup.",
-    category: "exchange",
-    destination_url: "https://www.mexc.com/register?inviteCode=YOURCODE",
   },
   {
     slug: "kraken",
@@ -41,7 +41,7 @@ export const AFFILIATE_LINKS: AffiliateLink[] = [
     label: "ChangeNOW",
     description: "Non-custodial instant swaps. No sign-up, no KYC for small amounts.",
     category: "swap",
-    destination_url: "https://changenow.io/?link_id=YOURCODE",
+    destination_url: "https://changenow.app.link/referral?link_id=c1348cadc272f5",
   },
   {
     slug: "koinly",
@@ -55,7 +55,7 @@ export const AFFILIATE_LINKS: AffiliateLink[] = [
     label: "Ledger",
     description: "Hardware wallet. Keep your private keys offline and your crypto safe.",
     category: "hardware",
-    destination_url: "https://shop.ledger.com/?r=YOURCODE",
+    destination_url: "https://shop.ledger.com/?r=d1168e978b3a",
   },
 ];
 
