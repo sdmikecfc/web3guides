@@ -22,8 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!guide) return {};
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "web3guides.com";
   const canonical = `https://${params.subdomain}.${rootDomain}/guides/${params.slug}`;
-  // Absolute URL on www — subdomain URLs are unreliable for social media crawlers
-  const ogImage = `https://www.${rootDomain}/api/og?sub=${encodeURIComponent(params.subdomain)}&t=${encodeURIComponent(guide.title)}`;
+  const ogImage = `https://${rootDomain}/api/og?sub=${encodeURIComponent(params.subdomain)}&t=${encodeURIComponent(guide.title)}`;
   return {
     title: guide.title,
     description: guide.summary,
@@ -34,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "article",
       publishedTime: guide.published_at,
       url: canonical,
-      images: [{ url: ogImage, width: 1200, height: 420, alt: guide.title }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: guide.title }],
     },
     twitter: {
       card: "summary_large_image",

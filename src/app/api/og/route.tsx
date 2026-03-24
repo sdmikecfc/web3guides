@@ -14,7 +14,7 @@ import { getSubdomainConfig } from "@/lib/subdomains";
 export const runtime = "edge";
 
 const W = 1200;
-const H = 420;
+const H = 630;
 
 /** Smart truncation: strip subtitle after colon, or truncate at word boundary */
 function bannerText(title: string): string {
@@ -162,7 +162,7 @@ export async function GET(req: NextRequest) {
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
-            padding: "40px 72px 36px 60px",
+            padding: "52px 72px 48px 60px",
             width: "100%",
             height: "100%",
             position: "relative",
