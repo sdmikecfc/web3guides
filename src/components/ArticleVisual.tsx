@@ -17,7 +17,7 @@ export function ArticleVisualBlock({ visual, accentHex }: Props) {
     case "stats":      return <StatsGrid      visual={visual} accentHex={accentHex} />;
     case "comparison": return <ComparisonCard visual={visual} accentHex={accentHex} />;
     case "steps":      return <StepsFlow      visual={visual} accentHex={accentHex} />;
-    case "callout":    return <CalloutBox     visual={visual} accentHex={accentHex} />;
+    case "callout":    return <CalloutBox     visual={visual} />;
     case "checklist":  return <ChecklistCard  visual={visual} accentHex={accentHex} />;
     default:           return null;
   }
