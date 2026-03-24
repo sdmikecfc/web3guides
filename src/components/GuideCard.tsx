@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import type { Guide, SubdomainConfig } from "@/types";
 import { formatDate, truncate } from "@/lib/utils";
 import DifficultyBadge from "./DifficultyBadge";
@@ -23,9 +24,22 @@ function extractFirstImage(content?: string | null): string | null {
   return m ? m[1] : null;
 }
 
+// Build a storage thumbnail URL from the known pattern, with cover_image or
+// content-extracted image as higher-priority fallbacks.
+function buildThumbnailUrl(guide: Guide): string | null {
+  if (guide.cover_image) return guide.cover_image;
+  const fromContent = extractFirstImage(guide.content);
+  if (fromContent) return fromContent;
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!base) return null;
+  return `${base}/storage/v1/object/public/guide-images/${guide.subdomain}/${guide.slug}/1.png`;
+}
+
 export default function GuideCard({ guide, config, index = 0 }: Props) {
   const articleIsNew = isNew(guide.published_at);
-  const bannerImg = guide.cover_image ?? extractFirstImage(guide.content);
+  const candidateUrl = buildThumbnailUrl(guide);
+  const [imgFailed, setImgFailed] = useState(false);
+  const bannerImg = imgFailed ? null : candidateUrl;
 
   return (
     <article
@@ -39,16 +53,11 @@ export default function GuideCard({ guide, config, index = 0 }: Props) {
         cursor: "pointer",
       }}
     >
-      {/* Full-card click overlay — sits above everything, z-index 0 */}
+      {/* Full-card click overlay */}
       <Link
         href={`/guides/${guide.slug}`}
         aria-label={guide.title}
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 1,
-          borderRadius: "inherit",
-        }}
+        style={{ position: "absolute", inset: 0, zIndex: 1, borderRadius: "inherit" }}
       />
 
       {/* ── Banner ── */}
@@ -56,9 +65,7 @@ export default function GuideCard({ guide, config, index = 0 }: Props) {
         width: "100%",
         height: 180,
         flexShrink: 0,
-        background: bannerImg
-          ? `url(${bannerImg}) center/cover no-repeat`
-          : `linear-gradient(135deg, ${config.gradientFrom ?? "#0d1117"} 0%, ${config.gradientTo ?? "#0a0a0f"} 100%)`,
+        background: `linear-gradient(135deg, ${config.gradientFrom ?? "#0d1117"} 0%, ${config.gradientTo ?? "#0a0a0f"} 100%)`,
         display: "flex",
         alignItems: bannerImg ? "flex-end" : "center",
         justifyContent: "center",
@@ -67,7 +74,35 @@ export default function GuideCard({ guide, config, index = 0 }: Props) {
         position: "relative",
         overflow: "hidden",
       }}>
-        {/* Glow blob — only for gradient fallback */}
+        {/* Hidden img — fires onError if URL 404s so we fall back to gradient */}
+        {candidateUrl && !imgFailed && (
+          <img
+            src={candidateUrl}
+            alt=""
+            onError={() => setImgFailed(true)}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center",
+              display: "block",
+            }}
+          />
+        )}
+
+        {/* Gradient overlay when image is showing */}
+        {bannerImg && (
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.55) 100%)",
+            pointerEvents: "none",
+          }} />
+        )}
+
+        {/* Glow blob for gradient fallback */}
         {!bannerImg && (
           <div style={{
             position: "absolute",
@@ -81,15 +116,7 @@ export default function GuideCard({ guide, config, index = 0 }: Props) {
             pointerEvents: "none",
           }} />
         )}
-        {/* Dark gradient overlay for image banners (helps label legibility) */}
-        {bannerImg && (
-          <div style={{
-            position: "absolute",
-            inset: 0,
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.55) 100%)",
-            pointerEvents: "none",
-          }} />
-        )}
+
         {/* Subdomain label */}
         <span style={{
           position: "absolute",
@@ -106,6 +133,7 @@ export default function GuideCard({ guide, config, index = 0 }: Props) {
         }}>
           {config.label}
         </span>
+
         {/* Article title — shown in banner only for gradient fallback */}
         {!bannerImg && (
           <p style={{
@@ -144,7 +172,7 @@ export default function GuideCard({ guide, config, index = 0 }: Props) {
           </time>
         </div>
 
-        {/* Title (display only — click handled by overlay) */}
+        {/* Title */}
         <h2 style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: "1rem", lineHeight: 1.4, color: "#1a1a1a", marginBottom: 10 }}>
           {guide.title}
         </h2>
@@ -173,18 +201,16 @@ export default function GuideCard({ guide, config, index = 0 }: Props) {
           <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#9ca3af" }}>
             {guide.read_time_minutes ? `${guide.read_time_minutes} min read` : "Guide"}
           </span>
-          <span
-            style={{
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: "0.8rem",
-              fontWeight: 700,
-              color: config.accentHex,
-              background: `${config.accentHex}12`,
-              border: `1px solid ${config.accentHex}30`,
-              borderRadius: 8,
-              padding: "5px 14px",
-            }}
-          >
+          <span style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: "0.8rem",
+            fontWeight: 700,
+            color: config.accentHex,
+            background: `${config.accentHex}12`,
+            border: `1px solid ${config.accentHex}30`,
+            borderRadius: 8,
+            padding: "5px 14px",
+          }}>
             Read →
           </span>
         </div>
