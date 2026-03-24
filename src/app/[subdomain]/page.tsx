@@ -304,7 +304,7 @@ function AivmPage({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: imp
             <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: CYAN, letterSpacing: 1.5 }}>BACKED BY GOOGLE · NVIDIA · ALIBABA CLOUD · BINANCE</span>
           </div>
 
-          <h1 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(2.2rem, 6vw, 4rem)", lineHeight: 1.05, marginBottom: 24 }}>
+          <h1 style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: "clamp(2.2rem, 6vw, 4rem)", lineHeight: 1.05, marginBottom: 24 }}>
             <span style={{ color: "#fff" }}>Decentralised AI.</span>
             <br />
             <span style={{ background: `linear-gradient(90deg, ${CYAN}, ${GREEN})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
@@ -339,7 +339,7 @@ function AivmPage({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: imp
             { value: "4 Types", label: "Specialised Validators" },
           ].map(({ value, label }) => (
             <div key={label} style={{ textAlign: "center" }}>
-              <div style={{ fontFamily: "'Bungee', cursive", fontSize: "1.6rem", color: CYAN, textShadow: `0 0 20px rgba(0,254,252,0.4)` }}>{value}</div>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: "1.6rem", color: CYAN, textShadow: `0 0 20px rgba(0,254,252,0.4)` }}>{value}</div>
               <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.62rem", color: "rgba(255,255,255,0.35)", letterSpacing: 1, textTransform: "uppercase", marginTop: 6 }}>{label}</div>
             </div>
           ))}
@@ -352,7 +352,7 @@ function AivmPage({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: imp
           <div style={{ width: 3, height: 32, background: `linear-gradient(180deg, ${CYAN}, ${GREEN})`, borderRadius: 2 }} />
           <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: CYAN, letterSpacing: 2 }}>THE PROBLEM</span>
         </div>
-        <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.6rem, 3vw, 2.4rem)", color: "#fff", marginBottom: 24, lineHeight: 1.15 }}>
+        <h2 style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: "clamp(1.6rem, 3vw, 2.4rem)", color: "#fff", marginBottom: 24, lineHeight: 1.15 }}>
           AI is the most powerful technology in history.<br />
           <span style={{ color: "rgba(255,255,255,0.4)" }}>And a handful of companies control all of it.</span>
         </h2>
@@ -381,14 +381,14 @@ function AivmPage({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: imp
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "72px 24px" }}>
           <div style={{ textAlign: "center", marginBottom: 56 }}>
             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: CYAN, letterSpacing: 2, marginBottom: 14 }}>THE FOUR PILLARS</div>
-            <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: "#fff", margin: 0 }}>What AIVM Actually Does</h2>
+            <h2 style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: "#fff", margin: 0 }}>What AIVM Actually Does</h2>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20 }}>
             {AIVM_PILLARS.map(({ icon, title, body, color }) => (
               <div key={title} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid rgba(0,254,252,0.1)`, borderRadius: 18, padding: "28px 24px", position: "relative", overflow: "hidden" }}>
                 <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${color}, transparent)` }} />
                 <div style={{ fontSize: "1.8rem", marginBottom: 16 }}>{icon}</div>
-                <h3 style={{ fontFamily: "'Bungee', cursive", fontSize: "0.95rem", color: "#fff", marginBottom: 10 }}>{title}</h3>
+                <h3 style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 600, fontSize: "0.95rem", color: "#fff", marginBottom: 10 }}>{title}</h3>
                 <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.87rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.65, margin: 0 }}>{body}</p>
               </div>
             ))}
@@ -400,7 +400,7 @@ function AivmPage({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: imp
       <section style={{ maxWidth: 1000, margin: "0 auto", padding: "72px 24px" }}>
         <div style={{ marginBottom: 48 }}>
           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: GREEN, letterSpacing: 2, marginBottom: 14 }}>NETWORK ARCHITECTURE</div>
-          <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: "#fff", marginBottom: 10 }}>4 Specialised Validator Types</h2>
+          <h2 style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: "#fff", marginBottom: 10 }}>4 Specialised Validator Types</h2>
           <p style={{ fontFamily: "'DM Sans', sans-serif", color: "rgba(255,255,255,0.45)", fontSize: "0.95rem", margin: 0 }}>
             Unlike generic blockchains where one validator does everything, AIVM specialises validation by function — making AI verification efficient at scale.
           </p>
@@ -410,7 +410,7 @@ function AivmPage({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: imp
             <div key={title} style={{ display: "flex", gap: 20, alignItems: "flex-start", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "22px 24px" }}>
               <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.6rem", background: "rgba(0,254,252,0.1)", border: "1px solid rgba(0,254,252,0.2)", color: CYAN, borderRadius: 6, padding: "4px 10px", whiteSpace: "nowrap", marginTop: 2, flexShrink: 0 }}>{tag}</span>
               <div>
-                <h3 style={{ fontFamily: "'Bungee', cursive", fontSize: "0.95rem", color: "#fff", marginBottom: 6 }}>{title}</h3>
+                <h3 style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 600, fontSize: "0.95rem", color: "#fff", marginBottom: 6 }}>{title}</h3>
                 <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.875rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.6, margin: 0 }}>{body}</p>
               </div>
             </div>
@@ -435,7 +435,7 @@ function AivmPage({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: imp
       {/* ── Guides ──────────────────────────────────────────────── */}
       <section id="guides" style={{ maxWidth: 1200, margin: "0 auto", padding: "80px 24px 64px" }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 12 }}>
-          <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "1.8rem", color: "#fff", margin: 0 }}>AIVM Guides</h2>
+          <h2 style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: "1.8rem", color: "#fff", margin: 0 }}>AIVM Guides</h2>
           <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "rgba(255,255,255,0.35)", letterSpacing: 1 }}>{guides.length} guide{guides.length !== 1 ? "s" : ""}</span>
         </div>
         <p style={{ fontFamily: "'DM Sans', sans-serif", color: "rgba(255,255,255,0.4)", marginBottom: 44, fontSize: "0.95rem" }}>
@@ -444,7 +444,7 @@ function AivmPage({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: imp
         {guides.length === 0 ? (
           <div style={{ textAlign: "center", padding: "80px 0" }}>
             <div style={{ fontSize: "2.5rem", marginBottom: 16, opacity: 0.3 }}>🤖</div>
-            <p style={{ fontFamily: "'Bungee', cursive", fontSize: "1.1rem", color: "rgba(255,255,255,0.2)" }}>Guides dropping soon</p>
+            <p style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 600, fontSize: "1.1rem", color: "rgba(255,255,255,0.2)" }}>Guides dropping soon</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -459,7 +459,7 @@ function AivmPage({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: imp
       <section style={{ maxWidth: 720, margin: "0 auto", padding: "80px 24px 100px", textAlign: "center" }}>
         <div style={{ background: "rgba(0,254,252,0.04)", border: "1px solid rgba(0,254,252,0.12)", borderRadius: 24, padding: "56px 40px" }}>
           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: CYAN, letterSpacing: 2, marginBottom: 16 }}>PUBLIC TESTNET · NOW LIVE</div>
-          <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.5rem, 3vw, 2rem)", color: "#fff", marginBottom: 16, lineHeight: 1.2 }}>
+          <h2 style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: "clamp(1.5rem, 3vw, 2rem)", color: "#fff", marginBottom: 16, lineHeight: 1.2 }}>
             Get In Early.<br />The Mainnet Window is Q2/3 2026.
           </h2>
           <p style={{ fontFamily: "'DM Sans', sans-serif", color: "rgba(255,255,255,0.5)", marginBottom: 36, lineHeight: 1.7, fontSize: "0.95rem" }}>

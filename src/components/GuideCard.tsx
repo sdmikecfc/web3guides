@@ -17,8 +17,15 @@ function isNew(publishedAt: string): boolean {
   return new Date(publishedAt) > twoWeeksAgo;
 }
 
+function extractFirstImage(content?: string | null): string | null {
+  if (!content) return null;
+  const m = content.match(/!\[[^\]]*\]\(([^)]+)\)/);
+  return m ? m[1] : null;
+}
+
 export default function GuideCard({ guide, config, index = 0 }: Props) {
   const articleIsNew = isNew(guide.published_at);
+  const bannerImg = guide.cover_image ?? extractFirstImage(guide.content);
 
   return (
     <article
@@ -44,32 +51,45 @@ export default function GuideCard({ guide, config, index = 0 }: Props) {
         }}
       />
 
-      {/* ── Banner: subdomain gradient + article title ── */}
+      {/* ── Banner ── */}
       <div style={{
         width: "100%",
-        height: 160,
+        height: 180,
         flexShrink: 0,
-        background: `linear-gradient(135deg, ${config.gradientFrom ?? "#0d1117"} 0%, ${config.gradientTo ?? "#0a0a0f"} 100%)`,
+        background: bannerImg
+          ? `url(${bannerImg}) center/cover no-repeat`
+          : `linear-gradient(135deg, ${config.gradientFrom ?? "#0d1117"} 0%, ${config.gradientTo ?? "#0a0a0f"} 100%)`,
         display: "flex",
-        alignItems: "center",
+        alignItems: bannerImg ? "flex-end" : "center",
         justifyContent: "center",
-        padding: "18px 22px",
+        padding: bannerImg ? "0 0 12px 14px" : "18px 22px",
         boxSizing: "border-box",
         position: "relative",
         overflow: "hidden",
       }}>
-        {/* Glow blob */}
-        <div style={{
-          position: "absolute",
-          top: "50%", left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: 140, height: 140,
-          background: config.accentHex,
-          opacity: 0.12,
-          borderRadius: "50%",
-          filter: "blur(32px)",
-          pointerEvents: "none",
-        }} />
+        {/* Glow blob — only for gradient fallback */}
+        {!bannerImg && (
+          <div style={{
+            position: "absolute",
+            top: "50%", left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 140, height: 140,
+            background: config.accentHex,
+            opacity: 0.12,
+            borderRadius: "50%",
+            filter: "blur(32px)",
+            pointerEvents: "none",
+          }} />
+        )}
+        {/* Dark gradient overlay for image banners (helps label legibility) */}
+        {bannerImg && (
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.55) 100%)",
+            pointerEvents: "none",
+          }} />
+        )}
         {/* Subdomain label */}
         <span style={{
           position: "absolute",
@@ -77,32 +97,36 @@ export default function GuideCard({ guide, config, index = 0 }: Props) {
           fontFamily: "'Space Mono', monospace",
           fontSize: "0.6rem",
           fontWeight: 700,
-          color: config.accentHex,
+          color: bannerImg ? "#fff" : config.accentHex,
           letterSpacing: 1.5,
           textTransform: "uppercase",
-          opacity: 0.85,
+          opacity: bannerImg ? 0.9 : 0.85,
+          zIndex: 1,
+          textShadow: bannerImg ? "0 1px 4px rgba(0,0,0,0.6)" : "none",
         }}>
           {config.label}
         </span>
-        {/* Article title */}
-        <p style={{
-          fontFamily: "'Bungee', cursive, system-ui",
-          fontWeight: 400,
-          fontSize: "0.88rem",
-          color: "#fff",
-          lineHeight: 1.4,
-          textAlign: "center",
-          margin: 0,
-          position: "relative",
-          zIndex: 1,
-          display: "-webkit-box",
-          WebkitLineClamp: 4,
-          WebkitBoxOrient: "vertical" as "vertical",
-          overflow: "hidden",
-          textShadow: "0 2px 10px rgba(0,0,0,0.5)",
-        }}>
-          {guide.title}
-        </p>
+        {/* Article title — shown in banner only for gradient fallback */}
+        {!bannerImg && (
+          <p style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontWeight: 700,
+            fontSize: "0.9rem",
+            color: "#fff",
+            lineHeight: 1.4,
+            textAlign: "center",
+            margin: 0,
+            position: "relative",
+            zIndex: 1,
+            display: "-webkit-box",
+            WebkitLineClamp: 4,
+            WebkitBoxOrient: "vertical" as "vertical",
+            overflow: "hidden",
+            textShadow: "0 2px 10px rgba(0,0,0,0.5)",
+          }}>
+            {guide.title}
+          </p>
+        )}
       </div>
 
       {/* ── Card body ── */}

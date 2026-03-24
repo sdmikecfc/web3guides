@@ -399,7 +399,7 @@ function BrowseSection() {
                     {FEATURED_PROJECT.badge.toUpperCase()}
                   </span>
                 </div>
-                <div style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.2rem, 2.5vw, 1.6rem)", color: "#fff", marginBottom: 6, lineHeight: 1.15 }}>
+                <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: "clamp(1.2rem, 2.5vw, 1.6rem)", color: "#fff", marginBottom: 6, lineHeight: 1.15 }}>
                   {FEATURED_PROJECT.label}
                 </div>
                 <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "rgba(255,255,255,0.55)", lineHeight: 1.6, maxWidth: 580 }}>
@@ -560,7 +560,7 @@ function LearningPaths() {
       <div style={{ maxWidth: 1400, margin: "0 auto", position: "relative", zIndex: 1 }}>
         <Reveal style={{ textAlign: "center", marginBottom: 64 }}>
           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 3, color: "#6366f1", textTransform: "uppercase", marginBottom: 16 }}>STRUCTURED LEARNING</div>
-          <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(2rem, 5vw, 3.5rem)", color: "#1a1a1a", marginBottom: 20 }}>Choose Your Path</h2>
+          <h2 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, fontSize: "clamp(2rem, 5vw, 3.5rem)", color: "#1a1a1a", marginBottom: 20 }}>Choose Your Path</h2>
           <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.1rem", color: "#6b7280", maxWidth: 540, margin: "0 auto", lineHeight: 1.7 }}>
             Structured curricula designed to take you from where you are to where you want to be.
           </p>
@@ -574,7 +574,7 @@ function LearningPaths() {
                    onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(0)"; el.style.boxShadow = "0 4px 20px rgba(0,0,0,0.06)"; }}>
                 <div style={{ background: gradient, padding: 30 }}>
                   <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>{emoji}</div>
-                  <h3 style={{ fontFamily: "'Bungee', cursive", fontSize: "1.6rem", color: "#fff", marginBottom: 8 }}>{title}</h3>
+                  <h3 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, fontSize: "1.6rem", color: "#fff", marginBottom: 8, letterSpacing: "-0.01em" }}>{title}</h3>
                   <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>{subtitle}</p>
                 </div>
                 <div style={{ padding: "28px 30px", flex: 1 }}>
