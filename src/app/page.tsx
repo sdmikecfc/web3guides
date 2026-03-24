@@ -621,14 +621,13 @@ interface FeaturedGuide {
   cover_image: string | null;
 }
 
-function FeaturedGuideCard({ guide, imgSrc, color, gradient }: {
+function FeaturedGuideCard({ guide, imgSrc, color }: {
   guide: FeaturedGuide;
   imgSrc: string | null;
   color: string;
-  gradient: string;
 }) {
-  const [imgFailed, setImgFailed] = useState(false);
-  const showImg = imgSrc && !imgFailed;
+  const ogFallback = `/api/og?sub=${encodeURIComponent(guide.subdomain)}&t=${encodeURIComponent(guide.title)}`;
+  const [src, setSrc] = useState(imgSrc ?? ogFallback);
 
   return (
     <a
@@ -637,18 +636,13 @@ function FeaturedGuideCard({ guide, imgSrc, color, gradient }: {
       onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(-6px)"; el.style.boxShadow = "0 16px 50px rgba(0,0,0,0.1)"; }}
       onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(0)"; el.style.boxShadow = "none"; }}
     >
-      <div style={{ height: 160, background: gradient, position: "relative", overflow: "hidden" }}>
-        {imgSrc && !imgFailed && (
-          <img
-            src={imgSrc}
-            alt=""
-            onError={() => setImgFailed(true)}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }}
-          />
-        )}
-        {showImg && (
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.45) 100%)", pointerEvents: "none" }} />
-        )}
+      <div style={{ height: 160, position: "relative", overflow: "hidden", background: "#0d0d1f" }}>
+        <img
+          src={src}
+          alt=""
+          onError={() => { if (src !== ogFallback) setSrc(ogFallback); }}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }}
+        />
       </div>
       <div style={{ padding: "24px 28px" }}>
         <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 2, color, textTransform: "uppercase", marginBottom: 10 }}>{guide.subdomain}</div>
@@ -706,7 +700,7 @@ function Articles() {
               const imgSrc = guide.cover_image ?? fallbackImg;
               return (
                 <Reveal key={guide.id}>
-                  <FeaturedGuideCard guide={guide} imgSrc={imgSrc} color={color} gradient={GRADIENTS[i % 3]} />
+                  <FeaturedGuideCard guide={guide} imgSrc={imgSrc} color={color} />
                 </Reveal>
               );
             })}

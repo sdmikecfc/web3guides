@@ -37,9 +37,9 @@ function buildThumbnailUrl(guide: Guide): string | null {
 
 export default function GuideCard({ guide, config, index = 0 }: Props) {
   const articleIsNew = isNew(guide.published_at);
+  const ogFallback = `/api/og?sub=${encodeURIComponent(guide.subdomain)}&t=${encodeURIComponent(guide.title)}`;
   const candidateUrl = buildThumbnailUrl(guide);
-  const [imgFailed, setImgFailed] = useState(false);
-  const bannerImg = imgFailed ? null : candidateUrl;
+  const [src, setSrc] = useState(candidateUrl ?? ogFallback);
 
   return (
     <article
@@ -65,96 +65,24 @@ export default function GuideCard({ guide, config, index = 0 }: Props) {
         width: "100%",
         height: 180,
         flexShrink: 0,
-        background: `linear-gradient(135deg, ${config.gradientFrom ?? "#0d1117"} 0%, ${config.gradientTo ?? "#0a0a0f"} 100%)`,
-        display: "flex",
-        alignItems: bannerImg ? "flex-end" : "center",
-        justifyContent: "center",
-        padding: bannerImg ? "0 0 12px 14px" : "18px 22px",
-        boxSizing: "border-box",
+        background: "#0d0d1f",
         position: "relative",
         overflow: "hidden",
       }}>
-        {/* Hidden img — fires onError if URL 404s so we fall back to gradient */}
-        {candidateUrl && !imgFailed && (
-          <img
-            src={candidateUrl}
-            alt=""
-            onError={() => setImgFailed(true)}
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              objectPosition: "center",
-              display: "block",
-            }}
-          />
-        )}
-
-        {/* Gradient overlay when image is showing */}
-        {bannerImg && (
-          <div style={{
+        <img
+          src={src}
+          alt=""
+          onError={() => { if (src !== ogFallback) setSrc(ogFallback); }}
+          style={{
             position: "absolute",
             inset: 0,
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.55) 100%)",
-            pointerEvents: "none",
-          }} />
-        )}
-
-        {/* Glow blob for gradient fallback */}
-        {!bannerImg && (
-          <div style={{
-            position: "absolute",
-            top: "50%", left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: 140, height: 140,
-            background: config.accentHex,
-            opacity: 0.12,
-            borderRadius: "50%",
-            filter: "blur(32px)",
-            pointerEvents: "none",
-          }} />
-        )}
-
-        {/* Subdomain label */}
-        <span style={{
-          position: "absolute",
-          top: 12, left: 14,
-          fontFamily: "'Space Mono', monospace",
-          fontSize: "0.6rem",
-          fontWeight: 700,
-          color: bannerImg ? "#fff" : config.accentHex,
-          letterSpacing: 1.5,
-          textTransform: "uppercase",
-          opacity: bannerImg ? 0.9 : 0.85,
-          zIndex: 1,
-          textShadow: bannerImg ? "0 1px 4px rgba(0,0,0,0.6)" : "none",
-        }}>
-          {config.label}
-        </span>
-
-        {/* Article title — shown in banner only for gradient fallback */}
-        {!bannerImg && (
-          <p style={{
-            fontFamily: "'DM Sans', sans-serif",
-            fontWeight: 700,
-            fontSize: "0.9rem",
-            color: "#fff",
-            lineHeight: 1.4,
-            textAlign: "center",
-            margin: 0,
-            position: "relative",
-            zIndex: 1,
-            display: "-webkit-box",
-            WebkitLineClamp: 4,
-            WebkitBoxOrient: "vertical" as "vertical",
-            overflow: "hidden",
-            textShadow: "0 2px 10px rgba(0,0,0,0.5)",
-          }}>
-            {guide.title}
-          </p>
-        )}
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center",
+            display: "block",
+          }}
+        />
       </div>
 
       {/* ── Card body ── */}
