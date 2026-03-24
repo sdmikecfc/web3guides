@@ -618,6 +618,50 @@ interface FeaturedGuide {
   subdomain: string;
   summary: string | null;
   difficulty: string | null;
+  cover_image: string | null;
+}
+
+function FeaturedGuideCard({ guide, imgSrc, color, gradient }: {
+  guide: FeaturedGuide;
+  imgSrc: string | null;
+  color: string;
+  gradient: string;
+}) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImg = imgSrc && !imgFailed;
+
+  return (
+    <a
+      href={`${subUrl(guide.subdomain)}/guides/${guide.slug}`}
+      style={{ display: "block", background: "#fff", borderRadius: 20, overflow: "hidden", border: "1px solid #e5e7eb", textDecoration: "none", transition: "transform 0.25s, box-shadow 0.25s" }}
+      onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(-6px)"; el.style.boxShadow = "0 16px 50px rgba(0,0,0,0.1)"; }}
+      onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(0)"; el.style.boxShadow = "none"; }}
+    >
+      <div style={{ height: 160, background: gradient, position: "relative", overflow: "hidden" }}>
+        {imgSrc && !imgFailed && (
+          <img
+            src={imgSrc}
+            alt=""
+            onError={() => setImgFailed(true)}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }}
+          />
+        )}
+        {showImg && (
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.45) 100%)", pointerEvents: "none" }} />
+        )}
+      </div>
+      <div style={{ padding: "24px 28px" }}>
+        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 2, color, textTransform: "uppercase", marginBottom: 10 }}>{guide.subdomain}</div>
+        <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.1rem", fontWeight: 700, color: "#1a1a1a", marginBottom: 12, lineHeight: 1.4 }}>{guide.title}</h3>
+        {guide.summary && (
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "#6b7280", lineHeight: 1.6, marginBottom: 20 }}>{guide.summary}</p>
+        )}
+        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", fontWeight: 600, color, display: "inline-flex", alignItems: "center", gap: 6 }}>
+          Read Guide →
+        </span>
+      </div>
+    </a>
+  );
 }
 
 function Articles() {
@@ -655,26 +699,14 @@ function Articles() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 30 }}>
             {guides.map((guide, i) => {
               const color = SUBDOMAIN_COLORS[guide.subdomain] ?? "#6366f1";
+              const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+              const fallbackImg = supabaseUrl
+                ? `${supabaseUrl}/storage/v1/object/public/guide-images/${guide.subdomain}/${guide.slug}/1.png`
+                : null;
+              const imgSrc = guide.cover_image ?? fallbackImg;
               return (
                 <Reveal key={guide.id}>
-                  <a href={`${subUrl(guide.subdomain)}/guides/${guide.slug}`}
-                     style={{ display: "block", background: "#fff", borderRadius: 20, overflow: "hidden", border: "1px solid #e5e7eb", textDecoration: "none", transition: "transform 0.25s, box-shadow 0.25s" }}
-                     onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(-6px)"; el.style.boxShadow = "0 16px 50px rgba(0,0,0,0.1)"; }}
-                     onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(0)"; el.style.boxShadow = "none"; }}>
-                    <div style={{ height: 160, background: GRADIENTS[i % 3], display: "flex", alignItems: "center", justifyContent: "center", fontSize: "3.5rem" }}>
-                      📖
-                    </div>
-                    <div style={{ padding: "24px 28px" }}>
-                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", letterSpacing: 2, color, textTransform: "uppercase", marginBottom: 10 }}>{guide.subdomain}</div>
-                      <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.1rem", fontWeight: 700, color: "#1a1a1a", marginBottom: 12, lineHeight: 1.4 }}>{guide.title}</h3>
-                      {guide.summary && (
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "#6b7280", lineHeight: 1.6, marginBottom: 20 }}>{guide.summary}</p>
-                      )}
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", fontWeight: 600, color, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                        Read Guide →
-                      </span>
-                    </div>
-                  </a>
+                  <FeaturedGuideCard guide={guide} imgSrc={imgSrc} color={color} gradient={GRADIENTS[i % 3]} />
                 </Reveal>
               );
             })}
