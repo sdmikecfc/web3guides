@@ -18,13 +18,13 @@ export const metadata: Metadata = {
     siteName: "Web3Guides",
     title: "Web3Guides — Free Crypto & Web3 Education",
     description: "Free guides on Ethereum, Bitcoin, DeFi, Solana, Layer 2, staking, crypto security, and crypto tax. No signup required.",
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Web3Guides — Free Crypto Education" }],
+    images: [{ url: "https://web3guides.com/api/og?sub=eth&t=Web3Guides+%E2%80%94+Free+Crypto+%26+Web3+Education", width: 1200, height: 630, alt: "Web3Guides — Free Crypto Education" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Web3Guides — Free Crypto & Web3 Education",
     description: "Free guides on Ethereum, Bitcoin, DeFi, Solana, Layer 2, staking, crypto security, and tax.",
-    images: ["/og-image.png"],
+    images: ["https://web3guides.com/api/og?sub=eth&t=Web3Guides+%E2%80%94+Free+Crypto+%26+Web3+Education"],
   },
   // Paste your Google Search Console verification code below (HTML tag method)
   // verification: { google: "paste-your-code-here" },

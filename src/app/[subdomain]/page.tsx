@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: { subdomain: string
   const cfg = getSubdomainConfig(params.subdomain);
   if (!cfg) return {};
   const canonical = `https://${params.subdomain}.${ROOT}`;
-  const ogImage = `https://www.${ROOT}/api/og?sub=${encodeURIComponent(params.subdomain)}&t=${encodeURIComponent(cfg.label + " Guides")}`;
+  const ogImage = `https://${ROOT}/api/og?sub=${encodeURIComponent(params.subdomain)}&t=${encodeURIComponent(cfg.label + " Guides")}`;
   return {
     title: `${cfg.label} Guides — Web3Guides`,
     description: cfg.description,
@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: { params: { subdomain: string
       description: cfg.description,
       url: canonical,
       type: "website",
-      images: [{ url: ogImage, width: 1200, height: 420, alt: `${cfg.label} Guides on Web3Guides` }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: `${cfg.label} Guides on Web3Guides` }],
     },
     twitter: {
       card: "summary_large_image",
