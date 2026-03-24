@@ -6,23 +6,33 @@ import DashboardClient from "./DashboardClient";
 
 const DASH_PASSWORD = process.env.DASHBOARD_PASSWORD ?? "web3guides-admin";
 
+async function loginAction(formData: FormData) {
+  "use server";
+  const pw = formData.get("pw") as string;
+  const password = process.env.DASHBOARD_PASSWORD ?? "web3guides-admin";
+  if (pw === password) {
+    const cookieStore = await cookies();
+    cookieStore.set("dash_auth", "1", {
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+    });
+    redirect("/dashboard");
+  }
+  redirect("/dashboard?error=1");
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { pw?: string };
+  searchParams: { error?: string };
 }) {
-  // Simple password gate via query param → sets cookie
   const cookieStore = await cookies();
   const authed = cookieStore.get("dash_auth")?.value === "1";
 
   if (!authed) {
-    if (searchParams.pw === DASH_PASSWORD) {
-      // Set auth cookie — redirect to clean URL
-      const res = redirect("/dashboard");
-      // Note: cookie is set via the DashboardGate component below
-    } else {
-      return <DashboardGate />;
-    }
+    return <DashboardGate action={loginAction} error={searchParams.error === "1"} />;
   }
 
   const supabase = await createClient();
@@ -102,12 +112,17 @@ export default async function DashboardPage({
   );
 }
 
-function DashboardGate() {
+function DashboardGate({ action, error }: { action: (formData: FormData) => Promise<void>; error: boolean }) {
   return (
     <div style={{ minHeight: "100vh", background: "#0d0d1f", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <form method="GET" style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 16, padding: 40, width: 360 }}>
+      <form action={action} style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 16, padding: 40, width: 360 }}>
         <h1 style={{ color: "#fff", fontSize: 22, fontWeight: 800, margin: "0 0 8px" }}>Dashboard</h1>
         <p style={{ color: "#475569", fontSize: 14, margin: "0 0 24px" }}>Enter your password to continue</p>
+        {error && (
+          <div style={{ background: "#450a0a", border: "1px solid #7f1d1d", borderRadius: 8, padding: "10px 14px", marginBottom: 14, color: "#fca5a5", fontSize: 13 }}>
+            Wrong password — try again
+          </div>
+        )}
         <input
           name="pw"
           type="password"

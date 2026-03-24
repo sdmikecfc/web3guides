@@ -65,6 +65,15 @@ export default async function SubdomainPage({ params, searchParams }: Props) {
     return <JobsPage />;
   }
 
+  // AIVM subdomain: custom branded page
+  if (params.subdomain === "aivm") {
+    const [guides, total] = await Promise.all([
+      getGuidesBySubdomain("aivm", { limit: PAGE_SIZE, offset: 0 }),
+      countGuides("aivm"),
+    ]);
+    return <AivmPage guides={guides} cfg={cfg} />;
+  }
+
   // Doma subdomain: custom page with referral + guides
   if (params.subdomain === "doma") {
     const page = Math.max(1, parseInt(searchParams.page ?? "1", 10));
@@ -216,6 +225,257 @@ export default async function SubdomainPage({ params, searchParams }: Props) {
 
       <SubdomainCTA config={cfg} />
     </>
+  );
+}
+
+// ─── AIVM Page ───────────────────────────────────────────────────────────────
+
+const AIVM_REFERRAL = "https://app.chaingpt.org?referralcode=e60e25cd2a";
+
+const CYAN   = "#00FEFC";
+const NAVY   = "#0B1320";
+const GREEN  = "#2DFFB9";
+const BLUE   = "#1F51FF";
+
+const AIVM_PILLARS = [
+  {
+    icon: "⚡",
+    title: "Decentralised AI Compute",
+    body: "A GPU marketplace with no vendor lock-in. Any provider can join. Models run on verifiable distributed infrastructure — not a single cloud company's servers.",
+    color: CYAN,
+  },
+  {
+    icon: "🤖",
+    title: "Agent-Based AI Execution",
+    body: "AI agents run on-chain with cryptographic verification. Every inference is auditable, tamper-proof, and reproducible — unlike black-box API calls to centralised models.",
+    color: GREEN,
+  },
+  {
+    icon: "📦",
+    title: "Tokenised Data Marketplaces",
+    body: "Buy, sell, and collaborate on training datasets directly on-chain. Data contributors get paid fairly. No platform taking 30% of your work.",
+    color: CYAN,
+  },
+  {
+    icon: "🛠",
+    title: "Developer Tooling",
+    body: "SDK, CLI, and agent runtime frameworks let builders deploy AI applications on AIVM without needing a PhD in distributed systems. EVM-compatible for easy onboarding.",
+    color: GREEN,
+  },
+];
+
+const AIVM_VALIDATORS = [
+  { title: "Core Validators", body: "Secure network consensus via Tendermint. The backbone of the chain — process transactions, produce blocks, maintain finality.", tag: "Consensus" },
+  { title: "AI Validators", body: "Verify that AI model executions produce correct outputs. Use ZK proofs and TEEs to confirm inference results without revealing model weights.", tag: "Verification" },
+  { title: "Compute Validators", body: "Monitor GPU quality and performance across the decentralised compute marketplace. Enforce SLAs and benchmark providers.", tag: "Compute" },
+  { title: "Data Validators", body: "Maintain data integrity and privacy across the tokenised data marketplace. Audit dataset quality and enforce privacy guarantees.", tag: "Data" },
+];
+
+const AIVM_PARTNERS = [
+  { name: "Google", logo: "G" },
+  { name: "Nvidia", logo: "N" },
+  { name: "Alibaba Cloud", logo: "A" },
+  { name: "Binance", logo: "B" },
+  { name: "Polygon", logo: "P" },
+  { name: "Chainlink", logo: "⬡" },
+];
+
+function AivmPage({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: import("@/types").SubdomainConfig }) {
+  return (
+    <div style={{ background: NAVY, minHeight: "100vh", color: "#fff" }}>
+
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <section style={{
+        background: `linear-gradient(160deg, #0B1320 0%, #0a1a2e 50%, #030810 100%)`,
+        padding: "90px 24px 80px",
+        textAlign: "center",
+        position: "relative",
+        overflow: "hidden",
+        borderBottom: `1px solid rgba(0,254,252,0.12)`,
+      }}>
+        {/* Glow orbs */}
+        <div style={{ position: "absolute", top: -80, left: "50%", transform: "translateX(-50%)", width: 600, height: 600, borderRadius: "50%", background: `radial-gradient(circle, rgba(0,254,252,0.08) 0%, transparent 70%)`, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -100, right: "10%", width: 400, height: 400, borderRadius: "50%", background: `radial-gradient(circle, rgba(45,255,185,0.06) 0%, transparent 70%)`, pointerEvents: "none" }} />
+
+        <div style={{ maxWidth: 780, margin: "0 auto", position: "relative", zIndex: 1 }}>
+          {/* Badge */}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(0,254,252,0.08)", border: "1px solid rgba(0,254,252,0.2)", borderRadius: 50, padding: "6px 18px", marginBottom: 28 }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: CYAN, display: "inline-block", boxShadow: `0 0 8px ${CYAN}` }} />
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: CYAN, letterSpacing: 1.5 }}>BACKED BY GOOGLE · NVIDIA · ALIBABA CLOUD · BINANCE</span>
+          </div>
+
+          <h1 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(2.2rem, 6vw, 4rem)", lineHeight: 1.05, marginBottom: 24 }}>
+            <span style={{ color: "#fff" }}>Decentralised AI.</span>
+            <br />
+            <span style={{ background: `linear-gradient(90deg, ${CYAN}, ${GREEN})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              No Big Tech Required.
+            </span>
+          </h1>
+
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.1rem", color: "rgba(255,255,255,0.65)", lineHeight: 1.75, maxWidth: 600, margin: "0 auto 44px" }}>
+            AIVM is ChainGPT&apos;s Layer-1 blockchain purpose-built for AI. Decentralised compute, verifiable agent execution, tokenised data markets — everything OpenAI and Google keep locked behind closed APIs, now open and on-chain.
+          </p>
+
+          <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
+            <a href={AIVM_REFERRAL} target="_blank" rel="noopener noreferrer"
+               style={{ display: "inline-flex", alignItems: "center", gap: 10, background: `linear-gradient(135deg, ${CYAN}, ${GREEN})`, color: NAVY, padding: "15px 36px", borderRadius: 50, fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: "1rem", textDecoration: "none", boxShadow: `0 8px 40px rgba(0,254,252,0.25)`, letterSpacing: 0.3 }}>
+              Join the AIVM Testnet →
+            </a>
+            <a href="#guides"
+               style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.8)", padding: "15px 32px", borderRadius: 50, fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: "1rem", textDecoration: "none" }}>
+              Read the Guides
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Stats bar ────────────────────────────────────────────── */}
+      <section style={{ background: "rgba(0,254,252,0.03)", borderBottom: "1px solid rgba(0,254,252,0.08)" }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 24px", display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 48 }}>
+          {[
+            { value: "700K+", label: "Community Members" },
+            { value: "$CGPT", label: "Gas Token · Live on Binance" },
+            { value: "Q2/3 2026", label: "Mainnet Launch" },
+            { value: "4 Types", label: "Specialised Validators" },
+          ].map(({ value, label }) => (
+            <div key={label} style={{ textAlign: "center" }}>
+              <div style={{ fontFamily: "'Bungee', cursive", fontSize: "1.6rem", color: CYAN, textShadow: `0 0 20px rgba(0,254,252,0.4)` }}>{value}</div>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.62rem", color: "rgba(255,255,255,0.35)", letterSpacing: 1, textTransform: "uppercase", marginTop: 6 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── The problem AIVM solves ───────────────────────────────── */}
+      <section style={{ maxWidth: 900, margin: "0 auto", padding: "80px 24px 64px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+          <div style={{ width: 3, height: 32, background: `linear-gradient(180deg, ${CYAN}, ${GREEN})`, borderRadius: 2 }} />
+          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: CYAN, letterSpacing: 2 }}>THE PROBLEM</span>
+        </div>
+        <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.6rem, 3vw, 2.4rem)", color: "#fff", marginBottom: 24, lineHeight: 1.15 }}>
+          AI is the most powerful technology in history.<br />
+          <span style={{ color: "rgba(255,255,255,0.4)" }}>And a handful of companies control all of it.</span>
+        </h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+          {[
+            { label: "Compute", problem: "AWS, GCP, Azure own all the GPUs. No access, no AI." },
+            { label: "Models", problem: "OpenAI, Anthropic, Google keep weights proprietary. Take it or leave it." },
+            { label: "Data", problem: "Training data is scraped from the public then locked behind paywalls." },
+            { label: "Execution", problem: "API calls are black boxes. No way to verify what actually ran." },
+          ].map(({ label, problem }) => (
+            <div key={label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "20px 22px" }}>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", color: "rgba(255,69,69,0.8)", letterSpacing: 1, marginBottom: 8 }}>❌ {label}</div>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.88rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.6, margin: 0 }}>{problem}</p>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 28, padding: "22px 28px", background: "rgba(0,254,252,0.05)", border: "1px solid rgba(0,254,252,0.15)", borderRadius: 16 }}>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1rem", color: "rgba(255,255,255,0.8)", lineHeight: 1.7, margin: 0 }}>
+            <strong style={{ color: CYAN }}>AIVM fixes this.</strong> Open compute marketplace. Cryptographically verifiable model execution. Tokenised data ownership. All on a decentralised Layer-1 — no permission required.
+          </p>
+        </div>
+      </section>
+
+      {/* ── 4 Pillars ────────────────────────────────────────────── */}
+      <section style={{ background: "rgba(255,255,255,0.02)", borderTop: "1px solid rgba(0,254,252,0.06)", borderBottom: "1px solid rgba(0,254,252,0.06)" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "72px 24px" }}>
+          <div style={{ textAlign: "center", marginBottom: 56 }}>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: CYAN, letterSpacing: 2, marginBottom: 14 }}>THE FOUR PILLARS</div>
+            <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: "#fff", margin: 0 }}>What AIVM Actually Does</h2>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20 }}>
+            {AIVM_PILLARS.map(({ icon, title, body, color }) => (
+              <div key={title} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid rgba(0,254,252,0.1)`, borderRadius: 18, padding: "28px 24px", position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${color}, transparent)` }} />
+                <div style={{ fontSize: "1.8rem", marginBottom: 16 }}>{icon}</div>
+                <h3 style={{ fontFamily: "'Bungee', cursive", fontSize: "0.95rem", color: "#fff", marginBottom: 10 }}>{title}</h3>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.87rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.65, margin: 0 }}>{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Validator Types ──────────────────────────────────────── */}
+      <section style={{ maxWidth: 1000, margin: "0 auto", padding: "72px 24px" }}>
+        <div style={{ marginBottom: 48 }}>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: GREEN, letterSpacing: 2, marginBottom: 14 }}>NETWORK ARCHITECTURE</div>
+          <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: "#fff", marginBottom: 10 }}>4 Specialised Validator Types</h2>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", color: "rgba(255,255,255,0.45)", fontSize: "0.95rem", margin: 0 }}>
+            Unlike generic blockchains where one validator does everything, AIVM specialises validation by function — making AI verification efficient at scale.
+          </p>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {AIVM_VALIDATORS.map(({ title, body, tag }) => (
+            <div key={title} style={{ display: "flex", gap: 20, alignItems: "flex-start", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "22px 24px" }}>
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.6rem", background: "rgba(0,254,252,0.1)", border: "1px solid rgba(0,254,252,0.2)", color: CYAN, borderRadius: 6, padding: "4px 10px", whiteSpace: "nowrap", marginTop: 2, flexShrink: 0 }}>{tag}</span>
+              <div>
+                <h3 style={{ fontFamily: "'Bungee', cursive", fontSize: "0.95rem", color: "#fff", marginBottom: 6 }}>{title}</h3>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.875rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.6, margin: 0 }}>{body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Partners ─────────────────────────────────────────────── */}
+      <section style={{ borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.015)" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", padding: "48px 24px", textAlign: "center" }}>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", color: "rgba(255,255,255,0.3)", letterSpacing: 2, marginBottom: 32 }}>BACKED & PARTNERED WITH</div>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 16 }}>
+            {AIVM_PARTNERS.map(({ name }) => (
+              <div key={name} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px 24px", fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: "0.9rem", color: "rgba(255,255,255,0.6)" }}>
+                {name}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Guides ──────────────────────────────────────────────── */}
+      <section id="guides" style={{ maxWidth: 1200, margin: "0 auto", padding: "80px 24px 64px" }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 12 }}>
+          <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "1.8rem", color: "#fff", margin: 0 }}>AIVM Guides</h2>
+          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "rgba(255,255,255,0.35)", letterSpacing: 1 }}>{guides.length} guide{guides.length !== 1 ? "s" : ""}</span>
+        </div>
+        <p style={{ fontFamily: "'DM Sans', sans-serif", color: "rgba(255,255,255,0.4)", marginBottom: 44, fontSize: "0.95rem" }}>
+          Everything you need to understand, participate in, and build on AIVM — from testnet setup to deep technical architecture.
+        </p>
+        {guides.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "80px 0" }}>
+            <div style={{ fontSize: "2.5rem", marginBottom: 16, opacity: 0.3 }}>🤖</div>
+            <p style={{ fontFamily: "'Bungee', cursive", fontSize: "1.1rem", color: "rgba(255,255,255,0.2)" }}>Guides dropping soon</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {guides.map((guide, i) => (
+              <GuideCard key={guide.id} guide={guide} config={cfg} index={i} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── CTA ─────────────────────────────────────────────────── */}
+      <section style={{ maxWidth: 720, margin: "0 auto", padding: "80px 24px 100px", textAlign: "center" }}>
+        <div style={{ background: "rgba(0,254,252,0.04)", border: "1px solid rgba(0,254,252,0.12)", borderRadius: 24, padding: "56px 40px" }}>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: CYAN, letterSpacing: 2, marginBottom: 16 }}>PUBLIC TESTNET · NOW LIVE</div>
+          <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.5rem, 3vw, 2rem)", color: "#fff", marginBottom: 16, lineHeight: 1.2 }}>
+            Get In Early.<br />The Mainnet Window is Q2/3 2026.
+          </h2>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", color: "rgba(255,255,255,0.5)", marginBottom: 36, lineHeight: 1.7, fontSize: "0.95rem" }}>
+            Join the testnet, complete quests, run a validator node, and contribute to the network before mainnet. The early participants who put in the work during testnet are historically the ones who benefit most at launch.
+          </p>
+          <a href={AIVM_REFERRAL} target="_blank" rel="noopener noreferrer"
+             style={{ display: "inline-flex", alignItems: "center", gap: 10, background: `linear-gradient(135deg, ${CYAN}, ${GREEN})`, color: NAVY, padding: "16px 44px", borderRadius: 50, fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: "1.05rem", textDecoration: "none", boxShadow: `0 8px 40px rgba(0,254,252,0.2)` }}>
+            Join ChainGPT · Start Earning →
+          </a>
+          <p style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.62rem", color: "rgba(255,255,255,0.2)", marginTop: 16 }}>
+            Opens app.chaingpt.org — Web3 wallet required
+          </p>
+        </div>
+      </section>
+
+    </div>
   );
 }
 

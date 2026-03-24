@@ -66,4 +66,5 @@ export type SubdomainKey =
   | "jobs"
   | "medium"
   | "advanced"
-  | "doma";
+  | "doma"
+  | "aivm";

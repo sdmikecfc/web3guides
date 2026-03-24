@@ -102,6 +102,8 @@ function StatsGrid({ visual, accentHex }: { visual: Extract<ArticleVisual, { typ
 function ComparisonCard({ visual, accentHex }: { visual: Extract<ArticleVisual, { type: "comparison" }>; accentHex: string }) {
   const { left, right } = visual;
 
+  if (!left || !right) return null;
+
   return (
     <div style={{
       borderRadius: 20,
@@ -286,7 +288,7 @@ const CALLOUT_STYLES = {
   },
 };
 
-function CalloutBox({ visual }: { visual: Extract<ArticleVisual, { type: "callout" }>; accentHex: string }) {
+function CalloutBox({ visual }: { visual: Extract<ArticleVisual, { type: "callout" }> }) {
   const s = CALLOUT_STYLES[visual.variant] ?? CALLOUT_STYLES.insight;
 
   return (

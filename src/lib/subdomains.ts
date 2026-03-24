@@ -199,6 +199,17 @@ export const SUBDOMAINS: Record<SubdomainKey, SubdomainConfig> = {
     gradientFrom: "#150f33",
     gradientTo: "#0a0a0f",
   },
+  aivm: {
+    key: "aivm",
+    label: "AIVM",
+    description: "ChainGPT's AI Virtual Machine — the Layer-1 blockchain decentralising AI compute, agents, and data markets.",
+    accentColor: "blue",
+    accentHex: "#00FEFC",
+    glowHex: "rgba(0,254,252,0.15)",
+    emoji: "🤖",
+    gradientFrom: "#0B1320",
+    gradientTo: "#020810",
+  },
 };
 
 export const VALID_SUBDOMAINS = Object.keys(SUBDOMAINS) as SubdomainKey[];

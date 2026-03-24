@@ -28,7 +28,27 @@
       "Bash(ls /c/Users/Mike/Desktop/web3guides/.claude/worktrees/sad-hoover/.env*)",
       "mcp__scheduled-tasks__list_scheduled_tasks",
       "WebFetch(domain:www.linkedin.com)",
-      "Bash(powershell.exe -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\Mike\\\\Desktop\\\\web3guides\\\\generate_articles.ps1\")"
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\Mike\\\\Desktop\\\\web3guides\\\\generate_articles.ps1\")",
+      "Bash(vercel logs:*)",
+      "Bash(vercel inspect:*)",
+      "Bash(vercel ls:*)",
+      "Bash(curl -s \"http://localhost:3000/guides/uk-crypto-tax-202526-the-definitive-hmrc-guide-every-investor-needs\" -H \"Host: tax.localhost:3000\")",
+      "WebSearch",
+      "Bash(grep -r \"FEATURED_PROJECT\\\\|BROWSE_ORDER\" /c/Users/Mike/Desktop/web3guides/src/ --include=*.tsx --include=*.ts)",
+      "Bash(grep -n \"JobsPage\\\\|DomaPage\\\\|AivmPage\" /c/Users/Mike/Desktop/web3guides/src/app/[subdomain]/page.tsx)",
+      "Bash(grep -A 5 \"function JobsPage\\\\|function DomaPage\\\\|function AivmPage\" /c/Users/Mike/Desktop/web3guides/src/app/[subdomain]/page.tsx)",
+      "Bash(grep -n \"import.*from\" /c/Users/Mike/Desktop/web3guides/src/app/[subdomain]/page.tsx)",
+      "Bash(grep -n \"Pagination\\\\|EmptyState\" /c/Users/Mike/Desktop/web3guides/src/app/[subdomain]/page.tsx)",
+      "Bash(grep -n \"return <\" /c/Users/Mike/Desktop/web3guides/src/app/[subdomain]/page.tsx)",
+      "Bash(wc -l /c/Users/Mike/Desktop/web3guides/src/app/[subdomain]/page.tsx)",
+      "Bash(tail -20 /c/Users/Mike/Desktop/web3guides/src/app/[subdomain]/page.tsx)",
+      "Bash(git -C /c/Users/Mike/Desktop/web3guides log --oneline)",
+      "Bash(grep -n \"import.*GuideCard\\\\|import.*HeroSection\\\\|import.*FilterBar\\\\|import.*SubdomainCTA\" /c/Users/Mike/Desktop/web3guides/src/app/[subdomain]/page.tsx)",
+      "Bash(grep -n \"as const\" /c/Users/Mike/Desktop/web3guides/src/app/[subdomain]/page.tsx)",
+      "Bash(grep -n \"Promise.all\\\\|Promise.race\\\\|Promise.any\" /c/Users/Mike/Desktop/web3guides/src/app/[subdomain]/page.tsx)",
+      "Bash(grep -n \"await\\\\|async\" /c/Users/Mike/Desktop/web3guides/src/app/[subdomain]/page.tsx)",
+      "Bash(grep -n \"!cfg\\\\|!guide\\\\|null\\\\|undefined\" /c/Users/Mike/Desktop/web3guides/src/app/[subdomain]/guides/[slug]/page.tsx)",
+      "Bash(grep -r \"contentSecurityPolicy\\\\|X-Frame\\\\|CORS\" /c/Users/Mike/Desktop/web3guides/src --include=*.ts --include=*.tsx)"
     ]
   }
 }

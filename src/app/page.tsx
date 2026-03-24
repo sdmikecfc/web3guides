@@ -70,6 +70,21 @@ function SubdomainIcon({ sdKey, color }: { sdKey: string; color: string }) {
         <line x1="15" y1="12" x2="21" y2="12" {...s}/>
       </svg>
     );
+    case "aivm": return (
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none">
+        <circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.5" opacity="0.4"/>
+        <circle cx="12" cy="12" r="4.5" stroke={color} strokeWidth="1.5"/>
+        <circle cx="12" cy="12" r="1.8" fill={color}/>
+        <line x1="12" y1="3" x2="12" y2="7.5" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+        <line x1="12" y1="16.5" x2="12" y2="21" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+        <line x1="3" y1="12" x2="7.5" y2="12" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+        <line x1="16.5" y1="12" x2="21" y2="12" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+        <circle cx="5.5" cy="5.5" r="1.5" fill={color} opacity="0.7"/>
+        <circle cx="18.5" cy="5.5" r="1.5" fill={color} opacity="0.7"/>
+        <circle cx="5.5" cy="18.5" r="1.5" fill={color} opacity="0.7"/>
+        <circle cx="18.5" cy="18.5" r="1.5" fill={color} opacity="0.7"/>
+      </svg>
+    );
     default: return <span style={{ fontSize: "1.4rem" }}>📄</span>;
   }
 }
@@ -270,11 +285,25 @@ function DifficultyTiles() {
    BROWSE TOPICS (subdomain tile grid)
 ════════════════════════════════════════════════════════════════════════ */
 
+// ── Featured project config — change this to swap the featured project ──────
+const FEATURED_PROJECT = {
+  key:         "aivm",
+  label:       "AIVM by ChainGPT",
+  tagline:     "Decentralised AI. No Big Tech Required.",
+  description: "ChainGPT's Layer-1 blockchain for open AI compute, verifiable agent execution, and tokenised data markets. Public testnet live now — mainnet Q2/3 2026.",
+  badge:       "Featured Project Guides",
+  accentFrom:  "#00FEFC",
+  accentTo:    "#2DFFB9",
+  bg:          "#0B1320",
+  url:         "https://aivm.web3guides.com",
+  partnerLine: "Backed by Google · Nvidia · Alibaba Cloud · Binance",
+};
+
 // Ordered intentionally: easy entry points first, then chains, then specialisms
 // 'beginner' subdomain excluded — not managed by this platform
 const BROWSE_ORDER = [
   "easy", "eth", "btc", "sol", "defi", "staking",
-  "layer2", "security", "rwa", "bridge", "legal", "tax", "bigmike", "doma",
+  "layer2", "security", "rwa", "bridge", "legal", "tax", "bigmike", "doma", "aivm",
 ];
 
 function BrowseSection() {
@@ -287,6 +316,113 @@ function BrowseSection() {
           <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.05rem", color: "#6b7280", maxWidth: 500, margin: "0 auto", lineHeight: 1.7 }}>
             Each topic is a dedicated knowledge hub. Pick one and go deep — no signup required.
           </p>
+        </Reveal>
+
+        {/* ── Featured Project Banner ──────────────────────────────────── */}
+        <Reveal style={{ marginBottom: 16 }}>
+          <a
+            href={FEATURED_PROJECT.url}
+            style={{
+              display: "block",
+              textDecoration: "none",
+              borderRadius: 24,
+              overflow: "hidden",
+              background: FEATURED_PROJECT.bg,
+              border: `1.5px solid rgba(0,254,252,0.25)`,
+              boxShadow: `0 0 0 0 rgba(0,254,252,0)`,
+              transition: "box-shadow 0.3s, transform 0.2s",
+              position: "relative",
+            }}
+            onMouseEnter={e => {
+              const el = e.currentTarget as HTMLElement;
+              el.style.boxShadow = "0 8px 60px rgba(0,254,252,0.2)";
+              el.style.transform = "translateY(-3px)";
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget as HTMLElement;
+              el.style.boxShadow = "0 0 0 0 rgba(0,254,252,0)";
+              el.style.transform = "translateY(0)";
+            }}
+          >
+            {/* Animated background glow */}
+            <div style={{
+              position: "absolute", inset: 0,
+              backgroundImage: `radial-gradient(ellipse at 20% 50%, rgba(0,254,252,0.07) 0%, transparent 60%), radial-gradient(ellipse at 80% 50%, rgba(45,255,185,0.05) 0%, transparent 60%)`,
+              pointerEvents: "none",
+            }} />
+            {/* Scanline texture */}
+            <div style={{
+              position: "absolute", inset: 0,
+              backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,254,252,0.015) 3px, rgba(0,254,252,0.015) 4px)",
+              pointerEvents: "none",
+            }} />
+
+            <div style={{
+              position: "relative", zIndex: 1,
+              display: "flex", alignItems: "center", gap: 28,
+              padding: "28px 36px", flexWrap: "wrap",
+            }}>
+              {/* Icon */}
+              <div style={{
+                width: 72, height: 72, borderRadius: 20, flexShrink: 0,
+                background: "rgba(0,254,252,0.08)",
+                border: "1.5px solid rgba(0,254,252,0.3)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 0 24px rgba(0,254,252,0.15)",
+              }}>
+                <svg viewBox="0 0 32 32" width="36" height="36" fill="none">
+                  <circle cx="16" cy="16" r="12" stroke="#00FEFC" strokeWidth="1.5" opacity="0.4"/>
+                  <circle cx="16" cy="16" r="6" stroke="#00FEFC" strokeWidth="1.5"/>
+                  <circle cx="16" cy="16" r="2.5" fill="#00FEFC"/>
+                  <line x1="16" y1="4" x2="16" y2="10" stroke="#2DFFB9" strokeWidth="1.5" strokeLinecap="round"/>
+                  <line x1="16" y1="22" x2="16" y2="28" stroke="#2DFFB9" strokeWidth="1.5" strokeLinecap="round"/>
+                  <line x1="4" y1="16" x2="10" y2="16" stroke="#2DFFB9" strokeWidth="1.5" strokeLinecap="round"/>
+                  <line x1="22" y1="16" x2="28" y2="16" stroke="#2DFFB9" strokeWidth="1.5" strokeLinecap="round"/>
+                  <circle cx="7" cy="7" r="2" fill="#00FEFC" opacity="0.6"/>
+                  <circle cx="25" cy="7" r="2" fill="#00FEFC" opacity="0.6"/>
+                  <circle cx="7" cy="25" r="2" fill="#2DFFB9" opacity="0.6"/>
+                  <circle cx="25" cy="25" r="2" fill="#2DFFB9" opacity="0.6"/>
+                </svg>
+              </div>
+
+              {/* Content */}
+              <div style={{ flex: 1, minWidth: 200 }}>
+                {/* Badge */}
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  background: "rgba(0,254,252,0.1)",
+                  border: "1px solid rgba(0,254,252,0.2)",
+                  borderRadius: 50, padding: "3px 12px", marginBottom: 10,
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00FEFC", display: "inline-block", boxShadow: "0 0 6px #00FEFC" }} />
+                  <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.6rem", color: "#00FEFC", letterSpacing: 1.5 }}>
+                    {FEATURED_PROJECT.badge.toUpperCase()}
+                  </span>
+                </div>
+                <div style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.2rem, 2.5vw, 1.6rem)", color: "#fff", marginBottom: 6, lineHeight: 1.15 }}>
+                  {FEATURED_PROJECT.label}
+                </div>
+                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "rgba(255,255,255,0.55)", lineHeight: 1.6, maxWidth: 580 }}>
+                  {FEATURED_PROJECT.description}
+                </div>
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.6rem", color: "rgba(255,255,255,0.25)", letterSpacing: 1, marginTop: 10 }}>
+                  {FEATURED_PROJECT.partnerLine}
+                </div>
+              </div>
+
+              {/* CTA */}
+              <div style={{ flexShrink: 0 }}>
+                <div style={{
+                  background: `linear-gradient(135deg, ${FEATURED_PROJECT.accentFrom}, ${FEATURED_PROJECT.accentTo})`,
+                  color: "#0B1320", padding: "12px 28px", borderRadius: 50,
+                  fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: "0.9rem",
+                  whiteSpace: "nowrap",
+                }}>
+                  Explore AIVM →
+                </div>
+              </div>
+            </div>
+          </a>
         </Reveal>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>

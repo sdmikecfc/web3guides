@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
+import Image from "next/image";
 
 export const metadata: Metadata = {
   title: "About | Web3 Guides",
@@ -41,6 +42,44 @@ export default function AboutPage() {
         <p style={S.p}>Each subdomain (e.g. <a href="https://eth.web3guides.com" style={{ color: "#ff6b35" }}>eth.web3guides.com</a>, <a href="https://defi.web3guides.com" style={{ color: "#ff6b35" }}>defi.web3guides.com</a>) is a dedicated knowledge hub. Guides are written and curated by subject matter experts, with AI assistance used to keep content up to date as the space evolves rapidly.</p>
 
         <p style={S.p}>All AI-assisted content is reviewed for accuracy and clearly noted. We encourage readers to verify information independently and consult professionals for financial or legal decisions.</p>
+
+        {/* ── Meet the Creator ─────────────────────────────────────── */}
+        <div style={{
+          marginTop: 48,
+          padding: "36px 32px",
+          background: "linear-gradient(135deg, #fff8f4, #fff3ee)",
+          border: "1px solid #ffd4bf",
+          borderRadius: 20,
+          display: "flex",
+          gap: 32,
+          alignItems: "flex-start",
+          flexWrap: "wrap",
+        }}>
+          <div style={{ flexShrink: 0 }}>
+            <Image
+              src="/bigmike.jpg"
+              alt="Big Mike — founder of Web3 Guides"
+              width={120}
+              height={120}
+              style={{ borderRadius: "50%", border: "3px solid #ff6b35", objectFit: "cover", display: "block" }}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+              <h2 style={{ ...S.h2, margin: 0 }}>Big Mike</h2>
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", background: "#fff", border: "1px solid #ffd4bf", color: "#ff6b35", borderRadius: 6, padding: "3px 8px", letterSpacing: 0.5 }}>FOUNDER</span>
+            </div>
+            <p style={{ ...S.p, marginBottom: 12, marginTop: 8 }}>
+              I&apos;ve been in crypto since 2016 — back when you had to explain what a blockchain was at every dinner party. Since 2018 I&apos;ve worked full-time in the space, focused on community management and helping everyday people actually understand what&apos;s going on.
+            </p>
+            <p style={{ ...S.p, marginBottom: 12 }}>
+              Before crypto took over my life, I taught calculus in California. Education has always been the thing — breaking down complex ideas into something a normal person can act on. That&apos;s exactly what Web3 Guides is: the resource I wish had existed when I was figuring all of this out.
+            </p>
+            <p style={{ ...S.p, marginBottom: 0 }}>
+              For the last five years I&apos;ve been travelling the world while building in Web3. If you&apos;ve got questions or just want to connect, find me at <a href="https://bigmike.web3guides.com" style={{ color: "#ff6b35", fontWeight: 600 }}>bigmike.web3guides.com</a>.
+            </p>
+          </div>
+        </div>
 
         <h2 style={S.h2}>Powered by Doma Protocol</h2>
         <p style={S.p}>The subdomain infrastructure is powered by <a href="https://doma.xyz" target="_blank" rel="noopener noreferrer" style={{ color: "#ff6b35" }}>Doma Protocol</a> — an on-chain subdomain ownership platform. This means each web3guides.com subdomain can be owned, transferred, and built on by its creator, with no central authority able to revoke access.</p>
