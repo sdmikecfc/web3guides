@@ -221,6 +221,17 @@ export const SUBDOMAINS: Record<SubdomainKey, SubdomainConfig> = {
     gradientFrom: "#1E1B4B",
     gradientTo: "#0a0a0f",
   },
+  ink: {
+    key: "ink",
+    label: "Ink",
+    description: "Kraken's Layer 2 blockchain — the DeFi destination for 10M+ Kraken users. Airdrop confirmed for Q3 2026.",
+    accentColor: "blue",
+    accentHex: "#0066FF",
+    glowHex: "rgba(0,102,255,0.15)",
+    emoji: "🖊",
+    gradientFrom: "#00051A",
+    gradientTo: "#0A0B1E",
+  },
 };
 
 export const VALID_SUBDOMAINS = Object.keys(SUBDOMAINS) as SubdomainKey[];
