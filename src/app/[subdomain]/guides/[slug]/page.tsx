@@ -139,7 +139,7 @@ export default async function GuidePage({ params }: Props) {
 
         {/* Breadcrumb */}
         <nav className="article-breadcrumb">
-          <Link href="/" style={{ color: "#9ca3af", textDecoration: "none" }}>
+          <Link href={`https://${params.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "web3guides.com"}`} style={{ color: "#9ca3af", textDecoration: "none" }}>
             {cfg.emoji} {cfg.label}
           </Link>
           <span style={{ color: "#d1d5db" }}>/</span>
@@ -260,7 +260,7 @@ export default async function GuidePage({ params }: Props) {
                       What you&apos;ll learn
                     </div>
                     <div className="hero-key-points">
-                      {(guide.key_points ?? []).slice(0, 4).map((point: string, i: number) => (
+                      {guide.key_points.slice(0, 4).map((point: string, i: number) => (
                         <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                           <span style={{
                             color: cfg.accentHex, flexShrink: 0,
