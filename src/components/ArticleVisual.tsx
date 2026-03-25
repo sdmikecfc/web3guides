@@ -26,6 +26,7 @@ export function ArticleVisualBlock({ visual, accentHex }: Props) {
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 function alpha(hex: string, a: number) {
+  if (!hex || hex.length < 7) return `rgba(0,0,0,${a})`;
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
@@ -40,7 +41,7 @@ const FONT_TITLE = "'Bungee', cursive";
 // 4 large numbers in a 2×2 card grid
 
 function StatsGrid({ visual, accentHex }: { visual: Extract<ArticleVisual, { type: "stats" }>; accentHex: string }) {
-  const items = visual.items.slice(0, 4);
+  const items = (visual.items ?? []).slice(0, 4);
   if (items.length === 0) return null;
 
   return (
@@ -103,6 +104,8 @@ function ComparisonCard({ visual, accentHex }: { visual: Extract<ArticleVisual, 
   const { left, right } = visual;
 
   if (!left || !right) return null;
+  const leftPoints  = left.points  ?? [];
+  const rightPoints = right.points ?? [];
 
   return (
     <div style={{
@@ -136,20 +139,20 @@ function ComparisonCard({ visual, accentHex }: { visual: Extract<ArticleVisual, 
       </div>
 
       {/* Points rows */}
-      {Array.from({ length: Math.max(left.points.length, right.points.length) }).map((_, i) => (
+      {Array.from({ length: Math.max(leftPoints.length, rightPoints.length) }).map((_, i) => (
         <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr" }}>
           <div style={{
             padding: "11px 20px",
-            borderBottom: i < Math.max(left.points.length, right.points.length) - 1 ? `1px solid ${alpha(accentHex, 0.08)}` : "none",
+            borderBottom: i < Math.max(leftPoints.length, rightPoints.length) - 1 ? `1px solid ${alpha(accentHex, 0.08)}` : "none",
             display: "flex",
             alignItems: "flex-start",
             gap: 8,
           }}>
-            {left.points[i] ? (
+            {leftPoints[i] ? (
               <>
                 <span style={{ color: accentHex, flexShrink: 0, marginTop: 1, fontSize: "0.8rem" }}>✓</span>
                 <span style={{ fontFamily: FONT_BODY, fontSize: "0.82rem", color: "#374151", lineHeight: 1.45 }}>
-                  {left.points[i]}
+                  {leftPoints[i]}
                 </span>
               </>
             ) : null}
@@ -162,11 +165,11 @@ function ComparisonCard({ visual, accentHex }: { visual: Extract<ArticleVisual, 
             alignItems: "flex-start",
             gap: 8,
           }}>
-            {right.points[i] ? (
+            {rightPoints[i] ? (
               <>
                 <span style={{ color: "#9ca3af", flexShrink: 0, marginTop: 1, fontSize: "0.8rem" }}>✓</span>
                 <span style={{ fontFamily: FONT_BODY, fontSize: "0.82rem", color: "#374151", lineHeight: 1.45 }}>
-                  {right.points[i]}
+                  {rightPoints[i]}
                 </span>
               </>
             ) : null}
@@ -181,7 +184,7 @@ function ComparisonCard({ visual, accentHex }: { visual: Extract<ArticleVisual, 
 // Numbered vertical process flow with connecting line
 
 function StepsFlow({ visual, accentHex }: { visual: Extract<ArticleVisual, { type: "steps" }>; accentHex: string }) {
-  const items = visual.items.slice(0, 6);
+  const items = (visual.items ?? []).slice(0, 6);
   if (items.length === 0) return null;
 
   return (
@@ -336,7 +339,7 @@ function CalloutBox({ visual }: { visual: Extract<ArticleVisual, { type: "callou
 // Visual tick-list for pre/post action items
 
 function ChecklistCard({ visual, accentHex }: { visual: Extract<ArticleVisual, { type: "checklist" }>; accentHex: string }) {
-  const items = visual.items.slice(0, 7);
+  const items = (visual.items ?? []).slice(0, 7);
   if (items.length === 0) return null;
 
   return (
