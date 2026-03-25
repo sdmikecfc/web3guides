@@ -74,6 +74,12 @@ export default async function SubdomainPage({ params, searchParams }: Props) {
     return <AivmPage guides={guides} cfg={cfg} />;
   }
 
+  // PAI3 subdomain: custom branded page
+  if (params.subdomain === "pai3") {
+    const guides = await getGuidesBySubdomain("pai3", { limit: 10, offset: 0 });
+    return <Pai3Page guides={guides} cfg={cfg} />;
+  }
+
   // Doma subdomain: custom page with referral + guides
   if (params.subdomain === "doma") {
     const page = Math.max(1, parseInt(searchParams.page ?? "1", 10));
@@ -471,6 +477,277 @@ function AivmPage({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: imp
           </a>
           <p style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.62rem", color: "rgba(255,255,255,0.2)", marginTop: 16 }}>
             Opens app.chaingpt.org — Web3 wallet required
+          </p>
+        </div>
+      </section>
+
+    </div>
+  );
+}
+
+// ─── PAI3 Page ───────────────────────────────────────────────────────────────
+
+const P_PURPLE  = "#8B5CF6";
+const P_VIOLET  = "#6D28D9";
+const P_CYAN    = "#06B6D4";
+const P_DARK    = "#0A0714";
+const P_NAVY    = "#1E1B4B";
+
+const PAI3_PILLARS = [
+  {
+    icon: "🖥️",
+    title: "Own Your AI Hardware",
+    body: "Power Nodes are physical devices you own outright — not leased from Big Tech. Your hardware runs AI privately, earns $PAI3 tokens, and holds residual value independent of the network.",
+    color: P_PURPLE,
+  },
+  {
+    icon: "🔐",
+    title: "Privacy-First Architecture",
+    body: "Sensitive data never leaves your local environment. PAI3 is HIPAA-compliant and enterprise-ready — healthcare, legal, and financial data stays secure by design, not by promise.",
+    color: P_CYAN,
+  },
+  {
+    icon: "🔥",
+    title: "Deflationary Token Economics",
+    body: "Every AI inference burns $PAI3. Every transaction burns $PAI3. As the network grows and usage scales, supply shrinks — creating natural price pressure aligned with adoption.",
+    color: P_PURPLE,
+  },
+  {
+    icon: "🗳️",
+    title: "Quadratic Voting Governance",
+    body: "Voting power is the square root of tokens staked — not one-token-one-vote. This prevents whale dominance and ensures the community, not the wealthy few, governs the network.",
+    color: P_CYAN,
+  },
+];
+
+const PAI3_PARTICIPATION = [
+  {
+    tag: "HARDWARE",
+    title: "Buy a Power Node",
+    body: "Purchase physical hardware that runs AI models privately on your premises. Receive a 150,000 $PAI3 token allocation at TGE and earn ongoing emissions from network activity.",
+  },
+  {
+    tag: "SOFTWARE",
+    title: "Run a Professional Node",
+    body: "Software-based nodes with lower hardware requirements. Stake $PAI3 to participate in validation and compute tasks. Open to the public at mainnet launch in Q3 2026.",
+  },
+  {
+    tag: "BUILD",
+    title: "Develop on PAI3",
+    body: "Use AgentOS to build and deploy AI agents on the network. Deploy models to the marketplace, earn from usage fees, and access the full-stack decentralised AI infrastructure.",
+  },
+];
+
+const PAI3_ROADMAP = [
+  { quarter: "Q1 2026", label: "Token Prep", detail: "Security audits, smart contract finalisation, exchange partnerships", done: true },
+  { quarter: "Q2 2026", label: "TGE · $PAI3 Launch", detail: "BNB Chain deployment, exchange listings, Power Node rewards begin, governance live", done: false },
+  { quarter: "Q3 2026", label: "Mainnet · World Computer", detail: "Full decentralised AI inference network, Professional Nodes open, Marketplace live", done: false },
+  { quarter: "Q4 2026", label: "PAI3 Computer", detail: "Consumer hardware unveiled — plug-and-play decentralised AI for mass adoption", done: false },
+];
+
+function Pai3Page({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: import("@/types").SubdomainConfig }) {
+  return (
+    <div style={{ background: P_DARK, minHeight: "100vh", color: "#fff" }}>
+
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <section style={{
+        background: `linear-gradient(160deg, #110d2e 0%, #1a1040 50%, ${P_DARK} 100%)`,
+        padding: "90px 24px 80px",
+        textAlign: "center",
+        position: "relative",
+        overflow: "hidden",
+        borderBottom: `1px solid rgba(139,92,246,0.15)`,
+      }}>
+        <div style={{ position: "absolute", top: -100, left: "50%", transform: "translateX(-50%)", width: 700, height: 700, borderRadius: "50%", background: `radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%)`, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -80, right: "8%", width: 380, height: 380, borderRadius: "50%", background: `radial-gradient(circle, rgba(6,182,212,0.07) 0%, transparent 70%)`, pointerEvents: "none" }} />
+
+        <div style={{ maxWidth: 800, margin: "0 auto", position: "relative", zIndex: 1 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)", borderRadius: 50, padding: "6px 18px", marginBottom: 28 }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: P_PURPLE, display: "inline-block", boxShadow: `0 0 8px ${P_PURPLE}` }} />
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: P_PURPLE, letterSpacing: 1.5 }}>PEOPLE&apos;S AI · TGE Q2 2026 · BNB CHAIN</span>
+          </div>
+
+          <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: "clamp(2.2rem, 6vw, 4rem)", lineHeight: 1.05, marginBottom: 24 }}>
+            <span style={{ color: "#fff" }}>AI You Own.</span>
+            <br />
+            <span style={{ background: `linear-gradient(90deg, ${P_PURPLE}, ${P_CYAN})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              Not Rent from Big Tech.
+            </span>
+          </h1>
+
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.1rem", color: "rgba(255,255,255,0.6)", lineHeight: 1.75, maxWidth: 620, margin: "0 auto 44px" }}>
+            PAI3 is a decentralised AI network where you own the hardware, earn the rewards, and govern the future. Physical Power Nodes. Privacy-first compute. A deflationary token that burns with every AI inference.
+          </p>
+
+          <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
+            <a href="https://pai3.ai" target="_blank" rel="noopener noreferrer"
+               style={{ display: "inline-flex", alignItems: "center", gap: 10, background: `linear-gradient(135deg, ${P_PURPLE}, ${P_VIOLET})`, color: "#fff", padding: "15px 36px", borderRadius: 50, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: "1rem", textDecoration: "none", boxShadow: `0 8px 40px rgba(139,92,246,0.3)`, letterSpacing: 0.2 }}>
+              Explore PAI3 →
+            </a>
+            <a href="#guides"
+               style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.8)", padding: "15px 32px", borderRadius: 50, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 600, fontSize: "1rem", textDecoration: "none" }}>
+              Read the Guides
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Stats bar ────────────────────────────────────────────── */}
+      <section style={{ background: "rgba(139,92,246,0.04)", borderBottom: "1px solid rgba(139,92,246,0.1)" }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 24px", display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 48 }}>
+          {[
+            { value: "26K+",    label: "Community Members" },
+            { value: "500+",    label: "Power Nodes Sold" },
+            { value: "Q2 2026", label: "$PAI3 Token Launch" },
+            { value: "40+",     label: "Enterprise Partners" },
+          ].map(({ value, label }) => (
+            <div key={label} style={{ textAlign: "center" }}>
+              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: "1.6rem", color: P_PURPLE, textShadow: `0 0 20px rgba(139,92,246,0.4)` }}>{value}</div>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.62rem", color: "rgba(255,255,255,0.35)", letterSpacing: 1, textTransform: "uppercase", marginTop: 6 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── The problem ──────────────────────────────────────────── */}
+      <section style={{ maxWidth: 900, margin: "0 auto", padding: "80px 24px 64px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+          <div style={{ width: 3, height: 32, background: `linear-gradient(180deg, ${P_PURPLE}, ${P_CYAN})`, borderRadius: 2 }} />
+          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: P_PURPLE, letterSpacing: 2 }}>THE PROBLEM</span>
+        </div>
+        <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: "clamp(1.6rem, 3vw, 2.4rem)", color: "#fff", marginBottom: 24, lineHeight: 1.15 }}>
+          AI is reshaping the world.<br />
+          <span style={{ color: "rgba(255,255,255,0.35)" }}>But you don&apos;t own any of it.</span>
+        </h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+          {[
+            { label: "Ownership", problem: "OpenAI, Google, Microsoft own the models. You pay per call and get nothing back." },
+            { label: "Privacy",   problem: "Your data trains their models. Healthcare, legal, financial records — all at risk." },
+            { label: "Profits",   problem: "The value you generate flows to shareholders, not to the people running the network." },
+            { label: "Control",   problem: "One API change, one policy update, one shutdown — and your business disappears overnight." },
+          ].map(({ label, problem }) => (
+            <div key={label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "20px 22px" }}>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", color: "rgba(255,69,69,0.8)", letterSpacing: 1, marginBottom: 8 }}>❌ {label}</div>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.88rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.6, margin: 0 }}>{problem}</p>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 28, padding: "22px 28px", background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.2)", borderRadius: 16 }}>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1rem", color: "rgba(255,255,255,0.8)", lineHeight: 1.7, margin: 0 }}>
+            <strong style={{ color: P_PURPLE }}>PAI3 flips the model.</strong> Own the hardware. Keep your data private. Earn from the network you run. Govern with a vote that can&apos;t be drowned out by whales.
+          </p>
+        </div>
+      </section>
+
+      {/* ── Four Pillars ─────────────────────────────────────────── */}
+      <section style={{ background: "rgba(255,255,255,0.02)", borderTop: "1px solid rgba(139,92,246,0.08)", borderBottom: "1px solid rgba(139,92,246,0.08)" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "72px 24px" }}>
+          <div style={{ textAlign: "center", marginBottom: 56 }}>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: P_PURPLE, letterSpacing: 2, marginBottom: 14 }}>HOW IT WORKS</div>
+            <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: "#fff", margin: 0 }}>Four Pillars of People&apos;s AI</h2>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20 }}>
+            {PAI3_PILLARS.map(({ icon, title, body, color }) => (
+              <div key={title} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid rgba(139,92,246,0.12)`, borderRadius: 18, padding: "28px 24px", position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${color}, transparent)` }} />
+                <div style={{ fontSize: "1.8rem", marginBottom: 16 }}>{icon}</div>
+                <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: "0.95rem", color: "#fff", marginBottom: 10 }}>{title}</h3>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.87rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.65, margin: 0 }}>{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How to Participate ────────────────────────────────────── */}
+      <section style={{ maxWidth: 1000, margin: "0 auto", padding: "72px 24px" }}>
+        <div style={{ marginBottom: 48 }}>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: P_CYAN, letterSpacing: 2, marginBottom: 14 }}>GET INVOLVED</div>
+          <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: "#fff", marginBottom: 10 }}>Three Ways to Participate</h2>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", color: "rgba(255,255,255,0.45)", fontSize: "0.95rem", margin: 0 }}>
+            Whether you want to own hardware, run software, or build applications — PAI3 has an entry point for every level.
+          </p>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {PAI3_PARTICIPATION.map(({ tag, title, body }) => (
+            <div key={title} style={{ display: "flex", gap: 20, alignItems: "flex-start", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "22px 24px" }}>
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.6rem", background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)", color: P_PURPLE, borderRadius: 6, padding: "4px 10px", whiteSpace: "nowrap", marginTop: 2, flexShrink: 0 }}>{tag}</span>
+              <div>
+                <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: "0.95rem", color: "#fff", marginBottom: 6 }}>{title}</h3>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.875rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.6, margin: 0 }}>{body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Roadmap ──────────────────────────────────────────────── */}
+      <section style={{ background: "rgba(255,255,255,0.02)", borderTop: "1px solid rgba(139,92,246,0.08)", borderBottom: "1px solid rgba(139,92,246,0.08)" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", padding: "72px 24px" }}>
+          <div style={{ textAlign: "center", marginBottom: 52 }}>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: P_CYAN, letterSpacing: 2, marginBottom: 14 }}>WHAT&apos;S COMING</div>
+            <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: "#fff", margin: 0 }}>The Road to the World Computer</h2>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {PAI3_ROADMAP.map(({ quarter, label, detail, done }, i) => (
+              <div key={quarter} style={{ display: "flex", gap: 0 }}>
+                {/* Timeline spine */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 40, flexShrink: 0 }}>
+                  <div style={{ width: 14, height: 14, borderRadius: "50%", background: done ? P_PURPLE : "rgba(139,92,246,0.25)", border: `2px solid ${done ? P_PURPLE : "rgba(139,92,246,0.4)"}`, flexShrink: 0, boxShadow: done ? `0 0 12px rgba(139,92,246,0.5)` : "none", marginTop: 4 }} />
+                  {i < PAI3_ROADMAP.length - 1 && (
+                    <div style={{ width: 2, flex: 1, background: "rgba(139,92,246,0.15)", marginTop: 4, marginBottom: 4, minHeight: 32 }} />
+                  )}
+                </div>
+                <div style={{ paddingLeft: 20, paddingBottom: i < PAI3_ROADMAP.length - 1 ? 36 : 0 }}>
+                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.62rem", color: done ? P_PURPLE : "rgba(255,255,255,0.3)", letterSpacing: 1, marginBottom: 4 }}>{quarter}</div>
+                  <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: "1rem", color: done ? "#fff" : "rgba(255,255,255,0.6)", marginBottom: 6 }}>{label}</h3>
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", color: "rgba(255,255,255,0.4)", lineHeight: 1.6, margin: 0 }}>{detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Guides ──────────────────────────────────────────────── */}
+      <section id="guides" style={{ maxWidth: 1200, margin: "0 auto", padding: "80px 24px 64px" }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 12 }}>
+          <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: "1.8rem", color: "#fff", margin: 0 }}>PAI3 Guides</h2>
+          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "rgba(255,255,255,0.35)", letterSpacing: 1 }}>{guides.length} guide{guides.length !== 1 ? "s" : ""}</span>
+        </div>
+        <p style={{ fontFamily: "'DM Sans', sans-serif", color: "rgba(255,255,255,0.4)", marginBottom: 44, fontSize: "0.95rem" }}>
+          Everything you need to understand PAI3 — from Power Nodes and tokenomics to enterprise use cases and the Q2 2026 token launch.
+        </p>
+        {guides.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "80px 0" }}>
+            <div style={{ fontSize: "2.5rem", marginBottom: 16, opacity: 0.3 }}>◈</div>
+            <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: "1.1rem", color: "rgba(255,255,255,0.2)" }}>Guides dropping soon</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {guides.map((guide, i) => (
+              <GuideCard key={guide.id} guide={guide} config={cfg} index={i} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── CTA ─────────────────────────────────────────────────── */}
+      <section style={{ maxWidth: 720, margin: "0 auto", padding: "80px 24px 100px", textAlign: "center" }}>
+        <div style={{ background: "rgba(139,92,246,0.05)", border: "1px solid rgba(139,92,246,0.18)", borderRadius: 24, padding: "56px 40px" }}>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: P_CYAN, letterSpacing: 2, marginBottom: 16 }}>TOKEN LAUNCH · Q2 2026 · BNB CHAIN</div>
+          <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: "clamp(1.5rem, 3vw, 2rem)", color: "#fff", marginBottom: 16, lineHeight: 1.2 }}>
+            Ground Floor Is Closing.<br />The TGE Is Coming Q2 2026.
+          </h2>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", color: "rgba(255,255,255,0.5)", marginBottom: 36, lineHeight: 1.7, fontSize: "0.95rem" }}>
+            Power Node owners receive 150,000 $PAI3 at token launch. Node price increases with every unit sold — and 500+ are already gone. Join the community, understand the project, and position before the window closes.
+          </p>
+          <a href="https://pai3.ai" target="_blank" rel="noopener noreferrer"
+             style={{ display: "inline-flex", alignItems: "center", gap: 10, background: `linear-gradient(135deg, ${P_PURPLE}, ${P_VIOLET})`, color: "#fff", padding: "16px 44px", borderRadius: 50, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: "1.05rem", textDecoration: "none", boxShadow: `0 8px 40px rgba(139,92,246,0.25)` }}>
+            Learn More at PAI3.ai →
+          </a>
+          <p style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.62rem", color: "rgba(255,255,255,0.2)", marginTop: 16 }}>
+            Opens pai3.ai — not financial advice
           </p>
         </div>
       </section>

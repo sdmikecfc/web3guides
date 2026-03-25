@@ -67,4 +67,5 @@ export type SubdomainKey =
   | "medium"
   | "advanced"
   | "doma"
-  | "aivm";
+  | "aivm"
+  | "pai3";

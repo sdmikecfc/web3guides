@@ -210,6 +210,17 @@ export const SUBDOMAINS: Record<SubdomainKey, SubdomainConfig> = {
     gradientFrom: "#0B1320",
     gradientTo: "#020810",
   },
+  pai3: {
+    key: "pai3",
+    label: "PAI3",
+    description: "People's AI — the decentralised AI network where you own the hardware, earn the rewards, and govern the future.",
+    accentColor: "accent",
+    accentHex: "#8B5CF6",
+    glowHex: "rgba(139,92,246,0.15)",
+    emoji: "◈",
+    gradientFrom: "#1E1B4B",
+    gradientTo: "#0a0a0f",
+  },
 };
 
 export const VALID_SUBDOMAINS = Object.keys(SUBDOMAINS) as SubdomainKey[];
