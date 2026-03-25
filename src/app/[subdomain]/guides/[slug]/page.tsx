@@ -260,7 +260,7 @@ export default async function GuidePage({ params }: Props) {
                       What you&apos;ll learn
                     </div>
                     <div className="hero-key-points">
-                      {guide.key_points.slice(0, 4).map((point: string, i: number) => (
+                      {(guide.key_points ?? []).slice(0, 4).map((point: string, i: number) => (
                         <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                           <span style={{
                             color: cfg.accentHex, flexShrink: 0,
