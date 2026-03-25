@@ -34,7 +34,10 @@ export default function SubdomainHeader({ subdomain }: Props) {
             W3G
           </a>
           <span style={{ color: "#d1d5db" }}>/</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <a
+            href={subdomainHref(subdomain.key)}
+            style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}
+          >
             <span
               style={{ display: "flex", height: 28, width: 28, alignItems: "center", justifyContent: "center", borderRadius: 8, fontSize: "0.95rem", background: `${subdomain.accentHex}15`, border: `1px solid ${subdomain.accentHex}30` }}
             >
@@ -43,7 +46,7 @@ export default function SubdomainHeader({ subdomain }: Props) {
             <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", fontWeight: 700, color: subdomain.accentHex }}>
               {subdomain.label}
             </span>
-          </div>
+          </a>
         </div>
 
         {/* Right — nav */}
