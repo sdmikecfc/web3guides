@@ -229,6 +229,7 @@ export const SUBDOMAINS: Record<SubdomainKey, SubdomainConfig> = {
     accentHex: "#0066FF",
     glowHex: "rgba(0,102,255,0.15)",
     emoji: "🖊",
+    logoUrl: "/ink-logo.svg",
     gradientFrom: "#00051A",
     gradientTo: "#0A0B1E",
   },

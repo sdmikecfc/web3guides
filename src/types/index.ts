@@ -44,6 +44,7 @@ export interface SubdomainConfig {
   accentHex: string;             // Hex used for inline styles / CSS vars
   glowHex: string;               // rgba glow
   emoji: string;
+  logoUrl?: string;          // optional image logo — overrides emoji when set
   gradientFrom: string;
   gradientTo: string;
 }

@@ -139,8 +139,10 @@ export default async function GuidePage({ params }: Props) {
 
         {/* Breadcrumb */}
         <nav className="article-breadcrumb">
-          <Link href={`https://${params.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "web3guides.com"}`} style={{ color: "#9ca3af", textDecoration: "none" }}>
-            {cfg.emoji} {cfg.label}
+          <Link href={`https://${params.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "web3guides.com"}`} style={{ color: "#9ca3af", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            {cfg.logoUrl
+              ? <img src={cfg.logoUrl} alt={cfg.label} style={{ width: 16, height: 16, objectFit: "contain" }} />
+              : cfg.emoji} {cfg.label}
           </Link>
           <span style={{ color: "#d1d5db" }}>/</span>
           <span style={{ color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -186,7 +188,9 @@ export default async function GuidePage({ params }: Props) {
                   border: `1px solid rgba(${r},${g},${b},0.35)`,
                   borderRadius: 8, padding: "5px 14px", marginBottom: 18,
                 }}>
-                  <span style={{ fontSize: 16 }}>{cfg.emoji}</span>
+                  {cfg.logoUrl
+                    ? <img src={cfg.logoUrl} alt={cfg.label} style={{ width: 18, height: 18, objectFit: "contain" }} />
+                    : <span style={{ fontSize: 16 }}>{cfg.emoji}</span>}
                   <span style={{
                     fontFamily: "'Space Mono', monospace", fontSize: "0.65rem",
                     letterSpacing: 3, color: cfg.accentHex, fontWeight: 700,
