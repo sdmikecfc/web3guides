@@ -52,6 +52,22 @@ const TOOLS = [
     ],
     cta: "Try the Time Machine →",
   },
+  {
+    href: "/tools/airdrop-checker",
+    accent: "#a78bfa",
+    gradient: "linear-gradient(135deg, #0d0518 0%, #0d0d1f 100%)",
+    badge: "🪂 5 Airdrops",
+    badgeColor: "#a78bfa",
+    title: "Airdrop Eligibility Checker",
+    description:
+      "Check your score for Ink, Base, Backpack, Polymarket and AIVM. See exactly which actions you've completed and what to do next to maximise your allocation.",
+    stats: [
+      { value: "5 airdrops", label: "Ink, Base, Backpack + more" },
+      { value: "Real-time", label: "Score updates as you check" },
+      { value: "Action plan", label: "Exactly what to do next" },
+    ],
+    cta: "Check eligibility →",
+  },
 ];
 
 export default function ToolsPage() {
