@@ -101,28 +101,33 @@ export default async function GuidePage({ params }: Props) {
 
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "web3guides.com";
   const canonical = `https://${params.subdomain}.${rootDomain}/guides/${params.slug}`;
+  const ogImage = `https://${rootDomain}/api/og?sub=${encodeURIComponent(params.subdomain)}&t=${encodeURIComponent(guide.title)}`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
+    "@id": canonical,
+    mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
     headline: guide.title,
     description: guide.summary,
     url: canonical,
     datePublished: guide.published_at,
     dateModified: guide.published_at,
-    author: { "@type": "Organization", name: "Web3Guides", url: `https://${rootDomain}` },
+    author: { "@type": "Organization", name: "Web3 Guides", url: `https://${rootDomain}` },
     publisher: {
       "@type": "Organization",
-      name: "Web3Guides",
+      name: "Web3 Guides",
       url: `https://${rootDomain}`,
       logo: { "@type": "ImageObject", url: `https://${rootDomain}/favicon.svg` },
     },
-    image: `https://www.${rootDomain}/api/og?sub=${encodeURIComponent(params.subdomain)}&t=${encodeURIComponent(guide.title)}`,
+    image: { "@type": "ImageObject", url: ogImage, width: 1200, height: 630 },
     keywords: (guide.tags ?? []).join(", "),
     articleSection: cfg.label,
+    inLanguage: "en-GB",
+    isPartOf: { "@type": "WebSite", "@id": `https://${rootDomain}/#website`, name: "Web3 Guides", url: `https://${rootDomain}` },
     breadcrumb: {
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Web3Guides", item: `https://${rootDomain}` },
+        { "@type": "ListItem", position: 1, name: "Web3 Guides", item: `https://${rootDomain}` },
         { "@type": "ListItem", position: 2, name: cfg.label, item: `https://${params.subdomain}.${rootDomain}` },
         { "@type": "ListItem", position: 3, name: guide.title, item: canonical },
       ],

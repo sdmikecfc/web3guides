@@ -1,0 +1,34 @@
+# Web3 Guides
+
+> Free, comprehensive crypto and Web3 education platform covering Ethereum, Bitcoin, Solana, DeFi, staking, Layer 2, bridges, security, and crypto tax. 30+ in-depth guides across 20+ topic subdomains. Written for investors, developers, and beginners. UK-focused where relevant.
+
+## Core Topic Guides
+
+- [Ethereum Guides](https://eth.web3guides.com): EVM, smart contracts, gas, validator setup, rollups, Ethereum roadmap
+- [Bitcoin Guides](https://btc.web3guides.com): Fundamentals, Lightning Network, self-custody, mining, PoW
+- [Solana Guides](https://sol.web3guides.com): Proof of History, Turbine, Gulf Stream, Solana ecosystem
+- [DeFi Guides](https://defi.web3guides.com): Protocols, yield strategies, AMMs, liquidity pools, risk management
+- [Staking Guides](https://staking.web3guides.com): Validator setup, liquid staking, restaking, staking rewards
+- [Layer 2 Guides](https://layer2.web3guides.com): Rollups, ZK proofs, optimistic rollups, L2 scaling landscape
+- [Bridge Guides](https://bridge.web3guides.com): Cross-chain bridges, canonical vs third-party, bridge security and hacks
+- [Security Guides](https://security.web3guides.com): Wallet security, seed phrases, hardware wallets, scam avoidance
+- [Crypto Tax Guides](https://tax.web3guides.com): UK HMRC crypto tax, capital gains, DeFi tax events, cost basis methods
+- [Crypto Legal Guides](https://legal.web3guides.com): Regulatory frameworks, DAO legal wrappers, securities law, compliance
+- [Real-World Assets](https://rwa.web3guides.com): Tokenised treasuries, real estate on-chain, RWA protocols
+- [Web3 Jobs](https://jobs.web3guides.com): Roles, salaries, skills, breaking into Web3 without a CS degree
+
+## Project-Specific Guides
+
+- [Ink / Kraken L2](https://ink.web3guides.com): Kraken's DeFi-first Layer 2, airdrop confirmed Q3 2026, Superchain — 6 guides
+- [AIVM / ChainGPT](https://aivm.web3guides.com): Layer-1 blockchain for decentralised AI compute, agents, data markets — 6 guides
+- [PAI3](https://pai3.web3guides.com): People's AI decentralised infrastructure, Power Nodes, PAI3 tokenomics — 5 guides
+- [Doma Protocol](https://doma.web3guides.com): Tokenising traditional internet domains (.com, .ai) as on-chain assets — guides
+
+## Free Tools
+
+- [UK Crypto Tax Calculator](https://www.web3guides.com/tools/tax-calculator): HMRC-aligned capital gains calculator for UK crypto investors
+- [Staking Rewards Calculator](https://www.web3guides.com/tools/staking-calculator): Estimate staking APY and compounding returns across major assets
+
+## About
+
+Web3 Guides is run by Big Mike, a crypto educator and community builder since 2016. All content is written for educational purposes and does not constitute financial advice. UK-based perspective, HMRC-compliant tax content.
