@@ -214,13 +214,14 @@ export default function SecurityScorer() {
   }
 
   function handleShare() {
-    const text = `My crypto security score: ${grade.letter} (${pct}%) 🛡️ — How secure are you? → https://web3guides.com/tools/security-score`;
-    if (navigator.share) {
+    const text = `My crypto security score: ${grade.letter} (${pct}%) 🛡️\nHow secure are you? → https://web3guides.com/tools/security-score`;
+    const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile && navigator.share) {
       navigator.share({ text }).catch(() => {});
     } else {
       navigator.clipboard.writeText(text).then(() => {
         setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        setTimeout(() => setCopied(false), 2500);
       });
     }
   }
@@ -390,7 +391,7 @@ export default function SecurityScorer() {
           color: "#ef4444", fontFamily: "system-ui", fontSize: 14, fontWeight: 700,
           cursor: "pointer",
         }}>
-          {copied ? "✓ Copied!" : `Share my grade: ${grade.letter} 𝕏`}
+          {copied ? "✓ Copied to clipboard!" : `Share my score: ${grade.letter} (${pct}%)`}
         </button>
         <a href="https://web3guides.com/go/ledger" target="_blank" rel="noopener noreferrer" style={{
           flex: 1, minWidth: 150, padding: "13px 16px", borderRadius: 10,

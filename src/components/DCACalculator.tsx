@@ -183,12 +183,13 @@ export default function DCACalculator() {
     if (!results) return;
     const roi = fmtRoi(results.roi);
     const text = `If I'd DCA'd $${monthly}/month into ${ASSET_NAME[asset]} through the ${PERIOD_LABEL[safePeriod]}, I'd have turned ${fmt(results.totalInvested)} into ${fmt(results.currentValue)} (${roi}). Try it yourself → https://web3guides.com/tools/dca`;
-    if (navigator.share) {
+    const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile && navigator.share) {
       navigator.share({ text }).catch(() => {});
     } else {
       navigator.clipboard.writeText(text).then(() => {
         setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        setTimeout(() => setCopied(false), 2500);
       });
     }
   }
@@ -431,7 +432,7 @@ export default function DCACalculator() {
               color, fontFamily: "system-ui", fontSize: 14, fontWeight: 700,
               cursor: "pointer", transition: "all 0.15s",
             }}>
-              {copied ? "✓ Copied!" : "Share results 𝕏"}
+              {copied ? "✓ Copied to clipboard!" : "Share results"}
             </button>
             <a href="https://web3guides.com/go/kraken" target="_blank" rel="noopener noreferrer" style={{
               flex: 1, minWidth: 160, padding: "12px 20px", borderRadius: 10,

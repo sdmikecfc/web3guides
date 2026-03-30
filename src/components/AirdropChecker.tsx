@@ -170,13 +170,14 @@ export default function AirdropChecker() {
   }
 
   function handleShare() {
-    const text = `I'm ${score}% qualified for the ${airdrop.name} airdrop ${scoreInfo.emoji} — checked ${checkedItems.length}/${items.length} boxes. How do you score? → https://web3guides.com/tools/airdrop-checker`;
-    if (navigator.share) {
+    const text = `I'm ${score}% qualified for the ${airdrop.name} airdrop ${scoreInfo.emoji}\nChecked ${checkedItems.length}/${items.length} boxes. How do you score? → https://web3guides.com/tools/airdrop-checker`;
+    const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile && navigator.share) {
       navigator.share({ text }).catch(() => {});
     } else {
       navigator.clipboard.writeText(text).then(() => {
         setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        setTimeout(() => setCopied(false), 2500);
       });
     }
   }
@@ -382,7 +383,7 @@ export default function AirdropChecker() {
           color, fontFamily: "system-ui", fontSize: 14, fontWeight: 700,
           cursor: "pointer", transition: "all 0.15s",
         }}>
-          {copied ? "✓ Copied!" : `Share my ${score}% score 𝕏`}
+          {copied ? "✓ Copied to clipboard!" : `Share my ${score}% score`}
         </button>
         <a href="https://web3guides.com/go/kraken" target="_blank" rel="noopener noreferrer" style={{
           flex: 1, minWidth: 160, padding: "13px 20px", borderRadius: 10,
