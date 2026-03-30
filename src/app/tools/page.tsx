@@ -68,6 +68,22 @@ const TOOLS = [
     ],
     cta: "Check eligibility →",
   },
+  {
+    href: "/tools/security-score",
+    accent: "#10b981",
+    gradient: "linear-gradient(135deg, #00120a 0%, #0d0d1f 100%)",
+    badge: "🛡️ 13 Questions",
+    badgeColor: "#10b981",
+    title: "Crypto Wallet Security Scorer",
+    description:
+      "Answer 13 questions and get your personal security grade. Find out if your wallet setup, exchange habits, and OpSec are protecting your assets — or leaving you exposed.",
+    stats: [
+      { value: "5 categories", label: "Wallet, OpSec, Exchange + more" },
+      { value: "A+ → F", label: "Personalised grade" },
+      { value: "Fix-it list", label: "Sorted by risk priority" },
+    ],
+    cta: "Check your score →",
+  },
 ];
 
 export default function ToolsPage() {
