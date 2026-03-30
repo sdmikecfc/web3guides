@@ -88,6 +88,11 @@ export default function ToolShell({ children, toolLabel, accentColor = "#6366f1"
                onMouseOut={e => (e.currentTarget.style.color = "#64748b")}>
               Staking Calculator
             </a>
+            <a href="/tools/dca" style={{ fontFamily: "system-ui", fontSize: "0.82rem", color: "#64748b", textDecoration: "none", transition: "color 0.2s" }}
+               onMouseOver={e => (e.currentTarget.style.color = "#e2e8f0")}
+               onMouseOut={e => (e.currentTarget.style.color = "#64748b")}>
+              DCA Time Machine
+            </a>
             <a
               href="https://web3guides.com"
               style={{
@@ -149,6 +154,7 @@ export default function ToolShell({ children, toolLabel, accentColor = "#6366f1"
               { label: "Home", href: "https://web3guides.com" },
               { label: "CGT Calculator", href: "/tools/tax-calculator" },
               { label: "Staking Calculator", href: "/tools/staking-calculator" },
+              { label: "DCA Time Machine", href: "/tools/dca" },
               { label: "Crypto Tax Guides", href: "https://tax.web3guides.com" },
               { label: "Staking Guides", href: "https://staking.web3guides.com" },
               { label: "Disclaimer", href: "/disclaimer" },

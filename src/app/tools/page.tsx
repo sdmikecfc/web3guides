@@ -36,6 +36,22 @@ const TOOLS = [
     ],
     cta: "Open Calculator →",
   },
+  {
+    href: "/tools/dca",
+    accent: "#F7931A",
+    gradient: "linear-gradient(135deg, #1a0a00 0%, #0d0d1f 100%)",
+    badge: "🐻 Bear Markets",
+    badgeColor: "#F7931A",
+    title: "Bear Market Time Machine",
+    description:
+      "What if you'd kept buying through the crash? See exactly what DCA into BTC, ETH or SOL through the 2018, 2022 or 2025 bear markets would be worth today.",
+    stats: [
+      { value: "3 assets", label: "BTC, ETH, SOL" },
+      { value: "3 bear markets", label: "2018, 2022, 2025" },
+      { value: "DCA vs lump", label: "Side-by-side comparison" },
+    ],
+    cta: "Try the Time Machine →",
+  },
 ];
 
 export default function ToolsPage() {
