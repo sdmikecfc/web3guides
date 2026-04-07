@@ -2,6 +2,19 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 /**
+ * Service-role client — bypasses RLS. Use only in server components/routes
+ * that have already authenticated the user (e.g. dashboard behind cookie auth).
+ * Never expose to the browser.
+ */
+export function createServiceClient() {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll: () => [], setAll: () => {} } }
+  );
+}
+
+/**
  * Works with both Next.js 14 (sync cookies()) and 15 (async cookies()).
  * Cast to `any` so TypeScript doesn't complain about the overloaded return type.
  */

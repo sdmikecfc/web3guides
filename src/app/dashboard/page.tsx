@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { AFFILIATE_LINKS } from "@/lib/affiliates";
 import DashboardClient from "./DashboardClient";
 
@@ -35,7 +35,7 @@ export default async function DashboardPage({
     return <DashboardGate action={loginAction} error={searchParams.error === "1"} />;
   }
 
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // ── Click totals per slug ─────────────────────────────────────────────────
   const { data: clickRows } = await supabase

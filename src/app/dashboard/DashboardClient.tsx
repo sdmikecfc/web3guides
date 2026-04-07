@@ -1,5 +1,227 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
+/* ════════════════════════════════════════════════════════════════════════
+   BOT PANEL
+════════════════════════════════════════════════════════════════════════ */
+interface BotState {
+  balance?: number;
+  pnl?: number;
+  pnl_pct?: number;
+  base_unit?: string;
+  [key: string]: unknown;
+}
+interface BotPosition {
+  symbol?: string;
+  side?: string;
+  size?: number;
+  entry_price?: number;
+  current_price?: number;
+  pnl?: number;
+  [key: string]: unknown;
+}
+interface BotTrade {
+  symbol?: string;
+  side?: string;
+  size?: number;
+  price?: number;
+  pnl?: number;
+  timestamp?: string;
+  [key: string]: unknown;
+}
+interface BotSummary {
+  state?: BotState;
+  positions?: BotPosition[];
+  trades?: BotTrade[];
+  [key: string]: unknown;
+}
+
+function fmt(n: number | undefined, decimals = 2) {
+  if (n === undefined || n === null) return "—";
+  return n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function BotPanel() {
+  const [data, setData]       = useState<BotSummary | null>(null);
+  const [error, setError]     = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [age, setAge]         = useState(0);
+
+  async function fetchBot() {
+    try {
+      const res = await fetch("/api/bot", { cache: "no-store" });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setError(j.error ?? `Error ${res.status}`);
+        return;
+      }
+      const json = await res.json();
+      setData(json);
+      setError(null);
+      setLastUpdated(new Date());
+    } catch {
+      setError("Fetch failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchBot();
+    const poll = setInterval(fetchBot, 30_000);
+    return () => clearInterval(poll);
+  }, []);
+
+  // Age counter — updates every second
+  useEffect(() => {
+    const t = setInterval(() => {
+      setAge(lastUpdated ? Math.floor((Date.now() - lastUpdated.getTime()) / 1000) : 0);
+    }, 1000);
+    return () => clearInterval(t);
+  }, [lastUpdated]);
+
+  const state     = data?.state ?? {};
+  const positions = data?.positions ?? [];
+  const trades    = data?.trades ?? [];
+  const unit      = state.base_unit ?? "USDT";
+  const pnlColor  = (state.pnl ?? 0) >= 0 ? "#22c55e" : "#ef4444";
+  const online    = !error && !loading;
+
+  return (
+    <div style={{ marginBottom: 40 }}>
+      {/* Section header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: online ? "#22c55e" : "#ef4444", boxShadow: online ? "0 0 8px #22c55e" : "none" }} />
+          <span style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>Trading Bot</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {lastUpdated && (
+            <span style={{ fontSize: 11, color: "#334155" }}>Updated {age}s ago</span>
+          )}
+          <button onClick={fetchBot} style={{
+            background: "#1e293b", border: "1px solid #334155", borderRadius: 6,
+            color: "#64748b", fontSize: 11, fontWeight: 700, padding: "4px 10px", cursor: "pointer",
+          }}>↻ Refresh</button>
+        </div>
+      </div>
+
+      {loading && (
+        <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: "28px 20px", textAlign: "center" as const, color: "#334155", fontSize: 14 }}>
+          Connecting to bot…
+        </div>
+      )}
+
+      {error && !loading && (
+        <div style={{ background: "#1a0a0a", border: "1px solid #7f1d1d", borderRadius: 12, padding: "16px 20px", color: "#fca5a5", fontSize: 13 }}>
+          ⚠️ {error} — is the bot running?
+        </div>
+      )}
+
+      {data && !error && (
+        <>
+          {/* State cards */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 20 }}>
+            <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: "18px 20px" }}>
+              <div style={{ fontSize: 11, color: "#475569", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: 0.5, marginBottom: 6 }}>Balance</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: "#0ea5e9" }}>{fmt(state.balance as number)} <span style={{ fontSize: 13, color: "#334155" }}>{unit}</span></div>
+            </div>
+            <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: "18px 20px" }}>
+              <div style={{ fontSize: 11, color: "#475569", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: 0.5, marginBottom: 6 }}>Unrealised P&amp;L</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: pnlColor }}>
+                {(state.pnl as number) >= 0 ? "+" : ""}{fmt(state.pnl as number)} <span style={{ fontSize: 13, color: "#334155" }}>{unit}</span>
+              </div>
+              {state.pnl_pct !== undefined && (
+                <div style={{ fontSize: 12, color: pnlColor, marginTop: 2 }}>
+                  {(state.pnl_pct as number) >= 0 ? "+" : ""}{fmt(state.pnl_pct as number, 2)}%
+                </div>
+              )}
+            </div>
+            <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: "18px 20px" }}>
+              <div style={{ fontSize: 11, color: "#475569", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: 0.5, marginBottom: 6 }}>Open Positions</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: positions.length > 0 ? "#f59e0b" : "#334155" }}>{positions.length}</div>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+            {/* Open positions */}
+            <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ padding: "14px 18px", borderBottom: "1px solid #1e293b", fontSize: 13, fontWeight: 700, color: "#94a3b8" }}>Open Positions</div>
+              {positions.length === 0 ? (
+                <div style={{ padding: "24px 18px", textAlign: "center" as const, color: "#334155", fontSize: 13 }}>No open positions</div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse" as const }}>
+                  <thead>
+                    <tr style={{ background: "#1e293b" }}>
+                      {["Symbol", "Side", "Size", "Entry", "Current", "P&L"].map(h => (
+                        <th key={h} style={{ padding: "7px 14px", fontSize: 10, fontWeight: 700, color: "#475569", textAlign: "left" as const, textTransform: "uppercase" as const, letterSpacing: 0.5 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {positions.map((p, i) => {
+                      const pc = (p.pnl ?? 0) >= 0 ? "#22c55e" : "#ef4444";
+                      return (
+                        <tr key={i} style={{ borderTop: "1px solid #1e293b" }}>
+                          <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{p.symbol ?? "—"}</td>
+                          <td style={{ padding: "10px 14px" }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 4, background: p.side === "long" ? "#052e16" : "#1a0a0a", color: p.side === "long" ? "#22c55e" : "#ef4444", textTransform: "uppercase" as const }}>
+                              {p.side ?? "—"}
+                            </span>
+                          </td>
+                          <td style={{ padding: "10px 14px", fontSize: 13, color: "#94a3b8" }}>{fmt(p.size, 4)}</td>
+                          <td style={{ padding: "10px 14px", fontSize: 13, color: "#94a3b8" }}>{fmt(p.entry_price)}</td>
+                          <td style={{ padding: "10px 14px", fontSize: 13, color: "#e2e8f0" }}>{fmt(p.current_price)}</td>
+                          <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: pc }}>{(p.pnl ?? 0) >= 0 ? "+" : ""}{fmt(p.pnl)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Recent trades */}
+            <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ padding: "14px 18px", borderBottom: "1px solid #1e293b", fontSize: 13, fontWeight: 700, color: "#94a3b8" }}>Recent Trades</div>
+              {trades.length === 0 ? (
+                <div style={{ padding: "24px 18px", textAlign: "center" as const, color: "#334155", fontSize: 13 }}>No trades yet</div>
+              ) : (
+                <div>
+                  {trades.slice(0, 10).map((t, i) => {
+                    const tc = (t.pnl ?? 0) > 0 ? "#22c55e" : (t.pnl ?? 0) < 0 ? "#ef4444" : "#475569";
+                    const ts = t.timestamp ? new Date(t.timestamp as string).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
+                    return (
+                      <div key={i} style={{ padding: "10px 18px", borderTop: i > 0 ? "1px solid #1e293b" : undefined, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{t.symbol ?? "—"}</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: t.side === "buy" ? "#052e16" : "#1a0a0a", color: t.side === "buy" ? "#22c55e" : "#ef4444", textTransform: "uppercase" as const }}>
+                              {t.side ?? "—"}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 11, color: "#334155" }}>{ts} · {fmt(t.size, 4)} @ {fmt(t.price)}</div>
+                        </div>
+                        {t.pnl !== undefined && (
+                          <div style={{ fontSize: 13, fontWeight: 700, color: tc, flexShrink: 0 }}>
+                            {(t.pnl as number) > 0 ? "+" : ""}{fmt(t.pnl)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 interface AffiliateRow {
   slug: string; label: string; category: string;
   hasRealLink: boolean; total: number; last7: number; last30: number;
@@ -36,8 +258,10 @@ export default function DashboardClient({
         {/* Header */}
         <div style={{ marginBottom: 36 }}>
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 900, color: "#fff" }}>Web3Guides Dashboard</h1>
-          <p style={{ margin: "4px 0 0", color: "#475569", fontSize: 14 }}>Affiliate clicks, email signups, and content stats</p>
+          <p style={{ margin: "4px 0 0", color: "#475569", fontSize: 14 }}>Bot · Affiliate clicks · Email signups · Content stats</p>
         </div>
+
+        <BotPanel />
 
         {/* Top stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 32 }}>
