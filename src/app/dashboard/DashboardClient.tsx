@@ -310,17 +310,6 @@ export default function DashboardClient({ affiliateData, topPaths, dailyClicks, 
           <a href="/" style={{ fontSize: 13, color: "#475569", textDecoration: "none" }}>← Back to site</a>
         </div>
 
-        {/* Site-wide stat bar */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 48 }}>
-          <StatCard label="Guides Published" value={String(guideCount)}    color="#6366f1" />
-          <StatCard label="Email Subscribers" value={String(emailCount)}   color="#f59e0b" />
-          <StatCard label="Total Aff. Clicks" value={String(totalClicks)}  color="#0ea5e9" />
-          <StatCard label="Clicks (7d)"       value={String(clicks7d)}     color="#22c55e" />
-        </div>
-
-        {/* Divider */}
-        <Divider />
-
         {/* Bot section */}
         <BotPanel />
 
@@ -411,7 +400,7 @@ export default function DashboardClient({ affiliateData, topPaths, dailyClicks, 
         </div>
 
         {affiliateData.some((a) => !a.hasRealLink) && (
-          <div style={{ background: "#1c1006", border: "1px solid #451a03", borderRadius: 12, padding: "14px 18px" }}>
+          <div style={{ background: "#1c1006", border: "1px solid #451a03", borderRadius: 12, padding: "14px 18px", marginBottom: 40 }}>
             <span style={{ fontSize: 12, color: "#f97316", fontWeight: 700 }}>⏳ Pending: </span>
             <span style={{ fontSize: 12, color: "#78350f" }}>
               {affiliateData.filter((a) => !a.hasRealLink).map((a) => a.label).join(", ")} — update referral codes in{" "}
@@ -419,6 +408,20 @@ export default function DashboardClient({ affiliateData, topPaths, dailyClicks, 
             </span>
           </div>
         )}
+
+        {/* Divider */}
+        <Divider />
+
+        {/* Site-wide stat bar */}
+        <div style={{ marginBottom: 24 }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 800, color: "#fff" }}>Site Stats</h2>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
+          <StatCard label="Guides Published" value={String(guideCount)}    color="#6366f1" />
+          <StatCard label="Email Subscribers" value={String(emailCount)}   color="#f59e0b" />
+          <StatCard label="Total Aff. Clicks" value={String(totalClicks)}  color="#0ea5e9" />
+          <StatCard label="Clicks (7d)"       value={String(clicks7d)}     color="#22c55e" />
+        </div>
 
       </div>
     </div>
