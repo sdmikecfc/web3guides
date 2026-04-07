@@ -166,6 +166,107 @@ function BotPanel() {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
+   BOT LOGS
+════════════════════════════════════════════════════════════════════════ */
+interface LogData { scheduler?: string; monitor?: string; error?: string }
+
+function BotLogs() {
+  const [data, setData]       = useState<LogData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [active, setActive]   = useState<"scheduler" | "monitor">("scheduler");
+  const [lines, setLines]     = useState(80);
+
+  async function fetchLogs(n = lines) {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/bot-logs?lines=${n}`, { cache: "no-store" });
+      const json = await res.json();
+      setData(json);
+    } catch { setData({ error: "Unreachable" }); }
+    finally  { setLoading(false); }
+  }
+
+  useEffect(() => {
+    fetchLogs();
+    const t = setInterval(() => fetchLogs(), 15_000);
+    return () => clearInterval(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lines]);
+
+  const logText = data?.[active] ?? "";
+  const logLines = logText.split("\n").filter(Boolean);
+
+  const lineColor = (line: string) => {
+    if (/error|exception|fail|critical/i.test(line)) return "#ef4444";
+    if (/warn/i.test(line)) return "#f59e0b";
+    if (/buy|long|open|entry/i.test(line)) return "#22c55e";
+    if (/sell|short|close|exit/i.test(line)) return "#f472b6";
+    if (/skip|no |ignore/i.test(line)) return "#475569";
+    return "#94a3b8";
+  };
+
+  return (
+    <section style={{ marginBottom: 48 }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#fff" }}>Bot Logs</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* Tab switcher */}
+          {(["scheduler", "monitor"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActive(tab)}
+              style={{
+                background: active === tab ? "#1e293b" : "transparent",
+                border: `1px solid ${active === tab ? "#334155" : "#1e293b"}`,
+                borderRadius: 6, color: active === tab ? "#e2e8f0" : "#475569",
+                fontSize: 11, fontWeight: 700, padding: "4px 12px", cursor: "pointer",
+              }}
+            >
+              {tab}.py
+            </button>
+          ))}
+          {/* Lines selector */}
+          <select
+            value={lines}
+            onChange={(e) => setLines(Number(e.target.value))}
+            style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 6, color: "#64748b", fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
+          >
+            {[50, 100, 200, 500].map(n => <option key={n} value={n}>{n} lines</option>)}
+          </select>
+          <button
+            onClick={() => fetchLogs()}
+            style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 6, color: "#64748b", fontSize: 11, fontWeight: 700, padding: "4px 10px", cursor: "pointer" }}
+          >↻</button>
+        </div>
+      </div>
+
+      <div style={{ background: "#050a12", border: "1px solid #1e293b", borderRadius: 12, overflow: "hidden" }}>
+        {loading && logLines.length === 0 ? (
+          <div style={{ padding: 24, color: "#334155", fontSize: 13, textAlign: "center" as const }}>Loading logs…</div>
+        ) : data?.error ? (
+          <div style={{ padding: 24, color: "#fca5a5", fontSize: 13 }}>⚠️ {data.error}</div>
+        ) : logLines.length === 0 ? (
+          <div style={{ padding: 24, color: "#334155", fontSize: 13, textAlign: "center" as const }}>No log output</div>
+        ) : (
+          <div style={{ height: 420, overflowY: "auto", padding: "14px 16px", fontFamily: "'Space Mono', monospace", fontSize: 11, lineHeight: 1.7 }}>
+            {logLines.map((line, i) => (
+              <div key={i} style={{ color: lineColor(line), whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                {line}
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ padding: "8px 16px", borderTop: "1px solid #1e293b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 10, color: "#1e293b" }}>{logLines.length} lines · auto-refreshes every 15s</span>
+          {loading && <span style={{ fontSize: 10, color: "#334155" }}>Refreshing…</span>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
    PROPS + TYPES
 ════════════════════════════════════════════════════════════════════════ */
 interface AffiliateRow { slug: string; label: string; category: string; hasRealLink: boolean; total: number; last7: number; last30: number }
@@ -221,6 +322,11 @@ export default function DashboardClient({ affiliateData, topPaths, dailyClicks, 
 
         {/* Bot section */}
         <BotPanel />
+
+        <Divider />
+
+        {/* Bot logs */}
+        <BotLogs />
 
         {/* Divider */}
         <Divider />
