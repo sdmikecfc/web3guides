@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { createServiceClient } from "@/lib/supabase/server";
 import { AFFILIATE_LINKS } from "@/lib/affiliates";
 import DashboardClient from "./DashboardClient";
