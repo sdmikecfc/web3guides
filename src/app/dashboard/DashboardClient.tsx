@@ -194,7 +194,7 @@ function BotLogs() {
   }, [lines]);
 
   const logText = data?.[active] ?? "";
-  const logLines = logText.split("\n").filter(Boolean);
+  const logLines = logText.split("\n").filter(Boolean).reverse();
 
   const lineColor = (line: string) => {
     if (/error|exception|fail|critical/i.test(line)) return "#ef4444";
