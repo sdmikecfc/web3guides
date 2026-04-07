@@ -52,8 +52,9 @@ function BotPanel() {
   const state     = data?.state ?? {};
   const positions = data?.positions ?? [];
   const trades    = data?.trades ?? [];
-  const unit      = (state.base_unit as string) ?? "USDT";
-  const pnl       = (state.pnl as number) ?? 0;
+  const unit      = "USDC.e";
+  const balance   = (state.usdc_balance as number) ?? (state.balance as number);
+  const pnl       = (state.total_pnl as number) ?? (state.pnl as number) ?? 0;
   const pnlColor  = pnl >= 0 ? "#22c55e" : "#ef4444";
   const online    = !error && !loading && !!data;
 
@@ -90,11 +91,11 @@ function BotPanel() {
         <>
           {/* Stat cards */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 20 }}>
-            <StatCard label="Balance" value={`${fmtNum(state.balance as number)} ${unit}`} color="#0ea5e9" />
+            <StatCard label="Balance" value={`${fmtNum(balance)} ${unit}`} color="#0ea5e9" />
             <StatCard
               label="Unrealised P&L"
               value={`${pnl >= 0 ? "+" : ""}${fmtNum(pnl)} ${unit}`}
-              sub={state.pnl_pct !== undefined ? `${(state.pnl_pct as number) >= 0 ? "+" : ""}${fmtNum(state.pnl_pct as number)}%` : undefined}
+              sub={undefined}
               color={pnlColor}
             />
             <StatCard label="Open Positions" value={String(positions.length)} color={positions.length > 0 ? "#f59e0b" : "#334155"} />
