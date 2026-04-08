@@ -8,11 +8,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "BOT_API_KEY not configured" }, { status: 500 });
   }
 
-  const lines   = req.nextUrl.searchParams.get("lines") ?? "100";
-  const process = req.nextUrl.searchParams.get("process") ?? "scheduler";
+  const lines  = req.nextUrl.searchParams.get("lines") ?? "100";
+  const proc   = req.nextUrl.searchParams.get("process") ?? "scheduler";
 
   try {
-    const res = await fetch(`${BOT_BASE}/api/bot/logs/${process}?lines=${lines}`, {
+    const res = await fetch(`${BOT_BASE}/api/bot/logs/${proc}?lines=${lines}`, {
       headers: { "X-API-Key": key },
       cache: "no-store",
     });
