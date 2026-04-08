@@ -2,6 +2,17 @@
 
 import { useEffect, useState } from "react";
 
+function useMobile() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setMobile(window.innerWidth < 700);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return mobile;
+}
+
 /* ════════════════════════════════════════════════════════════════════════
    BOT PANEL
 ════════════════════════════════════════════════════════════════════════ */
@@ -27,6 +38,7 @@ function fmtDate(s?: string) {
 }
 
 function BotPanel() {
+  const mobile                  = useMobile();
   const [data, setData]         = useState<BotSummary | null>(null);
   const [error, setError]       = useState<string | null>(null);
   const [lastUpdated, setLast]  = useState<Date | null>(null);
@@ -102,7 +114,7 @@ function BotPanel() {
       {data && !error && (
         <>
           {/* Stat cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(3,1fr)", gap: 14, marginBottom: 20 }}>
             <StatCard label="Balance" value={`${fmtNum(balance)} ${unit}`} color="#0ea5e9" />
             <StatCard
               label="Unrealised P&L"
@@ -113,14 +125,15 @@ function BotPanel() {
             <StatCard label="Open Positions" value={String(positions.length)} color={positions.length > 0 ? "#f59e0b" : "#334155"} />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1.4fr 1fr", gap: 16 }}>
             {/* Positions */}
             <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, overflow: "hidden" }}>
               <SectionHead title="Open Positions" />
               {positions.length === 0 ? (
                 <Empty text="No open positions" />
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" as const }}>
+                <div style={{ overflowX: "auto" as const }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" as const, minWidth: 420 }}>
                   <thead><tr style={{ background: "#1e293b" }}>
                     {["Symbol","Side","Size","Entry","Mark","P&L"].map(h => <Th key={h}>{h}</Th>)}
                   </tr></thead>
@@ -140,6 +153,7 @@ function BotPanel() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
 
@@ -298,6 +312,7 @@ const CATEGORY_COLOR: Record<string, string> = {
    MAIN DASHBOARD
 ════════════════════════════════════════════════════════════════════════ */
 export default function DashboardClient({ affiliateData, topPaths, dailyClicks, totalClicks, emailCount, guideCount }: Props) {
+  const mobile   = useMobile();
   const maxDaily = Math.max(...dailyClicks.map((d) => d.count), 1);
   const clicks7d = affiliateData.reduce((s, a) => s + a.last7, 0);
 
@@ -354,11 +369,12 @@ export default function DashboardClient({ affiliateData, topPaths, dailyClicks, 
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 20, marginBottom: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1.6fr 1fr", gap: 20, marginBottom: 20 }}>
           {/* Affiliate table */}
           <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, overflow: "hidden" }}>
             <SectionHead title="Affiliate Links" />
-            <table style={{ width: "100%", borderCollapse: "collapse" as const }}>
+            <div style={{ overflowX: "auto" as const }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" as const, minWidth: 360 }}>
               <thead><tr style={{ background: "#1e293b" }}>
                 {["Link","Status","All Time","7d","30d"].map(h => <Th key={h}>{h}</Th>)}
               </tr></thead>
@@ -386,6 +402,7 @@ export default function DashboardClient({ affiliateData, topPaths, dailyClicks, 
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Top referring pages */}
@@ -423,7 +440,7 @@ export default function DashboardClient({ affiliateData, topPaths, dailyClicks, 
         <div style={{ marginBottom: 24 }}>
           <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 800, color: "#fff" }}>Site Stats</h2>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(4,1fr)", gap: 14 }}>
           <StatCard label="Guides Published" value={String(guideCount)}    color="#6366f1" />
           <StatCard label="Email Subscribers" value={String(emailCount)}   color="#f59e0b" />
           <StatCard label="Total Aff. Clicks" value={String(totalClicks)}  color="#0ea5e9" />
