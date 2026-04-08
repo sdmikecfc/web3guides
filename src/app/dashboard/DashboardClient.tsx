@@ -14,6 +14,13 @@ function fmtNum(n: number | undefined, dec = 2) {
   if (n === undefined || n === null) return "—";
   return n.toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
+function fmtPrice(n: number | undefined) {
+  if (n === undefined || n === null) return "—";
+  if (n === 0) return "0.00";
+  if (n < 0.0001) return n.toExponential(4);
+  if (n < 0.01)   return n.toFixed(6);
+  return n.toFixed(4);
+}
 function fmtDate(s?: string) {
   if (!s) return "—";
   return new Date(s).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -116,12 +123,13 @@ function BotPanel() {
                     {positions.map((p, i) => (
                       <tr key={i} style={{ borderTop: "1px solid #1e293b" }}>
                         <Td bold>{p.symbol ?? "—"}</Td>
-                        <Td><SideBadge side={p.side} /></Td>
-                        <Td muted>{fmtNum(p.size, 4)}</Td>
-                        <Td muted>{fmtNum(p.entry_price)}</Td>
-                        <Td>{fmtNum(p.current_price)}</Td>
-                        <Td color={(p.pnl ?? 0) >= 0 ? "#22c55e" : "#ef4444"}>
-                          {(p.pnl ?? 0) >= 0 ? "+" : ""}{fmtNum(p.pnl)}
+                        <Td><SideBadge side="long" /></Td>
+                        <Td muted>${fmtNum(p.usdc_spent as number ?? p.size)}</Td>
+                        <Td muted>{fmtPrice(p.entry_price as number)}</Td>
+                        <Td>{fmtPrice(p.mark_price as number ?? p.current_price as number)}</Td>
+                        <Td color={(p.unrealized_pnl as number ?? p.pnl ?? 0) >= 0 ? "#22c55e" : "#ef4444"}>
+                          {((p.unrealized_pnl as number ?? p.pnl ?? 0) >= 0 ? "+" : "")}
+                          {fmtNum(p.unrealized_pnl as number ?? p.pnl as number)}
                         </Td>
                       </tr>
                     ))}
@@ -146,7 +154,7 @@ function BotPanel() {
                             <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{t.symbol ?? "—"}</span>
                             <SideBadge side={t.side} />
                           </div>
-                          <div style={{ fontSize: 11, color: "#334155" }}>{fmtDate(t.timestamp)} · {fmtNum(t.size, 4)} @ {fmtNum(t.price)}</div>
+                          <div style={{ fontSize: 11, color: "#334155" }}>{fmtDate(t.executed_at as string ?? t.timestamp)} · ${fmtNum(t.usdc_amount as number ?? t.size)} @ {fmtPrice(t.price as number)}</div>
                         </div>
                         {t.pnl !== undefined && (
                           <span style={{ fontSize: 13, fontWeight: 700, color: tc }}>
