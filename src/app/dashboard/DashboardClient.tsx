@@ -182,12 +182,13 @@ interface LogData { lines?: string[]; error?: string }
 function BotLogs() {
   const [data, setData]       = useState<LogData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [active, setActive]   = useState<"scheduler" | "monitor">("scheduler");
   const [lines, setLines]     = useState(80);
 
-  async function fetchLogs(n = lines) {
+  async function fetchLogs(process = active, n = lines) {
     setLoading(true);
     try {
-      const res = await fetch(`/api/bot-logs?lines=${n}`, { cache: "no-store" });
+      const res = await fetch(`/api/bot-logs?process=${process}&lines=${n}`, { cache: "no-store" });
       const json = await res.json();
       setData(json);
     } catch { setData({ error: "Unreachable" }); }
@@ -195,11 +196,11 @@ function BotLogs() {
   }
 
   useEffect(() => {
-    fetchLogs();
-    const t = setInterval(() => fetchLogs(), 15_000);
+    fetchLogs(active, lines);
+    const t = setInterval(() => fetchLogs(active, lines), 15_000);
     return () => clearInterval(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lines]);
+  }, [active, lines]);
 
   const logLines = (data?.lines ?? []).slice().reverse();
 
@@ -218,6 +219,16 @@ function BotLogs() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#fff" }}>Bot Logs</h2>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {(["scheduler", "monitor"] as const).map((tab) => (
+            <button key={tab} onClick={() => setActive(tab)} style={{
+              background: active === tab ? "#1e293b" : "transparent",
+              border: `1px solid ${active === tab ? "#334155" : "#1e293b"}`,
+              borderRadius: 6, color: active === tab ? "#e2e8f0" : "#475569",
+              fontSize: 11, fontWeight: 700, padding: "4px 12px", cursor: "pointer",
+            }}>
+              {tab}.py
+            </button>
+          ))}
           {/* Lines selector */}
           <select
             value={lines}
