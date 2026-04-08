@@ -61,7 +61,7 @@ function BotPanel() {
   const trades    = data?.trades ?? [];
   const unit      = "USDC.e";
   const balance   = (state.usdc_balance as number) ?? (state.balance as number);
-  const pnl       = (state.total_pnl as number) ?? (state.pnl as number) ?? 0;
+  const pnl       = positions.reduce((sum, p) => sum + ((p.unrealized_pnl as number) ?? (p.pnl as number) ?? 0), 0);
   const pnlColor  = pnl >= 0 ? "#22c55e" : "#ef4444";
   const online    = !error && !loading && !!data;
 
@@ -77,7 +77,12 @@ function BotPanel() {
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {lastUpdated && <span style={{ fontSize: 11, color: "#334155" }}>Updated {age}s ago</span>}
+          {state.updated_at && (
+            <span style={{ fontSize: 11, color: "#334155" }}>
+              Bot wrote: {fmtDate(state.updated_at as string)}
+            </span>
+          )}
+          {lastUpdated && <span style={{ fontSize: 11, color: "#475569" }}>· fetched {age}s ago</span>}
           <button onClick={fetchBot} style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 6, color: "#64748b", fontSize: 11, fontWeight: 700, padding: "4px 10px", cursor: "pointer" }}>↻</button>
         </div>
       </div>
