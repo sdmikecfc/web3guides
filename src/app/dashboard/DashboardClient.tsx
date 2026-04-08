@@ -108,7 +108,7 @@ function BotPanel() {
             <StatCard label="Open Positions" value={String(positions.length)} color={positions.length > 0 ? "#f59e0b" : "#334155"} />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>
             {/* Positions */}
             <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, overflow: "hidden" }}>
               <SectionHead title="Open Positions" />
@@ -154,7 +154,7 @@ function BotPanel() {
                             <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{t.symbol ?? "—"}</span>
                             <SideBadge side={t.side} />
                           </div>
-                          <div style={{ fontSize: 11, color: "#334155" }}>{fmtDate(t.executed_at as string ?? t.timestamp)} · ${fmtNum(t.usdc_amount as number ?? t.size)} @ {fmtPrice(t.price as number)}</div>
+                          <div style={{ fontSize: 11, color: "#64748b" }}>{fmtDate(t.executed_at as string ?? t.timestamp)} · ${fmtNum(t.usdc_amount as number ?? t.size)} @ {fmtPrice(t.price as number)}</div>
                         </div>
                         {t.pnl !== undefined && (
                           <span style={{ fontSize: 13, fontWeight: 700, color: tc }}>
@@ -469,7 +469,7 @@ function Th({ children }: { children: React.ReactNode }) {
 
 function Td({ children, bold, muted, color }: { children: React.ReactNode; bold?: boolean; muted?: boolean; color?: string }) {
   return (
-    <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: bold ? 700 : 400, color: color ?? (muted ? "#475569" : "#94a3b8") }}>
+    <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: bold ? 700 : 400, color: color ?? (muted ? "#64748b" : "#cbd5e1") }}>
       {children}
     </td>
   );
