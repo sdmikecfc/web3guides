@@ -89,7 +89,7 @@ function BotPanel() {
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {state.updated_at && (
+          {!!state.updated_at && (
             <span style={{ fontSize: 11, color: "#334155" }}>
               Bot wrote: {fmtDate(state.updated_at as string)}
             </span>
