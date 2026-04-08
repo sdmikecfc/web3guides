@@ -177,12 +177,11 @@ function BotPanel() {
 /* ════════════════════════════════════════════════════════════════════════
    BOT LOGS
 ════════════════════════════════════════════════════════════════════════ */
-interface LogData { scheduler?: string; monitor?: string; error?: string }
+interface LogData { lines?: string[]; error?: string }
 
 function BotLogs() {
   const [data, setData]       = useState<LogData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [active, setActive]   = useState<"scheduler" | "monitor">("scheduler");
   const [lines, setLines]     = useState(80);
 
   async function fetchLogs(n = lines) {
@@ -202,8 +201,7 @@ function BotLogs() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lines]);
 
-  const logText = data?.[active] ?? "";
-  const logLines = logText.split("\n").filter(Boolean).reverse();
+  const logLines = (data?.lines ?? []).slice().reverse();
 
   const lineColor = (line: string) => {
     if (/error|exception|fail|critical/i.test(line)) return "#ef4444";
@@ -220,21 +218,6 @@ function BotLogs() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#fff" }}>Bot Logs</h2>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* Tab switcher */}
-          {(["scheduler", "monitor"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActive(tab)}
-              style={{
-                background: active === tab ? "#1e293b" : "transparent",
-                border: `1px solid ${active === tab ? "#334155" : "#1e293b"}`,
-                borderRadius: 6, color: active === tab ? "#e2e8f0" : "#475569",
-                fontSize: 11, fontWeight: 700, padding: "4px 12px", cursor: "pointer",
-              }}
-            >
-              {tab}.py
-            </button>
-          ))}
           {/* Lines selector */}
           <select
             value={lines}
