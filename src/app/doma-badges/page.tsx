@@ -66,28 +66,32 @@ export default function DomaBadgesPage() {
         </div>
 
         {/* Badge overview cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20, marginBottom: 52 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20, marginBottom: 52 }}>
 
           {/* Day 1 badge */}
-          <div style={{ background: "rgba(56,189,248,0.06)", border: "1px solid rgba(56,189,248,0.2)", borderRadius: 16, padding: "32px 24px", display: "flex", flexDirection: "column" as const, alignItems: "center", textAlign: "center" as const }}>
-            <div style={{ width: 110, height: 110, borderRadius: "50%", background: "rgba(56,189,248,0.08)", border: "2px solid rgba(56,189,248,0.2)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, overflow: "hidden" }}>
-              <Image src="/day1badge.png" alt="Day 1 Genesis Badge" width={90} height={90} style={{ objectFit: "contain" }} />
+          <div style={{ background: "rgba(56,189,248,0.06)", border: "1px solid rgba(56,189,248,0.2)", borderRadius: 16, padding: "24px 28px", display: "flex", alignItems: "center", gap: 24 }}>
+            <div style={{ width: 90, height: 90, borderRadius: "50%", background: "rgba(56,189,248,0.08)", border: "2px solid rgba(56,189,248,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+              <Image src="/day1badge.png" alt="Day 1 Genesis Badge" width={74} height={74} style={{ objectFit: "contain" }} />
             </div>
-            <h3 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 800, color: "#38bdf8" }}>Day 1 Genesis Badge</h3>
-            <p style={{ margin: 0, fontSize: 14, color: "#64748b", lineHeight: 1.6 }}>
-              Available for any fractionalized domain that launched, provided you met the eligibility requirements.
-            </p>
+            <div>
+              <h3 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 800, color: "#38bdf8" }}>Day 1 Genesis Badge</h3>
+              <p style={{ margin: 0, fontSize: 15, color: "#64748b", lineHeight: 1.6 }}>
+                Available for any fractionalized domain that launched, provided you met the eligibility requirements.
+              </p>
+            </div>
           </div>
 
           {/* Founder badge */}
-          <div style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 16, padding: "32px 24px", display: "flex", flexDirection: "column" as const, alignItems: "center", textAlign: "center" as const }}>
-            <div style={{ width: 110, height: 110, borderRadius: "50%", background: "rgba(245,158,11,0.08)", border: "2px solid rgba(245,158,11,0.2)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, overflow: "hidden" }}>
-              <Image src="/foundersbadge.png" alt="Genesis Founder Badge" width={90} height={90} style={{ objectFit: "contain" }} />
+          <div style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 16, padding: "24px 28px", display: "flex", alignItems: "center", gap: 24 }}>
+            <div style={{ width: 90, height: 90, borderRadius: "50%", background: "rgba(245,158,11,0.08)", border: "2px solid rgba(245,158,11,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+              <Image src="/foundersbadge.png" alt="Genesis Founder Badge" width={74} height={74} style={{ objectFit: "contain" }} />
             </div>
-            <h3 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 800, color: "#f59e0b" }}>Genesis Founder Badge</h3>
-            <p style={{ margin: 0, fontSize: 14, color: "#64748b", lineHeight: 1.6 }}>
-              Exclusive to the first three launches: <strong style={{ color: "#94a3b8" }}>$SOFTWARE.ai, $BRAG.com,</strong> and <strong style={{ color: "#94a3b8" }}>$BONER.com</strong>.
-            </p>
+            <div>
+              <h3 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 800, color: "#f59e0b" }}>Genesis Founder Badge</h3>
+              <p style={{ margin: 0, fontSize: 15, color: "#64748b", lineHeight: 1.6 }}>
+                Exclusive to the first three launches: <strong style={{ color: "#94a3b8" }}>$SOFTWARE.ai, $BRAG.com,</strong> and <strong style={{ color: "#94a3b8" }}>$BONER.com</strong>.
+              </p>
+            </div>
           </div>
         </div>
 
