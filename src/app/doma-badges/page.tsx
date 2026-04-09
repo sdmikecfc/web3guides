@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { createServiceClient } from "@/lib/supabase/server";
-
-export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Doma Protocol Season 1 Badges Explained | Web3 Guides",
@@ -10,38 +7,6 @@ export const metadata: Metadata = {
     "Everything you need to know about Doma Protocol's Genesis Founder and Day 1 Genesis badges — eligibility, requirements, rewards, and how the point boosts work.",
 };
 
-/* ─── Fetch generated guide from Supabase ───────────────────────────────── */
-async function getGuide() {
-  try {
-    const supabase = createServiceClient();
-    const { data } = await supabase
-      .from("guides")
-      .select("title, content, summary, key_points")
-      .eq("subdomain", "doma")
-      .eq("slug", "doma-season-1-badges-genesis-founder-and-day-1-genesis-explained")
-      .single();
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-/* ─── Minimal markdown → HTML ───────────────────────────────────────────── */
-function mdToHtml(md: string): string {
-  return md
-    .replace(/^### (.+)$/gm, '<h3 style="font-size:17px;font-weight:800;color:#f1f5f9;margin:28px 0 10px">$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2 style="font-size:21px;font-weight:800;color:#f1f5f9;margin:40px 0 14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.07)">$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1 style="font-size:26px;font-weight:900;color:#f1f5f9;margin:0 0 20px">$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#e2e8f0;font-weight:700">$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`([^`]+)`/g, '<code style="background:#1e293b;color:#f472b6;padding:2px 6px;border-radius:4px;font-size:13px">$1</code>')
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:12px;margin:20px 0;display:block" />')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color:#818cf8;text-decoration:none" target="_blank" rel="noopener noreferrer">$1</a>')
-    .replace(/^> (.+)$/gm, '<blockquote style="border-left:3px solid #6366f1;margin:16px 0;padding:10px 16px;background:rgba(99,102,241,0.08);color:#94a3b8;font-style:italic">$1</blockquote>')
-    .replace(/^[-*] (.+)$/gm, '<li style="margin:6px 0;color:#cbd5e1;line-height:1.6">$1</li>')
-    .replace(/(<li.*<\/li>\n?)+/g, (m) => `<ul style="padding-left:20px;margin:12px 0">${m}</ul>`)
-    .replace(/\n\n([^<\n].+)/g, '\n\n<p style="color:#94a3b8;line-height:1.8;margin:14px 0">$1</p>');
-}
 
 /* ─── Data ──────────────────────────────────────────────────────────────── */
 const FOUNDER_DOMAINS = ["$SOFTWARE.ai", "$BRAG.com", "$BONER.com"];
@@ -72,8 +37,7 @@ function ReqItem({ icon, text }: { icon: string; text: string }) {
 }
 
 /* ─── Page ──────────────────────────────────────────────────────────────── */
-export default async function DomaBadgesPage() {
-  const guide = await getGuide();
+export default function DomaBadgesPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#08080f", color: "#e2e8f0", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
@@ -102,7 +66,7 @@ export default async function DomaBadgesPage() {
         </div>
 
         {/* Badge overview cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20, marginBottom: 52 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20, marginBottom: 52 }}>
 
           {/* Day 1 badge */}
           <div style={{ background: "rgba(56,189,248,0.06)", border: "1px solid rgba(56,189,248,0.2)", borderRadius: 16, padding: "32px 24px", display: "flex", flexDirection: "column" as const, alignItems: "center", textAlign: "center" as const }}>
@@ -158,7 +122,7 @@ export default async function DomaBadgesPage() {
         {/* Rewards — clean two-col, no testnet clutter */}
         <div style={{ marginBottom: 52 }}>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "#f1f5f9", margin: "0 0 24px" }}>What Do the Badges Give You?</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
 
             <div style={{ background: "rgba(56,189,248,0.06)", border: "1px solid rgba(56,189,248,0.3)", borderRadius: 16, padding: "24px" }}>
               <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 800, color: "#38bdf8" }}>Day 1 Genesis</h3>
@@ -188,43 +152,6 @@ export default async function DomaBadgesPage() {
             </p>
           </div>
         </div>
-
-        {/* ── Generated deep-dive guide from Supabase ── */}
-        {guide && (
-          <div style={{ marginBottom: 52 }}>
-            <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 0 48px" }} />
-            <div style={{ marginBottom: 32 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase" as const, letterSpacing: 1, marginBottom: 10 }}>Deep Dive</div>
-              <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(24px,4vw,36px)", lineHeight: 1.15, margin: "0 0 16px", color: "#f1f5f9" }}>
-                {guide.title}
-              </h2>
-              {guide.summary && (
-                <p style={{ fontSize: 16, color: "#64748b", lineHeight: 1.7, margin: 0 }}>{guide.summary}</p>
-              )}
-            </div>
-
-            {guide.key_points && Array.isArray(guide.key_points) && guide.key_points.length > 0 && (
-              <div style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.15)", borderRadius: 14, padding: "20px 24px", marginBottom: 36 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#6366f1", textTransform: "uppercase" as const, letterSpacing: 1, marginBottom: 14 }}>Key Takeaways</div>
-                <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column" as const, gap: 10 }}>
-                  {(guide.key_points as string[]).map((pt: string, i: number) => (
-                    <li key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 14, color: "#cbd5e1", lineHeight: 1.6 }}>
-                      <span style={{ color: "#6366f1", fontWeight: 700, flexShrink: 0 }}>→</span>
-                      {pt}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {guide.content && (
-              <div
-                style={{ fontSize: 16, lineHeight: 1.8, color: "#94a3b8" }}
-                dangerouslySetInnerHTML={{ __html: mdToHtml(guide.content) }}
-              />
-            )}
-          </div>
-        )}
 
         {/* CTA */}
         <div style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(236,72,153,0.08) 100%)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: "32px", textAlign: "center" as const }}>
