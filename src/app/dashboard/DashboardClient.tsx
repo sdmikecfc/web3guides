@@ -114,8 +114,10 @@ function BotPanel() {
       {data && !error && (
         <>
           {/* Stat cards */}
-          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(3,1fr)", gap: 14, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(5,1fr)", gap: 14, marginBottom: 20 }}>
             <StatCard label="Balance" value={`${fmtNum(balance)} ${unit}`} color="#0ea5e9" />
+            <StatCard label="Deployed" value={`${fmtNum((state.total_deployed as number) ?? 0)} ${unit}`} color="#a78bfa" />
+            <StatCard label="Total Value" value={`${fmtNum((state.total_value as number) ?? balance)} ${unit}`} color="#34d399" />
             <StatCard
               label="Unrealised P&L"
               value={`${pnl >= 0 ? "+" : ""}${fmtNum(pnl)} ${unit}`}
