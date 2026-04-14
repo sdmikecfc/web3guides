@@ -233,6 +233,17 @@ export const SUBDOMAINS: Record<SubdomainKey, SubdomainConfig> = {
     gradientFrom: "#00051A",
     gradientTo: "#0A0B1E",
   },
+  domains: {
+    key: "domains",
+    label: "Domain Names",
+    description: "The internet's original digital real estate — how domains work, how to invest in them, and how Doma Protocol is bringing them on-chain.",
+    accentColor: "blue",
+    accentHex: "#3b82f6",
+    glowHex: "rgba(59,130,246,0.15)",
+    emoji: "🌐",
+    gradientFrom: "#0a1628",
+    gradientTo: "#0a0a0f",
+  },
 };
 
 export const VALID_SUBDOMAINS = Object.keys(SUBDOMAINS) as SubdomainKey[];

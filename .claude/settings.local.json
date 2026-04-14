@@ -75,7 +75,20 @@
       "Bash(dir \"C:\\\\Users\\\\Mike\\\\Desktop\\\\web3guides\\\\src\\\\app\" /b)",
       "Bash(findstr -i \"sitemap\\\\|robots\")",
       "Bash(grep -n \"from\\\\|insert\\\\|update\\\\|delete\\\\|select\\\\|upsert\" C:/Users/Mike/Desktop/web3guides/src/app/go/[slug]/route.ts C:/Users/Mike/Desktop/web3guides/src/app/page.tsx C:/Users/Mike/Desktop/web3guides/src/lib/guides.ts)",
-      "Bash(grep -v \"import\\\\|//\")"
+      "Bash(grep -v \"import\\\\|//\")",
+      "Bash(npm run:*)",
+      "Bash(pandoc \"C:\\\\Users\\\\Mike\\\\Documents\\\\Doma\\\\AMA Content\\\\Transcripts\\\\Discord AMA – Big Mike × Andriy Khvetkevych.docx\" -t plain)",
+      "Bash(python scripts/office/unpack.py \"C:\\\\Users\\\\Mike\\\\Documents\\\\Doma\\\\AMA Content\\\\Transcripts\\\\Discord AMA – Big Mike × Andriy Khvetkevych.docx\" /tmp/andriy/)",
+      "Bash(python scripts/office/unpack.py \"C:\\\\Users\\\\Mike\\\\Documents\\\\Doma\\\\AMA Content\\\\Transcripts\\\\Discord AMA Elias Benger from InterNetX1 \\(1\\).docx\" /tmp/elias/)",
+      "Bash(python scripts/office/unpack.py \"C:\\\\Users\\\\Mike\\\\Documents\\\\Doma\\\\AMA Content\\\\Transcripts\\\\Richard Lau - Countdown to rides.com.docx\" /tmp/richard/)",
+      "Bash(python scripts/office/unpack.py \"C:\\\\Users\\\\Mike\\\\Documents\\\\Doma\\\\AMA Content\\\\Transcripts\\\\AMA Summary_ Tom Barrett from Encirca.docx\" /tmp/tom/)",
+      "Bash(python scripts/office/unpack.py \"C:\\\\Users\\\\Mike\\\\Documents\\\\Doma\\\\AMA Content\\\\Transcripts\\\\Discord AMA – Alessandro and Tomasso.docx\" /tmp/ales/)",
+      "Bash(python3 -c ':*)",
+      "Bash(python scripts/office/unpack.py \"C:\\\\Users\\\\Mike\\\\Documents\\\\Doma\\\\AMA Content\\\\Transcripts\\\\Discord AMA – Big Mike × Andriy Khvetkevych.docx\" \"C:\\\\Users\\\\Mike\\\\AppData\\\\Local\\\\Temp\\\\andriy\")",
+      "Bash(python scripts/office/unpack.py \"C:\\\\Users\\\\Mike\\\\Documents\\\\Doma\\\\AMA Content\\\\Transcripts\\\\Discord AMA Elias Benger from InterNetX1 \\(1\\).docx\" \"C:\\\\Users\\\\Mike\\\\AppData\\\\Local\\\\Temp\\\\elias\")",
+      "Bash(python scripts/office/unpack.py \"C:\\\\Users\\\\Mike\\\\Documents\\\\Doma\\\\AMA Content\\\\Transcripts\\\\Richard Lau - Countdown to rides.com.docx\" \"C:\\\\Users\\\\Mike\\\\AppData\\\\Local\\\\Temp\\\\richard\")",
+      "Bash(python scripts/office/unpack.py \"C:\\\\Users\\\\Mike\\\\Documents\\\\Doma\\\\AMA Content\\\\Transcripts\\\\AMA Summary_ Tom Barrett from Encirca.docx\" \"C:\\\\Users\\\\Mike\\\\AppData\\\\Local\\\\Temp\\\\tom\")",
+      "Bash(python scripts/office/unpack.py \"C:\\\\Users\\\\Mike\\\\Documents\\\\Doma\\\\AMA Content\\\\Transcripts\\\\Discord AMA – Alessandro and Tomasso.docx\" \"C:\\\\Users\\\\Mike\\\\AppData\\\\Local\\\\Temp\\\\ales\")"
     ]
   }
 }

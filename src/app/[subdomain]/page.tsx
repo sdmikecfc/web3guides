@@ -89,6 +89,12 @@ export default async function SubdomainPage({ params, searchParams }: Props) {
     return <InkPage guides={guides} cfg={cfg} />;
   }
 
+  // Domains subdomain: custom branded page
+  if (params.subdomain === "domains") {
+    const guides = await getGuidesBySubdomain("domains", { limit: 10, offset: 0 });
+    return <DomainsPage guides={guides} cfg={cfg} />;
+  }
+
   // Doma subdomain: custom page with referral + guides
   if (params.subdomain === "doma") {
     const page = Math.max(1, parseInt(searchParams.page ?? "1", 10));
@@ -987,6 +993,314 @@ function JobsPage() {
           ))}
         </div>
       </section>
+    </div>
+  );
+}
+
+// ─── Domains Page ────────────────────────────────────────────────────────────
+
+const DOM_BLUE    = "#3b82f6";
+const DOM_INDIGO  = "#6366f1";
+const DOM_CYAN    = "#22d3ee";
+const DOM_DARK    = "#070d1a";
+const DOM_CARD    = "rgba(255,255,255,0.03)";
+const DOM_BORDER  = "rgba(59,130,246,0.18)";
+
+const DOM_PARTNERS = [
+  {
+    name: "NicNames",
+    role: "Domain Registrar · #1 Tokenization Partner",
+    description: "NicNames is Doma Protocol's top tokenization registrar and long-standing domain industry leader. CEO Andriy Khvetkevych has 25 years in the space.",
+    url: "https://www.nicnames.co",
+    badge: "NN",
+    color: "#f59e0b",
+  },
+  {
+    name: "InterNetX",
+    role: "Domain Registrar · Europe's Largest",
+    description: "Part of the IONOS Group, InterNetX manages millions of domains across thousands of TLDs. CEO Elias Benger is a leading voice on the future of domain infrastructure.",
+    url: "https://www.internetx.com",
+    badge: "IX",
+    color: "#3b82f6",
+  },
+  {
+    name: "EnCirca",
+    role: "ICANN-Accredited Registrar",
+    description: "Founded in 2001, EnCirca specialises in high-trust TLDs like .bank and .pharmacy. Founder Tom Barrett is one of the domain industry's foremost technical minds.",
+    url: "https://www.encirca.com",
+    badge: "EC",
+    color: "#10b981",
+  },
+];
+
+const DOM_TOOLS = [
+  {
+    category: "Tokenise Your Domain",
+    tools: [
+      { name: "Doma Protocol", desc: "Fractionalise and tokenise your domain on-chain", url: "https://doma.xyz" },
+      { name: "NicNames", desc: "#1 tokenization registrar — register & tokenise in one step", url: "https://www.nicnames.co" },
+    ],
+  },
+  {
+    category: "Buy & Sell Domains",
+    tools: [
+      { name: "Afternic", desc: "GoDaddy's premium domain marketplace — millions of listings", url: "https://www.afternic.com" },
+      { name: "Sedo", desc: "Global domain marketplace and brokerage service", url: "https://sedo.com" },
+      { name: "Dan.com", desc: "Buy domains with instalment plans and payment protection", url: "https://dan.com" },
+      { name: "NameBio", desc: "Historical domain sale database — research comparable sales", url: "https://namebio.com" },
+    ],
+  },
+  {
+    category: "Find Available Domains",
+    tools: [
+      { name: "Namecheap", desc: "Search and register with great promotional pricing", url: "https://www.namecheap.com" },
+      { name: "Porkbun", desc: "Clean UI, fair prices, free privacy protection", url: "https://porkbun.com" },
+      { name: "GoDaddy", desc: "Largest registrar by volume, huge aftermarket", url: "https://www.godaddy.com" },
+      { name: "Spaceship", desc: "Modern registrar with strong new-gTLD selection", url: "https://www.spaceship.com" },
+    ],
+  },
+  {
+    category: "Research & Appraisal",
+    tools: [
+      { name: "ExpiredDomains.net", desc: "Find and acquire recently expired or dropped domains", url: "https://www.expireddomains.net" },
+      { name: "DN.new", desc: "Fast domain availability search across all extensions", url: "https://dn.new" },
+      { name: "Estibot", desc: "Automated domain appraisal and valuation tool", url: "https://www.estibot.com" },
+      { name: "DN Academy", desc: "Domain investing education from industry veterans", url: "https://www.dnacademy.com" },
+    ],
+  },
+  {
+    category: "News & Community",
+    tools: [
+      { name: "Domain Name Wire", desc: "Industry news, podcast, and analysis since 2005", url: "https://domainnamewire.com" },
+      { name: "Domain Name Journal", desc: "Weekly domain sales charts and industry coverage", url: "https://www.dnjournal.com" },
+      { name: "NamesCon", desc: "Premier domain industry conference, founded by Richard Lau", url: "https://namescon.com" },
+      { name: "NamePros", desc: "Largest domain investing forum — 1M+ members", url: "https://www.namepros.com" },
+    ],
+  },
+];
+
+const DOM_TERMS = [
+  { term: "ccTLD", def: "Country Code Top-Level Domain — e.g. .uk, .de, .io. Regulated by the country's designated registry." },
+  { term: "gTLD", def: "Generic Top-Level Domain — e.g. .com, .net, .org, and newer extensions like .ai, .xyz, .club." },
+  { term: "Aftermarket", def: "The secondary market where already-registered domains are bought and sold between investors and businesses." },
+  { term: "Domain Drop", def: "When a domain registration expires and enters a grace/redemption period before becoming available again." },
+  { term: "Bonding Curve", def: "A Doma-specific mechanism where token price increases as more tokens are sold during a domain's initial launch phase." },
+  { term: "Fractionalization", def: "Splitting a domain's ownership into tokens (DOTs) so multiple people can hold a share of one premium asset." },
+  { term: "DST", def: "Domain Service Token — the Doma token that controls the DNS settings for a tokenised domain. Separates DNS control from ownership." },
+  { term: "DOT", def: "Domain Ownership Token — the Doma ERC-20 token representing fractional ownership and transfer rights of a domain." },
+  { term: "UDRP", def: "Uniform Domain-Name Dispute-Resolution Policy — ICANN's mechanism for settling domain trademark disputes." },
+  { term: "Parking", def: "Placing ads on an undeveloped domain to earn passive revenue while holding it for sale or development." },
+];
+
+function DomainsPage({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: import("@/types").SubdomainConfig }) {
+  const amaGuides = guides.filter(g => g.title.toLowerCase().includes("i learned"));
+  const otherGuides = guides.filter(g => !g.title.toLowerCase().includes("i learned"));
+
+  return (
+    <div style={{ background: DOM_DARK, minHeight: "100vh", color: "#e2e8f0" }}>
+
+      {/* ── Hero ──────────────────────────────────────────────────────── */}
+      <section style={{
+        background: `linear-gradient(160deg, #070d1a 0%, #0c1a30 50%, #050a14 100%)`,
+        padding: "88px 24px 72px",
+        textAlign: "center",
+        position: "relative",
+        overflow: "hidden",
+        borderBottom: `1px solid ${DOM_BORDER}`,
+      }}>
+        <div style={{ position: "absolute", top: -100, left: "50%", transform: "translateX(-50%)", width: 700, height: 700, borderRadius: "50%", background: `radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)`, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -80, right: "5%", width: 400, height: 400, borderRadius: "50%", background: `radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)`, pointerEvents: "none" }} />
+
+        <div style={{ maxWidth: 800, margin: "0 auto", position: "relative", zIndex: 1 }}>
+          {/* Tag */}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.25)", borderRadius: 50, padding: "5px 16px", marginBottom: 28 }}>
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", color: DOM_BLUE, letterSpacing: 1.5 }}>DIGITAL REAL ESTATE · SINCE 1993</span>
+          </div>
+
+          {/* Fake URL bar */}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 20px", marginBottom: 32, fontFamily: "'Space Mono', monospace", fontSize: "0.85rem" }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
+            <span style={{ color: "rgba(255,255,255,0.35)" }}>https://</span>
+            <span style={{ color: "#f1f5f9", fontWeight: 700 }}>your-name.com</span>
+            <span style={{ marginLeft: 4, background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: 4, padding: "1px 8px", fontSize: "0.65rem", color: DOM_BLUE, fontWeight: 700, letterSpacing: 0.5 }}>ON-CHAIN</span>
+          </div>
+
+          <h1 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(2rem, 6vw, 3.6rem)", lineHeight: 1.1, marginBottom: 24, background: `linear-gradient(135deg, #f1f5f9 0%, ${DOM_BLUE} 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+            The Internet&apos;s Digital Real Estate
+          </h1>
+
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.1rem", color: "rgba(255,255,255,0.6)", lineHeight: 1.75, maxWidth: 640, margin: "0 auto 44px" }}>
+            Domain names are 30-year-old assets built on the backbone of the internet — and Doma Protocol is bringing them fully on-chain. This hub covers domain investing, the industry&apos;s top voices, and everything you need to know about DomainFi.
+          </p>
+
+          <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
+            <a href="https://doma.xyz" target="_blank" rel="noopener noreferrer"
+               style={{ display: "inline-flex", alignItems: "center", gap: 8, background: `linear-gradient(135deg, ${DOM_BLUE}, ${DOM_INDIGO})`, color: "#fff", padding: "14px 32px", borderRadius: 50, fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: "0.95rem", textDecoration: "none", boxShadow: `0 8px 32px rgba(59,130,246,0.3)`, letterSpacing: 0.3 }}>
+              Explore Doma Protocol →
+            </a>
+            <a href="#articles"
+               style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.8)", padding: "14px 28px", borderRadius: 50, fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: "0.95rem", textDecoration: "none" }}>
+              Read the Guides
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Stats ─────────────────────────────────────────────────────── */}
+      <section style={{ background: "rgba(59,130,246,0.04)", borderBottom: `1px solid ${DOM_BORDER}` }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto", padding: "28px 24px", display: "flex", flexWrap: "wrap" as const, justifyContent: "center", gap: 40 }}>
+          {[
+            { value: "360M+", label: "Domains Registered" },
+            { value: "30 yrs", label: "Domain Aftermarket" },
+            { value: "$3B+", label: "Annual Domain Sales" },
+            { value: "107K+", label: "Domains Tokenised on Doma" },
+          ].map(s => (
+            <div key={s.label} style={{ textAlign: "center" }}>
+              <div style={{ fontFamily: "'Bungee', cursive", fontSize: "1.7rem", color: DOM_BLUE, lineHeight: 1 }}>{s.value}</div>
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.78rem", color: "rgba(255,255,255,0.45)", marginTop: 4, textTransform: "uppercase" as const, letterSpacing: 0.8 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── AMA Article Series ────────────────────────────────────────── */}
+      <section id="articles" style={{ maxWidth: 1100, margin: "0 auto", padding: "72px 24px 0" }}>
+        <div style={{ marginBottom: 40 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 50, padding: "4px 14px", marginBottom: 14 }}>
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", color: DOM_INDIGO, letterSpacing: 1.2 }}>AMA SERIES</span>
+          </div>
+          <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.4rem, 3vw, 2rem)", color: "#f1f5f9", margin: "0 0 10px" }}>Things I Learned From Domain Legends</h2>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.95rem", color: "rgba(255,255,255,0.45)", margin: 0 }}>Five deep-dive interviews with the people who built the domain industry — from veteran investors to the registrars bringing domains on-chain.</p>
+        </div>
+
+        {amaGuides.length > 0 ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20, marginBottom: 56 }}>
+            {amaGuides.map(guide => (
+              <a key={guide.id} href={`/guides/${guide.slug}`} style={{ textDecoration: "none", display: "block", background: DOM_CARD, border: `1px solid ${DOM_BORDER}`, borderRadius: 16, padding: "24px", transition: "border-color 0.2s", cursor: "pointer" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <span style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 6, padding: "2px 10px", fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", color: DOM_INDIGO, letterSpacing: 0.8, textTransform: "uppercase" as const }}>{guide.difficulty}</span>
+                </div>
+                <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: "1rem", color: "#f1f5f9", margin: "0 0 10px", lineHeight: 1.4 }}>{guide.title}</h3>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", color: "rgba(255,255,255,0.45)", margin: 0, lineHeight: 1.5 }}>{guide.summary}</p>
+                <div style={{ marginTop: 16, fontFamily: "'Space Mono', monospace", fontSize: "0.72rem", color: DOM_BLUE }}>Read article →</div>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div style={{ background: DOM_CARD, border: `1px solid ${DOM_BORDER}`, borderRadius: 16, padding: "40px 32px", marginBottom: 56, textAlign: "center" }}>
+            <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>✍️</div>
+            <p style={{ fontFamily: "'Bungee', cursive", fontSize: "1.1rem", color: "#94a3b8" }}>Articles coming soon</p>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", color: "rgba(255,255,255,0.35)" }}>Five AMA-based deep-dives with domain legends are on their way.</p>
+          </div>
+        )}
+
+        {/* Other guides */}
+        {otherGuides.length > 0 && (
+          <>
+            <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.3rem, 3vw, 1.8rem)", color: "#f1f5f9", margin: "0 0 28px" }}>More Domain Guides</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 18, marginBottom: 56 }}>
+              {otherGuides.map(guide => (
+                <a key={guide.id} href={`/guides/${guide.slug}`} style={{ textDecoration: "none", display: "block", background: DOM_CARD, border: `1px solid ${DOM_BORDER}`, borderRadius: 14, padding: "22px" }}>
+                  <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: "0.95rem", color: "#f1f5f9", margin: "0 0 8px", lineHeight: 1.4 }}>{guide.title}</h3>
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.82rem", color: "rgba(255,255,255,0.4)", margin: 0 }}>{guide.summary}</p>
+                  <div style={{ marginTop: 14, fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: DOM_BLUE }}>Read →</div>
+                </a>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* ── Doma Partners ─────────────────────────────────────────────── */}
+      <section style={{ maxWidth: 1100, margin: "0 auto", padding: "56px 24px" }}>
+        <div style={{ marginBottom: 36 }}>
+          <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.4rem, 3vw, 2rem)", color: "#f1f5f9", margin: "0 0 10px" }}>The Doma Partner Ecosystem</h2>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.95rem", color: "rgba(255,255,255,0.45)", margin: 0 }}>The registrars bringing traditional domains on-chain — each with decades of industry experience.</p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20 }}>
+          {DOM_PARTNERS.map(p => (
+            <a key={p.name} href={p.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "block", background: DOM_CARD, border: `1px solid ${DOM_BORDER}`, borderRadius: 16, padding: "24px", cursor: "pointer" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: `rgba(${p.color === "#f59e0b" ? "245,158,11" : p.color === "#10b981" ? "16,185,129" : "59,130,246"},0.12)`, border: `1px solid ${p.color}30`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bungee', cursive", fontSize: "0.85rem", color: p.color, flexShrink: 0 }}>{p.badge}</div>
+                <div>
+                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: "1rem", color: "#f1f5f9" }}>{p.name}</div>
+                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.6rem", color: p.color, letterSpacing: 0.5, marginTop: 2 }}>{p.role}</div>
+                </div>
+              </div>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.84rem", color: "rgba(255,255,255,0.45)", margin: "0 0 14px", lineHeight: 1.55 }}>{p.description}</p>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.68rem", color: DOM_BLUE }}>Visit site →</div>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Domain Tools ──────────────────────────────────────────────── */}
+      <section style={{ background: "rgba(255,255,255,0.015)", borderTop: `1px solid ${DOM_BORDER}`, borderBottom: `1px solid ${DOM_BORDER}` }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "64px 24px" }}>
+          <div style={{ marginBottom: 40 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(34,211,238,0.08)", border: "1px solid rgba(34,211,238,0.2)", borderRadius: 50, padding: "4px 14px", marginBottom: 14 }}>
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", color: DOM_CYAN, letterSpacing: 1.2 }}>TOOLS & RESOURCES</span>
+            </div>
+            <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.4rem, 3vw, 2rem)", color: "#f1f5f9", margin: "0 0 10px" }}>The Domain Investor&apos;s Toolkit</h2>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.95rem", color: "rgba(255,255,255,0.45)", margin: 0 }}>Every tool you need to research, buy, sell, and build with domain names.</p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 28 }}>
+            {DOM_TOOLS.map(cat => (
+              <div key={cat.category}>
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", color: DOM_CYAN, letterSpacing: 1, textTransform: "uppercase" as const, marginBottom: 14, borderBottom: "1px solid rgba(34,211,238,0.12)", paddingBottom: 8 }}>{cat.category}</div>
+                <div style={{ display: "flex", flexDirection: "column" as const, gap: 10 }}>
+                  {cat.tools.map(tool => (
+                    <a key={tool.name} href={tool.url} target="_blank" rel="noopener noreferrer"
+                       style={{ textDecoration: "none", display: "flex", justifyContent: "space-between", alignItems: "center", background: DOM_CARD, border: `1px solid ${DOM_BORDER}`, borderRadius: 10, padding: "12px 16px", gap: 12 }}>
+                      <div>
+                        <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: "0.88rem", color: "#f1f5f9" }}>{tool.name}</div>
+                        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.75rem", color: "rgba(255,255,255,0.38)", marginTop: 2, lineHeight: 1.4 }}>{tool.desc}</div>
+                      </div>
+                      <span style={{ color: DOM_BLUE, fontSize: "0.9rem", flexShrink: 0 }}>→</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Key Terms ─────────────────────────────────────────────────── */}
+      <section style={{ maxWidth: 1100, margin: "0 auto", padding: "64px 24px" }}>
+        <div style={{ marginBottom: 36 }}>
+          <h2 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.4rem, 3vw, 2rem)", color: "#f1f5f9", margin: "0 0 10px" }}>Quick Domain Glossary</h2>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.95rem", color: "rgba(255,255,255,0.45)", margin: 0 }}>The terms you&apos;ll encounter — from classic domain jargon to DomainFi-specific vocab.</p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+          {DOM_TERMS.map(t => (
+            <div key={t.term} style={{ background: DOM_CARD, border: `1px solid ${DOM_BORDER}`, borderRadius: 12, padding: "16px 18px" }}>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", fontWeight: 700, color: DOM_BLUE, marginBottom: 6 }}>{t.term}</div>
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.83rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{t.def}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── CTA ───────────────────────────────────────────────────────── */}
+      <section style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 80px" }}>
+        <div style={{ background: `linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(99,102,241,0.08) 100%)`, border: `1px solid rgba(59,130,246,0.2)`, borderRadius: 20, padding: "44px 40px", textAlign: "center" }}>
+          <div style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(1.4rem, 3vw, 2rem)", color: "#f1f5f9", marginBottom: 12 }}>Start with Doma Protocol</div>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.95rem", color: "rgba(255,255,255,0.5)", margin: "0 0 28px", maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>Tokenise your domain, trade fractional shares, or explore over 107,000 on-chain domains already live on the Doma mainnet.</p>
+          <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
+            <a href="https://doma.xyz" target="_blank" rel="noopener noreferrer"
+               style={{ display: "inline-block", background: `linear-gradient(135deg, ${DOM_BLUE}, ${DOM_INDIGO})`, color: "#fff", fontWeight: 700, fontSize: "0.9rem", padding: "12px 28px", borderRadius: 10, textDecoration: "none", fontFamily: "'DM Sans', sans-serif" }}>
+              Go to Doma.xyz →
+            </a>
+            <a href="https://doma.web3guides.com"
+               style={{ display: "inline-block", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#f1f5f9", fontWeight: 600, fontSize: "0.9rem", padding: "12px 28px", borderRadius: 10, textDecoration: "none", fontFamily: "'DM Sans', sans-serif" }}>
+              Doma Protocol Guides
+            </a>
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 }

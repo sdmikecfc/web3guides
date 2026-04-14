@@ -70,4 +70,5 @@ export type SubdomainKey =
   | "doma"
   | "aivm"
   | "pai3"
-  | "ink";
+  | "ink"
+  | "domains";
