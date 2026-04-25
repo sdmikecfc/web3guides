@@ -6,6 +6,7 @@ import GuideCard from "@/components/GuideCard";
 import FilterBar from "@/components/FilterBar";
 import HeroSection from "@/components/HeroSection";
 import SubdomainCTA from "@/components/SubdomainCTA";
+import DomaHeroIllustration from "@/components/DomaHeroIllustration";
 import type { Difficulty } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -795,26 +796,47 @@ function DomaPage({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: imp
   return (
     <div style={{ background: "#fefbf6", minHeight: "100vh" }}>
       {/* Hero */}
-      <section style={{ background: "linear-gradient(135deg, #1a0533 0%, #302b63 50%, #24243e 100%)", padding: "80px 24px 64px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+      <section style={{ background: "linear-gradient(135deg, #1a0533 0%, #302b63 50%, #24243e 100%)", padding: "80px 24px 64px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle at 50% 50%, rgba(124,106,255,0.2) 0%, transparent 70%)", pointerEvents: "none" }} />
-        <div style={{ maxWidth: 720, margin: "0 auto", position: "relative", zIndex: 1 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(124,106,255,0.15)", border: "1px solid rgba(124,106,255,0.3)", borderRadius: 50, padding: "6px 16px", marginBottom: 24 }}>
-            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#7c6aff", letterSpacing: 1 }}>BUILT BY D3 GLOBAL · $25M SERIES A · PARADIGM-BACKED</span>
+        <div style={{
+          maxWidth: 1180, margin: "0 auto", position: "relative", zIndex: 1,
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 0.85fr)",
+          gap: 56, alignItems: "center",
+        }} className="doma-hero-grid">
+          {/* Left: text */}
+          <div>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(124,106,255,0.15)", border: "1px solid rgba(124,106,255,0.3)", borderRadius: 50, padding: "6px 16px", marginBottom: 24 }}>
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#7c6aff", letterSpacing: 1 }}>BUILT BY D3 GLOBAL · $25M SERIES A · PARADIGM-BACKED</span>
+            </div>
+            <h1 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(2rem, 5vw, 3.5rem)", color: "#fff", marginBottom: 20, lineHeight: 1.1 }}>
+              Your Domain.<br />On the Blockchain.
+            </h1>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.1rem", color: "rgba(255,255,255,0.75)", lineHeight: 1.7, marginBottom: 40 }}>
+              Doma Protocol tokenizes traditional internet domains (.com, .ai, .xyz) as programmable real-world assets. Trade 24/7, use as DeFi collateral, or fractionalize premium domains — while your website keeps running normally.
+            </p>
+            <a href={DOMA_REFERRAL} target="_blank" rel="noopener noreferrer"
+               style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg, #ff6b35, #ec4899)", color: "#fff", padding: "16px 40px", borderRadius: 50, fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: "1rem", textDecoration: "none", boxShadow: "0 8px 30px rgba(255,107,53,0.35)" }}>
+              Explore Doma Protocol →
+            </a>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.8rem", color: "rgba(255,255,255,0.4)", marginTop: 12 }}>
+              Opens app.doma.xyz — connect your wallet to get started
+            </p>
           </div>
-          <h1 style={{ fontFamily: "'Bungee', cursive", fontSize: "clamp(2rem, 5vw, 3.5rem)", color: "#fff", marginBottom: 20, lineHeight: 1.1 }}>
-            Your Domain.<br />On the Blockchain.
-          </h1>
-          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "1.1rem", color: "rgba(255,255,255,0.75)", lineHeight: 1.7, marginBottom: 40 }}>
-            Doma Protocol tokenizes traditional internet domains (.com, .ai, .xyz) as programmable real-world assets. Trade 24/7, use as DeFi collateral, or fractionalize premium domains — while your website keeps running normally.
-          </p>
-          <a href={DOMA_REFERRAL} target="_blank" rel="noopener noreferrer"
-             style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg, #ff6b35, #ec4899)", color: "#fff", padding: "16px 40px", borderRadius: 50, fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: "1rem", textDecoration: "none", boxShadow: "0 8px 30px rgba(255,107,53,0.35)" }}>
-            Explore Doma Protocol →
-          </a>
-          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.8rem", color: "rgba(255,255,255,0.4)", marginTop: 12 }}>
-            Opens app.doma.xyz — connect your wallet to get started
-          </p>
+
+          {/* Right: animated SVG illustration */}
+          <div className="doma-hero-illu">
+            <DomaHeroIllustration />
+          </div>
         </div>
+        {/* Mobile responsive override */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media (max-width: 860px) {
+            .doma-hero-grid    { grid-template-columns: 1fr !important; gap: 32px !important; text-align: center; }
+            .doma-hero-grid > div:first-child { text-align: center; }
+            .doma-hero-illu    { max-width: 360px; margin: 0 auto; }
+          }
+        ` }} />
       </section>
 
       {/* Stats bar */}

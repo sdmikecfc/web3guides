@@ -166,6 +166,35 @@ const GLOBAL_CSS = `
     from { opacity: 0; transform: translateY(10px); }
     to   { opacity: 1; transform: translateY(0);    }
   }
+  @keyframes drawLine {
+    from { stroke-dashoffset: var(--len, 2000); }
+    to   { stroke-dashoffset: 0; }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes float1 {
+    0%, 100% { transform: translate(0, 0); }
+    50%      { transform: translate(40px, -30px); }
+  }
+  @keyframes float2 {
+    0%, 100% { transform: translate(0, 0); }
+    50%      { transform: translate(-30px, 25px); }
+  }
+  @keyframes float3 {
+    0%, 100% { transform: translate(0, 0); }
+    50%      { transform: translate(20px, 40px); }
+  }
+  @keyframes gridDrift {
+    from { transform: translate(0, 0); }
+    to   { transform: translate(32px, 32px); }
+  }
+  @keyframes scanline {
+    0%   { transform: translateY(-100%); opacity: 0; }
+    50%  { opacity: 0.6; }
+    100% { transform: translateY(100%); opacity: 0; }
+  }
   .dash-card {
     transition: border-color 220ms ease, transform 220ms ease, box-shadow 220ms ease;
   }
@@ -205,6 +234,44 @@ const GLOBAL_CSS = `
   }
   .dash-fade-in {
     animation: slideUp 380ms ease both;
+  }
+  .dash-stagger > * {
+    animation: slideUp 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .dash-stagger > *:nth-child(1) { animation-delay:  60ms; }
+  .dash-stagger > *:nth-child(2) { animation-delay: 120ms; }
+  .dash-stagger > *:nth-child(3) { animation-delay: 180ms; }
+  .dash-stagger > *:nth-child(4) { animation-delay: 240ms; }
+  .dash-stagger > *:nth-child(5) { animation-delay: 300ms; }
+  .dash-stagger > *:nth-child(6) { animation-delay: 360ms; }
+  .dash-orb {
+    will-change: transform;
+    pointer-events: none;
+  }
+  .dash-orb-1 { animation: float1 14s ease-in-out infinite; }
+  .dash-orb-2 { animation: float2 18s ease-in-out infinite; }
+  .dash-orb-3 { animation: float3 22s ease-in-out infinite; }
+  .dash-equity-line {
+    stroke-dasharray: var(--len, 2000);
+    animation: drawLine 1600ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+  }
+  .dash-equity-fill {
+    animation: fadeIn 900ms ease 800ms both;
+  }
+  .dash-equity-dot {
+    animation: fadeIn 400ms ease 1500ms both;
+  }
+  .dash-bg-grid {
+    position: absolute;
+    inset: -1px;
+    background-image:
+      linear-gradient(rgba(99,102,241,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99,102,241,0.06) 1px, transparent 1px);
+    background-size: 32px 32px;
+    animation: gridDrift 6s linear infinite;
+    mask-image: radial-gradient(ellipse 60% 80% at 50% 50%, black 0%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 60% 80% at 50% 50%, black 0%, transparent 75%);
+    pointer-events: none;
   }
   /* Custom scrollbars */
   .dash-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -321,16 +388,36 @@ function EquityChart({ points, height = 180 }: { points: EqPt[]; height?: number
               stroke={C.text5} strokeWidth={1} strokeDasharray="4,5" />
 
         {/* Filled area */}
-        <path d={fillPath} fill={fillColor} />
+        <path d={fillPath} fill={fillColor} className="dash-equity-fill" />
 
         {/* Line */}
-        <path d={linePath} stroke={lineColor} strokeWidth={2.5}
-              fill="none" strokeLinejoin="round" strokeLinecap="round"
-              style={{ filter: `drop-shadow(0 0 8px ${lineColor}60)` }} />
+        <path
+          d={linePath}
+          stroke={lineColor}
+          strokeWidth={2.5}
+          fill="none"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          className="dash-equity-line"
+          style={{
+            filter: `drop-shadow(0 0 8px ${lineColor}60)`,
+            ["--len" as string]: `${W * 2}`,
+          } as React.CSSProperties}
+        />
 
-        {/* Last point dot */}
-        <circle cx={x(last.time)} cy={y(last.value)} r={4.5}
-                fill={lineColor} stroke="#0a0e1c" strokeWidth={2} />
+        {/* Last point dot + pulsing halo */}
+        <g className="dash-equity-dot">
+          <circle
+            cx={x(last.time)} cy={y(last.value)} r={4.5}
+            fill="none" stroke={lineColor} strokeWidth={1.5} opacity={0.5}
+            className="dash-pulse"
+            style={{ transformOrigin: `${x(last.time)}px ${y(last.value)}px` }}
+          />
+          <circle
+            cx={x(last.time)} cy={y(last.value)} r={4.5}
+            fill={lineColor} stroke="#0a0e1c" strokeWidth={2}
+          />
+        </g>
       </svg>
 
       {/* X-axis labels (rendered as a flex row, scales with container) */}
@@ -534,7 +621,39 @@ function BotPanel() {
             marginBottom: 18,
             overflow: "hidden" as const,
           }}>
-            <div style={{ display: "flex", flexDirection: mobile ? "column" : "row", alignItems: mobile ? "flex-start" : "flex-end", justifyContent: "space-between", gap: 24 }}>
+            {/* Animated grid backdrop */}
+            <div className="dash-bg-grid" />
+
+            {/* Floating data orbs */}
+            <svg
+              aria-hidden
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "visible" }}
+              preserveAspectRatio="none"
+              viewBox="0 0 100 100"
+            >
+              <defs>
+                <radialGradient id="orbGreen" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%"   stopColor={C.green} stopOpacity="0.5" />
+                  <stop offset="60%"  stopColor={C.green} stopOpacity="0.08" />
+                  <stop offset="100%" stopColor={C.green} stopOpacity="0" />
+                </radialGradient>
+                <radialGradient id="orbIndigo" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%"   stopColor={C.indigo} stopOpacity="0.5" />
+                  <stop offset="60%"  stopColor={C.indigo} stopOpacity="0.08" />
+                  <stop offset="100%" stopColor={C.indigo} stopOpacity="0" />
+                </radialGradient>
+                <radialGradient id="orbCyan" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%"   stopColor={C.cyan} stopOpacity="0.4" />
+                  <stop offset="60%"  stopColor={C.cyan} stopOpacity="0.06" />
+                  <stop offset="100%" stopColor={C.cyan} stopOpacity="0" />
+                </radialGradient>
+              </defs>
+              <circle cx="15" cy="30" r="14" fill="url(#orbIndigo)" className="dash-orb dash-orb-1" />
+              <circle cx="85" cy="70" r="18" fill="url(#orbGreen)"  className="dash-orb dash-orb-2" />
+              <circle cx="55" cy="20" r="11" fill="url(#orbCyan)"   className="dash-orb dash-orb-3" />
+            </svg>
+
+            <div style={{ position: "relative" as const, zIndex: 1, display: "flex", flexDirection: mobile ? "column" : "row", alignItems: mobile ? "flex-start" : "flex-end", justifyContent: "space-between", gap: 24 }}>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.text3, letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 12, fontFamily: "'Space Mono', monospace" }}>
                   Total Portfolio Value
@@ -607,7 +726,7 @@ function BotPanel() {
           </div>
 
           {/* ── SECONDARY METRICS GRID ──────────────────────────────── */}
-          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 14, marginBottom: 28 }}>
+          <div className="dash-stagger" style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 14, marginBottom: 28 }}>
             <DataCard
               label="Available"
               value={`$${fmtNum(balance)}`}
