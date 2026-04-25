@@ -16,6 +16,54 @@ const DOMA_LINK       = "https://app.doma.xyz/domain/web3guides.com";
 // makemoneyhandoverfist.com $6.00 @ 0.00021503 was the bot's first launch.
 const FIRST_LAUNCH = new Date("2026-04-08T04:00:23.832Z");
 
+/* ── Closed-trade backfill ───────────────────────────────────────────────────
+   The /api/bot endpoint only returns the most recent ~12 trades, so the
+   equity curve was missing all earlier history. This is the full closed-trade
+   record from the bot's launch through 25 Apr 2026. Open positions are
+   excluded (they're already counted in the live `total_value`).
+
+   Order matters — these are listed in chronological execution order. When
+   timestamps aren't available we distribute them linearly between
+   FIRST_LAUNCH and now, which is good enough for visual storytelling. ─── */
+const BACKFILL_TRADES: Array<{ symbol: string; pnl: number }> = [
+  { symbol: "makemoneyhandoverfist.com", pnl: -0.06 },
+  { symbol: "cryptoartworks.art",        pnl: -0.03 },
+  { symbol: "diamondcapital.xyz",        pnl: -0.00 },
+  { symbol: "battles.xyz",               pnl: +2.25 },
+  { symbol: "platinumcoins.xyz",         pnl: -0.10 },
+  { symbol: "coolsynthetic.com",         pnl: -0.06 },
+  { symbol: "tokenizedacademy.com",      pnl: -0.10 },
+  { symbol: "beyondbtc.tech",            pnl: -0.09 },
+  { symbol: "bitcoinspectre.com",        pnl: -0.09 },
+  { symbol: "codeequity.com",            pnl: +0.39 },
+  { symbol: "aipredictlab.xyz",          pnl: -0.04 },
+  { symbol: "besttokenization.com",      pnl: +1.10 },
+  { symbol: "beautifulcrypto.com",       pnl: +0.64 },
+  { symbol: "beefsteaks.xyz",            pnl: -0.02 },
+  { symbol: "worldtravels.com",          pnl: +1.66 },
+  { symbol: "interstellary.xyz",         pnl: -0.03 },
+  { symbol: "webpainting.art",           pnl: -0.03 },
+  { symbol: "defibanx.com",              pnl: +0.33 },
+  { symbol: "mindproperty.com",          pnl: +0.32 },
+  { symbol: "tokenings.com",             pnl: -0.01 },
+  { symbol: "emoneytokens.com",          pnl: +1.62 },
+  { symbol: "ethunchained.com",          pnl: -0.13 },
+  { symbol: "cryptouniverse.art",        pnl: +0.21 },
+  { symbol: "bitcoinnoble.com",          pnl: +0.81 },
+  { symbol: "filmquiz.fun",              pnl: -0.02 },
+  { symbol: "stackfour.com",             pnl: -0.01 },
+  { symbol: "relead.xyz",                pnl: -0.28 },
+  { symbol: "activedigital.xyz",         pnl: -0.04 },
+  { symbol: "redcherry.xyz",             pnl: -0.01 },
+  { symbol: "webcitizens.com",           pnl: -0.02 },
+  { symbol: "swiftdigital.xyz",          pnl: -0.08 },
+  { symbol: "currencyconcept.com",       pnl: -0.02 },
+  { symbol: "seamount.xyz",              pnl: -0.02 },
+  { symbol: "forestcapital.xyz",         pnl: -0.02 },
+  { symbol: "selecthigh.com",            pnl: -0.02 },
+  { symbol: "olivecapital.xyz",          pnl: +0.03 },
+];
+
 // Color tokens — refined palette
 const C = {
   bg:        "#05070f",
@@ -524,28 +572,36 @@ function BotPanel() {
   const apyColor        = apyPct       >= 0 ? C.green : C.red;
   const online          = !error && !loading && !!data;
 
-  /* ── Equity curve from realised trades ────────────────────────── */
+  /* ── Equity curve — built from the BACKFILL_TRADES history ────── */
+  /* We use the static backfill (not the live API trades) because the API
+     only returns ~12 most-recent trades, which would produce a broken,
+     near-flat curve. The backfill is the full closed-trade record.
+     Timestamps are distributed linearly between FIRST_LAUNCH and now,
+     which preserves the *shape* of the curve even without exact times. */
   const equityPoints = (() => {
-    const sorted = trades
-      .filter(t => (t.executed_at || t.timestamp))
-      .map(t => ({
-        time: new Date((t.executed_at as string) ?? (t.timestamp as string) ?? "").getTime(),
-        pnl:  (t.pnl as number) ?? 0,
-      }))
-      .filter(t => !Number.isNaN(t.time) && t.time > 0)
-      .sort((a, b) => a.time - b.time);
-
+    const t0  = FIRST_LAUNCH.getTime();
+    const tN  = Date.now();
+    const n   = BACKFILL_TRADES.length;
     const pts: Array<{ time: number; value: number }> = [];
-    pts.push({ time: FIRST_LAUNCH.getTime(), value: INITIAL_BALANCE });
 
+    // Start point
+    pts.push({ time: t0, value: INITIAL_BALANCE });
+
+    // Linearly distribute trades over the running window
     let cum = 0;
-    for (const t of sorted) {
-      cum += t.pnl;
-      pts.push({ time: t.time, value: INITIAL_BALANCE + cum });
-    }
-    pts.push({ time: Date.now(), value: totalValue });
+    BACKFILL_TRADES.forEach((tr, i) => {
+      cum += tr.pnl;
+      const frac = (i + 1) / (n + 1);             // never lands on tN exactly
+      const time = t0 + frac * (tN - t0);
+      pts.push({ time, value: INITIAL_BALANCE + cum });
+    });
+
+    // End point — current total value (includes unrealised on open positions)
+    pts.push({ time: tN, value: totalValue });
     return pts;
   })();
+
+  const totalClosedTrades = BACKFILL_TRADES.length;
 
   /* ── Group trades by day ────────────────────────────────────── */
   const tradesByDay = trades.slice(0, 24).reduce<Record<string, BotTrade[]>>((acc, t) => {
@@ -778,7 +834,7 @@ function BotPanel() {
                 <Tag color={profitColor}>{fmtPct(profitPct)} all-time</Tag>
               </div>
               <span style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5 }}>
-                {equityPoints.length - 2} TRADES · ${INITIAL_BALANCE} STARTING
+                {totalClosedTrades} CLOSED TRADES · ${INITIAL_BALANCE} STARTING
               </span>
             </div>
             <EquityChart points={equityPoints} height={mobile ? 140 : 200} />
