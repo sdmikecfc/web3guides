@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { VALID_SUBDOMAINS } from "@/lib/subdomains";
 
 function useMobile() {
   const [mobile, setMobile] = useState(false);
@@ -319,17 +320,11 @@ interface Props {
   guideCount:    number;
 }
 
-const CATEGORY_COLOR: Record<string, string> = {
-  exchange: "#3b82f6", tax: "#22c55e", hardware: "#f97316", swap: "#a855f7", other: "#64748b",
-};
-
 /* ════════════════════════════════════════════════════════════════════════
    MAIN DASHBOARD
 ════════════════════════════════════════════════════════════════════════ */
-export default function DashboardClient({ affiliateData, topPaths, dailyClicks, totalClicks, emailCount, guideCount }: Props) {
-  const mobile   = useMobile();
-  const maxDaily = Math.max(...dailyClicks.map((d) => d.count), 1);
-  const clicks7d = affiliateData.reduce((s, a) => s + a.last7, 0);
+export default function DashboardClient({ emailCount, guideCount }: Props) {
+  const mobile = useMobile();
 
   return (
     <div style={{ minHeight: "100vh", background: "#08080f", color: "#e2e8f0", padding: "40px 24px 80px", fontFamily: "system-ui,sans-serif" }}>
@@ -358,108 +353,60 @@ export default function DashboardClient({ affiliateData, topPaths, dailyClicks, 
         {/* Divider */}
         <Divider />
 
-        {/* Referrals heading */}
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 800, color: "#fff" }}>Referral Performance</h2>
-          <p style={{ margin: 0, fontSize: 13, color: "#475569" }}>Affiliate link clicks tracked via /go/ redirects</p>
-        </div>
-
-        {/* Sparkline */}
-        <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: "18px 20px", marginBottom: 20 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 14, textTransform: "uppercase" as const, letterSpacing: 0.5 }}>Daily Clicks — Last 14 Days</div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 56 }}>
-            {dailyClicks.map((d) => (
-              <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                <div
-                  title={`${d.date}: ${d.count}`}
-                  style={{
-                    width: "100%", borderRadius: "3px 3px 0 0",
-                    background: d.count > 0 ? "#6366f1" : "#1e293b",
-                    height: `${Math.max(3, (d.count / maxDaily) * 48)}px`,
-                  }}
-                />
-                <span style={{ fontSize: 8, color: "#1e293b", writingMode: "vertical-rl" as const, transform: "rotate(180deg)" }}>{d.date.slice(5)}</span>
+        {/* ── Support Web3 Guides — Doma fractional share ─────────────── */}
+        <div style={{
+          background: "linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(236,72,153,0.10) 100%)",
+          border: "1px solid rgba(99,102,241,0.25)",
+          borderRadius: 16,
+          padding: mobile ? "28px 22px" : "40px 44px",
+          marginBottom: 28,
+          position: "relative" as const,
+          overflow: "hidden" as const,
+        }}>
+          <div style={{ display: "flex", flexDirection: mobile ? "column" : "row", alignItems: mobile ? "flex-start" : "center", justifyContent: "space-between", gap: mobile ? 20 : 32, position: "relative" as const, zIndex: 1 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: 50, padding: "4px 12px", marginBottom: 14 }}>
+                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: "#a5b4fc", letterSpacing: 1.2 }}>POWERED BY DOMA PROTOCOL</span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1.6fr 1fr", gap: 20, marginBottom: 20 }}>
-          {/* Affiliate table */}
-          <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, overflow: "hidden" }}>
-            <SectionHead title="Affiliate Links" />
-            <div style={{ overflowX: "auto" as const }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" as const, minWidth: 360 }}>
-              <thead><tr style={{ background: "#1e293b" }}>
-                {["Link","Status","All Time","7d","30d"].map(h => <Th key={h}>{h}</Th>)}
-              </tr></thead>
-              <tbody>
-                {affiliateData.sort((a, b) => b.total - a.total).map((row) => (
-                  <tr key={row.slug} style={{ borderTop: "1px solid #1e293b" }}>
-                    <td style={{ padding: "11px 14px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: CATEGORY_COLOR[row.category] ?? "#64748b", flexShrink: 0 }} />
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>{row.label}</div>
-                          <div style={{ fontSize: 10, color: "#334155" }}>/go/{row.slug}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: "11px 14px" }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 4, background: row.hasRealLink ? "#052e16" : "#1c1006", color: row.hasRealLink ? "#4ade80" : "#f97316" }}>
-                        {row.hasRealLink ? "Live" : "Pending"}
-                      </span>
-                    </td>
-                    <td style={{ padding: "11px 14px", fontSize: 15, fontWeight: 700, color: row.total > 0 ? "#6366f1" : "#334155" }}>{row.total}</td>
-                    <td style={{ padding: "11px 14px", fontSize: 13, color: row.last7  > 0 ? "#22c55e" : "#334155" }}>{row.last7}</td>
-                    <td style={{ padding: "11px 14px", fontSize: 13, color: "#475569" }}>{row.last30}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              <h2 style={{ margin: "0 0 10px", fontSize: mobile ? 22 : 26, fontWeight: 900, color: "#fff", lineHeight: 1.2 }}>Own a piece of Web3 Guides</h2>
+              <p style={{ margin: "0 0 4px", fontSize: 14, color: "#94a3b8", lineHeight: 1.6, maxWidth: 540 }}>
+                The web3guides.com domain is fractionalized on Doma Protocol. Buy a share, become a co-owner of the platform, and support the bills that keep the lights on (Claude API, gpt-image, Vercel, Supabase, the trading bot droplet).
+              </p>
+              <p style={{ margin: "10px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
+                Built by <a href="https://bigmike.web3guides.com" style={{ color: "#a5b4fc", textDecoration: "none", fontWeight: 700 }}>Big Mike</a> · One person, full-time, since 2018
+              </p>
             </div>
-          </div>
-
-          {/* Top referring pages */}
-          <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, overflow: "hidden" }}>
-            <SectionHead title="Top Referring Pages" />
-            {topPaths.length === 0 ? (
-              <Empty text="No clicks yet" />
-            ) : (
-              <div>
-                {topPaths.map((p, i) => (
-                  <div key={p.path} style={{ padding: "11px 16px", borderTop: i > 0 ? "1px solid #1e293b" : undefined, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{p.path}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#6366f1", flexShrink: 0 }}>{p.count}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <a href="https://app.doma.xyz/domain/web3guides.com"
+               target="_blank" rel="noopener noreferrer"
+               style={{
+                 display: "inline-flex",
+                 alignItems: "center",
+                 gap: 8,
+                 background: "linear-gradient(135deg, #6366f1, #ec4899)",
+                 color: "#fff",
+                 fontWeight: 800,
+                 fontSize: 14,
+                 padding: "13px 26px",
+                 borderRadius: 10,
+                 textDecoration: "none",
+                 boxShadow: "0 8px 24px rgba(99,102,241,0.3)",
+                 whiteSpace: "nowrap" as const,
+                 flexShrink: 0,
+               }}>
+              Buy on Doma →
+            </a>
           </div>
         </div>
 
-        {affiliateData.some((a) => !a.hasRealLink) && (
-          <div style={{ background: "#1c1006", border: "1px solid #451a03", borderRadius: 12, padding: "14px 18px", marginBottom: 40 }}>
-            <span style={{ fontSize: 12, color: "#f97316", fontWeight: 700 }}>⏳ Pending: </span>
-            <span style={{ fontSize: 12, color: "#78350f" }}>
-              {affiliateData.filter((a) => !a.hasRealLink).map((a) => a.label).join(", ")} — update referral codes in{" "}
-              <code style={{ color: "#f97316" }}>src/lib/affiliates.ts</code>
-            </span>
-          </div>
-        )}
-
-        {/* Divider */}
-        <Divider />
-
-        {/* Site-wide stat bar */}
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 800, color: "#fff" }}>Site Stats</h2>
+        {/* ── Site Snapshot ────────────────────────────────────────────── */}
+        <div style={{ marginBottom: 16 }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 800, color: "#fff" }}>Site Snapshot</h2>
+          <p style={{ margin: 0, fontSize: 13, color: "#475569" }}>Where Web3 Guides stands today</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(4,1fr)", gap: 14 }}>
-          <StatCard label="Guides Published" value={String(guideCount)}    color="#6366f1" />
-          <StatCard label="Email Subscribers" value={String(emailCount)}   color="#f59e0b" />
-          <StatCard label="Total Aff. Clicks" value={String(totalClicks)}  color="#0ea5e9" />
-          <StatCard label="Clicks (7d)"       value={String(clicks7d)}     color="#22c55e" />
+        <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(3,1fr)", gap: 14 }}>
+          <StatCard label="Guides Published" value={String(guideCount)}            color="#6366f1" />
+          <StatCard label="Subdomains"       value={String(VALID_SUBDOMAINS.length)} color="#22c55e" />
+          <StatCard label="Email Subscribers" value={String(emailCount)}           color="#f59e0b" />
         </div>
 
       </div>
