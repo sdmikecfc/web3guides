@@ -3,10 +3,49 @@
 import { useEffect, useState } from "react";
 import { VALID_SUBDOMAINS } from "@/lib/subdomains";
 
+/* ════════════════════════════════════════════════════════════════════════
+   CONFIG
+════════════════════════════════════════════════════════════════════════ */
+
+// Update this if you deposit or withdraw from the bot wallet.
+// e.g. add $50 → 150. Withdraw $20 → 80.
+const INITIAL_BALANCE = 100;
+const DOMA_LINK       = "https://app.doma.xyz/domain/web3guides.com";
+
+// Color tokens — refined palette
+const C = {
+  bg:        "#05070f",
+  surface:   "#0a0e1c",
+  surfaceUp: "#10162a",
+  surfaceHi: "#161e3a",
+  border:    "rgba(148,163,184,0.07)",
+  borderHi:  "rgba(99,102,241,0.20)",
+  text:      "#f1f5f9",
+  text2:     "#cbd5e1",
+  text3:     "#64748b",
+  text4:     "#334155",
+  text5:     "#1e293b",
+  green:     "#10b981",
+  greenSoft: "rgba(16,185,129,0.12)",
+  red:       "#f43f5e",
+  redSoft:   "rgba(244,63,94,0.12)",
+  yellow:    "#f59e0b",
+  blue:      "#3b82f6",
+  purple:    "#8b5cf6",
+  indigo:    "#6366f1",
+  pink:      "#ec4899",
+  orange:    "#ff6b35",
+  cyan:      "#06b6d4",
+};
+
+/* ════════════════════════════════════════════════════════════════════════
+   HOOKS
+════════════════════════════════════════════════════════════════════════ */
+
 function useMobile() {
   const [mobile, setMobile] = useState(false);
   useEffect(() => {
-    const check = () => setMobile(window.innerWidth < 700);
+    const check = () => setMobile(window.innerWidth < 760);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
@@ -15,32 +54,222 @@ function useMobile() {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   BOT PANEL
+   FORMATTERS
 ════════════════════════════════════════════════════════════════════════ */
-interface BotState   { balance?: number; pnl?: number; pnl_pct?: number; base_unit?: string; [k: string]: unknown }
-interface BotPosition { symbol?: string; side?: string; size?: number; entry_price?: number; current_price?: number; pnl?: number; [k: string]: unknown }
-interface BotTrade    { symbol?: string; side?: string; size?: number; price?: number; pnl?: number; timestamp?: string; [k: string]: unknown }
-interface BotSummary  { state?: BotState; positions?: BotPosition[]; trades?: BotTrade[]; [k: string]: unknown }
 
-function fmtNum(n: number | undefined, dec = 2) {
-  if (n === undefined || n === null) return "—";
+function fmtNum(n: number | undefined | null, dec = 2): string {
+  if (n === undefined || n === null || Number.isNaN(n)) return "—";
   return n.toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
-function fmtPrice(n: number | undefined) {
+
+function fmtPrice(n: number | undefined | null): string {
   if (n === undefined || n === null) return "—";
   if (n === 0) return "0.00";
   if (n < 0.0001) return n.toExponential(4);
   if (n < 0.01)   return n.toFixed(6);
   return n.toFixed(4);
 }
-function fmtDate(s?: string) {
+
+function fmtDate(s?: string): string {
   if (!s) return "—";
-  return new Date(s).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  return new Date(s).toLocaleString("en-GB", {
+    day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"
+  });
 }
 
-// ── Update this if you deposit or withdraw from the bot wallet ───────────────
-// e.g. if you add $50: INITIAL_BALANCE = 150. Remove $20: INITIAL_BALANCE = 80.
-const INITIAL_BALANCE = 100;
+function fmtTime(s?: string): string {
+  if (!s) return "—";
+  return new Date(s).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+function fmtDay(s?: string): string {
+  if (!s) return "Unknown";
+  const d   = new Date(s);
+  const now = new Date();
+  const isToday      = d.toDateString() === now.toDateString();
+  const yesterday    = new Date(now); yesterday.setDate(now.getDate() - 1);
+  const isYesterday  = d.toDateString() === yesterday.toDateString();
+  if (isToday)     return "Today";
+  if (isYesterday) return "Yesterday";
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+}
+
+function fmtAge(seconds: number): string {
+  if (seconds < 60)  return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  return `${Math.floor(seconds / 3600)}h`;
+}
+
+function fmtPct(n: number, dec = 2): string {
+  return `${n >= 0 ? "+" : ""}${n.toFixed(dec)}%`;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   TYPES
+════════════════════════════════════════════════════════════════════════ */
+
+interface BotState   { balance?: number; pnl?: number; updated_at?: string; usdc_balance?: number; total_deployed?: number; total_value?: number; total_pnl?: number; [k: string]: unknown }
+interface BotPosition { symbol?: string; side?: string; size?: number; entry_price?: number; current_price?: number; mark_price?: number; pnl?: number; usdc_spent?: number; unrealized_pnl?: number; [k: string]: unknown }
+interface BotTrade    { symbol?: string; side?: string; size?: number; price?: number; pnl?: number; timestamp?: string; executed_at?: string; usdc_amount?: number; [k: string]: unknown }
+interface BotSummary  { state?: BotState; positions?: BotPosition[]; trades?: BotTrade[]; [k: string]: unknown }
+
+interface AffiliateRow { slug: string; label: string; category: string; hasRealLink: boolean; total: number; last7: number; last30: number }
+interface PathRow      { path: string; count: number }
+interface DailyRow     { date: string; count: number }
+
+interface Props {
+  affiliateData: AffiliateRow[];
+  topPaths:      PathRow[];
+  dailyClicks:   DailyRow[];
+  totalClicks:   number;
+  emailCount:    number;
+  guideCount:    number;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   GLOBAL STYLES (animations + hover)
+════════════════════════════════════════════════════════════════════════ */
+
+const GLOBAL_CSS = `
+  @keyframes pulseDot {
+    0%, 100% { transform: scale(1);   opacity: 1;   }
+    50%      { transform: scale(1.6); opacity: 0.4; }
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position:  200% 0; }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0);    }
+  }
+  .dash-card {
+    transition: border-color 220ms ease, transform 220ms ease, box-shadow 220ms ease;
+  }
+  .dash-card:hover {
+    border-color: ${C.borderHi};
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px -12px rgba(99,102,241,0.18);
+  }
+  .dash-tab {
+    transition: background 180ms ease, color 180ms ease, border-color 180ms ease;
+  }
+  .dash-tab:hover {
+    background: rgba(99,102,241,0.08);
+    color: ${C.text};
+  }
+  .dash-row {
+    transition: background 160ms ease;
+  }
+  .dash-row:hover {
+    background: rgba(99,102,241,0.04);
+  }
+  .dash-btn-primary {
+    transition: transform 200ms ease, box-shadow 200ms ease;
+  }
+  .dash-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 48px -8px rgba(236,72,153,0.45);
+  }
+  .dash-link:hover {
+    color: ${C.text} !important;
+  }
+  .dash-pulse {
+    animation: pulseDot 1.8s ease-in-out infinite;
+  }
+  .dash-spin {
+    animation: spin 1s linear infinite;
+  }
+  .dash-fade-in {
+    animation: slideUp 380ms ease both;
+  }
+  /* Custom scrollbars */
+  .dash-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+  .dash-scroll::-webkit-scrollbar-track { background: transparent; }
+  .dash-scroll::-webkit-scrollbar-thumb { background: ${C.surfaceHi}; border-radius: 3px; }
+  .dash-scroll::-webkit-scrollbar-thumb:hover { background: ${C.borderHi}; }
+`;
+
+/* ════════════════════════════════════════════════════════════════════════
+   TINY COMPONENTS
+════════════════════════════════════════════════════════════════════════ */
+
+function Pulse({ color = C.green }: { color?: string }) {
+  return (
+    <span style={{ position: "relative" as const, display: "inline-block", width: 8, height: 8 }}>
+      <span style={{ position: "absolute" as const, inset: 0, borderRadius: "50%", background: color, opacity: 0.6 }} className="dash-pulse" />
+      <span style={{ position: "absolute" as const, inset: 0, borderRadius: "50%", background: color }} />
+    </span>
+  );
+}
+
+function SideBadge({ side }: { side?: string }) {
+  const s     = (side ?? "").toLowerCase();
+  const isLong = s === "long" || s === "buy";
+  return (
+    <span style={{
+      fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 4,
+      background: isLong ? C.greenSoft : C.redSoft,
+      color:      isLong ? C.green     : C.red,
+      letterSpacing: 0.6, textTransform: "uppercase" as const,
+      border: `1px solid ${isLong ? "rgba(16,185,129,0.25)" : "rgba(244,63,94,0.25)"}`,
+    }}>
+      {side ?? "—"}
+    </span>
+  );
+}
+
+function Tag({ children, color = C.indigo }: { children: React.ReactNode; color?: string }) {
+  return (
+    <span style={{
+      fontSize: 9, fontWeight: 800, padding: "3px 9px", borderRadius: 50,
+      background: `${color}1a`, color, border: `1px solid ${color}40`,
+      letterSpacing: 0.8, textTransform: "uppercase" as const,
+      fontFamily: "'Space Mono', monospace",
+    }}>
+      {children}
+    </span>
+  );
+}
+
+/* P&L bar — visual strength of profit/loss for a position
+   pct can be -100 to +100, with magnitude representing intensity */
+function PnLBar({ pct }: { pct: number }) {
+  const clamped = Math.max(-25, Math.min(25, pct));
+  const width   = (Math.abs(clamped) / 25) * 50; // half-width up to 50%
+  const isPos   = clamped >= 0;
+  return (
+    <div style={{ position: "relative" as const, height: 4, background: C.surfaceHi, borderRadius: 2, overflow: "hidden" as const }}>
+      <div style={{ position: "absolute" as const, top: 0, bottom: 0, left: "50%", width: 1, background: C.text5 }} />
+      <div style={{
+        position: "absolute" as const, top: 0, bottom: 0,
+        left:  isPos ? "50%" : `${50 - width}%`,
+        width: `${width}%`,
+        background: isPos
+          ? `linear-gradient(90deg, ${C.green}, ${C.cyan})`
+          : `linear-gradient(90deg, ${C.red}, ${C.orange})`,
+        borderRadius: 2,
+        boxShadow: `0 0 8px ${isPos ? "rgba(16,185,129,0.5)" : "rgba(244,63,94,0.5)"}`,
+      }} />
+    </div>
+  );
+}
+
+function MiniBar({ pct, color }: { pct: number; color: string }) {
+  const w = Math.max(0, Math.min(100, pct));
+  return (
+    <div style={{ height: 3, background: C.surfaceHi, borderRadius: 2, overflow: "hidden" as const, marginTop: 8 }}>
+      <div style={{ width: `${w}%`, height: "100%", background: color, borderRadius: 2, boxShadow: `0 0 6px ${color}80` }} />
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   BOT PANEL — hero + metrics + positions + trades
+════════════════════════════════════════════════════════════════════════ */
 
 function BotPanel() {
   const mobile                  = useMobile();
@@ -48,18 +277,20 @@ function BotPanel() {
   const [error, setError]       = useState<string | null>(null);
   const [lastUpdated, setLast]  = useState<Date | null>(null);
   const [loading, setLoading]   = useState(true);
+  const [refreshing, setR]      = useState(false);
   const [age, setAge]           = useState(0);
 
   async function fetchBot() {
+    setR(true);
     try {
-      const res = await fetch("/api/bot", { cache: "no-store" });
+      const res  = await fetch("/api/bot", { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? `Error ${res.status}`); return; }
       setData(json);
       setError(null);
       setLast(new Date());
     } catch { setError("Bot unreachable"); }
-    finally  { setLoading(false); }
+    finally  { setLoading(false); setR(false); }
   }
 
   useEffect(() => {
@@ -77,227 +308,474 @@ function BotPanel() {
   const positions   = data?.positions ?? [];
   const trades      = data?.trades ?? [];
   const unit        = "USDC.e";
-  const balance     = (state.usdc_balance as number) ?? (state.balance as number);
-  const totalValue  = (state.total_value as number) ?? balance ?? 0;
-  const pnl         = positions.reduce((sum, p) => sum + ((p.unrealized_pnl as number) ?? (p.pnl as number) ?? 0), 0);
-  const pnlColor    = pnl >= 0 ? "#22c55e" : "#ef4444";
+  const balance     = (state.usdc_balance as number) ?? (state.balance as number) ?? 0;
+  const deployed    = (state.total_deployed as number) ?? 0;
+  const totalValue  = (state.total_value    as number) ?? balance;
+  const unrealized  = positions.reduce((s, p) => s + ((p.unrealized_pnl as number) ?? (p.pnl as number) ?? 0), 0);
   const totalProfit = totalValue - INITIAL_BALANCE;
-  const profitColor = totalProfit >= 0 ? "#22c55e" : "#ef4444";
-  const online    = !error && !loading && !!data;
+  const profitPct   = (totalProfit / INITIAL_BALANCE) * 100;
+  const deployedPct = totalValue > 0 ? (deployed   / totalValue) * 100 : 0;
+  const balancePct  = totalValue > 0 ? (balance    / totalValue) * 100 : 0;
+  const avgSize     = positions.length > 0 ? deployed / positions.length : 0;
+
+  const profitColor     = totalProfit >= 0 ? C.green : C.red;
+  const unrealizedColor = unrealized   >= 0 ? C.green : C.red;
+  const online          = !error && !loading && !!data;
+
+  /* ── Group trades by day ────────────────────────────────────── */
+  const tradesByDay = trades.slice(0, 24).reduce<Record<string, BotTrade[]>>((acc, t) => {
+    const ts  = (t.executed_at as string) ?? t.timestamp ?? "";
+    const day = fmtDay(ts);
+    (acc[day] = acc[day] ?? []).push(t);
+    return acc;
+  }, {});
 
   return (
-    <section style={{ marginBottom: 48 }}>
-      {/* Section header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 9, height: 9, borderRadius: "50%", background: online ? "#22c55e" : error ? "#ef4444" : "#475569", boxShadow: online ? "0 0 10px #22c55e80" : "none" }} />
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#fff" }}>Trading Bot</h2>
-          <span style={{ fontSize: 11, color: online ? "#22c55e" : "#475569", fontWeight: 700 }}>
-            {loading ? "Connecting…" : online ? "Live" : "Offline"}
-          </span>
+    <section style={{ marginBottom: 56 }}>
+
+      {/* ── Section title ───────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap" as const, gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Pulse color={online ? C.green : error ? C.red : C.text3} />
+          <h2 style={{ margin: 0, fontFamily: "'Bungee', cursive", fontSize: 22, color: C.text, letterSpacing: 0.3 }}>
+            Trading Bot
+          </h2>
+          <Tag color={online ? C.green : C.text3}>
+            {loading ? "Connecting" : online ? "Live" : "Offline"}
+          </Tag>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 11, color: C.text3, fontFamily: "'Space Mono', monospace" }}>
           {!!state.updated_at && (
-            <span style={{ fontSize: 11, color: "#334155" }}>
-              Bot wrote: {fmtDate(state.updated_at as string)}
-            </span>
+            <span>BOT WROTE · {fmtDate(state.updated_at as string)}</span>
           )}
-          {lastUpdated && <span style={{ fontSize: 11, color: "#475569" }}>· fetched {age}s ago</span>}
-          <button onClick={fetchBot} style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 6, color: "#64748b", fontSize: 11, fontWeight: 700, padding: "4px 10px", cursor: "pointer" }}>↻</button>
+          {lastUpdated && (
+            <span style={{ color: C.text4 }}>FETCHED {fmtAge(age)} AGO</span>
+          )}
+          <button
+            onClick={fetchBot}
+            style={{
+              background: C.surfaceUp, border: `1px solid ${C.borderHi}`, borderRadius: 8,
+              color: C.text2, fontSize: 13, padding: "6px 10px", cursor: "pointer",
+              display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 30,
+            }}
+            className="dash-tab"
+            aria-label="Refresh"
+          >
+            <span className={refreshing ? "dash-spin" : ""}>↻</span>
+          </button>
         </div>
       </div>
 
       {loading && (
-        <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: 28, textAlign: "center" as const, color: "#334155", fontSize: 14 }}>
+        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 40, textAlign: "center" as const, color: C.text4, fontSize: 14 }}>
+          <span className="dash-spin" style={{ display: "inline-block", marginRight: 10, fontSize: 16 }}>◌</span>
           Connecting to bot…
         </div>
       )}
 
       {error && !loading && (
-        <div style={{ background: "#1a0a0a", border: "1px solid #7f1d1d", borderRadius: 12, padding: "16px 20px", color: "#fca5a5", fontSize: 13 }}>
-          ⚠️ {error} — is the droplet running?
+        <div style={{ background: "rgba(244,63,94,0.07)", border: "1px solid rgba(244,63,94,0.25)", borderRadius: 14, padding: "18px 22px", color: "#fca5a5", fontSize: 13 }}>
+          ⚠️ {error} — droplet may be sleeping or rate-limited.
         </div>
       )}
 
       {data && !error && (
-        <>
-          {/* Stat cards */}
-          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(3,1fr)", gap: 14, marginBottom: 20 }}>
-            <StatCard label="Balance" value={`${fmtNum(balance)} ${unit}`} color="#0ea5e9" />
-            <StatCard label="Deployed" value={`${fmtNum((state.total_deployed as number) ?? 0)} ${unit}`} color="#a78bfa" />
-            <StatCard label="Total Value" value={`${fmtNum(totalValue)} ${unit}`} color="#34d399" />
-            <StatCard
-              label="Total Profit"
-              value={`${totalProfit >= 0 ? "+" : ""}${fmtNum(totalProfit)} ${unit}`}
-              sub={`vs $${INITIAL_BALANCE} initial`}
-              color={profitColor}
-            />
-            <StatCard
-              label="Unrealised P&L"
-              value={`${pnl >= 0 ? "+" : ""}${fmtNum(pnl)} ${unit}`}
-              sub={undefined}
-              color={pnlColor}
-            />
-            <StatCard label="Open Positions" value={String(positions.length)} color={positions.length > 0 ? "#f59e0b" : "#334155"} />
+        <div className="dash-fade-in">
+
+          {/* ── HERO — Big total value card ──────────────────────────── */}
+          <div style={{
+            position: "relative" as const,
+            background: `
+              radial-gradient(circle at 0% 0%, rgba(99,102,241,0.10) 0%, transparent 50%),
+              radial-gradient(circle at 100% 100%, rgba(236,72,153,0.08) 0%, transparent 50%),
+              ${C.surface}
+            `,
+            border: `1px solid ${C.borderHi}`,
+            borderRadius: 20,
+            padding: mobile ? "26px 22px" : "32px 36px",
+            marginBottom: 18,
+            overflow: "hidden" as const,
+          }}>
+            <div style={{ display: "flex", flexDirection: mobile ? "column" : "row", alignItems: mobile ? "flex-start" : "flex-end", justifyContent: "space-between", gap: 24 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.text3, letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 12, fontFamily: "'Space Mono', monospace" }}>
+                  Total Portfolio Value
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" as const }}>
+                  <div style={{
+                    fontFamily: "'Bungee', cursive",
+                    fontSize: mobile ? 44 : 64,
+                    color: C.text,
+                    lineHeight: 1,
+                    letterSpacing: -1,
+                    background: `linear-gradient(135deg, ${C.text} 0%, #cbd5e1 100%)`,
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}>
+                    ${fmtNum(totalValue)}
+                  </div>
+                  <div style={{ fontSize: 13, color: C.text3, fontWeight: 700, letterSpacing: 0.5 }}>
+                    {unit}
+                  </div>
+                </div>
+                {/* Profit ribbon */}
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                  marginTop: 14,
+                  background: totalProfit >= 0 ? C.greenSoft : C.redSoft,
+                  border: `1px solid ${totalProfit >= 0 ? "rgba(16,185,129,0.3)" : "rgba(244,63,94,0.3)"}`,
+                  color: profitColor,
+                  borderRadius: 50, padding: "5px 14px", fontSize: 13, fontWeight: 800,
+                }}>
+                  <span>{totalProfit >= 0 ? "▲" : "▼"}</span>
+                  <span>${fmtNum(Math.abs(totalProfit))}</span>
+                  <span style={{ opacity: 0.65 }}>·</span>
+                  <span>{fmtPct(profitPct)}</span>
+                </div>
+              </div>
+
+              {/* Right-side mini stats */}
+              <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "1fr 1fr", gap: 16, minWidth: mobile ? "100%" : 240 }}>
+                <MiniStat label="Open Positions" value={String(positions.length)} accent={positions.length > 0 ? C.yellow : C.text4} />
+                <MiniStat label="Avg Position" value={`$${fmtNum(avgSize)}`} accent={C.purple} />
+              </div>
+            </div>
+
+            {/* Allocation bar */}
+            <div style={{ marginTop: 28 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontFamily: "'Space Mono', monospace", color: C.text3, letterSpacing: 1, marginBottom: 8, textTransform: "uppercase" as const }}>
+                <span>Capital Allocation</span>
+                <span>{deployedPct.toFixed(0)}% deployed</span>
+              </div>
+              <div style={{ display: "flex", height: 8, background: C.surfaceUp, borderRadius: 4, overflow: "hidden" as const }}>
+                <div style={{
+                  width: `${deployedPct}%`,
+                  background: `linear-gradient(90deg, ${C.purple}, ${C.indigo})`,
+                  boxShadow: `0 0 12px ${C.purple}80`,
+                }} />
+                <div style={{
+                  width: `${balancePct}%`,
+                  background: `linear-gradient(90deg, ${C.cyan}, ${C.blue})`,
+                  boxShadow: `0 0 12px ${C.blue}80`,
+                }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 11, fontFamily: "'Space Mono', monospace" }}>
+                <span style={{ color: C.purple }}>● Deployed ${fmtNum(deployed)}</span>
+                <span style={{ color: C.blue }}>${fmtNum(balance)} Available ●</span>
+              </div>
+            </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1.4fr 1fr", gap: 16 }}>
-            {/* Positions */}
-            <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, overflow: "hidden" }}>
-              <SectionHead title="Open Positions" />
+          {/* ── SECONDARY METRICS GRID ──────────────────────────────── */}
+          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 14, marginBottom: 28 }}>
+            <DataCard
+              label="Available"
+              value={`$${fmtNum(balance)}`}
+              sub={`${balancePct.toFixed(0)}% of portfolio`}
+              accent={C.blue}
+              progress={balancePct}
+            />
+            <DataCard
+              label="Deployed"
+              value={`$${fmtNum(deployed)}`}
+              sub={`${deployedPct.toFixed(0)}% of portfolio`}
+              accent={C.purple}
+              progress={deployedPct}
+            />
+            <DataCard
+              label="Total Profit"
+              value={`${totalProfit >= 0 ? "+" : "-"}$${fmtNum(Math.abs(totalProfit))}`}
+              sub={`vs $${INITIAL_BALANCE} initial`}
+              accent={profitColor}
+              direction={totalProfit >= 0 ? "up" : "down"}
+            />
+            <DataCard
+              label="Unrealised P&L"
+              value={`${unrealized >= 0 ? "+" : "-"}$${fmtNum(Math.abs(unrealized))}`}
+              sub={`across ${positions.length} position${positions.length === 1 ? "" : "s"}`}
+              accent={unrealizedColor}
+              direction={unrealized >= 0 ? "up" : "down"}
+            />
+          </div>
+
+          {/* ── POSITIONS + TRADES ──────────────────────────────────── */}
+          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1.35fr 1fr", gap: 18 }}>
+
+            {/* ── Positions ──────────────────────────────────────── */}
+            <div className="dash-card" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden" as const }}>
+              <PanelHead
+                title="Active Positions"
+                count={positions.length}
+                accent={C.purple}
+                icon="◈"
+              />
               {positions.length === 0 ? (
                 <Empty text="No open positions" />
               ) : (
-                <div style={{ overflowX: "auto" as const }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" as const, minWidth: 420 }}>
-                  <thead><tr style={{ background: "#1e293b" }}>
-                    {["Symbol","Side","Size","Entry","Mark","P&L"].map(h => <Th key={h}>{h}</Th>)}
-                  </tr></thead>
-                  <tbody>
-                    {positions.map((p, i) => (
-                      <tr key={i} style={{ borderTop: "1px solid #1e293b" }}>
-                        <Td bold>{p.symbol ?? "—"}</Td>
-                        <Td><SideBadge side="long" /></Td>
-                        <Td muted>${fmtNum(p.usdc_spent as number ?? p.size)}</Td>
-                        <Td muted>{fmtPrice(p.entry_price as number)}</Td>
-                        <Td>{fmtPrice(p.mark_price as number ?? p.current_price as number)}</Td>
-                        <Td color={(p.unrealized_pnl as number ?? p.pnl ?? 0) >= 0 ? "#22c55e" : "#ef4444"}>
-                          {((p.unrealized_pnl as number ?? p.pnl ?? 0) >= 0 ? "+" : "")}
-                          {fmtNum(p.unrealized_pnl as number ?? p.pnl as number)}
-                        </Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                </div>
-              )}
-            </div>
-
-            {/* Trades */}
-            <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, overflow: "hidden" }}>
-              <SectionHead title="Recent Trades" />
-              {trades.length === 0 ? (
-                <Empty text="No trades yet" />
-              ) : (
                 <div>
-                  {trades.slice(0, 12).map((t, i) => {
-                    const tc = (t.pnl ?? 0) > 0 ? "#22c55e" : (t.pnl ?? 0) < 0 ? "#ef4444" : "#475569";
+                  {positions.map((p, i) => {
+                    const entry  = p.entry_price as number ?? 0;
+                    const mark   = (p.mark_price as number) ?? (p.current_price as number) ?? entry;
+                    const pnl    = (p.unrealized_pnl as number) ?? (p.pnl as number) ?? 0;
+                    const spent  = (p.usdc_spent as number) ?? p.size ?? 0;
+                    const pnlPct = spent > 0 ? (pnl / spent) * 100 : 0;
+                    const isPos  = pnl >= 0;
+                    const color  = isPos ? C.green : C.red;
                     return (
-                      <div key={i} style={{ padding: "10px 16px", borderTop: i > 0 ? "1px solid #1e293b" : undefined, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{t.symbol ?? "—"}</span>
-                            <SideBadge side={t.side} />
+                      <div key={i} className="dash-row" style={{
+                        padding: "14px 18px",
+                        borderTop: i > 0 ? `1px solid ${C.border}` : undefined,
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, marginBottom: 8 }}>
+                          <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                              <span style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{p.symbol ?? "—"}</span>
+                              <SideBadge side="long" />
+                            </div>
+                            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: C.text3, letterSpacing: 0.3 }}>
+                              ENTRY {fmtPrice(entry)} → MARK {fmtPrice(mark)}
+                            </div>
                           </div>
-                          <div style={{ fontSize: 11, color: "#64748b" }}>{fmtDate(t.executed_at as string ?? t.timestamp)} · ${fmtNum(t.usdc_amount as number ?? t.size)} @ {fmtPrice(t.price as number)}</div>
+                          <div style={{ textAlign: "right" as const }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color, lineHeight: 1.1 }}>
+                              {isPos ? "+" : "-"}${fmtNum(Math.abs(pnl))}
+                            </div>
+                            <div style={{ fontSize: 11, color, opacity: 0.75, fontFamily: "'Space Mono', monospace", marginTop: 2 }}>
+                              {fmtPct(pnlPct, 2)}
+                            </div>
+                          </div>
                         </div>
-                        {t.pnl !== undefined && (
-                          <span style={{ fontSize: 13, fontWeight: 700, color: tc }}>
-                            {(t.pnl as number) > 0 ? "+" : ""}{fmtNum(t.pnl)}
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: 11, color: C.text4, fontFamily: "'Space Mono', monospace", minWidth: 56 }}>
+                            ${fmtNum(spent, 0)}
                           </span>
-                        )}
+                          <div style={{ flex: 1 }}>
+                            <PnLBar pct={pnlPct} />
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
               )}
             </div>
+
+            {/* ── Recent Trades ──────────────────────────────────── */}
+            <div className="dash-card" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden" as const }}>
+              <PanelHead
+                title="Recent Trades"
+                count={trades.length}
+                accent={C.cyan}
+                icon="⇌"
+              />
+              {trades.length === 0 ? (
+                <Empty text="No trades yet" />
+              ) : (
+                <div className="dash-scroll" style={{ maxHeight: 460, overflowY: "auto" }}>
+                  {Object.entries(tradesByDay).map(([day, tradesForDay]) => (
+                    <div key={day}>
+                      <div style={{
+                        padding: "9px 18px",
+                        background: "rgba(99,102,241,0.04)",
+                        borderTop:    `1px solid ${C.border}`,
+                        borderBottom: `1px solid ${C.border}`,
+                        fontSize: 10, fontWeight: 800, color: C.text3,
+                        letterSpacing: 1.4, textTransform: "uppercase" as const,
+                        fontFamily: "'Space Mono', monospace",
+                      }}>
+                        {day}
+                      </div>
+                      {tradesForDay.map((t, i) => {
+                        const pnl  = t.pnl as number | undefined;
+                        const isPos = (pnl ?? 0) >= 0;
+                        const color = pnl === undefined ? C.text3 : isPos ? C.green : C.red;
+                        return (
+                          <div key={i} className="dash-row" style={{
+                            padding: "10px 18px",
+                            borderTop: i > 0 ? `1px solid ${C.border}` : undefined,
+                            display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
+                          }}>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: C.text4 }}>
+                                  {fmtTime((t.executed_at as string) ?? t.timestamp)}
+                                </span>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+                                  {t.symbol ?? "—"}
+                                </span>
+                                <SideBadge side={t.side} />
+                              </div>
+                              <div style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace" }}>
+                                ${fmtNum((t.usdc_amount as number) ?? t.size)} @ {fmtPrice(t.price as number)}
+                              </div>
+                            </div>
+                            <span style={{ fontSize: 13, fontWeight: 800, color, fontFamily: "'Space Mono', monospace" }}>
+                              {pnl === undefined ? "—" : `${pnl >= 0 ? "+" : ""}${fmtNum(pnl)}`}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </>
+        </div>
       )}
     </section>
   );
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   BOT LOGS
+   BOT LOGS — terminal aesthetic
 ════════════════════════════════════════════════════════════════════════ */
+
 interface LogData { lines?: string[]; error?: string }
 
 function BotLogs() {
   const [data, setData]       = useState<LogData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setR]    = useState(false);
   const [active, setActive]   = useState<"scheduler" | "monitor">("scheduler");
   const [lines, setLines]     = useState(80);
 
   async function fetchLogs(process = active, n = lines) {
-    setLoading(true);
+    setR(true);
     try {
-      const res = await fetch(`/api/bot-logs?process=${process}&lines=${n}`, { cache: "no-store" });
+      const res  = await fetch(`/api/bot-logs?process=${process}&lines=${n}`, { cache: "no-store" });
       const json = await res.json();
       setData(json);
     } catch { setData({ error: "Unreachable" }); }
-    finally  { setLoading(false); }
+    finally  { setLoading(false); setR(false); }
   }
 
   useEffect(() => {
     fetchLogs(active, lines);
     const t = setInterval(() => fetchLogs(active, lines), 15_000);
     return () => clearInterval(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, lines]);
 
   const logLines = (data?.lines ?? []).slice().reverse();
 
   const lineColor = (line: string) => {
-    if (/error|exception|fail|critical/i.test(line)) return "#ef4444";
-    if (/warn/i.test(line)) return "#f59e0b";
-    if (/buy|long|open|entry/i.test(line)) return "#22c55e";
-    if (/sell|short|close|exit/i.test(line)) return "#f472b6";
-    if (/skip|no |ignore/i.test(line)) return "#475569";
-    return "#94a3b8";
+    if (/error|exception|fail|critical/i.test(line)) return C.red;
+    if (/warn/i.test(line))                          return C.yellow;
+    if (/buy|long|open|entry/i.test(line))           return C.green;
+    if (/sell|short|close|exit/i.test(line))         return C.pink;
+    if (/skip|no |ignore/i.test(line))               return C.text4;
+    return C.text2;
   };
 
   return (
-    <section style={{ marginBottom: 48 }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#fff" }}>Bot Logs</h2>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <section style={{ marginBottom: 56 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap" as const, gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <h2 style={{ margin: 0, fontFamily: "'Bungee', cursive", fontSize: 22, color: C.text, letterSpacing: 0.3 }}>
+            Bot Logs
+          </h2>
+          <Tag color={C.cyan}>Live Stream</Tag>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" as const }}>
           {(["scheduler", "monitor"] as const).map((tab) => (
-            <button key={tab} onClick={() => setActive(tab)} style={{
-              background: active === tab ? "#1e293b" : "transparent",
-              border: `1px solid ${active === tab ? "#334155" : "#1e293b"}`,
-              borderRadius: 6, color: active === tab ? "#e2e8f0" : "#475569",
-              fontSize: 11, fontWeight: 700, padding: "4px 12px", cursor: "pointer",
-            }}>
+            <button key={tab}
+              onClick={() => setActive(tab)}
+              className="dash-tab"
+              style={{
+                background: active === tab ? "rgba(99,102,241,0.12)" : "transparent",
+                border: `1px solid ${active === tab ? C.borderHi : C.border}`,
+                borderRadius: 8,
+                color: active === tab ? C.text : C.text3,
+                fontSize: 11, fontWeight: 800, padding: "6px 12px",
+                cursor: "pointer", fontFamily: "'Space Mono', monospace",
+                letterSpacing: 0.5,
+              }}
+            >
               {tab}.py
             </button>
           ))}
-          {/* Lines selector */}
           <select
             value={lines}
             onChange={(e) => setLines(Number(e.target.value))}
-            style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 6, color: "#64748b", fontSize: 11, padding: "4px 8px", cursor: "pointer" }}
+            style={{
+              background: C.surfaceUp, border: `1px solid ${C.border}`, borderRadius: 8,
+              color: C.text2, fontSize: 11, padding: "6px 10px", cursor: "pointer",
+              fontFamily: "'Space Mono', monospace",
+            }}
           >
             {[50, 100, 200, 500].map(n => <option key={n} value={n}>{n} lines</option>)}
           </select>
           <button
             onClick={() => fetchLogs()}
-            style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 6, color: "#64748b", fontSize: 11, fontWeight: 700, padding: "4px 10px", cursor: "pointer" }}
-          >↻</button>
+            className="dash-tab"
+            style={{
+              background: C.surfaceUp, border: `1px solid ${C.borderHi}`, borderRadius: 8,
+              color: C.text2, fontSize: 13, padding: "6px 10px", cursor: "pointer",
+              width: 32, height: 30, display: "inline-flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <span className={refreshing ? "dash-spin" : ""}>↻</span>
+          </button>
         </div>
       </div>
 
-      <div style={{ background: "#050a12", border: "1px solid #1e293b", borderRadius: 12, overflow: "hidden" }}>
+      <div style={{
+        background: "#020409",
+        border: `1px solid ${C.border}`,
+        borderRadius: 16,
+        overflow: "hidden" as const,
+      }}>
+        {/* terminal title bar */}
+        <div style={{
+          padding: "10px 16px",
+          background: C.surface,
+          borderBottom: `1px solid ${C.border}`,
+          display: "flex", alignItems: "center", gap: 10,
+        }}>
+          <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#ef4444" }} />
+          <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#f59e0b" }} />
+          <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#10b981" }} />
+          <span style={{ marginLeft: 14, fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.text3 }}>
+            ~/bot/logs/{active}.log
+          </span>
+        </div>
+        {/* terminal body */}
         {loading && logLines.length === 0 ? (
-          <div style={{ padding: 24, color: "#334155", fontSize: 13, textAlign: "center" as const }}>Loading logs…</div>
+          <div style={{ padding: 40, color: C.text4, fontSize: 13, textAlign: "center" as const, fontFamily: "'Space Mono', monospace" }}>
+            <span className="dash-spin" style={{ display: "inline-block", marginRight: 8 }}>◌</span>
+            Loading logs…
+          </div>
         ) : data?.error ? (
-          <div style={{ padding: 24, color: "#fca5a5", fontSize: 13 }}>⚠️ {data.error}</div>
+          <div style={{ padding: 40, color: "#fca5a5", fontSize: 13 }}>⚠️ {data.error}</div>
         ) : logLines.length === 0 ? (
-          <div style={{ padding: 24, color: "#334155", fontSize: 13, textAlign: "center" as const }}>No log output</div>
+          <div style={{ padding: 40, color: C.text4, fontSize: 13, textAlign: "center" as const }}>No log output</div>
         ) : (
-          <div style={{ height: 420, overflowY: "auto", padding: "14px 16px", fontFamily: "'Space Mono', monospace", fontSize: 11, lineHeight: 1.7 }}>
+          <div className="dash-scroll" style={{ height: 420, overflowY: "auto", padding: "16px 18px", fontFamily: "'Space Mono', monospace", fontSize: 11, lineHeight: 1.8 }}>
             {logLines.map((line, i) => (
               <div key={i} style={{ color: lineColor(line), whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                <span style={{ color: C.text5, marginRight: 12, userSelect: "none" }}>
+                  {String(logLines.length - i).padStart(3, "0")}
+                </span>
                 {line}
               </div>
             ))}
           </div>
         )}
-        <div style={{ padding: "8px 16px", borderTop: "1px solid #1e293b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 10, color: "#1e293b" }}>{logLines.length} lines · auto-refreshes every 15s</span>
-          {loading && <span style={{ fontSize: 10, color: "#334155" }}>Refreshing…</span>}
+        <div style={{
+          padding: "10px 18px",
+          borderTop: `1px solid ${C.border}`,
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          background: C.surface,
+        }}>
+          <span style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5 }}>
+            {logLines.length} LINES · AUTO-REFRESH 15s
+          </span>
+          {refreshing && (
+            <span style={{ fontSize: 10, color: C.text3, fontFamily: "'Space Mono', monospace", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span className="dash-spin">◌</span> Refreshing
+            </span>
+          )}
         </div>
       </div>
     </section>
@@ -305,165 +783,454 @@ function BotLogs() {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   PROPS + TYPES
+   SUPPORT CARD — Doma fractional share
 ════════════════════════════════════════════════════════════════════════ */
-interface AffiliateRow { slug: string; label: string; category: string; hasRealLink: boolean; total: number; last7: number; last30: number }
-interface PathRow      { path: string; count: number }
-interface DailyRow     { date: string; count: number }
 
-interface Props {
-  affiliateData: AffiliateRow[];
-  topPaths:      PathRow[];
-  dailyClicks:   DailyRow[];
-  totalClicks:   number;
-  emailCount:    number;
-  guideCount:    number;
+function SupportCard({ mobile }: { mobile: boolean }) {
+
+  const benefits = [
+    { icon: "✦", text: "Claude Opus API for premium article generation" },
+    { icon: "✦", text: "gpt-image-1.5 hero illustrations on every guide" },
+    { icon: "✦", text: "Vercel hosting + Supabase database" },
+    { icon: "✦", text: "DigitalOcean droplet running the trading bot" },
+  ];
+
+  return (
+    <section style={{ marginBottom: 56 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+        <span style={{ fontSize: 20 }}>♥</span>
+        <h2 style={{ margin: 0, fontFamily: "'Bungee', cursive", fontSize: 22, color: C.text, letterSpacing: 0.3 }}>
+          Support the Build
+        </h2>
+      </div>
+
+      <div style={{
+        position: "relative" as const,
+        background: `
+          radial-gradient(circle at 0% 0%,   rgba(99,102,241,0.18)  0%, transparent 45%),
+          radial-gradient(circle at 100% 100%, rgba(236,72,153,0.16) 0%, transparent 45%),
+          ${C.surface}
+        `,
+        border: `1px solid ${C.borderHi}`,
+        borderRadius: 20,
+        padding: mobile ? "30px 24px" : "44px 48px",
+        overflow: "hidden" as const,
+      }}>
+        {/* Decorative grid pattern */}
+        <div style={{
+          position: "absolute" as const, inset: 0,
+          backgroundImage: `linear-gradient(${C.border} 1px, transparent 1px), linear-gradient(90deg, ${C.border} 1px, transparent 1px)`,
+          backgroundSize: "32px 32px",
+          opacity: 0.4,
+          pointerEvents: "none" as const,
+          maskImage: "radial-gradient(circle at 50% 50%, black 30%, transparent 70%)",
+          WebkitMaskImage: "radial-gradient(circle at 50% 50%, black 30%, transparent 70%)",
+        }} />
+
+        <div style={{ position: "relative" as const, display: "flex", flexDirection: mobile ? "column" : "row", alignItems: mobile ? "stretch" : "flex-start", gap: mobile ? 28 : 56 }}>
+          {/* Left side */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.35)",
+              borderRadius: 50, padding: "5px 14px", marginBottom: 18,
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.indigo }} />
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: "#a5b4fc", letterSpacing: 1.4, fontWeight: 700 }}>
+                FRACTIONAL SHARES · DOMA PROTOCOL
+              </span>
+            </div>
+
+            <h3 style={{
+              margin: "0 0 14px",
+              fontFamily: "'Bungee', cursive",
+              fontSize: mobile ? 26 : 36,
+              color: C.text,
+              lineHeight: 1.1,
+              letterSpacing: -0.5,
+              background: "linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 60%, #a5b4fc 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}>
+              Own a piece of Web3 Guides
+            </h3>
+
+            <p style={{ margin: "0 0 22px", fontSize: 15, color: C.text2, lineHeight: 1.65, maxWidth: 540 }}>
+              The <strong style={{ color: C.text }}>web3guides.com</strong> domain is fractionalized on Doma Protocol. Buy a share, become a co-owner of the platform, and directly support the bills that keep it running.
+            </p>
+
+            <div style={{ display: "grid", gap: 8, marginBottom: 26, maxWidth: 480 }}>
+              {benefits.map(b => (
+                <div key={b.text} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: C.text2 }}>
+                  <span style={{ color: C.indigo, fontSize: 12 }}>{b.icon}</span>
+                  <span>{b.text}</span>
+                </div>
+              ))}
+            </div>
+
+            <a
+              href={DOMA_LINK}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="dash-btn-primary"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 10,
+                background: `linear-gradient(135deg, ${C.indigo} 0%, ${C.pink} 100%)`,
+                color: "#fff", fontWeight: 800, fontSize: 14,
+                padding: "14px 28px", borderRadius: 12, textDecoration: "none",
+                boxShadow: `0 8px 32px -8px ${C.indigo}80`,
+                letterSpacing: 0.3,
+              }}
+            >
+              Buy on Doma <span style={{ fontSize: 16 }}>→</span>
+            </a>
+          </div>
+
+          {/* Right side — domain card visual */}
+          {!mobile && (
+            <div style={{
+              minWidth: 280,
+              background: "rgba(5,7,15,0.6)",
+              border: `1px solid ${C.borderHi}`,
+              borderRadius: 16,
+              padding: "26px 24px",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+            }}>
+              <div style={{ fontSize: 10, fontFamily: "'Space Mono', monospace", color: C.text3, letterSpacing: 1.4, marginBottom: 12, textTransform: "uppercase" as const }}>
+                The Domain
+              </div>
+              <div style={{
+                fontFamily: "'Bungee', cursive",
+                fontSize: 26, color: C.text,
+                background: `linear-gradient(135deg, ${C.orange}, ${C.pink})`,
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                marginBottom: 18, lineHeight: 1.1,
+              }}>
+                web3guides.com
+              </div>
+
+              <div style={{ display: "grid", gap: 10, fontSize: 12, fontFamily: "'Space Mono', monospace" }}>
+                <KV k="Network"   v="Doma Protocol" />
+                <KV k="Type"      v="Fractional ERC-20" />
+                <KV k="Built by"  v="Big Mike" />
+                <KV k="Live since" v="2024" />
+              </div>
+
+              <div style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}`, fontSize: 11, color: C.text3, lineHeight: 1.6 }}>
+                Holders share in the platform&apos;s growth — every guide published, every API call paid for, every reader served.
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function KV({ k, v }: { k: string; v: string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+      <span style={{ color: C.text4, letterSpacing: 0.5 }}>{k}</span>
+      <span style={{ color: C.text2, fontWeight: 700 }}>{v}</span>
+    </div>
+  );
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   MAIN DASHBOARD
+   SITE SNAPSHOT
 ════════════════════════════════════════════════════════════════════════ */
-export default function DashboardClient({ emailCount, guideCount }: Props) {
-  const mobile = useMobile();
+
+function SiteSnapshot({ guideCount, emailCount, mobile }: { guideCount: number; emailCount: number; mobile: boolean }) {
+  const subdomainCount = VALID_SUBDOMAINS.length;
+
+  const tiles = [
+    { label: "Guides Published", value: guideCount,      icon: "📖", color: C.indigo, sub: "AI-generated, fact-checked" },
+    { label: "Subdomains",       value: subdomainCount,  icon: "🌐", color: C.green,  sub: "Specialised hubs" },
+    { label: "Email Subscribers", value: emailCount,     icon: "✉",  color: C.yellow, sub: "Weekly newsletter" },
+    { label: "Hours of Sleep Lost", value: "∞",          icon: "☕", color: C.pink,   sub: "Big Mike says hi" },
+  ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#08080f", color: "#e2e8f0", padding: "40px 24px 80px", fontFamily: "system-ui,sans-serif" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+    <section style={{ marginBottom: 64 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+        <span style={{ fontSize: 20 }}>📊</span>
+        <h2 style={{ margin: 0, fontFamily: "'Bungee', cursive", fontSize: 22, color: C.text, letterSpacing: 0.3 }}>
+          Site Snapshot
+        </h2>
+        <Tag color={C.green}>Where We Are</Tag>
+      </div>
 
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 40, flexWrap: "wrap", gap: 12 }}>
-          <div>
-            <div style={{ fontFamily: "'Bungee', cursive", fontSize: 22, background: "linear-gradient(135deg,#ff6b35,#ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", marginBottom: 4 }}>
-              Web3 Guides
+      <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(4,1fr)", gap: 14 }}>
+        {tiles.map(t => (
+          <div key={t.label} className="dash-card" style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 14,
+            padding: "20px 22px",
+            position: "relative" as const,
+            overflow: "hidden" as const,
+          }}>
+            {/* corner glow */}
+            <div style={{
+              position: "absolute" as const, top: -40, right: -40,
+              width: 100, height: 100, borderRadius: "50%",
+              background: `radial-gradient(circle, ${t.color}25 0%, transparent 70%)`,
+              pointerEvents: "none" as const,
+            }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <span style={{ fontSize: 18 }}>{t.icon}</span>
+              <span style={{
+                fontSize: 10, fontWeight: 800, color: C.text3,
+                letterSpacing: 1, textTransform: "uppercase" as const,
+                fontFamily: "'Space Mono', monospace",
+              }}>
+                {t.label}
+              </span>
             </div>
-            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 900, color: "#fff" }}>Public Dashboard</h1>
-            <p style={{ margin: "4px 0 0", color: "#475569", fontSize: 14 }}>Live stats · Trading bot · Referral performance</p>
+            <div style={{
+              fontFamily: "'Bungee', cursive",
+              fontSize: 30, color: t.color, lineHeight: 1, marginBottom: 6,
+            }}>
+              {t.value}
+            </div>
+            <div style={{ fontSize: 11, color: C.text4, fontFamily: "'DM Sans', sans-serif" }}>
+              {t.sub}
+            </div>
           </div>
-          <a href="/" style={{ fontSize: 13, color: "#475569", textDecoration: "none" }}>← Back to site</a>
-        </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
-        {/* Bot section */}
-        <BotPanel />
+/* ════════════════════════════════════════════════════════════════════════
+   SHARED — DataCard, MiniStat, PanelHead, Empty
+════════════════════════════════════════════════════════════════════════ */
 
-        <Divider />
-
-        {/* Bot logs */}
-        <BotLogs />
-
-        {/* Divider */}
-        <Divider />
-
-        {/* ── Support Web3 Guides — Doma fractional share ─────────────── */}
+function DataCard({
+  label, value, sub, accent, progress, direction,
+}: {
+  label: string; value: string; sub?: string; accent: string;
+  progress?: number; direction?: "up" | "down";
+}) {
+  return (
+    <div className="dash-card" style={{
+      background: C.surface,
+      border: `1px solid ${C.border}`,
+      borderRadius: 14,
+      padding: "16px 18px",
+      position: "relative" as const,
+      overflow: "hidden" as const,
+    }}>
+      <div style={{
+        fontSize: 9, fontWeight: 800, color: C.text3,
+        letterSpacing: 1, textTransform: "uppercase" as const,
+        fontFamily: "'Space Mono', monospace", marginBottom: 10,
+        display: "flex", alignItems: "center", gap: 6,
+      }}>
+        <span style={{ width: 4, height: 4, borderRadius: "50%", background: accent }} />
+        {label}
+      </div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <div style={{
-          background: "linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(236,72,153,0.10) 100%)",
-          border: "1px solid rgba(99,102,241,0.25)",
-          borderRadius: 16,
-          padding: mobile ? "28px 22px" : "40px 44px",
-          marginBottom: 28,
-          position: "relative" as const,
-          overflow: "hidden" as const,
+          fontFamily: "'Bungee', cursive",
+          fontSize: 22, color: accent, lineHeight: 1, letterSpacing: -0.3,
         }}>
-          <div style={{ display: "flex", flexDirection: mobile ? "column" : "row", alignItems: mobile ? "flex-start" : "center", justifyContent: "space-between", gap: mobile ? 20 : 32, position: "relative" as const, zIndex: 1 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: 50, padding: "4px 12px", marginBottom: 14 }}>
-                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: "#a5b4fc", letterSpacing: 1.2 }}>POWERED BY DOMA PROTOCOL</span>
-              </div>
-              <h2 style={{ margin: "0 0 10px", fontSize: mobile ? 22 : 26, fontWeight: 900, color: "#fff", lineHeight: 1.2 }}>Own a piece of Web3 Guides</h2>
-              <p style={{ margin: "0 0 4px", fontSize: 14, color: "#94a3b8", lineHeight: 1.6, maxWidth: 540 }}>
-                The web3guides.com domain is fractionalized on Doma Protocol. Buy a share, become a co-owner of the platform, and support the bills that keep the lights on (Claude API, gpt-image, Vercel, Supabase, the trading bot droplet).
-              </p>
-              <p style={{ margin: "10px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
-                Built by <a href="https://bigmike.web3guides.com" style={{ color: "#a5b4fc", textDecoration: "none", fontWeight: 700 }}>Big Mike</a> · One person, full-time, since 2018
-              </p>
-            </div>
-            <a href="https://app.doma.xyz/domain/web3guides.com"
-               target="_blank" rel="noopener noreferrer"
-               style={{
-                 display: "inline-flex",
-                 alignItems: "center",
-                 gap: 8,
-                 background: "linear-gradient(135deg, #6366f1, #ec4899)",
-                 color: "#fff",
-                 fontWeight: 800,
-                 fontSize: 14,
-                 padding: "13px 26px",
-                 borderRadius: 10,
-                 textDecoration: "none",
-                 boxShadow: "0 8px 24px rgba(99,102,241,0.3)",
-                 whiteSpace: "nowrap" as const,
-                 flexShrink: 0,
-               }}>
-              Buy on Doma →
-            </a>
-          </div>
+          {value}
         </div>
+        {direction && (
+          <span style={{ fontSize: 12, color: accent, opacity: 0.7 }}>
+            {direction === "up" ? "▲" : "▼"}
+          </span>
+        )}
+      </div>
+      {sub && (
+        <div style={{ fontSize: 11, color: C.text4, marginTop: 6, fontFamily: "'DM Sans', sans-serif" }}>
+          {sub}
+        </div>
+      )}
+      {typeof progress === "number" && <MiniBar pct={progress} color={accent} />}
+    </div>
+  );
+}
 
-        {/* ── Site Snapshot ────────────────────────────────────────────── */}
-        <div style={{ marginBottom: 16 }}>
-          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 800, color: "#fff" }}>Site Snapshot</h2>
-          <p style={{ margin: 0, fontSize: 13, color: "#475569" }}>Where Web3 Guides stands today</p>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(3,1fr)", gap: 14 }}>
-          <StatCard label="Guides Published" value={String(guideCount)}            color="#6366f1" />
-          <StatCard label="Subdomains"       value={String(VALID_SUBDOMAINS.length)} color="#22c55e" />
-          <StatCard label="Email Subscribers" value={String(emailCount)}           color="#f59e0b" />
-        </div>
-
+function MiniStat({ label, value, accent }: { label: string; value: string; accent: string }) {
+  return (
+    <div style={{
+      background: "rgba(5,7,15,0.55)",
+      border: `1px solid ${C.border}`,
+      borderRadius: 12,
+      padding: "12px 14px",
+    }}>
+      <div style={{
+        fontSize: 9, fontWeight: 800, color: C.text3,
+        letterSpacing: 1, textTransform: "uppercase" as const,
+        fontFamily: "'Space Mono', monospace", marginBottom: 6,
+      }}>
+        {label}
+      </div>
+      <div style={{ fontFamily: "'Bungee', cursive", fontSize: 20, color: accent, lineHeight: 1 }}>
+        {value}
       </div>
     </div>
   );
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   SMALL SHARED COMPONENTS
-════════════════════════════════════════════════════════════════════════ */
-function StatCard({ label, value, color, sub }: { label: string; value: string; color: string; sub?: string }) {
+function PanelHead({ title, count, accent, icon }: { title: string; count?: number; accent: string; icon?: string }) {
   return (
-    <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: "18px 20px" }}>
-      <div style={{ fontSize: 10, color: "#475569", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: 0.5, marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 900, color, lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color, marginTop: 4, opacity: 0.8 }}>{sub}</div>}
+    <div style={{
+      padding: "14px 18px",
+      borderBottom: `1px solid ${C.border}`,
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {icon && <span style={{ color: accent, fontSize: 14 }}>{icon}</span>}
+        <span style={{
+          fontSize: 12, fontWeight: 800, color: C.text2,
+          letterSpacing: 0.6, textTransform: "uppercase" as const,
+          fontFamily: "'Space Mono', monospace",
+        }}>
+          {title}
+        </span>
+      </div>
+      {typeof count === "number" && (
+        <span style={{
+          fontSize: 10, fontWeight: 800, color: accent,
+          background: `${accent}1a`, border: `1px solid ${accent}40`,
+          borderRadius: 50, padding: "2px 9px", fontFamily: "'Space Mono', monospace",
+        }}>
+          {count}
+        </span>
+      )}
     </div>
   );
-}
-
-function SectionHead({ title }: { title: string }) {
-  return (
-    <div style={{ padding: "13px 16px", borderBottom: "1px solid #1e293b", fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: 0.5 }}>
-      {title}
-    </div>
-  );
-}
-
-function Divider() {
-  return <div style={{ height: 1, background: "rgba(255,255,255,0.04)", margin: "0 0 40px" }} />;
 }
 
 function Empty({ text }: { text: string }) {
-  return <div style={{ padding: "24px 16px", textAlign: "center" as const, color: "#334155", fontSize: 13 }}>{text}</div>;
-}
-
-function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th style={{ padding: "7px 14px", fontSize: 10, fontWeight: 700, color: "#475569", textAlign: "left" as const, textTransform: "uppercase" as const, letterSpacing: 0.5 }}>
-      {children}
-    </th>
+    <div style={{ padding: "44px 16px", textAlign: "center" as const, color: C.text4, fontSize: 13 }}>
+      <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}>◌</div>
+      {text}
+    </div>
   );
 }
 
-function Td({ children, bold, muted, color }: { children: React.ReactNode; bold?: boolean; muted?: boolean; color?: string }) {
-  return (
-    <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: bold ? 700 : 400, color: color ?? (muted ? "#64748b" : "#cbd5e1") }}>
-      {children}
-    </td>
-  );
-}
+/* ════════════════════════════════════════════════════════════════════════
+   MAIN
+════════════════════════════════════════════════════════════════════════ */
 
-function SideBadge({ side }: { side?: string }) {
-  const isLong = side === "long" || side === "buy";
+export default function DashboardClient({ emailCount, guideCount }: Props) {
+  const mobile = useMobile();
+
   return (
-    <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 3, background: isLong ? "#052e16" : "#1a0a0a", color: isLong ? "#22c55e" : "#ef4444", textTransform: "uppercase" as const }}>
-      {side ?? "—"}
-    </span>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />
+
+      <div style={{
+        minHeight: "100vh",
+        background: `
+          radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99,102,241,0.10) 0%, transparent 60%),
+          radial-gradient(ellipse 60% 40% at 100% 100%, rgba(236,72,153,0.06) 0%, transparent 60%),
+          ${C.bg}
+        `,
+        color: C.text,
+        fontFamily: "'DM Sans', system-ui, sans-serif",
+      }}>
+
+        {/* ── Sticky top bar ────────────────────────────────────────── */}
+        <div style={{
+          position: "sticky" as const,
+          top: 0, zIndex: 50,
+          background: "rgba(5,7,15,0.7)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          borderBottom: `1px solid ${C.border}`,
+        }}>
+          <div style={{ maxWidth: 1180, margin: "0 auto", padding: "0 24px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <a href="/" style={{ display: "flex", alignItems: "center", gap: 14, textDecoration: "none" }}>
+              <span style={{
+                fontFamily: "'Bungee', cursive", fontSize: 16,
+                background: `linear-gradient(135deg, ${C.orange}, ${C.pink})`,
+                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                letterSpacing: 0.5,
+              }}>
+                Web3 Guides
+              </span>
+              {!mobile && (
+                <>
+                  <span style={{ width: 1, height: 18, background: C.text5 }} />
+                  <span style={{ fontSize: 12, color: C.text3, fontFamily: "'Space Mono', monospace", letterSpacing: 1, textTransform: "uppercase" as const }}>
+                    Public Dashboard
+                  </span>
+                </>
+              )}
+            </a>
+            <a href="/" className="dash-link" style={{ fontSize: 12, color: C.text3, textDecoration: "none", fontFamily: "'Space Mono', monospace", letterSpacing: 0.5 }}>
+              ← Back to site
+            </a>
+          </div>
+        </div>
+
+        <main style={{ maxWidth: 1180, margin: "0 auto", padding: mobile ? "32px 18px 80px" : "48px 24px 100px" }}>
+
+          {/* ── Page hero ──────────────────────────────────────────── */}
+          <header style={{ marginBottom: 48 }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              background: "rgba(99,102,241,0.10)",
+              border: `1px solid ${C.borderHi}`,
+              borderRadius: 50, padding: "5px 14px", marginBottom: 20,
+            }}>
+              <Pulse color={C.green} />
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: "#a5b4fc", letterSpacing: 1.2, fontWeight: 700 }}>
+                LIVE OPERATIONS
+              </span>
+            </div>
+
+            <h1 style={{
+              margin: "0 0 14px",
+              fontFamily: "'Bungee', cursive",
+              fontSize: mobile ? 40 : 60,
+              lineHeight: 1.05,
+              letterSpacing: -1.5,
+              background: `linear-gradient(135deg, ${C.text} 0%, #94a3b8 50%, ${C.indigo} 100%)`,
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}>
+              Public Dashboard
+            </h1>
+            <p style={{ margin: 0, color: C.text3, fontSize: mobile ? 14 : 16, lineHeight: 1.6, maxWidth: 640 }}>
+              Real-time snapshot of the Web3 Guides trading bot — every position, every trade, every log line. Built in the open. Updated every 30 seconds.
+            </p>
+          </header>
+
+          {/* ── Sections ───────────────────────────────────────────── */}
+          <BotPanel />
+          <BotLogs />
+          <SupportCard mobile={mobile} />
+          <SiteSnapshot guideCount={guideCount} emailCount={emailCount} mobile={mobile} />
+
+          {/* ── Footer ─────────────────────────────────────────────── */}
+          <footer style={{
+            marginTop: 24,
+            paddingTop: 28,
+            borderTop: `1px solid ${C.border}`,
+            display: "flex", flexDirection: mobile ? "column" : "row",
+            alignItems: mobile ? "flex-start" : "center", justifyContent: "space-between",
+            gap: 14, fontSize: 12, color: C.text4, fontFamily: "'Space Mono', monospace",
+          }}>
+            <span>BUILT BY <a href="https://bigmike.web3guides.com" className="dash-link" style={{ color: C.text3, textDecoration: "none", fontWeight: 700 }}>BIG MIKE</a> · IN CRYPTO SINCE 2016 · FULL-TIME SINCE 2018</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <Pulse color={C.green} />
+              <span style={{ letterSpacing: 1 }}>SYSTEM ONLINE</span>
+            </span>
+          </footer>
+        </main>
+      </div>
+    </>
   );
 }
