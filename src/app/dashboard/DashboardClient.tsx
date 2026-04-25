@@ -37,6 +37,10 @@ function fmtDate(s?: string) {
   return new Date(s).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+// ── Update this if you deposit or withdraw from the bot wallet ───────────────
+// e.g. if you add $50: INITIAL_BALANCE = 150. Remove $20: INITIAL_BALANCE = 80.
+const INITIAL_BALANCE = 100;
+
 function BotPanel() {
   const mobile                  = useMobile();
   const [data, setData]         = useState<BotSummary | null>(null);
@@ -68,13 +72,16 @@ function BotPanel() {
     return () => clearInterval(t);
   }, [lastUpdated]);
 
-  const state     = data?.state ?? {};
-  const positions = data?.positions ?? [];
-  const trades    = data?.trades ?? [];
-  const unit      = "USDC.e";
-  const balance   = (state.usdc_balance as number) ?? (state.balance as number);
-  const pnl       = positions.reduce((sum, p) => sum + ((p.unrealized_pnl as number) ?? (p.pnl as number) ?? 0), 0);
-  const pnlColor  = pnl >= 0 ? "#22c55e" : "#ef4444";
+  const state       = data?.state ?? {};
+  const positions   = data?.positions ?? [];
+  const trades      = data?.trades ?? [];
+  const unit        = "USDC.e";
+  const balance     = (state.usdc_balance as number) ?? (state.balance as number);
+  const totalValue  = (state.total_value as number) ?? balance ?? 0;
+  const pnl         = positions.reduce((sum, p) => sum + ((p.unrealized_pnl as number) ?? (p.pnl as number) ?? 0), 0);
+  const pnlColor    = pnl >= 0 ? "#22c55e" : "#ef4444";
+  const totalProfit = totalValue - INITIAL_BALANCE;
+  const profitColor = totalProfit >= 0 ? "#22c55e" : "#ef4444";
   const online    = !error && !loading && !!data;
 
   return (
@@ -114,10 +121,16 @@ function BotPanel() {
       {data && !error && (
         <>
           {/* Stat cards */}
-          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(5,1fr)", gap: 14, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(3,1fr)", gap: 14, marginBottom: 20 }}>
             <StatCard label="Balance" value={`${fmtNum(balance)} ${unit}`} color="#0ea5e9" />
             <StatCard label="Deployed" value={`${fmtNum((state.total_deployed as number) ?? 0)} ${unit}`} color="#a78bfa" />
-            <StatCard label="Total Value" value={`${fmtNum((state.total_value as number) ?? balance)} ${unit}`} color="#34d399" />
+            <StatCard label="Total Value" value={`${fmtNum(totalValue)} ${unit}`} color="#34d399" />
+            <StatCard
+              label="Total Profit"
+              value={`${totalProfit >= 0 ? "+" : ""}${fmtNum(totalProfit)} ${unit}`}
+              sub={`vs $${INITIAL_BALANCE} initial`}
+              color={profitColor}
+            />
             <StatCard
               label="Unrealised P&L"
               value={`${pnl >= 0 ? "+" : ""}${fmtNum(pnl)} ${unit}`}
