@@ -181,6 +181,80 @@ interface BotPosition { symbol?: string; side?: string; size?: number; entry_pri
 interface BotTrade    { symbol?: string; side?: string; size?: number; price?: number; pnl?: number; timestamp?: string; executed_at?: string; usdc_amount?: number; [k: string]: unknown }
 interface BotSummary  { state?: BotState; positions?: BotPosition[]; trades?: BotTrade[]; [k: string]: unknown }
 
+/* ── LP bot types — schema from LP_BOT_DASHBOARD_CONTEXT.md ──────────────── */
+interface LPState {
+  total_value?:        number;
+  deployed_in_lp?:     number;
+  idle_balance?:       number;
+  total_fees_earned?:  number;
+  total_il_usd?:       number;
+  total_pnl_usd?:      number;
+  total_pnl_pct?:      number;
+  active_positions?:   number;
+  rebalance_count?:    number;
+  lifetime_fees?:      number;
+  wallet_address?:     string;
+  first_deployed_at?:  string;
+  updated_at?:         string;
+  [k: string]: unknown;
+}
+interface LPPosition {
+  id?:                 string;
+  nft_token_id?:       number;
+  pool?:               string;
+  pool_address?:       string;
+  protocol?:           string;
+  chain?:              string;
+  fee_tier?:           number;
+  tick_lower?:         number;
+  tick_upper?:         number;
+  range_low?:          number;
+  range_high?:         number;
+  current_price?:      number;
+  current_tick?:       number;
+  in_range?:           boolean;
+  proximity_to_edge?:  number;
+  liquidity_usd?:      number;
+  fees_earned_usd?:    number;
+  impermanent_loss?:   number;
+  net_pnl?:            number;
+  opened_at?:          string;
+  amount0_usd?:        number;
+  amount1_usd?:        number;
+  [k: string]: unknown;
+}
+interface LPRebalance {
+  id?:                  string;
+  executed_at?:         string;
+  pool?:                string;
+  reason?:              string;
+  from_tick_lower?:     number;
+  from_tick_upper?:     number;
+  to_tick_lower?:       number;
+  to_tick_upper?:       number;
+  from_price?:          number;
+  to_price?:            number;
+  fees_collected_usd?:  number;
+  gas_usd?:             number;
+  [k: string]: unknown;
+}
+interface LPConfig {
+  target_capital_usd?:    number;
+  range_pct?:             number;
+  rebalance_trigger_pct?: number;
+  fee_tier?:              number;
+  loop_interval_sec?:     number;
+  [k: string]: unknown;
+}
+interface LPSummary {
+  state?:       LPState;
+  positions?:   LPPosition[];
+  rebalances?:  LPRebalance[];
+  config?:      LPConfig;
+  error?:       string;
+  [k: string]: unknown;
+}
+
 interface AffiliateRow { slug: string; label: string; category: string; hasRealLink: boolean; total: number; last7: number; last30: number }
 interface PathRow      { path: string; count: number }
 interface DailyRow     { date: string; count: number }
@@ -1005,6 +1079,612 @@ function BotPanel() {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
+   LP PANEL — Concentrated liquidity bot
+════════════════════════════════════════════════════════════════════════ */
+
+/* Thermostat-style range visualizer:
+   shows current price as a glowing dot inside the deployed range bar.
+   In-range = indigo bar with green dot.
+   Out-of-range = red dot pinned to the edge it crossed.                 */
+function RangeBar({ pos }: { pos: LPPosition }) {
+  const lo = pos.range_low  ?? 0;
+  const hi = pos.range_high ?? 1;
+  const cp = pos.current_price ?? lo;
+  const pct = hi > lo ? Math.max(0, Math.min(1, (cp - lo) / (hi - lo))) : 0.5;
+  const inRange = !!pos.in_range;
+  const proximity = pos.proximity_to_edge ?? 0;
+
+  const dotColor = inRange
+    ? proximity > 0.7 ? C.yellow : C.green
+    : C.red;
+
+  return (
+    <div style={{ width: "100%" }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8 }}>
+        <span style={{ fontSize: 10, fontWeight: 800, color: C.text3, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace" }}>
+          Active Range
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontFamily: "'Space Mono', monospace" }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, boxShadow: `0 0 6px ${dotColor}` }} />
+          <span style={{ color: dotColor, fontWeight: 700, letterSpacing: 0.5 }}>
+            {inRange
+              ? proximity > 0.7 ? `Edge of range · ${(proximity * 100).toFixed(0)}%`
+              : `In range · ${(proximity * 100).toFixed(0)}% from edge`
+              : "OUT OF RANGE"}
+          </span>
+        </span>
+      </div>
+
+      {/* Bar */}
+      <div style={{ position: "relative" as const, height: 36 }}>
+        <div style={{
+          position: "absolute" as const, inset: "12px 0",
+          background: inRange
+            ? `linear-gradient(90deg, ${C.indigo}30, ${C.cyan}40, ${C.indigo}30)`
+            : `linear-gradient(90deg, ${C.red}30, #1e293b)`,
+          border: `1px solid ${inRange ? "rgba(99,102,241,0.35)" : "rgba(244,63,94,0.35)"}`,
+          borderRadius: 6,
+        }} />
+        {/* Tick marks at 25/50/75 */}
+        {[0.25, 0.5, 0.75].map(t => (
+          <div key={t} style={{
+            position: "absolute" as const, top: 12, bottom: 12,
+            left: `${t * 100}%`, width: 1, background: "rgba(255,255,255,0.06)",
+          }} />
+        ))}
+        {/* Current price marker */}
+        <div style={{
+          position: "absolute" as const,
+          left: `calc(${pct * 100}% - 1px)`,
+          top: 4, bottom: 4, width: 2,
+          background: dotColor,
+          boxShadow: `0 0 12px ${dotColor}`,
+        }} />
+        <div style={{
+          position: "absolute" as const,
+          left: `calc(${pct * 100}% - 7px)`,
+          top: 11, width: 14, height: 14, borderRadius: "50%",
+          background: dotColor,
+          border: `2px solid ${C.surface}`,
+          boxShadow: `0 0 16px ${dotColor}, 0 0 4px ${dotColor}`,
+        }} />
+      </div>
+
+      {/* Labels under bar */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontFamily: "'Space Mono', monospace", fontSize: 11 }}>
+        <span style={{ color: C.text4 }}>{fmtPrice(lo)}</span>
+        <span style={{ color: C.text }}>
+          <span style={{ color: C.text4, marginRight: 6 }}>NOW</span>
+          {fmtPrice(cp)}
+        </span>
+        <span style={{ color: C.text4 }}>{fmtPrice(hi)}</span>
+      </div>
+    </div>
+  );
+}
+
+/* Helper: relative time like "2d ago" / "3h ago" / "Just now" */
+function relativeTime(iso?: string): string {
+  if (!iso) return "—";
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 60_000)      return "Just now";
+  if (ms < 3600_000)    return `${Math.floor(ms / 60_000)}m ago`;
+  if (ms < 86400_000)   return `${Math.floor(ms / 3600_000)}h ago`;
+  return `${Math.floor(ms / 86400_000)}d ago`;
+}
+
+function LPPanel() {
+  const mobile                  = useMobile();
+  const [data, setData]         = useState<LPSummary | null>(null);
+  const [error, setError]       = useState<string | null>(null);
+  const [lastUpdated, setLast]  = useState<Date | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [refreshing, setR]      = useState(false);
+  const [age, setAge]           = useState(0);
+
+  async function fetchLP() {
+    setR(true);
+    try {
+      const res  = await fetch("/api/lp", { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) { setError(json.error ?? `Error ${res.status}`); return; }
+      setData(json);
+      setError(null);
+      setLast(new Date());
+    } catch { setError("LP bot unreachable"); }
+    finally  { setLoading(false); setR(false); }
+  }
+
+  useEffect(() => {
+    fetchLP();
+    const t = setInterval(fetchLP, 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => setAge(lastUpdated ? Math.floor((Date.now() - lastUpdated.getTime()) / 1000) : 0), 1000);
+    return () => clearInterval(t);
+  }, [lastUpdated]);
+
+  const state      = data?.state ?? {};
+  const positions  = data?.positions ?? [];
+  const rebalances = data?.rebalances ?? [];
+
+  const totalValue   = state.total_value      ?? 0;
+  const deployed     = state.deployed_in_lp   ?? 0;
+  const idle         = state.idle_balance     ?? 0;
+  const fees         = state.total_fees_earned ?? state.lifetime_fees ?? 0;
+  const il           = state.total_il_usd     ?? 0;
+  const netPnl       = state.total_pnl_usd    ?? (fees + il);
+  const pnlPct       = (state.total_pnl_pct ?? 0) * 100;
+  const activeCount  = state.active_positions ?? positions.length;
+  const rebalCount   = state.rebalance_count  ?? rebalances.length;
+
+  const deployedPct = totalValue > 0 ? (deployed / totalValue) * 100 : 0;
+  const idlePct     = totalValue > 0 ? (idle     / totalValue) * 100 : 0;
+
+  const pnlColor  = netPnl >= 0 ? C.green : C.red;
+  const ilColor   = il     >= 0 ? C.green : C.red;
+  const online    = !error && !loading && !!data;
+
+  // APR / time deployed
+  const firstDeployed = state.first_deployed_at ? new Date(state.first_deployed_at) : null;
+  const daysDeployed  = firstDeployed
+    ? Math.max(1, (Date.now() - firstDeployed.getTime()) / 86400_000)
+    : 0;
+  const apyPct = daysDeployed > 0 && totalValue > 0
+    ? (fees / daysDeployed) * 365 / totalValue * 100
+    : 0;
+  const timeDeployedStr = firstDeployed ? fmtRunning(firstDeployed) : "—";
+
+  const activePos = positions[0];
+
+  return (
+    <section style={{ marginBottom: 56 }}>
+
+      {/* ── Section title ───────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap" as const, gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Pulse color={online ? C.cyan : error ? C.red : C.text3} />
+          <h2 style={{ margin: 0, fontFamily: "'Bungee', cursive", fontSize: 22, color: C.text, letterSpacing: 0.3 }}>
+            Liquidity Bot
+          </h2>
+          <Tag color={online ? C.cyan : C.text3}>
+            {loading ? "Connecting" : online ? "Live" : "Offline"}
+          </Tag>
+          <Tag color={C.purple}>Doma V3</Tag>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 11, color: C.text3, fontFamily: "'Space Mono', monospace" }}>
+          {!!state.updated_at && (
+            <span>BOT WROTE · {fmtDate(state.updated_at as string)}</span>
+          )}
+          {lastUpdated && <span style={{ color: C.text4 }}>FETCHED {fmtAge(age)} AGO</span>}
+          <button
+            onClick={fetchLP}
+            className="dash-tab"
+            style={{
+              background: C.surfaceUp, border: `1px solid ${C.borderHi}`, borderRadius: 8,
+              color: C.text2, fontSize: 13, padding: "6px 10px", cursor: "pointer",
+              display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 30,
+            }}
+            aria-label="Refresh"
+          >
+            <span className={refreshing ? "dash-spin" : ""}>↻</span>
+          </button>
+        </div>
+      </div>
+
+      {loading && (
+        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 40, textAlign: "center" as const, color: C.text4, fontSize: 14 }}>
+          <span className="dash-spin" style={{ display: "inline-block", marginRight: 10, fontSize: 16 }}>◌</span>
+          Connecting to LP bot…
+        </div>
+      )}
+
+      {error && !loading && (
+        <div style={{ background: "rgba(244,63,94,0.07)", border: "1px solid rgba(244,63,94,0.25)", borderRadius: 14, padding: "18px 22px", color: "#fca5a5", fontSize: 13 }}>
+          ⚠️ {error} — endpoint may not be deployed yet (set <code style={{ color: "#fde68a", fontFamily: "'Space Mono', monospace" }}>LP_BOT_API_KEY</code> on Vercel and confirm <code style={{ color: "#fde68a", fontFamily: "'Space Mono', monospace" }}>/api/lp/summary</code> is reachable on the droplet).
+        </div>
+      )}
+
+      {data && !error && (
+        <div className="dash-fade-in">
+
+          {/* ── HERO ──────────────────────────────────────────────── */}
+          <div style={{
+            position: "relative" as const,
+            background: `
+              radial-gradient(circle at 0% 0%, rgba(34,211,238,0.10) 0%, transparent 50%),
+              radial-gradient(circle at 100% 100%, rgba(99,102,241,0.10) 0%, transparent 50%),
+              ${C.surface}
+            `,
+            border: `1px solid ${C.borderHi}`,
+            borderRadius: 20,
+            padding: mobile ? "26px 22px" : "32px 36px",
+            marginBottom: 18,
+            overflow: "hidden" as const,
+          }}>
+            <div className="dash-bg-grid" />
+
+            <div style={{ position: "relative" as const, zIndex: 1, display: "flex", flexDirection: mobile ? "column" : "row", alignItems: mobile ? "flex-start" : "flex-end", justifyContent: "space-between", gap: 24 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.text3, letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 12, fontFamily: "'Space Mono', monospace" }}>
+                  Total Position Value
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" as const }}>
+                  <div style={{
+                    fontFamily: "'Bungee', cursive",
+                    fontSize: mobile ? 44 : 64,
+                    color: C.text, lineHeight: 1, letterSpacing: -1,
+                    background: `linear-gradient(135deg, ${C.text} 0%, ${C.cyan} 100%)`,
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}>
+                    ${fmtNum(totalValue)}
+                  </div>
+                  <div style={{ fontSize: 13, color: C.text3, fontWeight: 700, letterSpacing: 0.5 }}>USDC.e</div>
+                </div>
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                  marginTop: 14,
+                  background: netPnl >= 0 ? C.greenSoft : C.redSoft,
+                  border: `1px solid ${netPnl >= 0 ? "rgba(16,185,129,0.3)" : "rgba(244,63,94,0.3)"}`,
+                  color: pnlColor,
+                  borderRadius: 50, padding: "5px 14px", fontSize: 13, fontWeight: 800,
+                }}>
+                  <span>{netPnl >= 0 ? "▲" : "▼"}</span>
+                  <span>${fmtNum(Math.abs(netPnl))}</span>
+                  <span style={{ opacity: 0.65 }}>·</span>
+                  <span>{fmtPct(pnlPct)}</span>
+                </div>
+              </div>
+
+              {/* Right-side mini stats — 2x2 */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, minWidth: mobile ? "100%" : 320 }}>
+                <MiniStat label="Active Positions" value={String(activeCount)} accent={activeCount > 0 ? C.purple : C.text4} />
+                <MiniStat label="Lifetime Fees"    value={`$${fmtNum(fees, 4)}`} accent={C.green} sub={`across ${rebalCount} rebal${rebalCount === 1 ? "" : "s"}`} />
+                <MiniStat label="Time Deployed"    value={timeDeployedStr} accent={C.cyan}
+                  sub={firstDeployed ? `since ${firstDeployed.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}` : undefined} />
+                <MiniStat label="Fee APR"          value={fmtPct(apyPct, 1)} accent={apyPct >= 0 ? C.green : C.red}
+                  sub={daysDeployed > 0 ? `over ${daysDeployed.toFixed(1)} days` : undefined} />
+              </div>
+            </div>
+
+            {/* Capital allocation */}
+            <div style={{ position: "relative" as const, zIndex: 1, marginTop: 28 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontFamily: "'Space Mono', monospace", color: C.text3, letterSpacing: 1, marginBottom: 8, textTransform: "uppercase" as const }}>
+                <span>Capital Allocation</span>
+                <span>{deployedPct.toFixed(0)}% deployed in LP</span>
+              </div>
+              <div style={{ display: "flex", height: 8, background: C.surfaceUp, borderRadius: 4, overflow: "hidden" as const }}>
+                <div style={{ width: `${deployedPct}%`, background: `linear-gradient(90deg, ${C.purple}, ${C.indigo})`, boxShadow: `0 0 12px ${C.purple}80` }} />
+                <div style={{ width: `${idlePct}%`,     background: `linear-gradient(90deg, ${C.cyan}, ${C.blue})`,    boxShadow: `0 0 12px ${C.blue}80` }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 11, fontFamily: "'Space Mono', monospace" }}>
+                <span style={{ color: C.purple }}>● In Pool ${fmtNum(deployed)}</span>
+                <span style={{ color: C.blue }}>${fmtNum(idle)} Idle ●</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── SECONDARY METRICS GRID ──────────────────────────── */}
+          <div className="dash-stagger" style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 14, marginBottom: 28 }}>
+            <DataCard
+              label="Fees Earned"
+              value={`+$${fmtNum(fees, 4)}`}
+              sub="lifetime + uncollected"
+              accent={C.green}
+              direction="up"
+            />
+            <DataCard
+              label="Impermanent Loss"
+              value={`${il >= 0 ? "+" : "-"}$${fmtNum(Math.abs(il), 4)}`}
+              sub="vs HODL benchmark"
+              accent={ilColor}
+              direction={il >= 0 ? "up" : "down"}
+            />
+            <DataCard
+              label="Net P&L"
+              value={`${netPnl >= 0 ? "+" : "-"}$${fmtNum(Math.abs(netPnl), 4)}`}
+              sub="fees − IL − gas"
+              accent={pnlColor}
+              direction={netPnl >= 0 ? "up" : "down"}
+            />
+            <DataCard
+              label="Rebalances"
+              value={String(rebalCount)}
+              sub={rebalCount === 0 ? "still in original range" : "auto-triggered"}
+              accent={C.purple}
+            />
+          </div>
+
+          {/* ── ACTIVE POSITION CARD ────────────────────────────── */}
+          {activePos && (
+            <div className="dash-card" style={{
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              borderRadius: 16,
+              padding: mobile ? "22px 20px" : "26px 28px",
+              marginBottom: 18,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap" as const, gap: 12, marginBottom: 22 }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                    <span style={{ fontFamily: "'Bungee', cursive", fontSize: 18, color: C.text }}>
+                      {activePos.pool ?? "—"}
+                    </span>
+                    <Tag color={C.purple}>{activePos.protocol ?? "Doma V3"}</Tag>
+                    {activePos.fee_tier !== undefined && (
+                      <Tag color={C.cyan}>{(activePos.fee_tier * 100).toFixed(2)}% fee</Tag>
+                    )}
+                  </div>
+                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.text4, letterSpacing: 0.3 }}>
+                    {activePos.id?.toUpperCase() ?? `POS_${activePos.nft_token_id ?? "?"}`} · OPENED {relativeTime(activePos.opened_at)}
+                  </div>
+                </div>
+                {activePos.nft_token_id && (
+                  <a
+                    href={`https://explorer.doma.xyz/token/0xce126ca6aceBBDCe95D7b8A3Ce637951640811E0/instance/${activePos.nft_token_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="dash-tab"
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      background: C.surfaceUp, border: `1px solid ${C.borderHi}`, borderRadius: 8,
+                      color: C.text2, fontSize: 11, padding: "6px 12px", textDecoration: "none",
+                      fontFamily: "'Space Mono', monospace", letterSpacing: 0.5,
+                    }}
+                  >
+                    NFT #{activePos.nft_token_id} ↗
+                  </a>
+                )}
+              </div>
+
+              {/* Range bar */}
+              <RangeBar pos={activePos} />
+
+              {/* Position stats grid */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(4, 1fr)",
+                gap: 14, marginTop: 24,
+              }}>
+                <PositionKV k="Liquidity" v={`$${fmtNum(activePos.liquidity_usd ?? 0)}`} accent={C.indigo} />
+                <PositionKV k="Uncollected Fees" v={`+$${fmtNum(activePos.fees_earned_usd ?? 0, 4)}`} accent={C.green} />
+                <PositionKV k="IL on Position" v={`${(activePos.impermanent_loss ?? 0) >= 0 ? "+" : "-"}$${fmtNum(Math.abs(activePos.impermanent_loss ?? 0), 4)}`} accent={(activePos.impermanent_loss ?? 0) >= 0 ? C.green : C.red} />
+                <PositionKV k="Tick Range" v={`${activePos.tick_lower ?? 0} → ${activePos.tick_upper ?? 0}`} accent={C.purple} />
+              </div>
+
+              {/* Token split */}
+              {(activePos.amount0_usd !== undefined || activePos.amount1_usd !== undefined) && (
+                <div style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+                  <div style={{ fontSize: 10, fontFamily: "'Space Mono', monospace", color: C.text3, letterSpacing: 1, marginBottom: 10, textTransform: "uppercase" as const }}>
+                    Token Composition
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.text2, minWidth: 64 }}>
+                      ${fmtNum(activePos.amount0_usd ?? 0)}
+                    </span>
+                    <div style={{ flex: 1, display: "flex", height: 6, background: C.surfaceUp, borderRadius: 3, overflow: "hidden" as const }}>
+                      {(() => {
+                        const a0 = activePos.amount0_usd ?? 0;
+                        const a1 = activePos.amount1_usd ?? 0;
+                        const tot = a0 + a1;
+                        const p0 = tot > 0 ? (a0 / tot) * 100 : 50;
+                        return (
+                          <>
+                            <div style={{ width: `${p0}%`,       background: `linear-gradient(90deg, ${C.purple}, ${C.indigo})` }} />
+                            <div style={{ width: `${100 - p0}%`, background: `linear-gradient(90deg, ${C.cyan}, ${C.blue})` }} />
+                          </>
+                        );
+                      })()}
+                    </div>
+                    <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.text2, minWidth: 64, textAlign: "right" as const }}>
+                      ${fmtNum(activePos.amount1_usd ?? 0)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── REBALANCE HISTORY ──────────────────────────────── */}
+          <div className="dash-card" style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            overflow: "hidden" as const,
+          }}>
+            <PanelHead
+              title="Rebalance History"
+              count={rebalances.length}
+              accent={C.purple}
+              icon="⟲"
+            />
+            {rebalances.length === 0 ? (
+              <div style={{ padding: "32px 18px", textAlign: "center" as const, color: C.text3, fontSize: 13 }}>
+                <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.5 }}>✓</div>
+                <div style={{ fontWeight: 700, color: C.text2, marginBottom: 4 }}>No rebalances yet</div>
+                <div style={{ fontSize: 12, color: C.text4 }}>Position has stayed in range since deployment.</div>
+              </div>
+            ) : (
+              <div className="dash-scroll" style={{ maxHeight: 520, overflowY: "auto" }}>
+                {rebalances.map((r, i) => (
+                  <div key={r.id ?? i} className="dash-row" style={{
+                    padding: "16px 20px",
+                    borderTop: i > 0 ? `1px solid ${C.border}` : undefined,
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap" as const, gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.text3, letterSpacing: 0.5 }}>
+                          {relativeTime(r.executed_at).toUpperCase()}
+                        </span>
+                        <Tag color={r.reason === "EDGE_TRIGGER" ? C.yellow : r.reason === "OUT_OF_RANGE" ? C.red : C.purple}>
+                          {r.reason ?? "—"}
+                        </Tag>
+                      </div>
+                      <div style={{ display: "flex", gap: 12, fontFamily: "'Space Mono', monospace", fontSize: 12 }}>
+                        <span style={{ color: C.green, fontWeight: 700 }}>+${fmtNum(r.fees_collected_usd ?? 0, 4)} fees</span>
+                        <span style={{ color: C.text4 }}>−${fmtNum(r.gas_usd ?? 0, 4)} gas</span>
+                      </div>
+                    </div>
+                    {/* Range visual: from → to */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, fontFamily: "'Space Mono', monospace", fontSize: 11 }}>
+                      <span style={{ color: C.text4, minWidth: 56 }}>FROM</span>
+                      <span style={{ color: C.text2 }}>
+                        [{r.from_tick_lower}, {r.from_tick_upper}]
+                      </span>
+                      <span style={{ color: C.text4 }}>@ {fmtPrice(r.from_price)}</span>
+                      <span style={{ color: C.purple, fontSize: 14 }}>→</span>
+                      <span style={{ color: C.text }}>
+                        [{r.to_tick_lower}, {r.to_tick_upper}]
+                      </span>
+                      <span style={{ color: C.text4 }}>@ {fmtPrice(r.to_price)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PositionKV({ k, v, accent }: { k: string; v: string; accent: string }) {
+  return (
+    <div style={{ background: "rgba(5,7,15,0.55)", border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 14px" }}>
+      <div style={{ fontSize: 9, fontWeight: 800, color: C.text3, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 6 }}>
+        {k}
+      </div>
+      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 14, fontWeight: 700, color: accent }}>
+        {v}
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   LP LOGS — same terminal aesthetic, single process (no tabs)
+════════════════════════════════════════════════════════════════════════ */
+
+function LPLogs() {
+  const [data, setData]       = useState<LogData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setR]    = useState(false);
+  const [lines, setLines]     = useState(80);
+
+  async function fetchLogs(n = lines) {
+    setR(true);
+    try {
+      const res  = await fetch(`/api/lp-logs?lines=${n}`, { cache: "no-store" });
+      const json = await res.json();
+      setData(json);
+    } catch { setData({ error: "Unreachable" }); }
+    finally  { setLoading(false); setR(false); }
+  }
+
+  useEffect(() => {
+    fetchLogs(lines);
+    const t = setInterval(() => fetchLogs(lines), 15_000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lines]);
+
+  const logLines = (data?.lines ?? []).slice().reverse();
+
+  const lineColor = (line: string) => {
+    if (/error|exception|fail|critical/i.test(line))               return C.red;
+    if (/warn|out_of_range|edge_trigger/i.test(line))              return C.yellow;
+    if (/mint|deploy|opened|in_range=true/i.test(line))            return C.green;
+    if (/burn|rebalance|collect|in_range=false/i.test(line))       return C.cyan;
+    if (/skip|no /i.test(line))                                    return C.text4;
+    return C.text2;
+  };
+
+  return (
+    <section style={{ marginBottom: 56 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap" as const, gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <h2 style={{ margin: 0, fontFamily: "'Bungee', cursive", fontSize: 22, color: C.text, letterSpacing: 0.3 }}>
+            LP Bot Logs
+          </h2>
+          <Tag color={C.cyan}>Live Stream</Tag>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" as const }}>
+          <select
+            value={lines}
+            onChange={(e) => setLines(Number(e.target.value))}
+            style={{
+              background: C.surfaceUp, border: `1px solid ${C.border}`, borderRadius: 8,
+              color: C.text2, fontSize: 11, padding: "6px 10px", cursor: "pointer",
+              fontFamily: "'Space Mono', monospace",
+            }}
+          >
+            {[50, 100, 200, 500].map(n => <option key={n} value={n}>{n} lines</option>)}
+          </select>
+          <button
+            onClick={() => fetchLogs()}
+            className="dash-tab"
+            style={{
+              background: C.surfaceUp, border: `1px solid ${C.borderHi}`, borderRadius: 8,
+              color: C.text2, fontSize: 13, padding: "6px 10px", cursor: "pointer",
+              width: 32, height: 30, display: "inline-flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <span className={refreshing ? "dash-spin" : ""}>↻</span>
+          </button>
+        </div>
+      </div>
+
+      <div style={{ background: "#020409", border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden" as const }}>
+        <div style={{ padding: "10px 16px", background: C.surface, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#ef4444" }} />
+          <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#f59e0b" }} />
+          <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#10b981" }} />
+          <span style={{ marginLeft: 14, fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.text3 }}>
+            ~/lp-bot/logs/lp_bot.log
+          </span>
+        </div>
+        {loading && logLines.length === 0 ? (
+          <div style={{ padding: 40, color: C.text4, fontSize: 13, textAlign: "center" as const, fontFamily: "'Space Mono', monospace" }}>
+            <span className="dash-spin" style={{ display: "inline-block", marginRight: 8 }}>◌</span>
+            Loading logs…
+          </div>
+        ) : data?.error ? (
+          <div style={{ padding: 40, color: "#fca5a5", fontSize: 13 }}>⚠️ {data.error}</div>
+        ) : logLines.length === 0 ? (
+          <div style={{ padding: 40, color: C.text4, fontSize: 13, textAlign: "center" as const }}>No log output</div>
+        ) : (
+          <div className="dash-scroll" style={{ height: 380, overflowY: "auto", padding: "16px 18px", fontFamily: "'Space Mono', monospace", fontSize: 11, lineHeight: 1.8 }}>
+            {logLines.map((line, i) => (
+              <div key={i} style={{ color: lineColor(line), whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                <span style={{ color: C.text5, marginRight: 12, userSelect: "none" }}>
+                  {String(logLines.length - i).padStart(3, "0")}
+                </span>
+                {line}
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ padding: "10px 18px", borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: C.surface }}>
+          <span style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5 }}>
+            {logLines.length} LINES · AUTO-REFRESH 15s
+          </span>
+          {refreshing && (
+            <span style={{ fontSize: 10, color: C.text3, fontFamily: "'Space Mono', monospace", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span className="dash-spin">◌</span> Refreshing
+            </span>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
    BOT LOGS — terminal aesthetic
 ════════════════════════════════════════════════════════════════════════ */
 
@@ -1586,13 +2266,15 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
               Public Dashboard
             </h1>
             <p style={{ margin: 0, color: C.text3, fontSize: mobile ? 14 : 16, lineHeight: 1.6, maxWidth: 640 }}>
-              Real-time snapshot of the Web3 Guides trading bot — every position, every trade, every log line. Built in the open. Updated every 30 seconds.
+              Real-time snapshot of two automated bots — an auto-sniper trading domain launches and a concentrated-liquidity provider on Doma V3. Every position, every trade, every log line. Built in the open. Updated every 30 seconds.
             </p>
           </header>
 
           {/* ── Sections ───────────────────────────────────────────── */}
           <BotPanel />
           <BotLogs />
+          <LPPanel />
+          <LPLogs />
           <SupportCard mobile={mobile} />
           <SiteSnapshot guideCount={guideCount} emailCount={emailCount} mobile={mobile} />
 
