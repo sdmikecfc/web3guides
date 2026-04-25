@@ -3,9 +3,9 @@ import { NextResponse } from "next/server";
 export const dynamic   = "force-dynamic";
 export const revalidate = 0;
 
-// LP bot may live on the same droplet as the auto-sniper (same port, /api/lp/...)
-// or on a different port. Override LP_BOT_BASE in env to point elsewhere.
-const LP_BOT_BASE = process.env.LP_BOT_BASE ?? "http://143.110.183.157:5001";
+// LP bot lives on port 5002 (auto-sniper is on 5001). Override LP_BOT_BASE
+// in env to point elsewhere if you ever move it.
+const LP_BOT_BASE = process.env.LP_BOT_BASE ?? "http://143.110.183.157:5002";
 
 export async function GET() {
   // Allow re-using the auto-sniper's key if the LP endpoints sit on the same

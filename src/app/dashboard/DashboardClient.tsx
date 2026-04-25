@@ -1240,6 +1240,32 @@ function LPPanel() {
 
   const activePos = positions[0];
 
+  /* ── Equity curve from sparse LP data ─────────────────────────
+     Without periodic snapshots from the bot, we approximate:
+       start  = (first_deployed_at, totalValue − lifetimeFees)
+       step   = each rebalance bumps cumulative fees
+       end    = (now, totalValue)
+     Once the bot starts emitting per-tick snapshots this gets richer. */
+  const equityPoints = (() => {
+    if (!firstDeployed) return [];
+    const t0 = firstDeployed.getTime();
+    const tN = Date.now();
+    const initialValue = totalValue - fees;
+    const pts: { time: number; value: number }[] = [{ time: t0, value: initialValue }];
+
+    const sortedRebals = [...rebalances].sort((a, b) =>
+      new Date(a.executed_at ?? 0).getTime() - new Date(b.executed_at ?? 0).getTime()
+    );
+    let cum = 0;
+    for (const rb of sortedRebals) {
+      cum += rb.fees_collected_usd ?? 0;
+      const t = new Date(rb.executed_at ?? 0).getTime();
+      if (!Number.isNaN(t)) pts.push({ time: t, value: initialValue + cum });
+    }
+    pts.push({ time: tN, value: totalValue });
+    return pts;
+  })();
+
   return (
     <section style={{ marginBottom: 56 }}>
 
@@ -1398,6 +1424,35 @@ function LPPanel() {
               accent={C.purple}
             />
           </div>
+
+          {/* ── EQUITY CURVE ────────────────────────────────────── */}
+          {equityPoints.length >= 2 && (
+            <div className="dash-card" style={{
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              borderRadius: 16,
+              padding: mobile ? "20px 18px" : "24px 26px",
+              marginBottom: 18,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap" as const, gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ color: pnlColor, fontSize: 14 }}>◢</span>
+                  <span style={{
+                    fontSize: 12, fontWeight: 800, color: C.text2,
+                    letterSpacing: 0.6, textTransform: "uppercase" as const,
+                    fontFamily: "'Space Mono', monospace",
+                  }}>
+                    Equity Curve
+                  </span>
+                  <Tag color={pnlColor}>{fmtPct(pnlPct)} all-time</Tag>
+                </div>
+                <span style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5 }}>
+                  {rebalCount} REBALANCES · {timeDeployedStr.toUpperCase()} DEPLOYED
+                </span>
+              </div>
+              <EquityChart points={equityPoints} height={mobile ? 140 : 180} />
+            </div>
+          )}
 
           {/* ── ACTIVE POSITION CARD ────────────────────────────── */}
           {activePos && (
@@ -2271,10 +2326,21 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
           </header>
 
           {/* ── Sections ───────────────────────────────────────────── */}
+          {/* Bots first, side-by-side in spirit (stacked at this width) */}
           <BotPanel />
-          <BotLogs />
           <LPPanel />
-          <LPLogs />
+
+          {/* Logs side-by-side at desktop width — both streaming live */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: mobile ? "1fr" : "1fr 1fr",
+            gap: 18,
+            marginBottom: 56,
+          }}>
+            <div><BotLogs /></div>
+            <div><LPLogs /></div>
+          </div>
+
           <SupportCard mobile={mobile} />
           <SiteSnapshot guideCount={guideCount} emailCount={emailCount} mobile={mobile} />
 

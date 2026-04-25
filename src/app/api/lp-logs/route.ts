@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic   = "force-dynamic";
 export const revalidate = 0;
 
-const LP_BOT_BASE = process.env.LP_BOT_BASE ?? "http://143.110.183.157:5001";
+const LP_BOT_BASE = process.env.LP_BOT_BASE ?? "http://143.110.183.157:5002";
 
 // LP bot has a single process so no {process} path param — just /api/lp/logs?lines=N
 export async function GET(req: NextRequest) {
