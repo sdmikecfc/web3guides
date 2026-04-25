@@ -12,6 +12,10 @@ import { VALID_SUBDOMAINS } from "@/lib/subdomains";
 const INITIAL_BALANCE = 100;
 const DOMA_LINK       = "https://app.doma.xyz/domain/web3guides.com";
 
+// First trade — used to compute time-running and APY.
+// makemoneyhandoverfist.com $6.00 @ 0.00021503 was the bot's first launch.
+const FIRST_LAUNCH = new Date("2026-04-08T04:00:23.832Z");
+
 // Color tokens — refined palette
 const C = {
   bg:        "#05070f",
@@ -102,6 +106,22 @@ function fmtAge(seconds: number): string {
 
 function fmtPct(n: number, dec = 2): string {
   return `${n >= 0 ? "+" : ""}${n.toFixed(dec)}%`;
+}
+
+/** "2w 3d", "5d 12h", "23h 14m" — total elapsed since `since` */
+function fmtRunning(since: Date): string {
+  const ms     = Date.now() - since.getTime();
+  const totalM = Math.floor(ms / 60_000);
+  const days   = Math.floor(totalM / 1440);
+  const hours  = Math.floor((totalM % 1440) / 60);
+  const mins   = totalM % 60;
+  if (days >= 7) {
+    const weeks = Math.floor(days / 7);
+    const remDays = days - weeks * 7;
+    return `${weeks}w ${remDays}d`;
+  }
+  if (days >= 1) return `${days}d ${hours}h`;
+  return `${hours}h ${mins}m`;
 }
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -235,6 +255,94 @@ function Tag({ children, color = C.indigo }: { children: React.ReactNode; color?
   );
 }
 
+/* ── EquityChart — SVG area chart of cumulative portfolio value ── */
+type EqPt = { time: number; value: number };
+
+function EquityChart({ points, height = 180 }: { points: EqPt[]; height?: number }) {
+  if (points.length < 2) {
+    return (
+      <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", color: C.text4, fontSize: 12, fontFamily: "'Space Mono', monospace" }}>
+        Not enough trade data to plot yet
+      </div>
+    );
+  }
+
+  const W = 1000; // viewBox width — scales responsively via viewBox
+  const H = height;
+  const padX = 0;
+  const padY = 14;
+
+  const tMin = points[0].time;
+  const tMax = points[points.length - 1].time;
+  const vals = points.map(p => p.value);
+  const vMin = Math.min(...vals, INITIAL_BALANCE) - 1;
+  const vMax = Math.max(...vals, INITIAL_BALANCE) + 1;
+
+  const x = (t: number) => padX + ((t - tMin) / Math.max(1, tMax - tMin)) * (W - 2 * padX);
+  const y = (v: number) => H - padY - ((v - vMin) / Math.max(0.0001, vMax - vMin)) * (H - 2 * padY);
+
+  const linePath = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${x(p.time).toFixed(2)} ${y(p.value).toFixed(2)}`)
+    .join(" ");
+  const fillPath =
+    `${linePath} L ${x(tMax).toFixed(2)} ${(H - padY).toFixed(2)} L ${x(tMin).toFixed(2)} ${(H - padY).toFixed(2)} Z`;
+
+  const baselineY = y(INITIAL_BALANCE);
+  const last      = points[points.length - 1];
+  const isUp      = last.value >= INITIAL_BALANCE;
+  const lineColor = isUp ? C.green : C.red;
+  const fillColor = isUp ? "url(#eqGradGreen)" : "url(#eqGradRed)";
+
+  // Generate ~5 evenly spaced X labels
+  const labelCount = 5;
+  const labels: { x: number; label: string }[] = [];
+  for (let i = 0; i < labelCount; i++) {
+    const frac = i / (labelCount - 1);
+    const t = tMin + frac * (tMax - tMin);
+    labels.push({ x: x(t), label: new Date(t).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) });
+  }
+
+  return (
+    <div style={{ width: "100%" }}>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: "block", width: "100%", height: H }}>
+        <defs>
+          <linearGradient id="eqGradGreen" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={C.green} stopOpacity="0.32" />
+            <stop offset="100%" stopColor={C.green} stopOpacity="0"    />
+          </linearGradient>
+          <linearGradient id="eqGradRed" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={C.red}   stopOpacity="0.32" />
+            <stop offset="100%" stopColor={C.red}   stopOpacity="0"    />
+          </linearGradient>
+        </defs>
+
+        {/* Initial balance baseline */}
+        <line x1={0} y1={baselineY} x2={W} y2={baselineY}
+              stroke={C.text5} strokeWidth={1} strokeDasharray="4,5" />
+
+        {/* Filled area */}
+        <path d={fillPath} fill={fillColor} />
+
+        {/* Line */}
+        <path d={linePath} stroke={lineColor} strokeWidth={2.5}
+              fill="none" strokeLinejoin="round" strokeLinecap="round"
+              style={{ filter: `drop-shadow(0 0 8px ${lineColor}60)` }} />
+
+        {/* Last point dot */}
+        <circle cx={x(last.time)} cy={y(last.value)} r={4.5}
+                fill={lineColor} stroke="#0a0e1c" strokeWidth={2} />
+      </svg>
+
+      {/* X-axis labels (rendered as a flex row, scales with container) */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, padding: "0 2px", fontSize: 10, fontFamily: "'Space Mono', monospace", color: C.text4, letterSpacing: 0.5 }}>
+        {labels.map((l, i) => (
+          <span key={i}>{l.label}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* P&L bar — visual strength of profit/loss for a position
    pct can be -100 to +100, with magnitude representing intensity */
 function PnLBar({ pct }: { pct: number }) {
@@ -318,9 +426,39 @@ function BotPanel() {
   const balancePct  = totalValue > 0 ? (balance    / totalValue) * 100 : 0;
   const avgSize     = positions.length > 0 ? deployed / positions.length : 0;
 
+  /* ── Time running + annualised return ─────────────────────────── */
+  const daysRunning   = Math.max(1, (Date.now() - FIRST_LAUNCH.getTime()) / 86400_000);
+  const apyPct        = profitPct * (365 / daysRunning);
+  const dailyAvgPct   = profitPct / daysRunning;
+  const runningStr    = fmtRunning(FIRST_LAUNCH);
+
   const profitColor     = totalProfit >= 0 ? C.green : C.red;
   const unrealizedColor = unrealized   >= 0 ? C.green : C.red;
+  const apyColor        = apyPct       >= 0 ? C.green : C.red;
   const online          = !error && !loading && !!data;
+
+  /* ── Equity curve from realised trades ────────────────────────── */
+  const equityPoints = (() => {
+    const sorted = trades
+      .filter(t => (t.executed_at || t.timestamp))
+      .map(t => ({
+        time: new Date((t.executed_at as string) ?? (t.timestamp as string) ?? "").getTime(),
+        pnl:  (t.pnl as number) ?? 0,
+      }))
+      .filter(t => !Number.isNaN(t.time) && t.time > 0)
+      .sort((a, b) => a.time - b.time);
+
+    const pts: Array<{ time: number; value: number }> = [];
+    pts.push({ time: FIRST_LAUNCH.getTime(), value: INITIAL_BALANCE });
+
+    let cum = 0;
+    for (const t of sorted) {
+      cum += t.pnl;
+      pts.push({ time: t.time, value: INITIAL_BALANCE + cum });
+    }
+    pts.push({ time: Date.now(), value: totalValue });
+    return pts;
+  })();
 
   /* ── Group trades by day ────────────────────────────────────── */
   const tradesByDay = trades.slice(0, 24).reduce<Record<string, BotTrade[]>>((acc, t) => {
@@ -434,10 +572,12 @@ function BotPanel() {
                 </div>
               </div>
 
-              {/* Right-side mini stats */}
-              <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "1fr 1fr", gap: 16, minWidth: mobile ? "100%" : 240 }}>
-                <MiniStat label="Open Positions" value={String(positions.length)} accent={positions.length > 0 ? C.yellow : C.text4} />
-                <MiniStat label="Avg Position" value={`$${fmtNum(avgSize)}`} accent={C.purple} />
+              {/* Right-side mini stats — 2x2 grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, minWidth: mobile ? "100%" : 320 }}>
+                <MiniStat label="Open Positions" value={String(positions.length)}      accent={positions.length > 0 ? C.yellow : C.text4} />
+                <MiniStat label="Avg Position"   value={`$${fmtNum(avgSize)}`}         accent={C.purple} />
+                <MiniStat label="Time Running"   value={runningStr}                    accent={C.cyan}   sub={`since ${FIRST_LAUNCH.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`} />
+                <MiniStat label="APY"            value={fmtPct(apyPct, 1)}             accent={apyColor} sub={`${fmtPct(dailyAvgPct, 2)}/day avg`} />
               </div>
             </div>
 
@@ -498,67 +638,129 @@ function BotPanel() {
             />
           </div>
 
-          {/* ── POSITIONS + TRADES ──────────────────────────────────── */}
-          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1.35fr 1fr", gap: 18 }}>
-
-            {/* ── Positions ──────────────────────────────────────── */}
-            <div className="dash-card" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden" as const }}>
-              <PanelHead
-                title="Active Positions"
-                count={positions.length}
-                accent={C.purple}
-                icon="◈"
-              />
-              {positions.length === 0 ? (
-                <Empty text="No open positions" />
-              ) : (
-                <div>
-                  {positions.map((p, i) => {
-                    const entry  = p.entry_price as number ?? 0;
-                    const mark   = (p.mark_price as number) ?? (p.current_price as number) ?? entry;
-                    const pnl    = (p.unrealized_pnl as number) ?? (p.pnl as number) ?? 0;
-                    const spent  = (p.usdc_spent as number) ?? p.size ?? 0;
-                    const pnlPct = spent > 0 ? (pnl / spent) * 100 : 0;
-                    const isPos  = pnl >= 0;
-                    const color  = isPos ? C.green : C.red;
-                    return (
-                      <div key={i} className="dash-row" style={{
-                        padding: "14px 18px",
-                        borderTop: i > 0 ? `1px solid ${C.border}` : undefined,
-                      }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, marginBottom: 8 }}>
-                          <div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                              <span style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{p.symbol ?? "—"}</span>
-                              <SideBadge side="long" />
-                            </div>
-                            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: C.text3, letterSpacing: 0.3 }}>
-                              ENTRY {fmtPrice(entry)} → MARK {fmtPrice(mark)}
-                            </div>
-                          </div>
-                          <div style={{ textAlign: "right" as const }}>
-                            <div style={{ fontSize: 14, fontWeight: 800, color, lineHeight: 1.1 }}>
-                              {isPos ? "+" : "-"}${fmtNum(Math.abs(pnl))}
-                            </div>
-                            <div style={{ fontSize: 11, color, opacity: 0.75, fontFamily: "'Space Mono', monospace", marginTop: 2 }}>
-                              {fmtPct(pnlPct, 2)}
-                            </div>
-                          </div>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <span style={{ fontSize: 11, color: C.text4, fontFamily: "'Space Mono', monospace", minWidth: 56 }}>
-                            ${fmtNum(spent, 0)}
-                          </span>
-                          <div style={{ flex: 1 }}>
-                            <PnLBar pct={pnlPct} />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+          {/* ── EQUITY CURVE ────────────────────────────────────────── */}
+          <div className="dash-card" style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            padding: mobile ? "20px 18px" : "24px 26px",
+            marginBottom: 28,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap" as const, gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ color: profitColor, fontSize: 14 }}>◢</span>
+                <span style={{
+                  fontSize: 12, fontWeight: 800, color: C.text2,
+                  letterSpacing: 0.6, textTransform: "uppercase" as const,
+                  fontFamily: "'Space Mono', monospace",
+                }}>
+                  Equity Curve
+                </span>
+                <Tag color={profitColor}>{fmtPct(profitPct)} all-time</Tag>
+              </div>
+              <span style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5 }}>
+                {equityPoints.length - 2} TRADES · ${INITIAL_BALANCE} STARTING
+              </span>
             </div>
+            <EquityChart points={equityPoints} height={mobile ? 140 : 200} />
+          </div>
+
+          {/* ── POSITIONS — full-width tabular ──────────────────────── */}
+          <div className="dash-card" style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            overflow: "hidden" as const,
+            marginBottom: 18,
+          }}>
+            <PanelHead
+              title="Active Positions"
+              count={positions.length}
+              accent={C.purple}
+              icon="◈"
+            />
+            {positions.length === 0 ? (
+              <Empty text="No open positions" />
+            ) : (
+              <div className="dash-scroll" style={{ overflowX: "auto" as const }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" as const, minWidth: 720 }}>
+                  <thead>
+                    <tr style={{ background: "rgba(99,102,241,0.04)", borderBottom: `1px solid ${C.border}` }}>
+                      {["Symbol", "Side", "Cost", "Entry", "Mark", "Δ", "Unrealised P&L"].map((h, i) => (
+                        <th key={h} style={{
+                          padding: "11px 18px",
+                          fontSize: 10, fontWeight: 800, color: C.text3,
+                          textAlign: i >= 2 ? "right" as const : "left" as const,
+                          letterSpacing: 1, textTransform: "uppercase" as const,
+                          fontFamily: "'Space Mono', monospace",
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {positions.map((p, i) => {
+                      const entry  = p.entry_price as number ?? 0;
+                      const mark   = (p.mark_price as number) ?? (p.current_price as number) ?? entry;
+                      const pnl    = (p.unrealized_pnl as number) ?? (p.pnl as number) ?? 0;
+                      const spent  = (p.usdc_spent as number) ?? p.size ?? 0;
+                      const pnlPct = spent > 0 ? (pnl / spent) * 100 : 0;
+                      const isPos  = pnl >= 0;
+                      const color  = isPos ? C.green : C.red;
+
+                      return (
+                        <tr key={i} className="dash-row" style={{ borderTop: `1px solid ${C.border}` }}>
+                          {/* Symbol */}
+                          <td style={{ padding: "16px 18px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <span style={{
+                                width: 8, height: 8, borderRadius: "50%",
+                                background: color,
+                                boxShadow: `0 0 8px ${color}80`,
+                                flexShrink: 0,
+                              }} />
+                              <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>
+                                {p.symbol ?? "—"}
+                              </span>
+                            </div>
+                          </td>
+                          {/* Side */}
+                          <td style={{ padding: "16px 18px" }}>
+                            <SideBadge side="long" />
+                          </td>
+                          {/* Cost */}
+                          <td style={{ padding: "16px 18px", textAlign: "right" as const, fontFamily: "'Space Mono', monospace", fontSize: 13, color: C.text2 }}>
+                            ${fmtNum(spent)}
+                          </td>
+                          {/* Entry */}
+                          <td style={{ padding: "16px 18px", textAlign: "right" as const, fontFamily: "'Space Mono', monospace", fontSize: 12, color: C.text3 }}>
+                            {fmtPrice(entry)}
+                          </td>
+                          {/* Mark */}
+                          <td style={{ padding: "16px 18px", textAlign: "right" as const, fontFamily: "'Space Mono', monospace", fontSize: 13, color: C.text }}>
+                            {fmtPrice(mark)}
+                          </td>
+                          {/* Change */}
+                          <td style={{ padding: "16px 18px", textAlign: "right" as const, fontFamily: "'Space Mono', monospace", fontSize: 13, fontWeight: 700, color }}>
+                            <span style={{ marginRight: 4 }}>{isPos ? "▲" : "▼"}</span>
+                            {fmtPct(pnlPct, 2).replace("+", "").replace("-", "")}
+                          </td>
+                          {/* P&L */}
+                          <td style={{ padding: "16px 18px", textAlign: "right" as const }}>
+                            <span style={{ fontSize: 14, fontWeight: 800, color, fontFamily: "'Space Mono', monospace" }}>
+                              {isPos ? "+" : "-"}${fmtNum(Math.abs(pnl))}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* ── TRADES ──────────────────────────────────────────────── */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 18 }}>
 
             {/* ── Recent Trades ──────────────────────────────────── */}
             <div className="dash-card" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden" as const }}>
@@ -1056,7 +1258,7 @@ function DataCard({
   );
 }
 
-function MiniStat({ label, value, accent }: { label: string; value: string; accent: string }) {
+function MiniStat({ label, value, accent, sub }: { label: string; value: string; accent: string; sub?: string }) {
   return (
     <div style={{
       background: "rgba(5,7,15,0.55)",
@@ -1071,9 +1273,14 @@ function MiniStat({ label, value, accent }: { label: string; value: string; acce
       }}>
         {label}
       </div>
-      <div style={{ fontFamily: "'Bungee', cursive", fontSize: 20, color: accent, lineHeight: 1 }}>
+      <div style={{ fontFamily: "'Bungee', cursive", fontSize: 18, color: accent, lineHeight: 1 }}>
         {value}
       </div>
+      {sub && (
+        <div style={{ fontSize: 9.5, color: C.text4, marginTop: 4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.3 }}>
+          {sub}
+        </div>
+      )}
     </div>
   );
 }
@@ -1148,7 +1355,7 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
           WebkitBackdropFilter: "blur(16px)",
           borderBottom: `1px solid ${C.border}`,
         }}>
-          <div style={{ maxWidth: 1180, margin: "0 auto", padding: "0 24px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ maxWidth: 1440, margin: "0 auto", padding: "0 24px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <a href="/" style={{ display: "flex", alignItems: "center", gap: 14, textDecoration: "none" }}>
               <span style={{
                 fontFamily: "'Bungee', cursive", fontSize: 16,
@@ -1174,7 +1381,7 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
           </div>
         </div>
 
-        <main style={{ maxWidth: 1180, margin: "0 auto", padding: mobile ? "32px 18px 80px" : "48px 24px 100px" }}>
+        <main style={{ maxWidth: 1440, margin: "0 auto", padding: mobile ? "32px 18px 80px" : "48px 24px 100px" }}>
 
           {/* ── Page hero ──────────────────────────────────────────── */}
           <header style={{ marginBottom: 48 }}>
