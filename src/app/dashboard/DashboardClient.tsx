@@ -1216,8 +1216,12 @@ function LPPanel() {
   const idle         = state.idle_balance     ?? 0;
   const fees         = state.total_fees_earned ?? state.lifetime_fees ?? 0;
   const il           = state.total_il_usd     ?? 0;
-  const netPnl       = state.total_pnl_usd    ?? (fees + il);
-  const pnlPct       = (state.total_pnl_pct ?? 0) * 100;
+  // Net P&L = fees minus IL (matches the card label: "fees − IL − gas").
+  // We deliberately ignore state.total_pnl_usd because it computes against
+  // first_position.initial_value_usd, which excludes any idle wallet balance
+  // that was always there from initial swap residue.
+  const netPnl       = fees + il;
+  const pnlPct       = totalValue > 0 ? (netPnl / totalValue) * 100 : 0;
   const activeCount  = state.active_positions ?? positions.length;
   const rebalCount   = state.rebalance_count  ?? rebalances.length;
 
