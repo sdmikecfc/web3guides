@@ -16,6 +16,13 @@ const DOMA_LINK       = "https://app.doma.xyz/domain/web3guides.com";
 // makemoneyhandoverfist.com $6.00 @ 0.00021503 was the bot's first launch.
 const FIRST_LAUNCH = new Date("2026-04-08T04:00:23.832Z");
 
+// LP equity-chart baseline.
+// We anchor the LP chart to a fixed point in time + value so the chart
+// shows real progress over time instead of recomputing the start point
+// on every poll. Update these if you ever fully exit + redeploy.
+const LP_BASELINE_TIME  = new Date("2026-04-26T16:27:00Z");
+const LP_BASELINE_VALUE = 75.93;
+
 /* ── Closed-trade backfill ───────────────────────────────────────────────────
    The /api/bot endpoint only returns the most recent ~12 trades, so the
    equity curve was missing all earlier history. This is the full closed-trade
@@ -506,8 +513,42 @@ function EquityChart({
     labels.push({ x: x(t), label: new Date(t).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) });
   }
 
+  // Generate 5 evenly spaced Y ticks (top, bottom, and three between)
+  const yTickCount = 5;
+  const yTicks: { yPct: number; value: number }[] = [];
+  for (let i = 0; i < yTickCount; i++) {
+    const frac = i / (yTickCount - 1);
+    const v = vMax - frac * (vMax - vMin);
+    yTicks.push({ yPct: ((y(v)) / H) * 100, value: v });
+  }
+  // Smart y-label formatter (more precision for tight ranges)
+  const yFmt = (v: number) =>
+    span < 1     ? `$${v.toFixed(3)}` :
+    span < 10    ? `$${v.toFixed(2)}` :
+    span < 100   ? `$${v.toFixed(1)}` :
+                   `$${Math.round(v)}`;
+
   return (
-    <div style={{ width: "100%" }}>
+    <div style={{ width: "100%", position: "relative" as const, paddingLeft: 56 }}>
+      {/* Y-axis labels — HTML overlay so SVG aspect-ratio stretching doesn't squish them */}
+      <div style={{ position: "absolute" as const, left: 0, top: 0, width: 52, height: H, pointerEvents: "none" as const }}>
+        {yTicks.map((t, i) => (
+          <div key={i} style={{
+            position: "absolute" as const,
+            top: `${t.yPct}%`,
+            transform: "translateY(-50%)",
+            right: 6,
+            fontFamily: "'Space Mono', monospace",
+            fontSize: 9.5,
+            color: i === 0 || i === yTicks.length - 1 ? C.text3 : C.text4,
+            letterSpacing: 0.3,
+            whiteSpace: "nowrap" as const,
+          }}>
+            {yFmt(t.value)}
+          </div>
+        ))}
+      </div>
+
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: "block", width: "100%", height: H }}>
         <defs>
           <linearGradient id="eqGradGreen" x1="0" y1="0" x2="0" y2="1">
@@ -519,6 +560,20 @@ function EquityChart({
             <stop offset="100%" stopColor={C.red}   stopOpacity="0"    />
           </linearGradient>
         </defs>
+
+        {/* Y-axis horizontal grid lines */}
+        {yTicks.map((t, i) => (
+          <line
+            key={i}
+            x1={0}
+            y1={(t.yPct / 100) * H}
+            x2={W}
+            y2={(t.yPct / 100) * H}
+            stroke={C.text5}
+            strokeWidth={0.5}
+            strokeOpacity={0.55}
+          />
+        ))}
 
         {/* Initial balance baseline */}
         <line x1={0} y1={baselineY} x2={W} y2={baselineY}
@@ -1265,21 +1320,26 @@ function LPPanel() {
        step   = each rebalance bumps cumulative fees
        end    = (now, totalValue)
      Once the bot starts emitting per-tick snapshots this gets richer. */
-  const lpInitialValue = totalValue - fees;
+  // Equity chart uses a fixed baseline snapshot (LP_BASELINE_TIME / VALUE)
+  // so it shows real progression instead of recomputing start-point on every poll.
+  const lpInitialValue = LP_BASELINE_VALUE;
   const equityPoints = (() => {
-    if (!firstDeployed) return [];
-    const t0 = firstDeployed.getTime();
+    const t0 = LP_BASELINE_TIME.getTime();
     const tN = Date.now();
+    if (tN <= t0) return [];
+
     const pts: { time: number; value: number }[] = [{ time: t0, value: lpInitialValue }];
 
-    const sortedRebals = [...rebalances].sort((a, b) =>
-      new Date(a.executed_at ?? 0).getTime() - new Date(b.executed_at ?? 0).getTime()
-    );
+    // Insert any rebalance events that happened after the baseline as step-up points.
+    const sortedRebals = [...rebalances]
+      .map(r => ({ ...r, _t: new Date(r.executed_at ?? 0).getTime() }))
+      .filter(r => !Number.isNaN(r._t) && r._t > t0)
+      .sort((a, b) => a._t - b._t);
+
     let cum = 0;
     for (const rb of sortedRebals) {
       cum += rb.fees_collected_usd ?? 0;
-      const t = new Date(rb.executed_at ?? 0).getTime();
-      if (!Number.isNaN(t)) pts.push({ time: t, value: lpInitialValue + cum });
+      pts.push({ time: rb._t, value: lpInitialValue + cum });
     }
     pts.push({ time: tN, value: totalValue });
     return pts;
@@ -1466,7 +1526,7 @@ function LPPanel() {
                   <Tag color={pnlColor}>{fmtPct(pnlPct)} all-time</Tag>
                 </div>
                 <span style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5 }}>
-                  {rebalCount} REBALANCES · {timeDeployedStr.toUpperCase()} DEPLOYED
+                  {rebalCount} REBALANCES · SINCE {LP_BASELINE_TIME.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }).toUpperCase()}
                 </span>
               </div>
               <EquityChart points={equityPoints} height={mobile ? 140 : 180} baseline={lpInitialValue} />
