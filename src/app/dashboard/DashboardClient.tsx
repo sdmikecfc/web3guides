@@ -447,7 +447,17 @@ function Tag({ children, color = C.indigo }: { children: React.ReactNode; color?
 /* ── EquityChart — SVG area chart of cumulative portfolio value ── */
 type EqPt = { time: number; value: number };
 
-function EquityChart({ points, height = 180 }: { points: EqPt[]; height?: number }) {
+function EquityChart({
+  points,
+  height = 180,
+  baseline,
+}: {
+  points: EqPt[];
+  height?: number;
+  /** Reference value for the dashed baseline + up/down color decision.
+   *  Defaults to the auto-sniper's INITIAL_BALANCE if unset. */
+  baseline?: number;
+}) {
   if (points.length < 2) {
     return (
       <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", color: C.text4, fontSize: 12, fontFamily: "'Space Mono', monospace" }}>
@@ -461,11 +471,16 @@ function EquityChart({ points, height = 180 }: { points: EqPt[]; height?: number
   const padX = 0;
   const padY = 14;
 
+  const ref  = baseline ?? INITIAL_BALANCE;
   const tMin = points[0].time;
   const tMax = points[points.length - 1].time;
   const vals = points.map(p => p.value);
-  const vMin = Math.min(...vals, INITIAL_BALANCE) - 1;
-  const vMax = Math.max(...vals, INITIAL_BALANCE) + 1;
+  // Add a tiny pad to vMin/vMax so the line isn't pinned to the top or bottom edge
+  const rawMin = Math.min(...vals, ref);
+  const rawMax = Math.max(...vals, ref);
+  const span   = Math.max(0.01, rawMax - rawMin);
+  const vMin   = rawMin - span * 0.15;
+  const vMax   = rawMax + span * 0.15;
 
   const x = (t: number) => padX + ((t - tMin) / Math.max(1, tMax - tMin)) * (W - 2 * padX);
   const y = (v: number) => H - padY - ((v - vMin) / Math.max(0.0001, vMax - vMin)) * (H - 2 * padY);
@@ -476,9 +491,9 @@ function EquityChart({ points, height = 180 }: { points: EqPt[]; height?: number
   const fillPath =
     `${linePath} L ${x(tMax).toFixed(2)} ${(H - padY).toFixed(2)} L ${x(tMin).toFixed(2)} ${(H - padY).toFixed(2)} Z`;
 
-  const baselineY = y(INITIAL_BALANCE);
+  const baselineY = y(ref);
   const last      = points[points.length - 1];
-  const isUp      = last.value >= INITIAL_BALANCE;
+  const isUp      = last.value >= ref;
   const lineColor = isUp ? C.green : C.red;
   const fillColor = isUp ? "url(#eqGradGreen)" : "url(#eqGradRed)";
 
@@ -1250,12 +1265,12 @@ function LPPanel() {
        step   = each rebalance bumps cumulative fees
        end    = (now, totalValue)
      Once the bot starts emitting per-tick snapshots this gets richer. */
+  const lpInitialValue = totalValue - fees;
   const equityPoints = (() => {
     if (!firstDeployed) return [];
     const t0 = firstDeployed.getTime();
     const tN = Date.now();
-    const initialValue = totalValue - fees;
-    const pts: { time: number; value: number }[] = [{ time: t0, value: initialValue }];
+    const pts: { time: number; value: number }[] = [{ time: t0, value: lpInitialValue }];
 
     const sortedRebals = [...rebalances].sort((a, b) =>
       new Date(a.executed_at ?? 0).getTime() - new Date(b.executed_at ?? 0).getTime()
@@ -1264,7 +1279,7 @@ function LPPanel() {
     for (const rb of sortedRebals) {
       cum += rb.fees_collected_usd ?? 0;
       const t = new Date(rb.executed_at ?? 0).getTime();
-      if (!Number.isNaN(t)) pts.push({ time: t, value: initialValue + cum });
+      if (!Number.isNaN(t)) pts.push({ time: t, value: lpInitialValue + cum });
     }
     pts.push({ time: tN, value: totalValue });
     return pts;
@@ -1454,7 +1469,7 @@ function LPPanel() {
                   {rebalCount} REBALANCES · {timeDeployedStr.toUpperCase()} DEPLOYED
                 </span>
               </div>
-              <EquityChart points={equityPoints} height={mobile ? 140 : 180} />
+              <EquityChart points={equityPoints} height={mobile ? 140 : 180} baseline={lpInitialValue} />
             </div>
           )}
 
