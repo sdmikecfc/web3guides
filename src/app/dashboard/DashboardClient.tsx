@@ -193,19 +193,21 @@ interface BotSummary  { state?: BotState; positions?: BotPosition[]; trades?: Bo
 
 /* ── LP bot types — schema from LP_BOT_DASHBOARD_CONTEXT.md ──────────────── */
 interface LPState {
-  total_value?:        number;
-  deployed_in_lp?:     number;
-  idle_balance?:       number;
-  total_fees_earned?:  number;
-  total_il_usd?:       number;
-  total_pnl_usd?:      number;
-  total_pnl_pct?:      number;
-  active_positions?:   number;
-  rebalance_count?:    number;
-  lifetime_fees?:      number;
-  wallet_address?:     string;
-  first_deployed_at?:  string;
-  updated_at?:         string;
+  total_value?:               number;
+  deployed_in_lp?:            number;
+  idle_balance?:              number;
+  total_fees_earned?:         number;
+  total_il_usd?:              number;
+  total_pnl_usd?:             number;
+  total_pnl_pct?:             number;
+  active_positions?:          number;
+  rebalance_count?:           number;
+  lifetime_fees?:             number;
+  total_swap_fees_paid_usd?:  number;
+  swap_count?:                number;
+  wallet_address?:            string;
+  first_deployed_at?:         string;
+  updated_at?:                string;
   [k: string]: unknown;
 }
 interface LPPosition {
@@ -1304,11 +1306,12 @@ function LPPanel() {
   const idle         = state.idle_balance     ?? 0;
   const fees         = state.total_fees_earned ?? state.lifetime_fees ?? 0;
   const il           = state.total_il_usd     ?? 0;
-  // Net P&L = fees minus IL (matches the card label: "fees − IL − gas").
-  // We deliberately ignore state.total_pnl_usd because it computes against
-  // first_position.initial_value_usd, which excludes any idle wallet balance
-  // that was always there from initial swap residue.
-  const netPnl       = fees + il;
+  const swapFees     = state.total_swap_fees_paid_usd ?? 0;
+  const swapCount    = state.swap_count ?? 0;
+  // Net P&L = fees + IL − swap costs (matches card label: "fees − IL − swap").
+  // IL is already negative when LP underperforms HODL, so we add it.
+  // swapFees is positive (a cost), so we subtract.
+  const netPnl       = fees + il - swapFees;
   const pnlPct       = totalValue > 0 ? (netPnl / totalValue) * 100 : 0;
   const activeCount  = state.active_positions ?? positions.length;
   const rebalCount   = state.rebalance_count  ?? rebalances.length;
@@ -1515,17 +1518,18 @@ function LPPanel() {
               direction={il >= 0 ? "up" : "down"}
             />
             <DataCard
-              label="Net P&L"
-              value={`${netPnl >= 0 ? "+" : "-"}$${fmtNum(Math.abs(netPnl), 4)}`}
-              sub="fees − IL − gas"
-              accent={pnlColor}
-              direction={netPnl >= 0 ? "up" : "down"}
+              label="Swap Fees Paid"
+              value={`-$${fmtNum(swapFees, 4)}`}
+              sub={`${swapCount} swap${swapCount === 1 ? "" : "s"} · slippage + pool fee`}
+              accent={swapFees > 0 ? C.red : C.text4}
+              direction={swapFees > 0 ? "down" : undefined}
             />
             <DataCard
-              label="Rebalances"
-              value={String(rebalCount)}
-              sub={rebalCount === 0 ? "still in original range" : "auto-triggered"}
-              accent={C.purple}
+              label="Net P&L"
+              value={`${netPnl >= 0 ? "+" : "-"}$${fmtNum(Math.abs(netPnl), 4)}`}
+              sub="fees − IL − swap costs"
+              accent={pnlColor}
+              direction={netPnl >= 0 ? "up" : "down"}
             />
           </div>
 
