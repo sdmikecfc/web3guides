@@ -20,7 +20,8 @@ const FIRST_LAUNCH = new Date("2026-04-08T04:00:23.832Z");
 // We anchor the LP chart to a fixed point in time + value so the chart
 // shows real progress over time instead of recomputing the start point
 // on every poll. Update these if you ever fully exit + redeploy.
-const LP_BASELINE_TIME  = new Date("2026-04-26T16:27:00Z");
+//   ⚠ TIME IS UTC. Don't paste your local-time clock here.
+const LP_BASELINE_TIME  = new Date("2026-04-26T09:27:00Z");  // 26 Apr 16:27 UTC+7
 const LP_BASELINE_VALUE = 75.93;
 
 /* ── Closed-trade backfill ───────────────────────────────────────────────────
@@ -1324,9 +1325,10 @@ function LPPanel() {
   // so it shows real progression instead of recomputing start-point on every poll.
   const lpInitialValue = LP_BASELINE_VALUE;
   const equityPoints = (() => {
-    const t0 = LP_BASELINE_TIME.getTime();
     const tN = Date.now();
-    if (tN <= t0) return [];
+    // Safety: if someone sets LP_BASELINE_TIME in the future (e.g. confused
+    // local-time vs UTC) clamp it to 1 hour ago so the chart still renders.
+    const t0 = Math.min(LP_BASELINE_TIME.getTime(), tN - 3600_000);
 
     const pts: { time: number; value: number }[] = [{ time: t0, value: lpInitialValue }];
 
