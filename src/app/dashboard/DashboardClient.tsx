@@ -17,12 +17,14 @@ const DOMA_LINK       = "https://app.doma.xyz/domain/web3guides.com";
 const FIRST_LAUNCH = new Date("2026-04-08T04:00:23.832Z");
 
 // LP equity-chart baseline.
-// We anchor the LP chart to a fixed point in time + value so the chart
-// shows real progress over time instead of recomputing the start point
-// on every poll. Update these if you ever fully exit + redeploy.
+// We anchor the LP chart to a fixed point in time + value so the chart,
+// "Time Deployed" stat, and "Fee APR" all show real progress since the
+// reset moment instead of recomputing on every poll. Update all three
+// together if you ever fully exit + redeploy.
 //   ⚠ TIME IS UTC. Don't paste your local-time clock here.
 const LP_BASELINE_TIME  = new Date("2026-04-26T09:27:00Z");  // 26 Apr 16:27 UTC+7
 const LP_BASELINE_VALUE = 75.93;
+const LP_BASELINE_FEES  = 0.37;   // lifetime_fees at baseline moment
 
 /* ── Closed-trade backfill ───────────────────────────────────────────────────
    The /api/bot endpoint only returns the most recent ~12 trades, so the
@@ -505,13 +507,28 @@ function EquityChart({
   const lineColor = isUp ? C.green : C.red;
   const fillColor = isUp ? "url(#eqGradGreen)" : "url(#eqGradRed)";
 
-  // Generate ~5 evenly spaced X labels
+  // Generate ~5 evenly spaced X labels — adaptive format based on time span:
+  //   < 24h        → "HH:MM" (e.g. "09:27")
+  //   24h–7d       → "DD MMM HH:MM" (e.g. "26 Apr 09:27")
+  //   > 7d         → "DD MMM" (e.g. "26 Apr")
+  const totalSpanMs = tMax - tMin;
+  const fmtAxis = (t: number): string => {
+    const d = new Date(t);
+    if (totalSpanMs < 86400_000) {
+      return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    } else if (totalSpanMs < 7 * 86400_000) {
+      const date = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+      const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+      return `${date} ${time}`;
+    }
+    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  };
   const labelCount = 5;
   const labels: { x: number; label: string }[] = [];
   for (let i = 0; i < labelCount; i++) {
     const frac = i / (labelCount - 1);
     const t = tMin + frac * (tMax - tMin);
-    labels.push({ x: x(t), label: new Date(t).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) });
+    labels.push({ x: x(t), label: fmtAxis(t) });
   }
 
   // Generate 5 evenly spaced Y ticks (top, bottom, and three between)
@@ -1303,15 +1320,21 @@ function LPPanel() {
   const ilColor   = il     >= 0 ? C.green : C.red;
   const online    = !error && !loading && !!data;
 
-  // APR / time deployed
-  const firstDeployed = state.first_deployed_at ? new Date(state.first_deployed_at) : null;
-  const daysDeployed  = firstDeployed
-    ? Math.max(1, (Date.now() - firstDeployed.getTime()) / 86400_000)
+  // APR / time deployed — anchored to LP_BASELINE_TIME so the dashboard tells
+  // a consistent post-reset story. Only fees earned since baseline are
+  // counted in the APR projection.
+  const daysSinceBaseline = Math.max(
+    1,                                                // floor at 1 day for sane APR projection
+    (Date.now() - LP_BASELINE_TIME.getTime()) / 86400_000
+  );
+  const feesSinceBaseline = Math.max(0, fees - LP_BASELINE_FEES);
+  const apyPct = totalValue > 0
+    ? (feesSinceBaseline / daysSinceBaseline) * 365 / totalValue * 100
     : 0;
-  const apyPct = daysDeployed > 0 && totalValue > 0
-    ? (fees / daysDeployed) * 365 / totalValue * 100
+  const dailyAvgPct = totalValue > 0
+    ? (feesSinceBaseline / totalValue / daysSinceBaseline) * 100
     : 0;
-  const timeDeployedStr = firstDeployed ? fmtRunning(firstDeployed) : "—";
+  const timeDeployedStr = fmtRunning(LP_BASELINE_TIME);
 
   const activePos = positions[0];
 
@@ -1452,9 +1475,9 @@ function LPPanel() {
                 <MiniStat label="Active Positions" value={String(activeCount)} accent={activeCount > 0 ? C.purple : C.text4} />
                 <MiniStat label="Lifetime Fees"    value={`$${fmtNum(fees, 4)}`} accent={C.green} sub={`across ${rebalCount} rebal${rebalCount === 1 ? "" : "s"}`} />
                 <MiniStat label="Time Deployed"    value={timeDeployedStr} accent={C.cyan}
-                  sub={firstDeployed ? `since ${firstDeployed.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}` : undefined} />
+                  sub={`since ${LP_BASELINE_TIME.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`} />
                 <MiniStat label="Fee APR"          value={fmtPct(apyPct, 1)} accent={apyPct >= 0 ? C.green : C.red}
-                  sub={daysDeployed > 0 ? `over ${daysDeployed.toFixed(1)} days` : undefined} />
+                  sub={`over ${daysSinceBaseline.toFixed(1)} days`} />
               </div>
             </div>
 
