@@ -26,6 +26,11 @@ const LP_BASELINE_TIME  = new Date("2026-04-26T09:27:00Z");  // 26 Apr 16:27 UTC
 const LP_BASELINE_VALUE = 75.93;
 const LP_BASELINE_FEES  = 0.37;   // lifetime_fees at baseline moment
 
+// LP capital basis — total USD ever deposited into the bot wallet.
+// Used as the accounting basis for true Net P&L and IL.
+// Update if you ever add or withdraw funds from the LP bot wallet.
+const LP_TOTAL_DEPOSITED = 75.00;
+
 /* ── Closed-trade backfill ───────────────────────────────────────────────────
    The /api/bot endpoint only returns the most recent ~12 trades, so the
    equity curve was missing all earlier history. This is the full closed-trade
@@ -1305,14 +1310,21 @@ function LPPanel() {
   const deployed     = state.deployed_in_lp   ?? 0;
   const idle         = state.idle_balance     ?? 0;
   const fees         = state.total_fees_earned ?? state.lifetime_fees ?? 0;
-  const il           = state.total_il_usd     ?? 0;
   const swapFees     = state.total_swap_fees_paid_usd ?? 0;
   const swapCount    = state.swap_count ?? 0;
-  // Net P&L = fees + IL − swap costs (matches card label: "fees − IL − swap").
-  // IL is already negative when LP underperforms HODL, so we add it.
-  // swapFees is positive (a cost), so we subtract.
-  const netPnl       = fees + il - swapFees;
-  const pnlPct       = totalValue > 0 ? (netPnl / totalValue) * 100 : 0;
+  // Compute Net P&L from what's verifiable on-chain: current total value
+  // minus the actual capital deposited. Then back-derive IL as the residual
+  // that explains the rest. The API's total_il_usd is broken by
+  // increaseLiquidity compounds (it counts compounded fees as outperformance)
+  // so we ignore it and recompute here.
+  const netPnl       = totalValue - LP_TOTAL_DEPOSITED;
+  // IL (price effect on LP composition) = Net P&L − fees + swap costs
+  //   - if LP outperformed HODL: IL is positive
+  //   - if LP underperformed HODL: IL is negative
+  const il           = netPnl - fees + swapFees;
+  const pnlPct       = LP_TOTAL_DEPOSITED > 0
+    ? (netPnl / LP_TOTAL_DEPOSITED) * 100
+    : 0;
   const activeCount  = state.active_positions ?? positions.length;
   const rebalCount   = state.rebalance_count  ?? rebalances.length;
 
@@ -1325,9 +1337,10 @@ function LPPanel() {
 
   // APR / time deployed — anchored to LP_BASELINE_TIME so the dashboard tells
   // a consistent post-reset story. Only fees earned since baseline are
-  // counted in the APR projection.
+  // counted in the APR projection. We floor at 1 hour to avoid divide-by-zero
+  // and absurd numbers right after a reset, but otherwise use real elapsed time.
   const daysSinceBaseline = Math.max(
-    1,                                                // floor at 1 day for sane APR projection
+    1 / 24,
     (Date.now() - LP_BASELINE_TIME.getTime()) / 86400_000
   );
   const feesSinceBaseline = Math.max(0, fees - LP_BASELINE_FEES);
@@ -1511,9 +1524,9 @@ function LPPanel() {
               direction="up"
             />
             <DataCard
-              label="Impermanent Loss"
+              label="Price Effect / IL"
               value={`${il >= 0 ? "+" : "-"}$${fmtNum(Math.abs(il), 4)}`}
-              sub="vs HODL benchmark"
+              sub="vs HODL — net of fees & swaps"
               accent={ilColor}
               direction={il >= 0 ? "up" : "down"}
             />
