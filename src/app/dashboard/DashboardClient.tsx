@@ -1382,12 +1382,13 @@ function LPPanel() {
     1 / 24,
     (Date.now() - LP_BASELINE_TIME.getTime()) / 86400_000
   );
-  const feesSinceBaseline = Math.max(0, fees - LP_BASELINE_FEES);
+  // `fees` is already current-phase (LP_BASELINE_FEES already subtracted),
+  // so don't subtract it again.
   const apyPct = totalValue > 0
-    ? (feesSinceBaseline / daysSinceBaseline) * 365 / totalValue * 100
+    ? (fees / daysSinceBaseline) * 365 / totalValue * 100
     : 0;
   const dailyAvgPct = totalValue > 0
-    ? (feesSinceBaseline / totalValue / daysSinceBaseline) * 100
+    ? (fees / totalValue / daysSinceBaseline) * 100
     : 0;
   const timeDeployedStr = fmtRunning(LP_BASELINE_TIME);
 
