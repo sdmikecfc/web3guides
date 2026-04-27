@@ -1359,19 +1359,29 @@ function LPPanel() {
   // minus the value at phase start. Independent of any bot-side bookkeeping.
   const netPnl = totalValue - LP_BASELINE_VALUE;
 
-  // Fees: take the larger of (a) what the bot's API reports, or (b) what
-  // value growth implies. For tight-range stable LPs (USDC.e / SOFTWARE.ai
-  // at ±0.5%), IL is near zero, so all positive value growth must be fees.
-  // The API can undercount when historical rebalances dropped fee data, but
-  // it can never overcount. The MAX is the floor of what was actually earned.
+  // Fees: derived from value change rather than the bot's API count.
+  // The bot's `lifetime_fees` field has been observed producing absurd
+  // values (e.g. $710 phantom fees on a $208 position) — likely a V3
+  // feeGrowthInside math edge case after rebalance. We can't trust it.
+  //
+  // For a tight-range stable-pair LP (USDC.e / SOFTWARE.ai at ±0.5%),
+  // IL is near zero, so:
+  //     fees ≈ value_change + swap_costs   (assuming IL ≈ 0)
+  //
+  // This is the on-chain-verifiable answer. The bot's count is shown as a
+  // sub-label for transparency but never drives the displayed value.
   const trackedFees = Math.max(0, lifetimeFees - LP_BASELINE_FEES);
-  const impliedFees = Math.max(0, netPnl + swapFees);
-  const fees        = Math.max(trackedFees, impliedFees);
-  const feesAreImplied = impliedFees > trackedFees;
+  const fees        = Math.max(0, netPnl + swapFees);
 
-  // IL = whatever's left over after fees and swaps explain the gain.
-  // When fees == impliedFees, IL collapses to ~0 (the assumption that
-  // produced the implied value).
+  // Sanity flag: only show the "bot tracks $X" sub-label when the bot's
+  // count is in a sane range relative to value change. If the bot is
+  // reporting absurd values, hide that sub entirely so users don't see
+  // a $710 figure quoted alongside the $4.80 truth.
+  const trackedFeesSane = trackedFees < fees * 5 + 5;
+
+  // IL = residual after fees + swaps explain the gain. With this fee
+  // formulation, IL collapses to ~0 by construction. That's honest for
+  // tight stable LPs and removes the "phantom positive IL" we were seeing.
   const il     = netPnl - fees + swapFees;
   const pnlPct = LP_BASELINE_VALUE > 0 ? (netPnl / LP_BASELINE_VALUE) * 100 : 0;
   const activeCount  = state.active_positions ?? positions.length;
@@ -1569,9 +1579,9 @@ function LPPanel() {
             <DataCard
               label="Fees Earned"
               value={`+$${fmtNum(fees, 4)}`}
-              sub={feesAreImplied
+              sub={trackedFeesSane
                 ? `this phase · derived from value (bot tracks $${fmtNum(trackedFees, 2)})`
-                : `this phase · collected + uncollected`}
+                : `this phase · derived from value`}
               accent={C.green}
               direction="up"
             />
