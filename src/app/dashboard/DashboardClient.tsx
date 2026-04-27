@@ -251,8 +251,10 @@ interface LPRebalance {
   to_tick_upper?:       number;
   from_price?:          number;
   to_price?:            number;
-  fees_collected_usd?:  number;
-  gas_usd?:             number;
+  swap_cost_usd?:       number;     // what the bot paid as a swapper (slippage + 0.05% pool fee)
+  swap_count?:          number;
+  fees_collected_usd?:  number;     // LP fees claimed on this position (usually 0 during rebal)
+  gas_usd?:             number;     // tx gas (not yet tracked)
   [k: string]: unknown;
 }
 interface LPConfig {
@@ -1701,8 +1703,14 @@ function LPPanel() {
                         </Tag>
                       </div>
                       <div style={{ display: "flex", gap: 12, fontFamily: "'Space Mono', monospace", fontSize: 12 }}>
-                        <span style={{ color: C.green, fontWeight: 700 }}>+${fmtNum(r.fees_collected_usd ?? 0, 4)} fees</span>
-                        <span style={{ color: C.text4 }}>−${fmtNum(r.gas_usd ?? 0, 4)} gas</span>
+                        <span style={{ color: C.red, fontWeight: 700 }}>
+                          −${fmtNum(r.swap_cost_usd ?? 0, 4)} swap
+                        </span>
+                        {(r.fees_collected_usd ?? 0) > 0 && (
+                          <span style={{ color: C.green, fontWeight: 700 }}>
+                            +${fmtNum(r.fees_collected_usd ?? 0, 4)} fees
+                          </span>
+                        )}
                       </div>
                     </div>
                     {/* Range visual: from → to */}
