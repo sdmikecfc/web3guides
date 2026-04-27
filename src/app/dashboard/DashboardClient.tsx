@@ -1744,12 +1744,20 @@ function LPPanel() {
                         </Tag>
                       </div>
                       <div style={{ display: "flex", gap: 12, fontFamily: "'Space Mono', monospace", fontSize: 12 }}>
-                        <span style={{ color: C.red, fontWeight: 700 }}>
-                          −${fmtNum(r.swap_cost_usd ?? 0, 4)} swap
-                        </span>
+                        {/* Swap cost badge — only show if a swap actually happened */}
+                        {(r.swap_cost_usd ?? 0) > 0 ? (
+                          <span style={{ color: C.red, fontWeight: 700 }} title="Slippage + 0.05% pool fee paid as a swapper to rebalance the wallet">
+                            −${fmtNum(r.swap_cost_usd, 4)} swap
+                          </span>
+                        ) : (
+                          <span style={{ color: C.text4, fontWeight: 600 }} title="Wallet was already within $0.50 of optimal ratio — no swap needed">
+                            no swap
+                          </span>
+                        )}
+                        {/* Fees badge — total LP fees harvested over the closed position's lifetime */}
                         {(r.fees_collected_usd ?? 0) > 0 && (
-                          <span style={{ color: C.green, fontWeight: 700 }}>
-                            +${fmtNum(r.fees_collected_usd ?? 0, 4)} fees
+                          <span style={{ color: C.green, fontWeight: 700 }} title="Total LP fees compounded into this position over its life (sum of compound events)">
+                            +${fmtNum(r.fees_collected_usd ?? 0, 4)} compounded
                           </span>
                         )}
                       </div>
