@@ -22,9 +22,10 @@ const FIRST_LAUNCH = new Date("2026-04-08T04:00:23.832Z");
 // reset moment instead of recomputing on every poll. Update all three
 // together if you ever fully exit + redeploy.
 //   ⚠ TIME IS UTC. Don't paste your local-time clock here.
-const LP_BASELINE_TIME  = new Date("2026-04-27T07:54:50Z");  // Phase 2 start — moment of $125 deposit
-const LP_BASELINE_VALUE = 203.54;   // 78.54 (Phase 1 ending) + 125 (added)
-const LP_BASELINE_FEES  = 1.8996;   // lifetime_fees carried forward from Phase 1
+const LP_BASELINE_TIME       = new Date("2026-04-27T07:54:50Z");  // Phase 2 start — moment of $125 deposit
+const LP_BASELINE_VALUE      = 203.54;   // 78.54 (Phase 1 ending) + 125 (added)
+const LP_BASELINE_FEES       = 1.8996;   // lifetime_fees carried forward from Phase 1
+const LP_BASELINE_SWAP_COSTS = 0.2525;   // total_swap_fees_paid_usd carried forward from Phase 1
 
 // LP capital basis — total USD ever deposited into the bot wallet.
 // Used as the accounting basis for true Net P&L and IL.
@@ -1346,22 +1347,23 @@ function LPPanel() {
   const totalValue   = state.total_value      ?? 0;
   const deployed     = state.deployed_in_lp   ?? 0;
   const idle         = state.idle_balance     ?? 0;
-  const fees         = state.total_fees_earned ?? state.lifetime_fees ?? 0;
-  const swapFees     = state.total_swap_fees_paid_usd ?? 0;
-  const swapCount    = state.swap_count ?? 0;
-  // Compute Net P&L from what's verifiable on-chain: current total value
-  // minus the actual capital deposited. Then back-derive IL as the residual
-  // that explains the rest. The API's total_il_usd is broken by
-  // increaseLiquidity compounds (it counts compounded fees as outperformance)
-  // so we ignore it and recompute here.
-  const netPnl       = totalValue - LP_TOTAL_DEPOSITED;
+  // Lifetime values from API
+  const lifetimeFees     = state.total_fees_earned ?? state.lifetime_fees ?? 0;
+  const lifetimeSwapFees = state.total_swap_fees_paid_usd ?? 0;
+  const swapCount        = state.swap_count ?? 0;
+
+  // Current-phase metrics — subtract baseline carry-forward so the live cards
+  // show only what's been earned/spent since the most recent capital change.
+  // Phase 1 (and earlier) results live in the Phase History panel.
+  const fees     = Math.max(0, lifetimeFees     - LP_BASELINE_FEES);
+  const swapFees = Math.max(0, lifetimeSwapFees - LP_BASELINE_SWAP_COSTS);
+  // Net P&L (current phase) = current total value − what we started this phase at.
+  const netPnl   = totalValue - LP_BASELINE_VALUE;
   // IL (price effect on LP composition) = Net P&L − fees + swap costs
   //   - if LP outperformed HODL: IL is positive
   //   - if LP underperformed HODL: IL is negative
-  const il           = netPnl - fees + swapFees;
-  const pnlPct       = LP_TOTAL_DEPOSITED > 0
-    ? (netPnl / LP_TOTAL_DEPOSITED) * 100
-    : 0;
+  const il       = netPnl - fees + swapFees;
+  const pnlPct   = LP_BASELINE_VALUE > 0 ? (netPnl / LP_BASELINE_VALUE) * 100 : 0;
   const activeCount  = state.active_positions ?? positions.length;
   const rebalCount   = state.rebalance_count  ?? rebalances.length;
 
@@ -1526,7 +1528,7 @@ function LPPanel() {
               {/* Right-side mini stats — 2x2 */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, minWidth: mobile ? "100%" : 320 }}>
                 <MiniStat label="Active Positions" value={String(activeCount)} accent={activeCount > 0 ? C.purple : C.text4} />
-                <MiniStat label="Lifetime Fees"    value={`$${fmtNum(fees, 4)}`} accent={C.green} sub={`across ${rebalCount} rebal${rebalCount === 1 ? "" : "s"}`} />
+                <MiniStat label="Phase Fees"       value={`$${fmtNum(fees, 4)}`} accent={C.green} sub={`lifetime $${fmtNum(lifetimeFees, 4)}`} />
                 <MiniStat label="Time Deployed"    value={timeDeployedStr} accent={C.cyan}
                   sub={`since ${LP_BASELINE_TIME.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`} />
                 <MiniStat label="Fee APR"          value={fmtPct(apyPct, 1)} accent={apyPct >= 0 ? C.green : C.red}
@@ -1556,7 +1558,7 @@ function LPPanel() {
             <DataCard
               label="Fees Earned"
               value={`+$${fmtNum(fees, 4)}`}
-              sub="lifetime + uncollected"
+              sub="this phase · collected + uncollected"
               accent={C.green}
               direction="up"
             />
