@@ -31,6 +31,42 @@ const LP_BASELINE_FEES  = 0.37;   // lifetime_fees at baseline moment
 // Update if you ever add or withdraw funds from the LP bot wallet.
 const LP_TOTAL_DEPOSITED = 75.00;
 
+/* ── LP Phase History ─────────────────────────────────────────────────────
+   Each completed phase is locked in here as a snapshot. The current
+   (active) phase is the live data shown in the rest of the panel.
+
+   When you add or withdraw capital:
+     1. Note the exact moment + total_value + lifetime_fees + swap_costs
+     2. Append a new entry to LP_PHASES below with those numbers
+     3. Update LP_TOTAL_DEPOSITED to the new total ever deposited
+     4. Update LP_BASELINE_TIME / LP_BASELINE_VALUE / LP_BASELINE_FEES to
+        the moment of the deposit so the equity chart + APR get a fresh start
+*/
+interface LPPhase {
+  label:           string;
+  startTime:       Date;
+  endTime:         Date;
+  depositedUsd:    number;   // capital at start of phase
+  finalValueUsd:   number;   // total wallet+position value at phase end
+  feesEarnedUsd:   number;   // fees earned during this phase only
+  swapCostsUsd:    number;   // swap costs paid during this phase only
+}
+
+const LP_PHASES: LPPhase[] = [
+  // ── Phase 1: $75 Test  ─────────────────────────────────────────
+  // Uncomment + fill in when you add the $150 to start Phase 2.
+  //
+  // {
+  //   label:         "Phase 1: $75 Test",
+  //   startTime:     new Date("2026-04-25T19:34:28Z"),
+  //   endTime:       new Date("2026-04-27TXX:XX:XXZ"),  // ← deposit moment (UTC)
+  //   depositedUsd:  75.00,
+  //   finalValueUsd: 77.81,    // ← state.total_value at deposit moment
+  //   feesEarnedUsd: 1.22,     // ← state.lifetime_fees at deposit moment
+  //   swapCostsUsd:  0.24,     // ← state.total_swap_fees_paid_usd at deposit moment
+  // },
+];
+
 /* ── Closed-trade backfill ───────────────────────────────────────────────────
    The /api/bot endpoint only returns the most recent ~12 trades, so the
    equity curve was missing all earlier history. This is the full closed-trade
@@ -1548,6 +1584,9 @@ function LPPanel() {
             />
           </div>
 
+          {/* ── PHASE HISTORY ───────────────────────────────────── */}
+          <PhaseHistory />
+
           {/* ── EQUITY CURVE ────────────────────────────────────── */}
           {equityPoints.length >= 2 && (
             <div className="dash-card" style={{
@@ -1734,6 +1773,118 @@ function LPPanel() {
         </div>
       )}
     </section>
+  );
+}
+
+/* Phase History — frozen snapshots of past capital phases.
+   Renders nothing if LP_PHASES is empty. */
+function PhaseHistory() {
+  if (LP_PHASES.length === 0) return null;
+
+  return (
+    <div className="dash-card" style={{
+      background: C.surface,
+      border: `1px solid ${C.border}`,
+      borderRadius: 16,
+      padding: "22px 24px",
+      marginBottom: 18,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+        <span style={{ color: C.indigo, fontSize: 14 }}>◷</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: C.text2, letterSpacing: 0.6, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace" }}>
+          Phase History
+        </span>
+        <span style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5, marginLeft: 4 }}>
+          {LP_PHASES.length} COMPLETED · 1 ACTIVE
+        </span>
+      </div>
+
+      <div style={{ display: "grid", gap: 12 }}>
+        {LP_PHASES.map((phase, i) => {
+          const netPnl     = phase.finalValueUsd - phase.depositedUsd;
+          const netPnlPct  = (netPnl / phase.depositedUsd) * 100;
+          const durationMs = phase.endTime.getTime() - phase.startTime.getTime();
+          const days       = durationMs / 86400_000;
+          const apy        = days > 0 ? netPnlPct * 365 / days : 0;
+          const isPos      = netPnl >= 0;
+          const color      = isPos ? C.green : C.red;
+          const drift      = netPnl - phase.feesEarnedUsd + phase.swapCostsUsd;
+          const driftColor = drift >= 0 ? C.green : C.red;
+
+          const fmtPhaseDate = (d: Date) =>
+            d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+
+          return (
+            <div key={i} style={{
+              background: "rgba(5,7,15,0.55)",
+              border: `1px solid ${C.border}`,
+              borderRadius: 12,
+              padding: "16px 18px",
+              display: "grid",
+              gridTemplateColumns: "minmax(150px, 1.2fr) repeat(3, minmax(0, 1fr)) auto",
+              gap: 16,
+              alignItems: "center",
+            }}>
+              {/* Label + dates */}
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: C.text, marginBottom: 4 }}>
+                  {phase.label}
+                </div>
+                <div style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.3 }}>
+                  {fmtPhaseDate(phase.startTime)} → {fmtPhaseDate(phase.endTime)} · {days.toFixed(1)}d
+                </div>
+              </div>
+
+              {/* Deposit → Final */}
+              <div>
+                <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>
+                  Capital
+                </div>
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: C.text2 }}>
+                  ${fmtNum(phase.depositedUsd)} → <span style={{ color: C.text }}>${fmtNum(phase.finalValueUsd)}</span>
+                </div>
+              </div>
+
+              {/* Net P&L */}
+              <div>
+                <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>
+                  Net P&L
+                </div>
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 13, fontWeight: 800, color }}>
+                  {isPos ? "+" : "-"}${fmtNum(Math.abs(netPnl), 2)}
+                  <span style={{ fontSize: 11, opacity: 0.75, marginLeft: 6 }}>
+                    {fmtPct(netPnlPct, 2)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Annualized */}
+              <div>
+                <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>
+                  Annualized
+                </div>
+                <div style={{ fontFamily: "'Bungee', cursive", fontSize: 16, color }}>
+                  {fmtPct(apy, 0)}
+                </div>
+              </div>
+
+              {/* Breakdown badges */}
+              <div style={{ display: "flex", flexDirection: "column" as const, gap: 4, alignItems: "flex-end" }}>
+                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.green }}>
+                  +${fmtNum(phase.feesEarnedUsd, 2)} fees
+                </span>
+                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.red }}>
+                  -${fmtNum(phase.swapCostsUsd, 2)} swaps
+                </span>
+                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: driftColor }}>
+                  {drift >= 0 ? "+" : "-"}${fmtNum(Math.abs(drift), 2)} drift
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
