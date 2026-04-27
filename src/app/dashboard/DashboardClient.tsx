@@ -1352,18 +1352,28 @@ function LPPanel() {
   const lifetimeSwapFees = state.total_swap_fees_paid_usd ?? 0;
   const swapCount        = state.swap_count ?? 0;
 
-  // Current-phase metrics — subtract baseline carry-forward so the live cards
-  // show only what's been earned/spent since the most recent capital change.
-  // Phase 1 (and earlier) results live in the Phase History panel.
-  const fees     = Math.max(0, lifetimeFees     - LP_BASELINE_FEES);
+  // Current-phase swap costs (subtract carry-forward).
   const swapFees = Math.max(0, lifetimeSwapFees - LP_BASELINE_SWAP_COSTS);
-  // Net P&L (current phase) = current total value − what we started this phase at.
-  const netPnl   = totalValue - LP_BASELINE_VALUE;
-  // IL (price effect on LP composition) = Net P&L − fees + swap costs
-  //   - if LP outperformed HODL: IL is positive
-  //   - if LP underperformed HODL: IL is negative
-  const il       = netPnl - fees + swapFees;
-  const pnlPct   = LP_BASELINE_VALUE > 0 ? (netPnl / LP_BASELINE_VALUE) * 100 : 0;
+
+  // Net P&L (current phase) is verifiable on-chain truth: total value now
+  // minus the value at phase start. Independent of any bot-side bookkeeping.
+  const netPnl = totalValue - LP_BASELINE_VALUE;
+
+  // Fees: take the larger of (a) what the bot's API reports, or (b) what
+  // value growth implies. For tight-range stable LPs (USDC.e / SOFTWARE.ai
+  // at ±0.5%), IL is near zero, so all positive value growth must be fees.
+  // The API can undercount when historical rebalances dropped fee data, but
+  // it can never overcount. The MAX is the floor of what was actually earned.
+  const trackedFees = Math.max(0, lifetimeFees - LP_BASELINE_FEES);
+  const impliedFees = Math.max(0, netPnl + swapFees);
+  const fees        = Math.max(trackedFees, impliedFees);
+  const feesAreImplied = impliedFees > trackedFees;
+
+  // IL = whatever's left over after fees and swaps explain the gain.
+  // When fees == impliedFees, IL collapses to ~0 (the assumption that
+  // produced the implied value).
+  const il     = netPnl - fees + swapFees;
+  const pnlPct = LP_BASELINE_VALUE > 0 ? (netPnl / LP_BASELINE_VALUE) * 100 : 0;
   const activeCount  = state.active_positions ?? positions.length;
   const rebalCount   = state.rebalance_count  ?? rebalances.length;
 
@@ -1559,7 +1569,9 @@ function LPPanel() {
             <DataCard
               label="Fees Earned"
               value={`+$${fmtNum(fees, 4)}`}
-              sub="this phase · collected + uncollected"
+              sub={feesAreImplied
+                ? `this phase · derived from value (bot tracks $${fmtNum(trackedFees, 2)})`
+                : `this phase · collected + uncollected`}
               accent={C.green}
               direction="up"
             />

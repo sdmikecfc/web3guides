@@ -91,7 +91,8 @@
       "Bash(python scripts/office/unpack.py \"C:\\\\Users\\\\Mike\\\\Documents\\\\Doma\\\\AMA Content\\\\Transcripts\\\\Discord AMA – Alessandro and Tomasso.docx\" \"C:\\\\Users\\\\Mike\\\\AppData\\\\Local\\\\Temp\\\\ales\")",
       "WebFetch(domain:support.claude.com)",
       "Bash(python -c ' *)",
-      "Bash(python -c \"import ast; ast.parse\\(open\\('lp_bot.py'\\).read\\(\\)\\); print\\('OK'\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\('lp_bot.py'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('api.py'\\).read\\(\\)\\); print\\('OK'\\)\")"
     ]
   }
 }
