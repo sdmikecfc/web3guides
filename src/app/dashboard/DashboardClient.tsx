@@ -22,14 +22,14 @@ const FIRST_LAUNCH = new Date("2026-04-08T04:00:23.832Z");
 // reset moment instead of recomputing on every poll. Update all three
 // together if you ever fully exit + redeploy.
 //   ⚠ TIME IS UTC. Don't paste your local-time clock here.
-const LP_BASELINE_TIME  = new Date("2026-04-26T09:27:00Z");  // 26 Apr 16:27 UTC+7
-const LP_BASELINE_VALUE = 75.93;
-const LP_BASELINE_FEES  = 0.37;   // lifetime_fees at baseline moment
+const LP_BASELINE_TIME  = new Date("2026-04-27T07:54:50Z");  // Phase 2 start — moment of $125 deposit
+const LP_BASELINE_VALUE = 203.54;   // 78.54 (Phase 1 ending) + 125 (added)
+const LP_BASELINE_FEES  = 1.8996;   // lifetime_fees carried forward from Phase 1
 
 // LP capital basis — total USD ever deposited into the bot wallet.
 // Used as the accounting basis for true Net P&L and IL.
 // Update if you ever add or withdraw funds from the LP bot wallet.
-const LP_TOTAL_DEPOSITED = 75.00;
+const LP_TOTAL_DEPOSITED = 200.00;  // Phase 1: $75  ·  Phase 2: +$125 = $200 total
 
 /* ── LP Phase History ─────────────────────────────────────────────────────
    Each completed phase is locked in here as a snapshot. The current
@@ -54,17 +54,16 @@ interface LPPhase {
 
 const LP_PHASES: LPPhase[] = [
   // ── Phase 1: $75 Test  ─────────────────────────────────────────
-  // Uncomment + fill in when you add the $150 to start Phase 2.
-  //
-  // {
-  //   label:         "Phase 1: $75 Test",
-  //   startTime:     new Date("2026-04-25T19:34:28Z"),
-  //   endTime:       new Date("2026-04-27TXX:XX:XXZ"),  // ← deposit moment (UTC)
-  //   depositedUsd:  75.00,
-  //   finalValueUsd: 77.81,    // ← state.total_value at deposit moment
-  //   feesEarnedUsd: 1.22,     // ← state.lifetime_fees at deposit moment
-  //   swapCostsUsd:  0.24,     // ← state.total_swap_fees_paid_usd at deposit moment
-  // },
+  // Locked-in snapshot at the moment of the $125 add (27 Apr 07:54:50 UTC).
+  {
+    label:         "Phase 1: $75 Test",
+    startTime:     new Date("2026-04-25T19:34:28Z"),
+    endTime:       new Date("2026-04-27T07:54:50Z"),
+    depositedUsd:  75.00,
+    finalValueUsd: 78.54,
+    feesEarnedUsd: 1.8996,
+    swapCostsUsd:  0.2525,
+  },
 ];
 
 /* ── Closed-trade backfill ───────────────────────────────────────────────────
