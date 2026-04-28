@@ -1429,21 +1429,16 @@ function LPPanel() {
     // local-time vs UTC) clamp it to 1 hour ago so the chart still renders.
     const t0 = Math.min(LP_BASELINE_TIME.getTime(), tN - 3600_000);
 
-    const pts: { time: number; value: number }[] = [{ time: t0, value: lpInitialValue }];
-
-    // Insert any rebalance events that happened after the baseline as step-up points.
-    const sortedRebals = [...rebalances]
-      .map(r => ({ ...r, _t: new Date(r.executed_at ?? 0).getTime() }))
-      .filter(r => !Number.isNaN(r._t) && r._t > t0)
-      .sort((a, b) => a._t - b._t);
-
-    let cum = 0;
-    for (const rb of sortedRebals) {
-      cum += rb.fees_collected_usd ?? 0;
-      pts.push({ time: rb._t, value: lpInitialValue + cum });
-    }
-    pts.push({ time: tN, value: totalValue });
-    return pts;
+    // Two-point line: baseline → current value.
+    // We deliberately do NOT step up at rebalance events using
+    // rebalance.fees_collected_usd — that field has been observed producing
+    // bogus $700+ values from the V3 fee-math edge case, which caused the
+    // chart to spike to $1018 then crash back. Without trustworthy snapshot
+    // data per rebalance, a clean baseline→current line is the honest view.
+    return [
+      { time: t0, value: lpInitialValue },
+      { time: tN, value: totalValue },
+    ];
   })();
 
   return (
