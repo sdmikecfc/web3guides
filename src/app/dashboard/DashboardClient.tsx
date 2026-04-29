@@ -22,15 +22,14 @@ const FIRST_LAUNCH = new Date("2026-04-08T04:00:23.832Z");
 // reset moment instead of recomputing on every poll. Update all three
 // together if you ever fully exit + redeploy.
 //   ⚠ TIME IS UTC. Don't paste your local-time clock here.
-const LP_BASELINE_TIME       = new Date("2026-04-27T07:54:50Z");  // Phase 2 start — moment of $125 deposit
-const LP_BASELINE_VALUE      = 203.54;   // 78.54 (Phase 1 ending) + 125 (added)
-const LP_BASELINE_FEES       = 1.8996;   // lifetime_fees carried forward from Phase 1
-const LP_BASELINE_SWAP_COSTS = 0.2525;   // total_swap_fees_paid_usd carried forward from Phase 1
+const LP_BASELINE_TIME       = new Date("2026-04-29T10:26:57Z");  // Phase 3 start — moment of $50 withdrawal
+const LP_BASELINE_VALUE      = 176.94;     // total_value at withdrawal (post-pull)
+const LP_BASELINE_FEES       = 1568.2512;  // lifetime_fees carried forward (broken bot count, used for tracking only)
+const LP_BASELINE_SWAP_COSTS = 0.4127;     // total_swap_fees_paid_usd carried forward
 
-// LP capital basis — total USD ever deposited into the bot wallet.
-// Used as the accounting basis for true Net P&L and IL.
-// Update if you ever add or withdraw funds from the LP bot wallet.
-const LP_TOTAL_DEPOSITED = 200.00;  // Phase 1: $75  ·  Phase 2: +$125 = $200 total
+// LP capital basis — net USD currently deposited (deposits − withdrawals).
+// Update on every deposit / withdrawal that changes wallet capital.
+const LP_TOTAL_DEPOSITED = 160.00;  // Phase 1: $75  ·  Phase 2: +$125  ·  Phase 3: −$40 = $160 net
 
 /* ── LP Phase History ─────────────────────────────────────────────────────
    Each completed phase is locked in here as a snapshot. The current
@@ -64,6 +63,19 @@ const LP_PHASES: LPPhase[] = [
     finalValueUsd: 78.54,
     feesEarnedUsd: 1.8996,
     swapCostsUsd:  0.2525,
+  },
+  // ── Phase 2: $125 added → ran $200 capital  ─────────────────────
+  // Locked-in at the moment of the $40 withdrawal (29 Apr 10:26:57 UTC).
+  // Fees derived from value change since the bot's lifetime_fees count
+  // had drifted into absurd territory (~$1568 phantom by phase end).
+  {
+    label:         "Phase 2: $125 Added",
+    startTime:     new Date("2026-04-27T07:54:50Z"),
+    endTime:       new Date("2026-04-29T10:26:57Z"),
+    depositedUsd:  203.54,    // value at phase start (post-deposit)
+    finalValueUsd: 216.94,    // value at phase end (pre-withdrawal: $176.94 + $40)
+    feesEarnedUsd: 13.56,     // implied: net gain ($13.40) + swap costs ($0.1602)
+    swapCostsUsd:  0.1602,
   },
 ];
 
