@@ -83,52 +83,12 @@ const LP_PHASES: LPPhase[] = [
 ];
 
 /* ── Closed-trade backfill ───────────────────────────────────────────────────
-   The /api/bot endpoint only returns the most recent ~12 trades, so the
-   equity curve was missing all earlier history. This is the full closed-trade
-   record from the bot's launch through 25 Apr 2026. Open positions are
-   excluded (they're already counted in the live `total_value`).
-
-   Order matters — these are listed in chronological execution order. When
-   timestamps aren't available we distribute them linearly between
-   FIRST_LAUNCH and now, which is good enough for visual storytelling. ─── */
-const BACKFILL_TRADES: Array<{ symbol: string; pnl: number }> = [
-  { symbol: "makemoneyhandoverfist.com", pnl: -0.06 },
-  { symbol: "cryptoartworks.art",        pnl: -0.03 },
-  { symbol: "diamondcapital.xyz",        pnl: -0.00 },
-  { symbol: "battles.xyz",               pnl: +2.25 },
-  { symbol: "platinumcoins.xyz",         pnl: -0.10 },
-  { symbol: "coolsynthetic.com",         pnl: -0.06 },
-  { symbol: "tokenizedacademy.com",      pnl: -0.10 },
-  { symbol: "beyondbtc.tech",            pnl: -0.09 },
-  { symbol: "bitcoinspectre.com",        pnl: -0.09 },
-  { symbol: "codeequity.com",            pnl: +0.39 },
-  { symbol: "aipredictlab.xyz",          pnl: -0.04 },
-  { symbol: "besttokenization.com",      pnl: +1.10 },
-  { symbol: "beautifulcrypto.com",       pnl: +0.64 },
-  { symbol: "beefsteaks.xyz",            pnl: -0.02 },
-  { symbol: "worldtravels.com",          pnl: +1.66 },
-  { symbol: "interstellary.xyz",         pnl: -0.03 },
-  { symbol: "webpainting.art",           pnl: -0.03 },
-  { symbol: "defibanx.com",              pnl: +0.33 },
-  { symbol: "mindproperty.com",          pnl: +0.32 },
-  { symbol: "tokenings.com",             pnl: -0.01 },
-  { symbol: "emoneytokens.com",          pnl: +1.62 },
-  { symbol: "ethunchained.com",          pnl: -0.13 },
-  { symbol: "cryptouniverse.art",        pnl: +0.21 },
-  { symbol: "bitcoinnoble.com",          pnl: +0.81 },
-  { symbol: "filmquiz.fun",              pnl: -0.02 },
-  { symbol: "stackfour.com",             pnl: -0.01 },
-  { symbol: "relead.xyz",                pnl: -0.28 },
-  { symbol: "activedigital.xyz",         pnl: -0.04 },
-  { symbol: "redcherry.xyz",             pnl: -0.01 },
-  { symbol: "webcitizens.com",           pnl: -0.02 },
-  { symbol: "swiftdigital.xyz",          pnl: -0.08 },
-  { symbol: "currencyconcept.com",       pnl: -0.02 },
-  { symbol: "seamount.xyz",              pnl: -0.02 },
-  { symbol: "forestcapital.xyz",         pnl: -0.02 },
-  { symbol: "selecthigh.com",            pnl: -0.02 },
-  { symbol: "olivecapital.xyz",          pnl: +0.03 },
-];
+   Empty for the new phase that started 1 May 2026. The /api/bot endpoint
+   already returns the most recent ~12 trades for the live "Recent Trades"
+   panel. The equity curve will draw with just two points (start + now)
+   and will fill in as the bot trades in this phase. The previous 36-trade
+   archive lived in earlier phases that have been fully closed out. ─── */
+const BACKFILL_TRADES: Array<{ symbol: string; pnl: number }> = [];
 
 // Color tokens — refined palette
 const C = {
