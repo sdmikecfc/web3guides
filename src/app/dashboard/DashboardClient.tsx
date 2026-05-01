@@ -23,14 +23,14 @@ const FIRST_LAUNCH = new Date("2026-05-01T11:38:14Z");
 // together if you ever fully exit + redeploy.
 //   ⚠ TIME IS UTC. Don't paste your local-time clock here.
 //
-// PHASE 4: 1 May 2026, $249.66 freshly deposited (125 USDC + 432.84 SOFTWARE.ai)
+// PHASE 3: 1 May 2026, $249.66 freshly deposited (125 USDC + 432.84 SOFTWARE.ai)
 // LP bot back online and minted. Baseline = post-mint state from API.
 const LP_BASELINE_TIME       = new Date("2026-05-01T11:38:14Z");  // 1 May 18:38 UTC+7
 const LP_BASELINE_VALUE      = 250.88;     // total_value from API after mint
 const LP_BASELINE_FEES       = 1643.03;    // lifetime_fees carried forward (broken bot count, ignored anyway)
 const LP_BASELINE_SWAP_COSTS = 0.4172;     // total_swap_fees_paid_usd carried forward
 
-// LP capital basis — fresh capital deposited at Phase 4 start.
+// LP capital basis — fresh capital deposited at Phase 3 start.
 // (Previous phases fully exited 30 Apr, so this is a clean start.)
 const LP_TOTAL_DEPOSITED = 249.66;  // 125 USDC + 432.84 SOFTWARE.ai @ ~$0.288
 
