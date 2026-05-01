@@ -22,14 +22,21 @@ const FIRST_LAUNCH = new Date("2026-04-08T04:00:23.832Z");
 // reset moment instead of recomputing on every poll. Update all three
 // together if you ever fully exit + redeploy.
 //   ⚠ TIME IS UTC. Don't paste your local-time clock here.
-const LP_BASELINE_TIME       = new Date("2026-04-29T10:26:57Z");  // Phase 3 start — moment of $50 withdrawal
-const LP_BASELINE_VALUE      = 176.94;     // total_value at withdrawal (post-pull)
-const LP_BASELINE_FEES       = 1568.2512;  // lifetime_fees carried forward (broken bot count, used for tracking only)
-const LP_BASELINE_SWAP_COSTS = 0.4127;     // total_swap_fees_paid_usd carried forward
+//
+// CURRENT STATE: bots are PAUSED (all funds withdrawn 30 Apr 2026).
+// Baseline points at "now" with $0 so any stray API readings show as zero
+// gain/loss. When the bots come back online, update all four constants to
+// the new deposit moment + value + carry-forward fees/swaps and add a new
+// LPPhase entry locking the previous phase's final numbers.
+const LP_BASELINE_TIME       = new Date("2026-04-30T10:26:57Z");
+const LP_BASELINE_VALUE      = 0;          // no capital currently deployed
+const LP_BASELINE_FEES       = 1568.2512;  // last known lifetime_fees (frozen — bot is off)
+const LP_BASELINE_SWAP_COSTS = 0.4127;     // last known swap costs (frozen — bot is off)
 
 // LP capital basis — net USD currently deposited (deposits − withdrawals).
-// Update on every deposit / withdrawal that changes wallet capital.
-const LP_TOTAL_DEPOSITED = 160.00;  // Phase 1: $75  ·  Phase 2: +$125  ·  Phase 3: −$40 = $160 net
+// Currently zero: all funds withdrawn. Will be the next deposit amount when
+// you fund the new setup.
+const LP_TOTAL_DEPOSITED = 0;
 
 /* ── LP Phase History ─────────────────────────────────────────────────────
    Each completed phase is locked in here as a snapshot. The current
@@ -76,6 +83,19 @@ const LP_PHASES: LPPhase[] = [
     finalValueUsd: 216.94,    // value at phase end (pre-withdrawal: $176.94 + $40)
     feesEarnedUsd: 13.56,     // implied: net gain ($13.40) + swap costs ($0.1602)
     swapCostsUsd:  0.1602,
+  },
+  // ── Phase 3: ran $160 capital → fully withdrawn (bots paused)  ───
+  // Closed when all funds were pulled and the bots were turned off.
+  // Numbers are best-effort from the last known state; refine with
+  // exact pre-withdrawal value if you want when the bot comes back.
+  {
+    label:         "Phase 3: $160 Net",
+    startTime:     new Date("2026-04-29T10:26:57Z"),
+    endTime:       new Date("2026-04-30T10:26:57Z"),  // approximate close (1 day)
+    depositedUsd:  176.94,    // value at phase start (post-$40-withdrawal)
+    finalValueUsd: 176.94,    // approximate; update if you have the exact pre-withdrawal value
+    feesEarnedUsd: 0,
+    swapCostsUsd:  0,
   },
 ];
 
