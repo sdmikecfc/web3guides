@@ -12,9 +12,9 @@ import { VALID_SUBDOMAINS } from "@/lib/subdomains";
 const INITIAL_BALANCE = 100;
 const DOMA_LINK       = "https://app.doma.xyz/domain/web3guides.com";
 
-// First trade — used to compute time-running and APY.
-// makemoneyhandoverfist.com $6.00 @ 0.00021503 was the bot's first launch.
-const FIRST_LAUNCH = new Date("2026-04-08T04:00:23.832Z");
+// Auto-sniper baseline. Updated when capital is added/removed and a fresh
+// phase begins. Currently: $100 redeposit on 1 May 2026, fresh start.
+const FIRST_LAUNCH = new Date("2026-05-01T11:38:14Z");
 
 // LP equity-chart baseline.
 // We anchor the LP chart to a fixed point in time + value so the chart,
@@ -67,31 +67,18 @@ const LP_PHASES: LPPhase[] = [
     feesEarnedUsd: 1.8996,
     swapCostsUsd:  0.2525,
   },
-  // ── Phase 2: $125 added → ran $200 capital  ─────────────────────
-  // Locked-in at the moment of the $40 withdrawal (29 Apr 10:26:57 UTC).
-  // Fees derived from value change since the bot's lifetime_fees count
-  // had drifted into absurd territory (~$1568 phantom by phase end).
+  // ── Phase 2: $200 Era — full $125-add lifecycle ────────────────
+  // Combined timeline from $125 deposit (27 Apr) through full withdrawal
+  // (30 Apr). Includes the mid-phase $40 partial pull. Total deposited
+  // capital across this era was $200 ($75 carry + $125 added).
   {
-    label:         "Phase 2: $125 Added",
+    label:         "Phase 2: $200 Era",
     startTime:     new Date("2026-04-27T07:54:50Z"),
-    endTime:       new Date("2026-04-29T10:26:57Z"),
-    depositedUsd:  203.54,    // value at phase start (post-deposit)
-    finalValueUsd: 216.94,    // value at phase end (pre-withdrawal: $176.94 + $40)
-    feesEarnedUsd: 13.56,     // implied: net gain ($13.40) + swap costs ($0.1602)
-    swapCostsUsd:  0.1602,
-  },
-  // ── Phase 3: ran $160 capital → fully withdrawn  ────────────────
-  // Closed when all funds were pulled and the bots were turned off.
-  // finalValueUsd uses the peak value reached during Phase 3 — refine
-  // with the actual peak from your records if you have a more precise number.
-  {
-    label:         "Phase 3: $160 Net",
-    startTime:     new Date("2026-04-29T10:26:57Z"),
     endTime:       new Date("2026-04-30T10:26:57Z"),
-    depositedUsd:  176.94,    // value at phase start (post-$40-withdrawal)
-    finalValueUsd: 183.00,    // peak estimate during Phase 3 — edit for exact
-    feesEarnedUsd: 6.06,      // implied: net peak gain ($6.06) + swaps (negligible)
-    swapCostsUsd:  0,
+    depositedUsd:  200,       // total capital deployed during this phase
+    finalValueUsd: 215,       // approximate total value pulled out across the phase
+    feesEarnedUsd: 15,        // implied: $215 − $200 = +$15 net
+    swapCostsUsd:  0.16,      // approximate swap costs across the phase
   },
 ];
 
@@ -1632,7 +1619,7 @@ function LPPanel() {
           </div>
 
           {/* ── PHASE HISTORY ───────────────────────────────────── */}
-          <PhaseHistory />
+          <PhaseHistory mobile={mobile} />
 
           {/* ── EQUITY CURVE ────────────────────────────────────── */}
           {equityPoints.length >= 2 && (
@@ -1832,8 +1819,10 @@ function LPPanel() {
 }
 
 /* Phase History — frozen snapshots of past capital phases.
-   Renders nothing if LP_PHASES is empty. */
-function PhaseHistory() {
+   Renders nothing if LP_PHASES is empty.
+   Switches to a stacked single-column layout on mobile so columns stop
+   piling on top of each other on narrow screens. */
+function PhaseHistory({ mobile }: { mobile: boolean }) {
   if (LP_PHASES.length === 0) return null;
 
   return (
@@ -1841,10 +1830,10 @@ function PhaseHistory() {
       background: C.surface,
       border: `1px solid ${C.border}`,
       borderRadius: 16,
-      padding: "22px 24px",
+      padding: mobile ? "18px 16px" : "22px 24px",
       marginBottom: 18,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, flexWrap: "wrap" as const }}>
         <span style={{ color: C.indigo, fontSize: 14 }}>◷</span>
         <span style={{ fontSize: 12, fontWeight: 800, color: C.text2, letterSpacing: 0.6, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace" }}>
           Phase History
@@ -1874,15 +1863,20 @@ function PhaseHistory() {
               background: "rgba(5,7,15,0.55)",
               border: `1px solid ${C.border}`,
               borderRadius: 12,
-              padding: "16px 18px",
+              padding: mobile ? "14px 16px" : "16px 18px",
+              // Mobile: single column stack. Desktop: 5-column grid.
               display: "grid",
-              gridTemplateColumns: "minmax(150px, 1.2fr) repeat(3, minmax(0, 1fr)) auto",
-              gap: 16,
-              alignItems: "center",
+              gridTemplateColumns: mobile
+                ? "1fr"
+                : "minmax(150px, 1.2fr) repeat(3, minmax(0, 1fr)) auto",
+              gap: mobile ? 12 : 16,
+              alignItems: mobile ? "stretch" as const : "center" as const,
             }}>
               {/* Label + dates */}
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: C.text, marginBottom: 4 }}>
+              <div style={{
+                ...(mobile ? { paddingBottom: 10, borderBottom: `1px solid ${C.border}` } : {}),
+              }}>
+                <div style={{ fontSize: mobile ? 14 : 13, fontWeight: 800, color: C.text, marginBottom: 4 }}>
                   {phase.label}
                 </div>
                 <div style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.3 }}>
@@ -1890,48 +1884,86 @@ function PhaseHistory() {
                 </div>
               </div>
 
-              {/* Deposit → Final */}
-              <div>
-                <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>
-                  Capital
+              {/* On mobile, cluster the three central stats in a 3-col row */}
+              {mobile ? (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>
+                      Capital
+                    </div>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.text2 }}>
+                      ${fmtNum(phase.depositedUsd, 0)}<br/>→ <span style={{ color: C.text }}>${fmtNum(phase.finalValueUsd, 0)}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>
+                      Net P&L
+                    </div>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, fontWeight: 800, color }}>
+                      {isPos ? "+" : "-"}${fmtNum(Math.abs(netPnl), 2)}
+                    </div>
+                    <div style={{ fontSize: 10, opacity: 0.75, color, fontFamily: "'Space Mono', monospace" }}>
+                      {fmtPct(netPnlPct, 1)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>
+                      APR
+                    </div>
+                    <div style={{ fontFamily: "'Bungee', cursive", fontSize: 14, color }}>
+                      {fmtPct(apy, 0)}
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: C.text2 }}>
-                  ${fmtNum(phase.depositedUsd)} → <span style={{ color: C.text }}>${fmtNum(phase.finalValueUsd)}</span>
-                </div>
-              </div>
-
-              {/* Net P&L */}
-              <div>
-                <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>
-                  Net P&L
-                </div>
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 13, fontWeight: 800, color }}>
-                  {isPos ? "+" : "-"}${fmtNum(Math.abs(netPnl), 2)}
-                  <span style={{ fontSize: 11, opacity: 0.75, marginLeft: 6 }}>
-                    {fmtPct(netPnlPct, 2)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Annualized */}
-              <div>
-                <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>
-                  Annualized
-                </div>
-                <div style={{ fontFamily: "'Bungee', cursive", fontSize: 16, color }}>
-                  {fmtPct(apy, 0)}
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div>
+                    <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>
+                      Capital
+                    </div>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: C.text2 }}>
+                      ${fmtNum(phase.depositedUsd)} → <span style={{ color: C.text }}>${fmtNum(phase.finalValueUsd)}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>
+                      Net P&L
+                    </div>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 13, fontWeight: 800, color }}>
+                      {isPos ? "+" : "-"}${fmtNum(Math.abs(netPnl), 2)}
+                      <span style={{ fontSize: 11, opacity: 0.75, marginLeft: 6 }}>
+                        {fmtPct(netPnlPct, 2)}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>
+                      Annualized
+                    </div>
+                    <div style={{ fontFamily: "'Bungee', cursive", fontSize: 16, color }}>
+                      {fmtPct(apy, 0)}
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Breakdown badges */}
-              <div style={{ display: "flex", flexDirection: "column" as const, gap: 4, alignItems: "flex-end" }}>
-                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.green }}>
+              <div style={{
+                display: "flex",
+                flexDirection: mobile ? "row" as const : "column" as const,
+                gap: mobile ? 12 : 4,
+                alignItems: mobile ? "flex-start" as const : "flex-end" as const,
+                justifyContent: mobile ? "space-between" as const : "flex-start" as const,
+                ...(mobile ? { paddingTop: 10, borderTop: `1px solid ${C.border}`, fontSize: 10 } : {}),
+                flexWrap: "wrap" as const,
+              }}>
+                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: mobile ? 10 : 11, color: C.green }}>
                   +${fmtNum(phase.feesEarnedUsd, 2)} fees
                 </span>
-                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.red }}>
+                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: mobile ? 10 : 11, color: C.red }}>
                   -${fmtNum(phase.swapCostsUsd, 2)} swaps
                 </span>
-                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: driftColor }}>
+                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: mobile ? 10 : 11, color: driftColor }}>
                   {drift >= 0 ? "+" : "-"}${fmtNum(Math.abs(drift), 2)} drift
                 </span>
               </div>
