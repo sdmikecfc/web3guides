@@ -1330,33 +1330,37 @@ function LPPanel() {
   // Current-phase swap costs (subtract carry-forward).
   const swapFees = Math.max(0, lifetimeSwapFees - LP_BASELINE_SWAP_COSTS);
 
-  // Net P&L (current phase) is verifiable on-chain truth: total value now
-  // minus the value at phase start. Independent of any bot-side bookkeeping.
-  const netPnl = totalValue - LP_BASELINE_VALUE;
+  // Live uncollected fees — sum of `fees_earned_usd` on each active
+  // position. This is the V3 `feeGrowthInside` math result the bot
+  // computes per-position; matches what Doma UI shows. Ticks up live
+  // between compound events; resets to ~0 after each compound when
+  // tokens_owed is swept and the position's feeGrowthInside_last advances.
+  const uncollectedFees = positions.reduce(
+    (sum, p) => sum + ((p.fees_earned_usd as number) ?? 0),
+    0,
+  );
 
-  // Fees: derived from value change rather than the bot's API count.
-  // The bot's `lifetime_fees` field has been observed producing absurd
-  // values (e.g. $710 phantom fees on a $208 position) — likely a V3
-  // feeGrowthInside math edge case after rebalance. We can't trust it.
+  // Net P&L (current phase) is verifiable on-chain truth: current wealth
+  // minus the value at phase start. Wealth = total_value (which excludes
+  // uncollected) + currently uncollected fees.
+  const netPnl = (totalValue + uncollectedFees) - LP_BASELINE_VALUE;
+
+  // Fees: derived from value change + live uncollected, rather than the
+  // bot's broken `lifetime_fees` field (it produces absurd phantom values
+  // after rebalances — V3 feeGrowthInside math edge case).
   //
   // For a tight-range stable-pair LP (USDC.e / SOFTWARE.ai at ±0.5%),
   // IL is near zero, so:
-  //     fees ≈ value_change + swap_costs   (assuming IL ≈ 0)
+  //     fees ≈ value_change + swap_costs + live_uncollected
   //
-  // This is the on-chain-verifiable answer. The bot's count is shown as a
-  // sub-label for transparency but never drives the displayed value.
-  const trackedFees = Math.max(0, lifetimeFees - LP_BASELINE_FEES);
-  const fees        = Math.max(0, netPnl + swapFees);
-
-  // Sanity flag: only show the "bot tracks $X" sub-label when the bot's
-  // count is in a sane range relative to value change. If the bot is
-  // reporting absurd values, hide that sub entirely so users don't see
-  // a $710 figure quoted alongside the $4.80 truth.
-  const trackedFeesSane = trackedFees < fees * 5 + 5;
+  // This captures BOTH:
+  //   - already-compounded fees (visible in total_value growth)
+  //   - currently-accruing fees (in tokens_owed / fee_growth_inside)
+  // Matches what's observable on-chain second to second.
+  const fees = Math.max(0, netPnl + swapFees);
 
   // IL = residual after fees + swaps explain the gain. With this fee
-  // formulation, IL collapses to ~0 by construction. That's honest for
-  // tight stable LPs and removes the "phantom positive IL" we were seeing.
+  // formulation, IL collapses to ~0 by construction.
   const il     = netPnl - fees + swapFees;
   const pnlPct = LP_BASELINE_VALUE > 0 ? (netPnl / LP_BASELINE_VALUE) * 100 : 0;
   const activeCount  = state.active_positions ?? positions.length;
@@ -1519,7 +1523,7 @@ function LPPanel() {
               {/* Right-side mini stats — 2x2 */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, minWidth: mobile ? "100%" : 320 }}>
                 <MiniStat label="Active Positions" value={String(activeCount)} accent={activeCount > 0 ? C.purple : C.text4} />
-                <MiniStat label="Phase Fees"       value={`$${fmtNum(fees, 4)}`} accent={C.green} sub={`lifetime $${fmtNum(lifetimeFees, 4)}`} />
+                <MiniStat label="Phase Fees"       value={`$${fmtNum(fees, 4)}`} accent={C.green} sub={uncollectedFees > 0 ? `$${fmtNum(uncollectedFees, 4)} uncollected` : `all compounded`} />
                 <MiniStat label="Time Deployed"    value={timeDeployedStr} accent={C.cyan}
                   sub={`since ${LP_BASELINE_TIME.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`} />
                 <MiniStat label="Fee APR"          value={fmtPct(apyPct, 1)} accent={apyPct >= 0 ? C.green : C.red}
@@ -1549,9 +1553,9 @@ function LPPanel() {
             <DataCard
               label="Fees Earned"
               value={`+$${fmtNum(fees, 4)}`}
-              sub={trackedFeesSane
-                ? `this phase · derived from value (bot tracks $${fmtNum(trackedFees, 2)})`
-                : `this phase · derived from value`}
+              sub={uncollectedFees > 0
+                ? `this phase · $${fmtNum(uncollectedFees, 4)} uncollected · accruing live`
+                : `this phase · all collected & compounded`}
               accent={C.green}
               direction="up"
             />
