@@ -2222,7 +2222,7 @@ function SpreadMonitor({
             Live Spread
           </span>
           <Tag color={indicatorColor}>
-            {inRange ? "IN RANGE" : "BELOW FLOOR"}
+            {inRange ? "EDGE OPEN" : "BELOW FLOOR"}
           </Tag>
         </div>
         <span style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5 }}>
@@ -2651,7 +2651,7 @@ function ArbPanel() {
             Arbitrage Bot
           </h2>
           <Tag color={online ? (inRange ? C.green : C.text3) : C.text3}>
-            {loading ? "Connecting" : online ? (inRange ? "In Range" : "Idle · Spread Compressed") : "Offline"}
+            {loading ? "Connecting" : online ? (inRange ? "Edge Open" : "Waiting · Spread Compressed") : "Offline"}
           </Tag>
           <Tag color={DOMA_BRAND}>Doma</Tag>
           <Tag color={BASE_BRAND}>Base</Tag>
@@ -2736,6 +2736,17 @@ function ArbPanel() {
                   <span style={{ opacity: 0.65 }}>−</span>
                   <span>${fmtNum(bridgeFees, 2)} bridges</span>
                 </div>
+
+                {/* Total value — always visible secondary headline */}
+                <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 16 }}>
+                  <span style={{ fontSize: 10, fontFamily: "'Space Mono', monospace", color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const }}>
+                    Total Value
+                  </span>
+                  <span style={{ fontFamily: "'Bungee', cursive", fontSize: 22, color: C.text2, lineHeight: 1 }}>
+                    ${fmtNum(totalCapital, 2)}
+                  </span>
+                  <span style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5 }}>USD</span>
+                </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, minWidth: mobile ? "100%" : 320 }}>
@@ -2750,16 +2761,36 @@ function ArbPanel() {
 
             <div style={{ position: "relative" as const, zIndex: 1, marginTop: 28 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontFamily: "'Space Mono', monospace", color: C.text3, letterSpacing: 1, marginBottom: 8, textTransform: "uppercase" as const }}>
-                <span>Total Capital</span>
+                <span>Live Balances</span>
                 <span>${fmtNum(totalCapital)} across both chains</span>
               </div>
               <div style={{ display: "flex", height: 8, background: C.surfaceUp, borderRadius: 4, overflow: "hidden" as const }}>
                 <div style={{ width: `${totalCapital > 0 ? ((state.doma_capital_usd ?? 0) / totalCapital) * 100 : 50}%`, background: `linear-gradient(90deg, ${DOMA_BRAND}, ${C.indigo})`, boxShadow: `0 0 12px ${DOMA_BRAND}60` }} />
                 <div style={{ width: `${totalCapital > 0 ? ((state.base_capital_usd ?? 0) / totalCapital) * 100 : 50}%`, background: `linear-gradient(90deg, ${C.cyan}, ${BASE_BRAND})`, boxShadow: `0 0 12px ${BASE_BRAND}60` }} />
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 11, fontFamily: "'Space Mono', monospace" }}>
-                <span style={{ color: DOMA_BRAND }}>● Doma ${fmtNum(state.doma_capital_usd ?? 0)}</span>
-                <span style={{ color: BASE_BRAND }}>${fmtNum(state.base_capital_usd ?? 0)} Base ●</span>
+              {/* Per-chain detail strip — USDC + SOFTWARE balances visible at a glance */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: mobile ? "1fr" : "1fr 1fr",
+                gap: mobile ? 8 : 16,
+                marginTop: 12,
+                fontSize: 11,
+                fontFamily: "'Space Mono', monospace",
+              }}>
+                {/* Doma */}
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                  <span style={{ color: DOMA_BRAND, fontWeight: 700 }}>● Doma ${fmtNum(state.doma_capital_usd ?? 0)}</span>
+                  <span style={{ color: C.text4, fontSize: 10 }}>
+                    ${fmtNum(state.doma_usdce_balance ?? 0)} USDC.e · {fmtNum(state.doma_token_balance ?? 0)} SOFT
+                  </span>
+                </div>
+                {/* Base */}
+                <div style={{ display: "flex", justifyContent: mobile ? "space-between" : "flex-end", gap: 8, alignItems: "baseline" }}>
+                  <span style={{ color: C.text4, fontSize: 10, order: mobile ? 2 : 1 }}>
+                    ${fmtNum(state.base_usdc_balance ?? 0)} USDC · {fmtNum(state.base_token_balance ?? 0)} SOFT
+                  </span>
+                  <span style={{ color: BASE_BRAND, fontWeight: 700, order: mobile ? 1 : 2 }}>${fmtNum(state.base_capital_usd ?? 0)} Base ●</span>
+                </div>
               </div>
             </div>
           </div>
