@@ -2191,21 +2191,35 @@ function LPLogs() {
 const DOMA_BRAND = "#a855f7";   // purple — Doma chain
 const BASE_BRAND = "#0052ff";   // blue   — Coinbase Base chain
 
-/* Live spread monitor — two-pool comparison + spread bar with threshold mark */
+/* Live spread monitor — two-pool comparison + spread bar with threshold + break-even */
 function SpreadMonitor({
-  domaPrice, basePrice, spreadPct, thresholdPct, inRange, mobile,
+  domaPrice, basePrice, spreadPct, thresholdPct, inRange, breakEvenBps, mobile,
 }: {
   domaPrice: number; basePrice: number; spreadPct: number;
-  thresholdPct: number; inRange: boolean; mobile: boolean;
+  thresholdPct: number; inRange: boolean; breakEvenBps: number; mobile: boolean;
 }) {
-  const spreadBps      = spreadPct * 10000;
+  const spreadBps      = Math.abs(spreadPct * 10000);
   const thresholdBps   = thresholdPct * 10000;
   const cheaper        = domaPrice < basePrice ? "doma" : "base";
-  // Bar fills from threshold up — anything to the right of the threshold is profitable
-  const barMaxBps      = Math.max(spreadBps * 1.4, thresholdBps * 2.5, 50);
+
+  // Three-state status based on spread vs cost stack
+  //   < threshold        → WAITING (gray)
+  //   > break-even       → TRADEABLE (green)
+  //   between            → EDGE TIGHT — spread is open but doesn't cover costs
+  const isTradeable    = spreadBps >= breakEvenBps;
+  const isAboveTrigger = inRange;
+  const statusLabel    = !isAboveTrigger ? "BELOW FLOOR"
+                       : isTradeable     ? "TRADEABLE"
+                       :                   "EDGE TIGHT · BELOW BREAK-EVEN";
+  const statusColor    = !isAboveTrigger ? C.text3
+                       : isTradeable     ? C.green
+                       :                   C.yellow;
+
+  // Bar — anchored to fit threshold, break-even, and current spread
+  const barMaxBps      = Math.max(spreadBps * 1.3, breakEvenBps * 1.5, 60);
   const spreadFillPct  = Math.min(100, (spreadBps    / barMaxBps) * 100);
   const thresholdLeftPct = (thresholdBps / barMaxBps) * 100;
-  const indicatorColor = inRange ? C.green : C.text3;
+  const breakEvenLeftPct = (breakEvenBps / barMaxBps) * 100;
 
   return (
     <div className="dash-card" style={{
@@ -2217,16 +2231,14 @@ function SpreadMonitor({
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap" as const, gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ color: indicatorColor, fontSize: 14 }}>⇌</span>
+          <span style={{ color: statusColor, fontSize: 14 }}>⇌</span>
           <span style={{ fontSize: 12, fontWeight: 800, color: C.text2, letterSpacing: 0.6, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace" }}>
             Live Spread
           </span>
-          <Tag color={indicatorColor}>
-            {inRange ? "EDGE OPEN" : "BELOW FLOOR"}
-          </Tag>
+          <Tag color={statusColor}>{statusLabel}</Tag>
         </div>
         <span style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5 }}>
-          THRESHOLD {thresholdBps.toFixed(0)} BPS
+          TRIGGER {thresholdBps.toFixed(0)}bps · BREAK-EVEN {breakEvenBps.toFixed(0)}bps
         </span>
       </div>
 
@@ -2255,8 +2267,8 @@ function SpreadMonitor({
 
         {/* Spread arrow */}
         <div style={{ textAlign: "center" as const }}>
-          <div style={{ fontSize: mobile ? 18 : 26, color: indicatorColor }}>↔</div>
-          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: mobile ? 11 : 13, fontWeight: 800, color: indicatorColor, marginTop: 4 }}>
+          <div style={{ fontSize: mobile ? 18 : 26, color: statusColor }}>↔</div>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: mobile ? 11 : 13, fontWeight: 800, color: statusColor, marginTop: 4 }}>
             {spreadBps.toFixed(1)} BPS
           </div>
           <div style={{ fontSize: 9, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5, marginTop: 2 }}>
@@ -2286,34 +2298,73 @@ function SpreadMonitor({
         </div>
       </div>
 
-      {/* Spread vs threshold visual bar */}
+      {/* Spread vs threshold + break-even visual bar */}
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 9, fontFamily: "'Space Mono', monospace", color: C.text4, letterSpacing: 0.8, textTransform: "uppercase" as const }}>
           <span>0 bps</span>
-          <span>spread vs threshold</span>
+          <span>spread · trigger · break-even</span>
           <span>{barMaxBps.toFixed(0)} bps</span>
         </div>
-        <div style={{ position: "relative" as const, height: 12 }}>
-          <div style={{ position: "absolute" as const, inset: 0, background: C.surfaceUp, borderRadius: 6 }} />
-          {/* Filled portion */}
+        <div style={{ position: "relative" as const, height: 14 }}>
+          <div style={{ position: "absolute" as const, inset: 0, background: C.surfaceUp, borderRadius: 7 }} />
+          {/* Filled portion — gradient changes color based on whether we crossed break-even */}
           <div style={{
             position: "absolute" as const, top: 0, bottom: 0, left: 0,
             width: `${spreadFillPct}%`,
-            background: inRange
+            background: isTradeable
               ? `linear-gradient(90deg, ${C.cyan}, ${C.green})`
-              : `linear-gradient(90deg, ${C.text5}, ${C.text4})`,
-            borderRadius: 6,
-            boxShadow: inRange ? `0 0 12px ${C.green}60` : "none",
+              : isAboveTrigger
+                ? `linear-gradient(90deg, ${C.cyan}, ${C.yellow})`
+                : `linear-gradient(90deg, ${C.text5}, ${C.text4})`,
+            borderRadius: 7,
+            boxShadow: isTradeable ? `0 0 12px ${C.green}60`
+                      : isAboveTrigger ? `0 0 8px ${C.yellow}50`
+                      : "none",
           }} />
-          {/* Threshold marker */}
+          {/* Trigger threshold marker (yellow) */}
           <div style={{
-            position: "absolute" as const, top: -2, bottom: -2,
+            position: "absolute" as const, top: -3, bottom: -3,
             left: `${thresholdLeftPct}%`,
             width: 2,
             background: C.yellow,
             boxShadow: `0 0 6px ${C.yellow}80`,
           }} />
+          {/* Break-even marker (red — anything left of this loses money) */}
+          <div style={{
+            position: "absolute" as const, top: -3, bottom: -3,
+            left: `${breakEvenLeftPct}%`,
+            width: 2,
+            background: C.red,
+            boxShadow: `0 0 6px ${C.red}80`,
+          }} />
         </div>
+        {/* Legend */}
+        <div style={{ display: "flex", gap: 18, marginTop: 8, fontSize: 9, fontFamily: "'Space Mono', monospace", color: C.text4, letterSpacing: 0.4 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 8, height: 2, background: C.yellow }} /> trigger {thresholdBps.toFixed(0)}bps
+          </span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 8, height: 2, background: C.red }} /> break-even {breakEvenBps.toFixed(0)}bps (pool fees)
+          </span>
+        </div>
+        {/* Explainer when stuck between trigger and break-even */}
+        {isAboveTrigger && !isTradeable && (
+          <div style={{
+            marginTop: 12,
+            padding: "10px 14px",
+            background: "rgba(245,158,11,0.08)",
+            border: `1px solid rgba(245,158,11,0.25)`,
+            borderRadius: 8,
+            fontSize: 11,
+            color: "#fde68a",
+            lineHeight: 1.5,
+            fontFamily: "'DM Sans', sans-serif",
+          }}>
+            ⓘ Spread is above the trigger ({thresholdBps.toFixed(0)} bps) but below break-even ({breakEvenBps.toFixed(0)} bps).
+            The bot&apos;s simulator correctly refuses to fire — gross spread doesn&apos;t cover pool fees.
+            For the bot to trade, spread needs to clear ~{breakEvenBps.toFixed(0)} bps (or raise the trigger threshold above break-even).
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2618,6 +2669,15 @@ function ArbPanel() {
   const basePrice    = state.base_price_usd ?? 0;
   const bridgesPerTrade = totalArbs > 0 ? (bridgeCount / totalArbs) : 0;
 
+  // Break-even spread = combined pool fees on both swaps. Pool fees in V3
+  // are stored in pips (0.01% units), convert to bps (0.01%) by dividing
+  // by 100. So 500 pips = 5 bps, 3000 pips = 30 bps. Total = 35 bps for
+  // SOFTWARE.ai/USDC across Doma 0.05% + Base 0.30%.
+  // Anything below this and the simulated trade nets a loss.
+  const domaFeePips = (config.doma_pool_fee as number) ?? 500;
+  const baseFeePips = (config.base_pool_fee as number) ?? 3000;
+  const breakEvenBps = (domaFeePips + baseFeePips) / 100;
+
   // Color coding per the doc — aggressive red/yellow/green based on net P&L
   const profitColor = netProfit >  0    ? C.green
                     : netProfit > -1    ? C.yellow
@@ -2650,8 +2710,18 @@ function ArbPanel() {
           <h2 style={{ margin: 0, fontFamily: "'Bungee', cursive", fontSize: 22, color: C.text, letterSpacing: 0.3 }}>
             Arbitrage Bot
           </h2>
-          <Tag color={online ? (inRange ? C.green : C.text3) : C.text3}>
-            {loading ? "Connecting" : online ? (inRange ? "Edge Open" : "Waiting · Spread Compressed") : "Offline"}
+          <Tag color={online
+            ? (inRange ? (Math.abs(spreadPct * 10000) >= breakEvenBps ? C.green : C.yellow) : C.text3)
+            : C.text3}>
+            {loading
+              ? "Connecting"
+              : !online
+                ? "Offline"
+                : !inRange
+                  ? "Waiting · Spread Compressed"
+                  : Math.abs(spreadPct * 10000) >= breakEvenBps
+                    ? "Tradeable Edge"
+                    : "Edge Tight · Below Break-even"}
           </Tag>
           <Tag color={DOMA_BRAND}>Doma</Tag>
           <Tag color={BASE_BRAND}>Base</Tag>
@@ -2805,6 +2875,7 @@ function ArbPanel() {
             spreadPct={spreadPct}
             thresholdPct={thresholdPct}
             inRange={inRange}
+            breakEvenBps={breakEvenBps}
             mobile={mobile}
           />
 
