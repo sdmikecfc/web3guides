@@ -35,19 +35,19 @@ const LP_BASELINE_SWAP_COSTS = 0.4172;     // total_swap_fees_paid_usd carried f
 const LP_TOTAL_DEPOSITED = 249.66;  // 125 USDC + 432.84 SOFTWARE.ai @ ~$0.288
 
 
-/* ── Arb bot phase baseline ────────────────────────────────────────────────
-   Phase 1 (4 May 07:05 → 08:00 UTC): $200 setup, lost ~$3.60 in setup costs
-   Phase 2 (from 4 May 08:00 UTC): $196.40 starting capital, fresh timer
+/* ── Arb bot baseline ──────────────────────────────────────────────────────
+   Live capital basis the bot started from. The 2-minute test before this
+   doesn't count as a phase — just the noise of getting set up. Real
+   tracking starts here.
 
-   When you reset again, update all five constants together: snapshot the
-   API state at the moment of reset and copy lifetime values into the carry-
-   forward fields so phase metrics start from zero. */
+   When you eventually reset, update all five carry-forward constants and
+   add an entry to ARB_PHASES so this run gets locked in as history. */
 const ARB_BASELINE_TIME        = new Date("2026-05-04T08:00:00Z");
-const ARB_BASELINE_VALUE       = 196.40;     // capital basis at phase start
-const ARB_BASELINE_GROSS       = 1.6299;     // gross_trade_pnl_usd carried forward from Phase 1
-const ARB_BASELINE_BRIDGE_FEES = 12.686;     // total_bridge_fees_usd carried forward
-const ARB_BASELINE_TRADES      = 15;         // total_arbs_executed at baseline (carry forward)
-const ARB_BASELINE_BRIDGES     = 12;         // bridge count at baseline (carry forward)
+const ARB_BASELINE_VALUE       = 196.40;     // capital basis at start
+const ARB_BASELINE_GROSS       = 1.6299;     // gross_trade_pnl_usd carry-forward (from setup test)
+const ARB_BASELINE_BRIDGE_FEES = 12.686;     // total_bridge_fees_usd carry-forward
+const ARB_BASELINE_TRADES      = 15;         // total_arbs_executed at start
+const ARB_BASELINE_BRIDGES     = 12;         // bridge count at start
 
 interface ArbPhase {
   label:          string;
@@ -59,20 +59,8 @@ interface ArbPhase {
   bridges:        number;
 }
 
-const ARB_PHASES: ArbPhase[] = [
-  // ── Phase 1: $200 Setup ────────────────────────────────────────
-  // Initial deployment (4 May 07:05 UTC). Bot was misconfigured, bridge costs
-  // dwarfed trade earnings. Net loss ~$3.60 across 15 trades + 12 bridges.
-  {
-    label:          "Phase 1: $200 Setup",
-    startTime:      new Date("2026-05-04T07:05:25Z"),
-    endTime:        new Date("2026-05-04T08:00:00Z"),
-    startValueUsd:  200.00,
-    endValueUsd:    196.40,
-    trades:         15,
-    bridges:        12,
-  },
-];
+// No completed phases yet — fresh tracker. Add entries here when you reset.
+const ARB_PHASES: ArbPhase[] = [];
 
 /* ── LP Phase History ─────────────────────────────────────────────────────
    Each completed phase is locked in here as a snapshot. The current
@@ -2724,7 +2712,7 @@ function ArbPanel() {
             <div style={{ position: "relative" as const, zIndex: 1, display: "flex", flexDirection: mobile ? "column" : "row", alignItems: mobile ? "flex-start" : "flex-end", justifyContent: "space-between", gap: 24 }}>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.text3, letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 12, fontFamily: "'Space Mono', monospace" }}>
-                  Phase Net Profit (vs ${fmtNum(ARB_BASELINE_VALUE)} basis)
+                  Net Profit (vs ${fmtNum(ARB_BASELINE_VALUE)} basis)
                 </div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" as const }}>
                   <div style={{
@@ -2751,7 +2739,7 @@ function ArbPanel() {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, minWidth: mobile ? "100%" : 320 }}>
-                <MiniStat label="Phase Trades"    value={String(totalArbs)} accent={C.cyan} sub={`lifetime ${lifetimeArbs}`} />
+                <MiniStat label="Trades"          value={String(totalArbs)} accent={C.cyan} sub={`lifetime ${lifetimeArbs}`} />
                 <MiniStat label="Success Rate"    value={fmtPct(successRate, 0)} accent={successRate >= 90 ? C.green : C.yellow} sub={`${successArbs}/${lifetimeArbs} lifetime`} />
                 <MiniStat label="Time Deployed"   value={timeStr} accent={C.purple}
                   sub={`since ${phaseStart.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`} />
