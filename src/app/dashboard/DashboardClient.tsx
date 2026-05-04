@@ -285,6 +285,92 @@ interface LPSummary {
   [k: string]: unknown;
 }
 
+/* ── Arb bot types — schema from ARB_BOT_DASHBOARD_CONTEXT.md ────────────── */
+interface ArbState {
+  total_capital_usd?:     number;
+  doma_capital_usd?:      number;
+  base_capital_usd?:      number;
+  doma_usdce_balance?:    number;
+  doma_token_balance?:    number;
+  base_usdc_balance?:     number;
+  base_token_balance?:    number;
+  doma_price_usd?:        number;
+  base_price_usd?:        number;
+  spread_pct?:            number;
+  spread_threshold_pct?:  number;
+  in_range?:              boolean;
+  total_arbs_executed?:   number;
+  successful_arbs?:       number;
+  failed_arbs?:           number;
+  total_profit_usd?:      number;
+  gross_trade_pnl_usd?:   number;
+  total_gas_usd?:         number;
+  total_bridge_fees_usd?: number;
+  total_swap_fees_usd?:   number;
+  first_deployed_at?:     string;
+  last_arb_at?:           string;
+  wallet_address?:        string;
+  updated_at?:            string;
+  [k: string]: unknown;
+}
+interface ArbTrade {
+  id?:               string;
+  executed_at?:      string;
+  direction?:        "base_to_doma" | "doma_to_base" | string;
+  input_usd?:        number;
+  output_usd?:       number;
+  gross_profit_usd?: number;
+  gas_usd?:          number | null;
+  bridge_fee_usd?:   number | null;
+  swap_fees_usd?:    number | null;
+  net_profit_usd?:   number;
+  doma_tx?:          string | null;
+  bridge_tx?:        string | null;
+  base_tx?:          string | null;
+  duration_sec?:     number | null;
+  status?:           "completed" | "failed" | string;
+  spread_bps?:       number;
+  size_usd?:         number;
+  [k: string]: unknown;
+}
+interface ArbBridge {
+  id?:             string;
+  executed_at?:    string;
+  from_chain?:     "doma" | "base" | string;
+  to_chain?:       "doma" | "base" | string;
+  amount_in_usd?:  number;
+  amount_out_usd?: number;
+  cost_usd?:       number;
+  deposit_tx?:     string;
+  status?:         "OK" | "FAIL" | string;
+  notes?:          string;
+  [k: string]: unknown;
+}
+interface ArbConfig {
+  min_spread_pct?:          number;
+  trade_size_usd?:          number;
+  max_slippage_pct?:        number;
+  loop_interval_sec?:       number;
+  bridge_provider_stable?:  string;
+  bridge_provider_token?:   string;
+  auto_bridge?:             boolean;
+  bridge_trigger_usd?:      number;
+  halt_below_usd?:          number;
+  doma_pool_fee?:           number;
+  base_pool_fee?:           number;
+  pair?:                    string;
+  [k: string]: unknown;
+}
+interface ArbSummary {
+  state?:           ArbState;
+  trades?:          ArbTrade[];
+  bridges?:         ArbBridge[];
+  spread_history?:  Array<{ ts: string; doma_price: number; base_price: number }>;
+  config?:          ArbConfig;
+  error?:           string;
+  [k: string]: unknown;
+}
+
 interface AffiliateRow { slug: string; label: string; category: string; hasRealLink: boolean; total: number; last7: number; last30: number }
 interface PathRow      { path: string; count: number }
 interface DailyRow     { date: string; count: number }
@@ -2071,6 +2157,734 @@ function LPLogs() {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
+   ARB PANEL — Cross-chain SOFTWARE.ai/USDC arbitrage between Doma and Base
+════════════════════════════════════════════════════════════════════════ */
+
+const DOMA_BRAND = "#a855f7";   // purple — Doma chain
+const BASE_BRAND = "#0052ff";   // blue   — Coinbase Base chain
+
+/* Live spread monitor — two-pool comparison + spread bar with threshold mark */
+function SpreadMonitor({
+  domaPrice, basePrice, spreadPct, thresholdPct, inRange, mobile,
+}: {
+  domaPrice: number; basePrice: number; spreadPct: number;
+  thresholdPct: number; inRange: boolean; mobile: boolean;
+}) {
+  const spreadBps      = spreadPct * 10000;
+  const thresholdBps   = thresholdPct * 10000;
+  const cheaper        = domaPrice < basePrice ? "doma" : "base";
+  // Bar fills from threshold up — anything to the right of the threshold is profitable
+  const barMaxBps      = Math.max(spreadBps * 1.4, thresholdBps * 2.5, 50);
+  const spreadFillPct  = Math.min(100, (spreadBps    / barMaxBps) * 100);
+  const thresholdLeftPct = (thresholdBps / barMaxBps) * 100;
+  const indicatorColor = inRange ? C.green : C.text3;
+
+  return (
+    <div className="dash-card" style={{
+      background: C.surface,
+      border: `1px solid ${C.border}`,
+      borderRadius: 16,
+      padding: mobile ? "20px 18px" : "24px 26px",
+      marginBottom: 18,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap" as const, gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ color: indicatorColor, fontSize: 14 }}>⇌</span>
+          <span style={{ fontSize: 12, fontWeight: 800, color: C.text2, letterSpacing: 0.6, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace" }}>
+            Live Spread
+          </span>
+          <Tag color={indicatorColor}>
+            {inRange ? "IN RANGE" : "BELOW FLOOR"}
+          </Tag>
+        </div>
+        <span style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5 }}>
+          THRESHOLD {thresholdBps.toFixed(0)} BPS
+        </span>
+      </div>
+
+      {/* Two-pool side-by-side */}
+      <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr auto 1fr" : "1fr auto 1fr", gap: mobile ? 10 : 24, alignItems: "center", marginBottom: 22 }}>
+        {/* Doma side */}
+        <div style={{
+          background: cheaper === "doma" ? `${DOMA_BRAND}10` : "rgba(5,7,15,0.55)",
+          border: `1px solid ${cheaper === "doma" ? `${DOMA_BRAND}40` : C.border}`,
+          borderRadius: 12,
+          padding: "16px 14px",
+          textAlign: "center" as const,
+        }}>
+          <div style={{ fontSize: 10, fontFamily: "'Space Mono', monospace", color: DOMA_BRAND, letterSpacing: 1.2, marginBottom: 8 }}>
+            DOMA · UNI V3 0.05%
+          </div>
+          <div style={{ fontFamily: "'Bungee', cursive", fontSize: mobile ? 18 : 22, color: C.text, lineHeight: 1 }}>
+            ${domaPrice.toFixed(6)}
+          </div>
+          {cheaper === "doma" && (
+            <div style={{ fontSize: 9, color: C.green, fontWeight: 800, marginTop: 6, letterSpacing: 0.5, fontFamily: "'Space Mono', monospace" }}>
+              CHEAPER
+            </div>
+          )}
+        </div>
+
+        {/* Spread arrow */}
+        <div style={{ textAlign: "center" as const }}>
+          <div style={{ fontSize: mobile ? 18 : 26, color: indicatorColor }}>↔</div>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: mobile ? 11 : 13, fontWeight: 800, color: indicatorColor, marginTop: 4 }}>
+            {spreadBps.toFixed(1)} BPS
+          </div>
+          <div style={{ fontSize: 9, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5, marginTop: 2 }}>
+            {(spreadPct * 100).toFixed(3)}%
+          </div>
+        </div>
+
+        {/* Base side */}
+        <div style={{
+          background: cheaper === "base" ? `${BASE_BRAND}15` : "rgba(5,7,15,0.55)",
+          border: `1px solid ${cheaper === "base" ? `${BASE_BRAND}50` : C.border}`,
+          borderRadius: 12,
+          padding: "16px 14px",
+          textAlign: "center" as const,
+        }}>
+          <div style={{ fontSize: 10, fontFamily: "'Space Mono', monospace", color: BASE_BRAND, letterSpacing: 1.2, marginBottom: 8 }}>
+            BASE · AERO 0.30%
+          </div>
+          <div style={{ fontFamily: "'Bungee', cursive", fontSize: mobile ? 18 : 22, color: C.text, lineHeight: 1 }}>
+            ${basePrice.toFixed(6)}
+          </div>
+          {cheaper === "base" && (
+            <div style={{ fontSize: 9, color: C.green, fontWeight: 800, marginTop: 6, letterSpacing: 0.5, fontFamily: "'Space Mono', monospace" }}>
+              CHEAPER
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Spread vs threshold visual bar */}
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 9, fontFamily: "'Space Mono', monospace", color: C.text4, letterSpacing: 0.8, textTransform: "uppercase" as const }}>
+          <span>0 bps</span>
+          <span>spread vs threshold</span>
+          <span>{barMaxBps.toFixed(0)} bps</span>
+        </div>
+        <div style={{ position: "relative" as const, height: 12 }}>
+          <div style={{ position: "absolute" as const, inset: 0, background: C.surfaceUp, borderRadius: 6 }} />
+          {/* Filled portion */}
+          <div style={{
+            position: "absolute" as const, top: 0, bottom: 0, left: 0,
+            width: `${spreadFillPct}%`,
+            background: inRange
+              ? `linear-gradient(90deg, ${C.cyan}, ${C.green})`
+              : `linear-gradient(90deg, ${C.text5}, ${C.text4})`,
+            borderRadius: 6,
+            boxShadow: inRange ? `0 0 12px ${C.green}60` : "none",
+          }} />
+          {/* Threshold marker */}
+          <div style={{
+            position: "absolute" as const, top: -2, bottom: -2,
+            left: `${thresholdLeftPct}%`,
+            width: 2,
+            background: C.yellow,
+            boxShadow: `0 0 6px ${C.yellow}80`,
+          }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Cross-chain capital allocation — stacked bar showing stable% vs token% per chain */
+function CrossChainCapital({ state, mobile }: { state: ArbState; mobile: boolean }) {
+  const domaUsdc  = state.doma_usdce_balance ?? 0;
+  const domaToken = (state.doma_token_balance ?? 0) * (state.doma_price_usd ?? 0);
+  const baseUsdc  = state.base_usdc_balance  ?? 0;
+  const baseToken = (state.base_token_balance ?? 0) * (state.base_price_usd ?? 0);
+  const domaTotal = domaUsdc + domaToken;
+  const baseTotal = baseUsdc + baseToken;
+  const grandTotal = domaTotal + baseTotal;
+
+  const domaPct  = grandTotal > 0 ? (domaTotal / grandTotal) * 100 : 50;
+  const basePct  = 100 - domaPct;
+  const domaTokenPct = domaTotal > 0 ? (domaToken / domaTotal) * 100 : 0;
+  const baseTokenPct = baseTotal > 0 ? (baseToken / baseTotal) * 100 : 0;
+
+  return (
+    <div className="dash-card" style={{
+      background: C.surface,
+      border: `1px solid ${C.border}`,
+      borderRadius: 16,
+      padding: mobile ? "20px 18px" : "24px 26px",
+      marginBottom: 18,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+        <span style={{ color: C.purple, fontSize: 14 }}>◫</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: C.text2, letterSpacing: 0.6, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace" }}>
+          Cross-chain Inventory
+        </span>
+        <Tag color={C.text3}>${fmtNum(grandTotal)} total</Tag>
+      </div>
+
+      {/* Doma side */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, fontSize: 11, fontFamily: "'Space Mono', monospace" }}>
+          <span style={{ color: DOMA_BRAND, fontWeight: 700, letterSpacing: 0.5 }}>DOMA · ${fmtNum(domaTotal)}</span>
+          <span style={{ color: C.text4 }}>USDC.e ${fmtNum(domaUsdc)}  ·  SOFT ${fmtNum(domaToken)}</span>
+        </div>
+        <div style={{ display: "flex", height: 10, background: C.surfaceUp, borderRadius: 5, overflow: "hidden" as const }}>
+          <div style={{ width: `${100 - domaTokenPct}%`, background: `linear-gradient(90deg, ${C.cyan}, ${C.blue})` }} />
+          <div style={{ width: `${domaTokenPct}%`, background: `linear-gradient(90deg, ${DOMA_BRAND}, ${C.pink})` }} />
+        </div>
+      </div>
+
+      {/* Base side */}
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, fontSize: 11, fontFamily: "'Space Mono', monospace" }}>
+          <span style={{ color: BASE_BRAND, fontWeight: 700, letterSpacing: 0.5 }}>BASE · ${fmtNum(baseTotal)}</span>
+          <span style={{ color: C.text4 }}>USDC ${fmtNum(baseUsdc)}  ·  SOFT ${fmtNum(baseToken)}</span>
+        </div>
+        <div style={{ display: "flex", height: 10, background: C.surfaceUp, borderRadius: 5, overflow: "hidden" as const }}>
+          <div style={{ width: `${100 - baseTokenPct}%`, background: `linear-gradient(90deg, ${C.cyan}, ${BASE_BRAND})` }} />
+          <div style={{ width: `${baseTokenPct}%`, background: `linear-gradient(90deg, ${C.indigo}, ${DOMA_BRAND})` }} />
+        </div>
+      </div>
+
+      {/* Chain split summary */}
+      <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", fontSize: 10, fontFamily: "'Space Mono', monospace", color: C.text4, letterSpacing: 0.6, textTransform: "uppercase" as const }}>
+        <span>{domaPct.toFixed(0)}% Doma</span>
+        <span>STABLE / SOFTWARE per chain</span>
+        <span>{basePct.toFixed(0)}% Base</span>
+      </div>
+    </div>
+  );
+}
+
+/* Earned vs Paid comparison — visualizes structural cost issue */
+function EarnedVsPaid({ earned, paidBridges, mobile }: { earned: number; paidBridges: number; mobile: boolean }) {
+  const max = Math.max(earned, paidBridges, 0.01);
+  const earnedPct = (earned / max) * 100;
+  const paidPct   = (paidBridges / max) * 100;
+  const upsideDown = paidBridges > earned;
+
+  return (
+    <div className="dash-card" style={{
+      background: C.surface,
+      border: `1px solid ${C.border}`,
+      borderRadius: 16,
+      padding: mobile ? "18px 16px" : "22px 24px",
+      marginBottom: 18,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" as const }}>
+        <span style={{ color: upsideDown ? C.red : C.green, fontSize: 14 }}>{upsideDown ? "⚠" : "✓"}</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: C.text2, letterSpacing: 0.6, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace" }}>
+          Earned vs Paid
+        </span>
+        {upsideDown && <Tag color={C.red}>STRUCTURAL LOSS</Tag>}
+      </div>
+
+      <div style={{ display: "grid", gap: 12 }}>
+        {/* Earned */}
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 11, fontFamily: "'Space Mono', monospace" }}>
+            <span style={{ color: C.green, fontWeight: 700 }}>EARNED · gross trade PnL</span>
+            <span style={{ color: C.text }}>+${fmtNum(earned, 2)}</span>
+          </div>
+          <div style={{ height: 8, background: C.surfaceUp, borderRadius: 4, overflow: "hidden" as const }}>
+            <div style={{ width: `${earnedPct}%`, height: "100%", background: `linear-gradient(90deg, ${C.green}, ${C.cyan})`, boxShadow: `0 0 6px ${C.green}80` }} />
+          </div>
+        </div>
+
+        {/* Paid */}
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 11, fontFamily: "'Space Mono', monospace" }}>
+            <span style={{ color: C.red, fontWeight: 700 }}>PAID · bridge fees</span>
+            <span style={{ color: C.text }}>−${fmtNum(paidBridges, 2)}</span>
+          </div>
+          <div style={{ height: 8, background: C.surfaceUp, borderRadius: 4, overflow: "hidden" as const }}>
+            <div style={{ width: `${paidPct}%`, height: "100%", background: `linear-gradient(90deg, ${C.red}, ${C.orange})`, boxShadow: `0 0 6px ${C.red}80` }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ArbPanel() {
+  const mobile                  = useMobile();
+  const [data, setData]         = useState<ArbSummary | null>(null);
+  const [error, setError]       = useState<string | null>(null);
+  const [lastUpdated, setLast]  = useState<Date | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [refreshing, setR]      = useState(false);
+  const [age, setAge]           = useState(0);
+
+  async function fetchArb() {
+    setR(true);
+    try {
+      const res  = await fetch("/api/arb", { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) { setError(json.error ?? `Error ${res.status}`); return; }
+      setData(json);
+      setError(null);
+      setLast(new Date());
+    } catch { setError("Arb bot unreachable"); }
+    finally  { setLoading(false); setR(false); }
+  }
+
+  useEffect(() => {
+    fetchArb();
+    const t = setInterval(fetchArb, 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => setAge(lastUpdated ? Math.floor((Date.now() - lastUpdated.getTime()) / 1000) : 0), 1000);
+    return () => clearInterval(t);
+  }, [lastUpdated]);
+
+  const state    = data?.state    ?? {};
+  const trades   = data?.trades   ?? [];
+  const bridges  = data?.bridges  ?? [];
+  const config   = data?.config   ?? {};
+
+  const totalCapital = state.total_capital_usd ?? 0;
+  const netProfit    = state.total_profit_usd  ?? 0;
+  const grossProfit  = state.gross_trade_pnl_usd ?? 0;
+  const bridgeFees   = state.total_bridge_fees_usd ?? 0;
+  const totalArbs    = state.total_arbs_executed ?? 0;
+  const successArbs  = state.successful_arbs ?? 0;
+  const failArbs     = state.failed_arbs ?? 0;
+  const successRate  = totalArbs > 0 ? (successArbs / totalArbs) * 100 : 100;
+  const inRange      = state.in_range ?? false;
+  const spreadPct    = state.spread_pct ?? 0;
+  const thresholdPct = state.spread_threshold_pct ?? 0;
+  const domaPrice    = state.doma_price_usd ?? 0;
+  const basePrice    = state.base_price_usd ?? 0;
+  const bridgeCount  = bridges.length;
+  const bridgesPerTrade = totalArbs > 0 ? (bridgeCount / totalArbs) : 0;
+
+  // Color coding per the doc — aggressive red/yellow/green based on net P&L
+  const profitColor = netProfit >  0    ? C.green
+                    : netProfit > -1    ? C.yellow
+                    :                     C.red;
+  const profitPct   = totalCapital > 0 ? (netProfit / totalCapital) * 100 : 0;
+
+  // Time deployed
+  const firstDeployed = state.first_deployed_at ? new Date(state.first_deployed_at) : null;
+  const timeStr       = firstDeployed ? fmtRunning(firstDeployed) : "—";
+
+  // Detect "currently bridging" — most recent OK bridge within the last 3 min
+  const bridgingNow = (() => {
+    const now = Date.now();
+    return bridges.some(b => {
+      if (b.status !== "OK") return false;
+      const t = new Date(b.executed_at ?? 0).getTime();
+      return !Number.isNaN(t) && (now - t) < 180_000;
+    });
+  })();
+
+  const online = !error && !loading && !!data;
+
+  return (
+    <section style={{ marginBottom: 56 }}>
+
+      {/* ── Section title ─────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap" as const, gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Pulse color={online ? (inRange ? C.green : C.text3) : error ? C.red : C.text3} />
+          <h2 style={{ margin: 0, fontFamily: "'Bungee', cursive", fontSize: 22, color: C.text, letterSpacing: 0.3 }}>
+            Arbitrage Bot
+          </h2>
+          <Tag color={online ? (inRange ? C.green : C.text3) : C.text3}>
+            {loading ? "Connecting" : online ? (inRange ? "In Range" : "Idle · Spread Compressed") : "Offline"}
+          </Tag>
+          <Tag color={DOMA_BRAND}>Doma</Tag>
+          <Tag color={BASE_BRAND}>Base</Tag>
+          {bridgingNow && <Tag color={C.yellow}>Bridging · LZ Delivery</Tag>}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 11, color: C.text3, fontFamily: "'Space Mono', monospace" }}>
+          {!!state.last_arb_at && (
+            <span>LAST ARB · {fmtDate(state.last_arb_at as string)}</span>
+          )}
+          {lastUpdated && <span style={{ color: C.text4 }}>FETCHED {fmtAge(age)} AGO</span>}
+          <button
+            onClick={fetchArb}
+            className="dash-tab"
+            style={{
+              background: C.surfaceUp, border: `1px solid ${C.borderHi}`, borderRadius: 8,
+              color: C.text2, fontSize: 13, padding: "6px 10px", cursor: "pointer",
+              display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 30,
+            }}
+            aria-label="Refresh"
+          >
+            <span className={refreshing ? "dash-spin" : ""}>↻</span>
+          </button>
+        </div>
+      </div>
+
+      {loading && (
+        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 40, textAlign: "center" as const, color: C.text4, fontSize: 14 }}>
+          <span className="dash-spin" style={{ display: "inline-block", marginRight: 10, fontSize: 16 }}>◌</span>
+          Connecting to arb bot…
+        </div>
+      )}
+
+      {error && !loading && (
+        <div style={{ background: "rgba(244,63,94,0.07)", border: "1px solid rgba(244,63,94,0.25)", borderRadius: 14, padding: "18px 22px", color: "#fca5a5", fontSize: 13 }}>
+          ⚠️ {error} — set <code style={{ color: "#fde68a", fontFamily: "'Space Mono', monospace" }}>ARB_API_KEY</code> on Vercel and confirm port 5003 is reachable on the droplet.
+        </div>
+      )}
+
+      {data && !error && (
+        <div className="dash-fade-in">
+
+          {/* ── HERO ──────────────────────────────────────────── */}
+          <div style={{
+            position: "relative" as const,
+            background: `
+              radial-gradient(circle at 0% 0%, ${DOMA_BRAND}1c 0%, transparent 50%),
+              radial-gradient(circle at 100% 100%, ${BASE_BRAND}1c 0%, transparent 50%),
+              ${C.surface}
+            `,
+            border: `1px solid ${C.borderHi}`,
+            borderRadius: 20,
+            padding: mobile ? "26px 22px" : "32px 36px",
+            marginBottom: 18,
+            overflow: "hidden" as const,
+          }}>
+            <div className="dash-bg-grid" />
+
+            <div style={{ position: "relative" as const, zIndex: 1, display: "flex", flexDirection: mobile ? "column" : "row", alignItems: mobile ? "flex-start" : "flex-end", justifyContent: "space-between", gap: 24 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.text3, letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 12, fontFamily: "'Space Mono', monospace" }}>
+                  Net Profit (after bridge fees)
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" as const }}>
+                  <div style={{
+                    fontFamily: "'Bungee', cursive",
+                    fontSize: mobile ? 44 : 64,
+                    color: profitColor, lineHeight: 1, letterSpacing: -1,
+                  }}>
+                    {netProfit >= 0 ? "+" : "-"}${fmtNum(Math.abs(netProfit), 2)}
+                  </div>
+                  <div style={{ fontSize: 13, color: C.text3, fontWeight: 700, letterSpacing: 0.5 }}>USD</div>
+                </div>
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                  marginTop: 14,
+                  background: netProfit >= 0 ? C.greenSoft : C.redSoft,
+                  border: `1px solid ${netProfit >= 0 ? "rgba(16,185,129,0.3)" : "rgba(244,63,94,0.3)"}`,
+                  color: profitColor,
+                  borderRadius: 50, padding: "5px 14px", fontSize: 12, fontWeight: 800,
+                }}>
+                  <span>+${fmtNum(grossProfit, 2)} earned</span>
+                  <span style={{ opacity: 0.65 }}>−</span>
+                  <span>${fmtNum(bridgeFees, 2)} bridges</span>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, minWidth: mobile ? "100%" : 320 }}>
+                <MiniStat label="Total Trades"    value={String(totalArbs)} accent={C.cyan} sub={`${successArbs} ok · ${failArbs} fail`} />
+                <MiniStat label="Success Rate"    value={fmtPct(successRate, 0)} accent={successRate >= 90 ? C.green : C.yellow} />
+                <MiniStat label="Time Deployed"   value={timeStr} accent={C.purple}
+                  sub={firstDeployed ? `since ${firstDeployed.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}` : undefined} />
+                <MiniStat label="Bridges/Trade"   value={bridgesPerTrade.toFixed(2)} accent={bridgesPerTrade < 0.3 ? C.green : bridgesPerTrade < 0.6 ? C.yellow : C.red}
+                  sub={`${bridgeCount} total bridges`} />
+              </div>
+            </div>
+
+            <div style={{ position: "relative" as const, zIndex: 1, marginTop: 28 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontFamily: "'Space Mono', monospace", color: C.text3, letterSpacing: 1, marginBottom: 8, textTransform: "uppercase" as const }}>
+                <span>Total Capital</span>
+                <span>${fmtNum(totalCapital)} across both chains</span>
+              </div>
+              <div style={{ display: "flex", height: 8, background: C.surfaceUp, borderRadius: 4, overflow: "hidden" as const }}>
+                <div style={{ width: `${totalCapital > 0 ? ((state.doma_capital_usd ?? 0) / totalCapital) * 100 : 50}%`, background: `linear-gradient(90deg, ${DOMA_BRAND}, ${C.indigo})`, boxShadow: `0 0 12px ${DOMA_BRAND}60` }} />
+                <div style={{ width: `${totalCapital > 0 ? ((state.base_capital_usd ?? 0) / totalCapital) * 100 : 50}%`, background: `linear-gradient(90deg, ${C.cyan}, ${BASE_BRAND})`, boxShadow: `0 0 12px ${BASE_BRAND}60` }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 11, fontFamily: "'Space Mono', monospace" }}>
+                <span style={{ color: DOMA_BRAND }}>● Doma ${fmtNum(state.doma_capital_usd ?? 0)}</span>
+                <span style={{ color: BASE_BRAND }}>${fmtNum(state.base_capital_usd ?? 0)} Base ●</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── LIVE SPREAD MONITOR ───────────────────────────── */}
+          <SpreadMonitor
+            domaPrice={domaPrice}
+            basePrice={basePrice}
+            spreadPct={spreadPct}
+            thresholdPct={thresholdPct}
+            inRange={inRange}
+            mobile={mobile}
+          />
+
+          {/* ── METRIC CARDS ──────────────────────────────────── */}
+          <div className="dash-stagger" style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 14, marginBottom: 28 }}>
+            <DataCard
+              label="Gross Earned"
+              value={`+$${fmtNum(grossProfit, 2)}`}
+              sub={`${totalArbs} trades · avg $${totalArbs > 0 ? (grossProfit / totalArbs).toFixed(2) : "0.00"}/trade`}
+              accent={C.green}
+              direction="up"
+            />
+            <DataCard
+              label="Bridge Fees"
+              value={`-$${fmtNum(bridgeFees, 2)}`}
+              sub={`${bridgeCount} bridges · ${bridgesPerTrade.toFixed(2)}/trade`}
+              accent={C.red}
+              direction="down"
+            />
+            <DataCard
+              label="Net Edge"
+              value={`${netProfit >= 0 ? "+" : "-"}$${fmtNum(Math.abs(netProfit / Math.max(1, totalArbs)), 4)}`}
+              sub="per trade · after costs"
+              accent={profitColor}
+              direction={netProfit >= 0 ? "up" : "down"}
+            />
+            <DataCard
+              label="Success Rate"
+              value={fmtPct(successRate, 0)}
+              sub={`${successArbs}/${totalArbs} completed`}
+              accent={successRate >= 90 ? C.green : successRate >= 70 ? C.yellow : C.red}
+            />
+          </div>
+
+          {/* ── EARNED vs PAID ────────────────────────────────── */}
+          <EarnedVsPaid earned={grossProfit} paidBridges={bridgeFees} mobile={mobile} />
+
+          {/* ── CROSS-CHAIN INVENTORY ─────────────────────────── */}
+          <CrossChainCapital state={state} mobile={mobile} />
+
+          {/* ── TRADES + BRIDGES feeds (side-by-side desktop, stacked mobile) ─── */}
+          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: 18 }}>
+
+            {/* Trade history */}
+            <div className="dash-card" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden" as const }}>
+              <PanelHead title="Recent Arbs" count={trades.length} accent={C.cyan} icon="⇌" />
+              {trades.length === 0 ? (
+                <Empty text="No arbs yet" />
+              ) : (
+                <div className="dash-scroll" style={{ maxHeight: 460, overflowY: "auto" }}>
+                  {trades.slice(0, 30).map((t, i) => {
+                    const np    = t.net_profit_usd ?? 0;
+                    const isPos = np >= 0;
+                    const color = t.status === "failed" ? C.red : isPos ? C.green : C.red;
+                    const arrow = t.direction === "doma_to_base" ? "DOMA → BASE" : "BASE → DOMA";
+                    return (
+                      <div key={t.id ?? i} className="dash-row" style={{
+                        padding: "12px 18px",
+                        borderTop: i > 0 ? `1px solid ${C.border}` : undefined,
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" as const }}>
+                              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: C.text4 }}>
+                                {fmtTime(t.executed_at as string)}
+                              </span>
+                              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 800, color: t.direction === "doma_to_base" ? DOMA_BRAND : BASE_BRAND, letterSpacing: 0.5 }}>
+                                {arrow}
+                              </span>
+                              {t.status === "failed" && <Tag color={C.red}>FAILED</Tag>}
+                            </div>
+                            <div style={{ fontSize: 11, color: C.text3, fontFamily: "'Space Mono', monospace" }}>
+                              ${fmtNum(t.input_usd ?? 0)} → ${fmtNum(t.output_usd ?? 0)}
+                              {t.spread_bps !== undefined && (
+                                <span style={{ color: C.text4, marginLeft: 8 }}>· {t.spread_bps.toFixed(0)} bps</span>
+                              )}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 800, color, fontFamily: "'Space Mono', monospace" }}>
+                            {isPos ? "+" : "-"}${fmtNum(Math.abs(np), 4)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Bridge history */}
+            <div className="dash-card" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden" as const }}>
+              <PanelHead title="Bridge History" count={bridges.length} accent={C.yellow} icon="⤳" />
+              {bridges.length === 0 ? (
+                <Empty text="No bridges yet" />
+              ) : (
+                <div className="dash-scroll" style={{ maxHeight: 460, overflowY: "auto" }}>
+                  {bridges.slice(0, 30).map((b, i) => {
+                    const isOk = b.status === "OK";
+                    const fromC = b.from_chain === "doma" ? DOMA_BRAND : BASE_BRAND;
+                    const toC   = b.to_chain   === "doma" ? DOMA_BRAND : BASE_BRAND;
+                    const isStargate = b.notes?.includes("stargate") || b.notes?.includes("oft");
+                    return (
+                      <div key={b.id ?? i} className="dash-row" style={{
+                        padding: "12px 18px",
+                        borderTop: i > 0 ? `1px solid ${C.border}` : undefined,
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" as const }}>
+                              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: C.text4 }}>
+                                {fmtTime(b.executed_at as string)}
+                              </span>
+                              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 800, color: fromC, letterSpacing: 0.5 }}>
+                                {(b.from_chain ?? "").toUpperCase()}
+                              </span>
+                              <span style={{ color: C.text4 }}>→</span>
+                              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 800, color: toC, letterSpacing: 0.5 }}>
+                                {(b.to_chain ?? "").toUpperCase()}
+                              </span>
+                              {isStargate && <Tag color={C.cyan}>STARGATE</Tag>}
+                              {!isOk && <Tag color={C.red}>FAIL</Tag>}
+                            </div>
+                            <div style={{ fontSize: 11, color: C.text3, fontFamily: "'Space Mono', monospace" }}>
+                              ${fmtNum(b.amount_in_usd ?? 0)} → ${fmtNum(b.amount_out_usd ?? 0)}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: C.red, fontFamily: "'Space Mono', monospace" }}>
+                            -${fmtNum(b.cost_usd ?? 0, 4)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Config footer ─────────────────────────────────── */}
+          <div style={{ marginTop: 18, padding: "14px 18px", background: "rgba(5,7,15,0.55)", border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 10, fontFamily: "'Space Mono', monospace", color: C.text4, letterSpacing: 0.4, display: "flex", flexWrap: "wrap" as const, gap: 18 }}>
+            <span>PAIR · {config.pair ?? "SOFTWARE.ai/USDC"}</span>
+            <span>SIZE · ${fmtNum(config.trade_size_usd ?? 0)}</span>
+            <span>MIN SPREAD · {((config.min_spread_pct ?? 0) * 10000).toFixed(0)} bps</span>
+            <span>SLIPPAGE · {((config.max_slippage_pct ?? 0) * 100).toFixed(2)}%</span>
+            <span>STABLE BRIDGE · {config.bridge_provider_stable ?? "—"}</span>
+            <span>TOKEN BRIDGE · {config.bridge_provider_token ?? "—"}</span>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   ARB LOGS — terminal aesthetic, single process
+════════════════════════════════════════════════════════════════════════ */
+
+function ArbLogs() {
+  const [data, setData]       = useState<LogData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setR]    = useState(false);
+  const [lines, setLines]     = useState(80);
+
+  async function fetchLogs(n = lines) {
+    setR(true);
+    try {
+      const res  = await fetch(`/api/arb-logs?lines=${n}`, { cache: "no-store" });
+      const json = await res.json();
+      setData(json);
+    } catch { setData({ error: "Unreachable" }); }
+    finally  { setLoading(false); setR(false); }
+  }
+
+  useEffect(() => {
+    fetchLogs(lines);
+    const t = setInterval(() => fetchLogs(lines), 15_000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lines]);
+
+  const logLines = (data?.lines ?? []).slice().reverse();
+
+  const lineColor = (line: string) => {
+    if (/error|exception|fail|critical/i.test(line))                    return C.red;
+    if (/warn|halt|below|reverted/i.test(line))                         return C.yellow;
+    if (/swap.*ok|arb.*completed|profit|spread.*\d{3,}/i.test(line))    return C.green;
+    if (/bridge|stargate|oft|relay/i.test(line))                        return C.cyan;
+    if (/idle|waiting|skip/i.test(line))                                return C.text4;
+    return C.text2;
+  };
+
+  return (
+    <section style={{ marginBottom: 56 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap" as const, gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <h2 style={{ margin: 0, fontFamily: "'Bungee', cursive", fontSize: 22, color: C.text, letterSpacing: 0.3 }}>
+            Arb Bot Logs
+          </h2>
+          <Tag color={C.cyan}>Live Stream</Tag>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" as const }}>
+          <select
+            value={lines}
+            onChange={(e) => setLines(Number(e.target.value))}
+            style={{
+              background: C.surfaceUp, border: `1px solid ${C.border}`, borderRadius: 8,
+              color: C.text2, fontSize: 11, padding: "6px 10px", cursor: "pointer",
+              fontFamily: "'Space Mono', monospace",
+            }}
+          >
+            {[50, 100, 200, 500].map(n => <option key={n} value={n}>{n} lines</option>)}
+          </select>
+          <button
+            onClick={() => fetchLogs()}
+            className="dash-tab"
+            style={{
+              background: C.surfaceUp, border: `1px solid ${C.borderHi}`, borderRadius: 8,
+              color: C.text2, fontSize: 13, padding: "6px 10px", cursor: "pointer",
+              width: 32, height: 30, display: "inline-flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <span className={refreshing ? "dash-spin" : ""}>↻</span>
+          </button>
+        </div>
+      </div>
+
+      <div style={{ background: "#020409", border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden" as const }}>
+        <div style={{ padding: "10px 16px", background: C.surface, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#ef4444" }} />
+          <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#f59e0b" }} />
+          <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#10b981" }} />
+          <span style={{ marginLeft: 14, fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.text3 }}>
+            ~/arb-bot/logs/arb_bot.log
+          </span>
+        </div>
+        {loading && logLines.length === 0 ? (
+          <div style={{ padding: 40, color: C.text4, fontSize: 13, textAlign: "center" as const, fontFamily: "'Space Mono', monospace" }}>
+            <span className="dash-spin" style={{ display: "inline-block", marginRight: 8 }}>◌</span>
+            Loading logs…
+          </div>
+        ) : data?.error ? (
+          <div style={{ padding: 40, color: "#fca5a5", fontSize: 13 }}>⚠️ {data.error}</div>
+        ) : logLines.length === 0 ? (
+          <div style={{ padding: 40, color: C.text4, fontSize: 13, textAlign: "center" as const }}>No log output</div>
+        ) : (
+          <div className="dash-scroll" style={{ height: 380, overflowY: "auto", padding: "16px 18px", fontFamily: "'Space Mono', monospace", fontSize: 11, lineHeight: 1.8 }}>
+            {logLines.map((line, i) => (
+              <div key={i} style={{ color: lineColor(line), whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                <span style={{ color: C.text5, marginRight: 12, userSelect: "none" }}>
+                  {String(logLines.length - i).padStart(3, "0")}
+                </span>
+                {line}
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ padding: "10px 18px", borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: C.surface }}>
+          <span style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5 }}>
+            {logLines.length} LINES · AUTO-REFRESH 15s
+          </span>
+          {refreshing && (
+            <span style={{ fontSize: 10, color: C.text3, fontFamily: "'Space Mono', monospace", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span className="dash-spin">◌</span> Refreshing
+            </span>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
    BOT LOGS — terminal aesthetic
 ════════════════════════════════════════════════════════════════════════ */
 
@@ -2657,20 +3471,22 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
           </header>
 
           {/* ── Sections ───────────────────────────────────────────── */}
-          {/* Bots first, side-by-side in spirit (stacked at this width) */}
+          {/* Bots first, stacked. Each is a self-contained section. */}
           <BotPanel />
           <LPPanel />
+          <ArbPanel />
 
-          {/* Logs side-by-side at desktop width — both streaming live */}
+          {/* Logs grid — auto-sniper + LP on top row, arb on its own row at desktop */}
           <div style={{
             display: "grid",
             gridTemplateColumns: mobile ? "1fr" : "1fr 1fr",
             gap: 18,
-            marginBottom: 56,
+            marginBottom: 18,
           }}>
             <div><BotLogs /></div>
             <div><LPLogs /></div>
           </div>
+          <ArbLogs />
 
           <SupportCard mobile={mobile} />
           <SiteSnapshot guideCount={guideCount} emailCount={emailCount} mobile={mobile} />
