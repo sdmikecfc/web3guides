@@ -34,6 +34,46 @@ const LP_BASELINE_SWAP_COSTS = 0.4172;     // total_swap_fees_paid_usd carried f
 // (Previous phases fully exited 30 Apr, so this is a clean start.)
 const LP_TOTAL_DEPOSITED = 249.66;  // 125 USDC + 432.84 SOFTWARE.ai @ ~$0.288
 
+
+/* ── Arb bot phase baseline ────────────────────────────────────────────────
+   Phase 1 (4 May 07:05 → 08:00 UTC): $200 setup, lost ~$3.60 in setup costs
+   Phase 2 (from 4 May 08:00 UTC): $196.40 starting capital, fresh timer
+
+   When you reset again, update all five constants together: snapshot the
+   API state at the moment of reset and copy lifetime values into the carry-
+   forward fields so phase metrics start from zero. */
+const ARB_BASELINE_TIME        = new Date("2026-05-04T08:00:00Z");
+const ARB_BASELINE_VALUE       = 196.40;     // capital basis at phase start
+const ARB_BASELINE_GROSS       = 1.6299;     // gross_trade_pnl_usd carried forward from Phase 1
+const ARB_BASELINE_BRIDGE_FEES = 12.686;     // total_bridge_fees_usd carried forward
+const ARB_BASELINE_TRADES      = 15;         // total_arbs_executed at baseline (carry forward)
+const ARB_BASELINE_BRIDGES     = 12;         // bridge count at baseline (carry forward)
+
+interface ArbPhase {
+  label:          string;
+  startTime:      Date;
+  endTime:        Date;
+  startValueUsd:  number;
+  endValueUsd:    number;
+  trades:         number;
+  bridges:        number;
+}
+
+const ARB_PHASES: ArbPhase[] = [
+  // ── Phase 1: $200 Setup ────────────────────────────────────────
+  // Initial deployment (4 May 07:05 UTC). Bot was misconfigured, bridge costs
+  // dwarfed trade earnings. Net loss ~$3.60 across 15 trades + 12 bridges.
+  {
+    label:          "Phase 1: $200 Setup",
+    startTime:      new Date("2026-05-04T07:05:25Z"),
+    endTime:        new Date("2026-05-04T08:00:00Z"),
+    startValueUsd:  200.00,
+    endValueUsd:    196.40,
+    trades:         15,
+    bridges:        12,
+  },
+];
+
 /* ── LP Phase History ─────────────────────────────────────────────────────
    Each completed phase is locked in here as a snapshot. The current
    (active) phase is the live data shown in the rest of the panel.
@@ -2406,6 +2446,122 @@ function EarnedVsPaid({ earned, paidBridges, mobile }: { earned: number; paidBri
   );
 }
 
+/* Arb Phase History — frozen snapshots of past capital phases. */
+function ArbPhaseHistory({ mobile }: { mobile: boolean }) {
+  if (ARB_PHASES.length === 0) return null;
+
+  return (
+    <div className="dash-card" style={{
+      background: C.surface,
+      border: `1px solid ${C.border}`,
+      borderRadius: 16,
+      padding: mobile ? "18px 16px" : "22px 24px",
+      marginBottom: 18,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, flexWrap: "wrap" as const }}>
+        <span style={{ color: C.indigo, fontSize: 14 }}>◷</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: C.text2, letterSpacing: 0.6, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace" }}>
+          Arb Phase History
+        </span>
+        <span style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5, marginLeft: 4 }}>
+          {ARB_PHASES.length} COMPLETED · 1 ACTIVE
+        </span>
+      </div>
+
+      <div style={{ display: "grid", gap: 12 }}>
+        {ARB_PHASES.map((phase, i) => {
+          const netPnl     = phase.endValueUsd - phase.startValueUsd;
+          const netPnlPct  = (netPnl / phase.startValueUsd) * 100;
+          const durationMs = phase.endTime.getTime() - phase.startTime.getTime();
+          const days       = durationMs / 86400_000;
+          const isPos      = netPnl >= 0;
+          const color      = isPos ? C.green : C.red;
+          const fmtPhaseDate = (d: Date) =>
+            d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+
+          return (
+            <div key={i} style={{
+              background: "rgba(5,7,15,0.55)",
+              border: `1px solid ${C.border}`,
+              borderRadius: 12,
+              padding: mobile ? "14px 16px" : "16px 18px",
+              display: "grid",
+              gridTemplateColumns: mobile
+                ? "1fr"
+                : "minmax(150px, 1.2fr) repeat(3, minmax(0, 1fr))",
+              gap: mobile ? 12 : 16,
+              alignItems: mobile ? "stretch" as const : "center" as const,
+            }}>
+              {/* Label + dates */}
+              <div style={{
+                ...(mobile ? { paddingBottom: 10, borderBottom: `1px solid ${C.border}` } : {}),
+              }}>
+                <div style={{ fontSize: mobile ? 14 : 13, fontWeight: 800, color: C.text, marginBottom: 4 }}>
+                  {phase.label}
+                </div>
+                <div style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.3 }}>
+                  {fmtPhaseDate(phase.startTime)} → {fmtPhaseDate(phase.endTime)} · {days < 1 ? `${(days * 24).toFixed(1)}h` : `${days.toFixed(1)}d`}
+                </div>
+              </div>
+
+              {mobile ? (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>Capital</div>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.text2 }}>
+                      ${fmtNum(phase.startValueUsd, 0)}<br/>→ <span style={{ color: C.text }}>${fmtNum(phase.endValueUsd, 0)}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>Net P&L</div>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, fontWeight: 800, color }}>
+                      {isPos ? "+" : "-"}${fmtNum(Math.abs(netPnl), 2)}
+                    </div>
+                    <div style={{ fontSize: 10, opacity: 0.75, color, fontFamily: "'Space Mono', monospace" }}>
+                      {fmtPct(netPnlPct, 1)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>Activity</div>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.text2 }}>
+                      {phase.trades} trades<br/>
+                      <span style={{ color: C.text4 }}>{phase.bridges} bridges</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>Capital</div>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: C.text2 }}>
+                      ${fmtNum(phase.startValueUsd)} → <span style={{ color: C.text }}>${fmtNum(phase.endValueUsd)}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>Net P&L</div>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 13, fontWeight: 800, color }}>
+                      {isPos ? "+" : "-"}${fmtNum(Math.abs(netPnl), 2)}
+                      <span style={{ fontSize: 11, opacity: 0.75, marginLeft: 6 }}>
+                        {fmtPct(netPnlPct, 2)}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, color: C.text4, letterSpacing: 1, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace", marginBottom: 4 }}>Activity</div>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: C.text2 }}>
+                      {phase.trades} trades · <span style={{ color: C.text4 }}>{phase.bridges} bridges</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ArbPanel() {
   const mobile                  = useMobile();
   const [data, setData]         = useState<ArbSummary | null>(null);
@@ -2444,31 +2600,45 @@ function ArbPanel() {
   const bridges  = data?.bridges  ?? [];
   const config   = data?.config   ?? {};
 
-  const totalCapital = state.total_capital_usd ?? 0;
-  const netProfit    = state.total_profit_usd  ?? 0;
-  const grossProfit  = state.gross_trade_pnl_usd ?? 0;
-  const bridgeFees   = state.total_bridge_fees_usd ?? 0;
-  const totalArbs    = state.total_arbs_executed ?? 0;
-  const successArbs  = state.successful_arbs ?? 0;
-  const failArbs     = state.failed_arbs ?? 0;
-  const successRate  = totalArbs > 0 ? (successArbs / totalArbs) * 100 : 100;
+  // Lifetime values from the API
+  const totalCapital     = state.total_capital_usd ?? 0;
+  const lifetimeGross    = state.gross_trade_pnl_usd ?? 0;
+  const lifetimeBridges  = state.total_bridge_fees_usd ?? 0;
+  const lifetimeArbs     = state.total_arbs_executed ?? 0;
+  const lifetimeSuccess  = state.successful_arbs ?? 0;
+  const lifetimeFails    = state.failed_arbs ?? 0;
+  const lifetimeBridgeCnt = bridges.length;
+
+  // Phase-only values (subtract baseline carry-forward)
+  const grossProfit = Math.max(0, lifetimeGross   - ARB_BASELINE_GROSS);
+  const bridgeFees  = Math.max(0, lifetimeBridges - ARB_BASELINE_BRIDGE_FEES);
+  const totalArbs   = Math.max(0, lifetimeArbs    - ARB_BASELINE_TRADES);
+  const bridgeCount = Math.max(0, lifetimeBridgeCnt - ARB_BASELINE_BRIDGES);
+  // Net profit = current total capital vs the phase's starting basis
+  const netProfit   = totalCapital - ARB_BASELINE_VALUE;
+
+  // Success/fail rates we leave as lifetime (no clean way to back-derive
+  // phase-only without per-trade timestamps and a stable baseline).
+  const successArbs  = lifetimeSuccess;
+  const failArbs     = lifetimeFails;
+  const successRate  = lifetimeArbs > 0 ? (lifetimeSuccess / lifetimeArbs) * 100 : 100;
+
   const inRange      = state.in_range ?? false;
   const spreadPct    = state.spread_pct ?? 0;
   const thresholdPct = state.spread_threshold_pct ?? 0;
   const domaPrice    = state.doma_price_usd ?? 0;
   const basePrice    = state.base_price_usd ?? 0;
-  const bridgeCount  = bridges.length;
   const bridgesPerTrade = totalArbs > 0 ? (bridgeCount / totalArbs) : 0;
 
   // Color coding per the doc — aggressive red/yellow/green based on net P&L
   const profitColor = netProfit >  0    ? C.green
                     : netProfit > -1    ? C.yellow
                     :                     C.red;
-  const profitPct   = totalCapital > 0 ? (netProfit / totalCapital) * 100 : 0;
+  const profitPct   = ARB_BASELINE_VALUE > 0 ? (netProfit / ARB_BASELINE_VALUE) * 100 : 0;
 
-  // Time deployed
-  const firstDeployed = state.first_deployed_at ? new Date(state.first_deployed_at) : null;
-  const timeStr       = firstDeployed ? fmtRunning(firstDeployed) : "—";
+  // Time deployed — anchored to the most recent phase reset, not first deploy
+  const timeStr  = fmtRunning(ARB_BASELINE_TIME);
+  const phaseStart = ARB_BASELINE_TIME;
 
   // Detect "currently bridging" — most recent OK bridge within the last 3 min
   const bridgingNow = (() => {
@@ -2554,7 +2724,7 @@ function ArbPanel() {
             <div style={{ position: "relative" as const, zIndex: 1, display: "flex", flexDirection: mobile ? "column" : "row", alignItems: mobile ? "flex-start" : "flex-end", justifyContent: "space-between", gap: 24 }}>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.text3, letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 12, fontFamily: "'Space Mono', monospace" }}>
-                  Net Profit (after bridge fees)
+                  Phase Net Profit (vs ${fmtNum(ARB_BASELINE_VALUE)} basis)
                 </div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" as const }}>
                   <div style={{
@@ -2581,12 +2751,12 @@ function ArbPanel() {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, minWidth: mobile ? "100%" : 320 }}>
-                <MiniStat label="Total Trades"    value={String(totalArbs)} accent={C.cyan} sub={`${successArbs} ok · ${failArbs} fail`} />
-                <MiniStat label="Success Rate"    value={fmtPct(successRate, 0)} accent={successRate >= 90 ? C.green : C.yellow} />
+                <MiniStat label="Phase Trades"    value={String(totalArbs)} accent={C.cyan} sub={`lifetime ${lifetimeArbs}`} />
+                <MiniStat label="Success Rate"    value={fmtPct(successRate, 0)} accent={successRate >= 90 ? C.green : C.yellow} sub={`${successArbs}/${lifetimeArbs} lifetime`} />
                 <MiniStat label="Time Deployed"   value={timeStr} accent={C.purple}
-                  sub={firstDeployed ? `since ${firstDeployed.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}` : undefined} />
+                  sub={`since ${phaseStart.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`} />
                 <MiniStat label="Bridges/Trade"   value={bridgesPerTrade.toFixed(2)} accent={bridgesPerTrade < 0.3 ? C.green : bridgesPerTrade < 0.6 ? C.yellow : C.red}
-                  sub={`${bridgeCount} total bridges`} />
+                  sub={`${bridgeCount} this phase`} />
               </div>
             </div>
 
@@ -2605,6 +2775,9 @@ function ArbPanel() {
               </div>
             </div>
           </div>
+
+          {/* ── PHASE HISTORY ─────────────────────────────────── */}
+          <ArbPhaseHistory mobile={mobile} />
 
           {/* ── LIVE SPREAD MONITOR ───────────────────────────── */}
           <SpreadMonitor
