@@ -23,31 +23,26 @@ const FIRST_LAUNCH = new Date("2026-05-01T11:38:14Z");
 // together if you ever fully exit + redeploy.
 //   ⚠ TIME IS UTC. Don't paste your local-time clock here.
 //
-// PHASE 3: 1 May 2026, $249.66 freshly deposited (125 USDC + 432.84 SOFTWARE.ai)
-// LP bot back online and minted. Baseline = post-mint state from API.
-const LP_BASELINE_TIME       = new Date("2026-05-01T11:38:14Z");  // 1 May 18:38 UTC+7
-const LP_BASELINE_VALUE      = 250.88;     // total_value from API after mint
-const LP_BASELINE_FEES       = 1643.03;    // lifetime_fees carried forward (broken bot count, ignored anyway)
-const LP_BASELINE_SWAP_COSTS = 0.4172;     // total_swap_fees_paid_usd carried forward
+// PHASE 4: 5 May 2026 14:00 UTC, fresh $400 USDC.e deposit.
+// Baseline = actual API total_value at deposit moment.
+const LP_BASELINE_TIME       = new Date("2026-05-05T14:00:00Z");
+const LP_BASELINE_VALUE      = 401.60;     // actual total_value from API after deposit
+const LP_BASELINE_FEES       = 20802.35;   // lifetime_fees carry-forward (broken bot count, ignored anyway)
+const LP_BASELINE_SWAP_COSTS = 11.72;      // total_swap_fees_paid_usd carry-forward
 
-// LP capital basis — fresh capital deposited at Phase 3 start.
-// (Previous phases fully exited 30 Apr, so this is a clean start.)
-const LP_TOTAL_DEPOSITED = 249.66;  // 125 USDC + 432.84 SOFTWARE.ai @ ~$0.288
+// LP capital basis — fresh $400 deposit at Phase 4 start.
+const LP_TOTAL_DEPOSITED = 400.00;
 
 
 /* ── Arb bot baseline ──────────────────────────────────────────────────────
-   Live capital basis the bot started from. The 2-minute test before this
-   doesn't count as a phase — just the noise of getting set up. Real
-   tracking starts here.
-
-   When you eventually reset, update all five carry-forward constants and
-   add an entry to ARB_PHASES so this run gets locked in as history. */
-const ARB_BASELINE_TIME        = new Date("2026-05-04T08:00:00Z");
-const ARB_BASELINE_VALUE       = 196.40;     // capital basis at start
-const ARB_BASELINE_GROSS       = 1.6299;     // gross_trade_pnl_usd carry-forward (from setup test)
-const ARB_BASELINE_BRIDGE_FEES = 12.686;     // total_bridge_fees_usd carry-forward
-const ARB_BASELINE_TRADES      = 15;         // total_arbs_executed at start
-const ARB_BASELINE_BRIDGES     = 12;         // bridge count at start
+   PHASE 2: 5 May 2026 14:00 UTC, fresh $400 deposit
+   ($200 USDC.e Doma + $200 USDC Base). Baseline = actual API state. */
+const ARB_BASELINE_TIME        = new Date("2026-05-05T14:00:00Z");
+const ARB_BASELINE_VALUE       = 400.67;     // actual total_capital_usd from API
+const ARB_BASELINE_GROSS       = 2.30;       // gross_trade_pnl_usd at Phase 2 start
+const ARB_BASELINE_BRIDGE_FEES = 12.89;      // total_bridge_fees_usd at Phase 2 start
+const ARB_BASELINE_TRADES      = 21;         // total_arbs_executed at Phase 2 start
+const ARB_BASELINE_BRIDGES     = 12;         // approx bridge count (carry-forward)
 
 interface ArbPhase {
   label:          string;
@@ -59,8 +54,21 @@ interface ArbPhase {
   bridges:        number;
 }
 
-// No completed phases yet — fresh tracker. Add entries here when you reset.
-const ARB_PHASES: ArbPhase[] = [];
+const ARB_PHASES: ArbPhase[] = [
+  // ── Phase 1: $196.40 Initial Run ───────────────────────────────
+  // First real run after the 2-min setup test. Started 4 May 08:00 UTC,
+  // closed 5 May 14:00 UTC when +$400 added to start Phase 2.
+  // endValueUsd is an estimate — refine with the exact pre-add total_capital_usd.
+  {
+    label:          "Phase 1: $196.40 Initial",
+    startTime:      new Date("2026-05-04T08:00:00Z"),
+    endTime:        new Date("2026-05-05T14:00:00Z"),
+    startValueUsd:  196.40,
+    endValueUsd:    197.50,    // ← estimate; replace with exact pre-add total_capital_usd
+    trades:         2,         // ≈ trades during this phase (lifetime - prior baseline)
+    bridges:        0,         // ≈ bridges during this phase
+  },
+];
 
 /* ── LP Phase History ─────────────────────────────────────────────────────
    Each completed phase is locked in here as a snapshot. The current
@@ -107,6 +115,20 @@ const LP_PHASES: LPPhase[] = [
     finalValueUsd: 215,       // approximate total value pulled out across the phase
     feesEarnedUsd: 15,        // implied: $215 − $200 = +$15 net
     swapCostsUsd:  0.16,      // approximate swap costs across the phase
+  },
+  // ── Phase 3: $249.66 Redeploy ──────────────────────────────────
+  // 1 May redeploy with 125 USDC + 432.84 SOFTWARE.ai through 5 May
+  // when the $400 add bumped capital and started Phase 4.
+  // finalValueUsd is an estimate — refine with the exact pre-add total_value
+  // from the API if you want the locked stats more precise.
+  {
+    label:         "Phase 3: $249.66 Redeploy",
+    startTime:     new Date("2026-05-01T11:38:14Z"),
+    endTime:       new Date("2026-05-05T14:00:00Z"),
+    depositedUsd:  249.66,
+    finalValueUsd: 253.00,    // ← estimate; replace with exact pre-add total_value
+    feesEarnedUsd: 3.50,      // ≈ net gain across the phase
+    swapCostsUsd:  0.10,      // estimate
   },
 ];
 
