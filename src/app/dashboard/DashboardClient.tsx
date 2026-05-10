@@ -3759,9 +3759,12 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
           {/* Bots first, stacked. Each is a self-contained section. */}
           <BotPanel />
           <LPPanel />
-          <ArbPanel />
+          {/* Arb bot temporarily hidden — bot is off, may return with a
+              different pool. Uncomment <ArbPanel /> + <ArbLogs /> below
+              when bringing it back. */}
+          {/* <ArbPanel /> */}
 
-          {/* Logs grid — auto-sniper + LP on top row, arb on its own row at desktop */}
+          {/* Logs grid — auto-sniper + LP side-by-side at desktop */}
           <div style={{
             display: "grid",
             gridTemplateColumns: mobile ? "1fr" : "1fr 1fr",
@@ -3771,7 +3774,7 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
             <div><BotLogs /></div>
             <div><LPLogs /></div>
           </div>
-          <ArbLogs />
+          {/* <ArbLogs /> */}
 
           <SupportCard mobile={mobile} />
           <SiteSnapshot guideCount={guideCount} emailCount={emailCount} mobile={mobile} />
