@@ -1,136 +1,232 @@
-import {
-  getPoolStats,
-  getRoundInfo,
-  fmtUsd,
-  fmtPct,
-} from "../_data/tokens";
+import { redirect } from "next/navigation";
+import { readSession } from "@/lib/fantasy/session";
+import { fantasyDb } from "@/lib/fantasy/supabase";
+import { getLatestRound } from "@/lib/fantasy/db";
+import { getAllTokensByAddress } from "@/lib/fantasy/doma";
+import { fmtUsd, fmtPct } from "../_data/tokens";
 import { Countdown } from "../_components/Countdown";
 
+export const dynamic = "force-dynamic";
+
 interface LeaderRow {
-  rank: number;
-  handle: string;
-  pctGrowth: number;
+  discordId: string;
+  shortName: string;
   totalValueUsd: number;
-  topPick: { domain: string; gainPct: number };
-  isYou?: boolean;
+  pctGrowth: number;
+  topMover: { domain: string; gainPct: number } | null;
+  isYou: boolean;
 }
 
-function mockLeaderboard(budget: number): LeaderRow[] {
-  // Deterministic mock — never random — so the page is stable to compare across reloads.
-  const seed = [
-    { handle: "domainwhisperer", pctGrowth: 84.2, top: { domain: "TRENCHES.ai", gainPct: 187 } },
-    { handle: "fdvfanatic",      pctGrowth: 71.4, top: { domain: "ALERT.ai", gainPct: 92 } },
-    { handle: "gradgang",        pctGrowth: 63.0, top: { domain: "BRAG.com", gainPct: 41 } },
-    { handle: "0xponzi",         pctGrowth: 58.8, top: { domain: "WINES.xyz", gainPct: 215 } },
-    { handle: "you",             pctGrowth: 51.6, top: { domain: "SOFTWARE.ai", gainPct: 67 }, isYou: true },
-    { handle: "boner.fund",      pctGrowth: 47.3, top: { domain: "BONER.com", gainPct: 88 } },
-    { handle: "snipechad",       pctGrowth: 39.2, top: { domain: "RIDES.com", gainPct: 31 } },
-    { handle: "mishka_holder",   pctGrowth: 33.9, top: { domain: "MISHKA.ai", gainPct: 122 } },
-    { handle: "tldmaxi",         pctGrowth: 28.4, top: { domain: "INVESTORS.xyz", gainPct: 19 } },
-    { handle: "depin_doge",      pctGrowth: 24.1, top: { domain: "DEPIN.ai", gainPct: 29 } },
-    { handle: "hightech_helga",  pctGrowth: 18.7, top: { domain: "HIGHTECH.xyz", gainPct: 14 } },
-    { handle: "namesnatch",      pctGrowth: 11.3, top: { domain: "GET.cash", gainPct: 9 } },
-    { handle: "fractionfanatic", pctGrowth:  7.0, top: { domain: "TERABYTES.ai", gainPct: 18 } },
-    { handle: "swimsuitsanon",   pctGrowth:  3.4, top: { domain: "SWIMSUITS.ai", gainPct: 12 } },
-    { handle: "bondingcurve",    pctGrowth: -2.1, top: { domain: "DISCORDWALLETS.com", gainPct: -8 } },
-    { handle: "midcurver",       pctGrowth: -6.8, top: { domain: "FOUNDATIONS.xyz", gainPct: -12 } },
-  ];
-  return seed.map((s, i) => ({
-    rank: i + 1,
-    handle: s.handle,
-    pctGrowth: s.pctGrowth,
-    totalValueUsd: budget * (1 + s.pctGrowth / 100),
-    topPick: s.top,
-    isYou: s.isYou,
-  }));
+function shortNameFor(discordId: string): string {
+  // Last 4 digits — enough to distinguish users without exposing full ID.
+  const s = String(discordId);
+  return s.length > 4 ? `user-${s.slice(-4)}` : `user-${s}`;
 }
 
-export default function LeaderboardPage() {
-  const stats = getPoolStats();
-  const round = getRoundInfo();
-  const rows = mockLeaderboard(stats.budgetUsd);
+export default async function LeaderboardPage() {
+  // Auth required so we can highlight the "you" row.
+  const session = readSession();
+  if (!session) redirect("/fantasy/login?error=session-required");
+
+  const round = await getLatestRound();
+  if (!round) return <EmptyState title="No round yet" body="The first round will open soon." />;
+
+  // During DRAFTING and before, there are no portfolio values to show.
+  // This is the bug that was scaring people — fake leaderboard during draft.
+  if (round.status === "UPCOMING") {
+    return (
+      <EmptyState
+        title="Round hasn't started"
+        body={`${round.name} opens for drafting soon. Standings appear once lineups lock and scoring begins.`}
+        countdown={{ to: round.draft_opens_at, label: "Draft opens" }}
+      />
+    );
+  }
+
+  if (round.status === "DRAFTING") {
+    return (
+      <EmptyState
+        title="Draft in progress"
+        body="Standings will appear once lineups lock and the scoring window begins. Right now everyone's still picking."
+        countdown={{ to: round.draft_locks_at, label: "Lineups lock" }}
+      />
+    );
+  }
+
+  // ACTIVE or COMPLETE — compute real leaderboard from fantasy_holdings.
+  const db = fantasyDb();
+  const { data: holdings, error } = await db
+    .from("fantasy_holdings")
+    .select("discord_id, token_address, domain_name, cost_basis_fdv_usd")
+    .eq("round_id", round.round_id);
+
+  if (error) {
+    return <EmptyState title="Couldn't load standings" body={error.message} />;
+  }
+  if (!holdings || holdings.length === 0) {
+    return <EmptyState title="No teams locked in" body="Standings appear once players draft." />;
+  }
+
+  // Mark each holding to live FDV.
+  const liveByAddr = await getAllTokensByAddress();
+
+  // Group by user.
+  const byUser = new Map<string, typeof holdings>();
+  for (const h of holdings) {
+    if (!byUser.has(h.discord_id)) byUser.set(h.discord_id, []);
+    byUser.get(h.discord_id)!.push(h);
+  }
+
+  const budget = Number(round.budget_usd);
+  const rows: LeaderRow[] = [];
+  for (const [discordId, userHoldings] of byUser.entries()) {
+    let holdingsValue = 0;
+    let costBasis = 0;
+    let topMover: { domain: string; gainPct: number } | null = null;
+    for (const h of userHoldings) {
+      const live = liveByAddr.get(String(h.token_address).toLowerCase());
+      const liveFdv = Number(live?.currentFDV ?? h.cost_basis_fdv_usd);
+      holdingsValue += liveFdv;
+      const cost = Number(h.cost_basis_fdv_usd);
+      costBasis += cost;
+      const gainPct = cost > 0 ? ((liveFdv - cost) / cost) * 100 : 0;
+      if (!topMover || gainPct > topMover.gainPct) {
+        topMover = { domain: h.domain_name, gainPct };
+      }
+    }
+    const unspent = budget - costBasis;
+    const totalValueUsd = holdingsValue + unspent;
+    const pctGrowth = budget > 0 ? ((totalValueUsd - budget) / budget) * 100 : 0;
+    rows.push({
+      discordId,
+      shortName: shortNameFor(discordId),
+      totalValueUsd,
+      pctGrowth,
+      topMover,
+      isYou: discordId === session.sub,
+    });
+  }
+
+  rows.sort((a, b) => b.totalValueUsd - a.totalValueUsd);
+
   const top3 = rows.slice(0, 3);
   const rest = rows.slice(3);
 
   return (
     <div className="mx-auto max-w-[1380px] px-6 pt-12 pb-20">
-      {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4 mb-10">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted mb-2">
-            Round {String(round.roundNumber).padStart(2, "0")} standings
+            {round.name} · {round.status === "COMPLETE" ? "final results" : "live standings"}
           </div>
           <h1 className="font-display text-[44px] font-bold tracking-[-0.025em] leading-tight">
             Standings
           </h1>
           <p className="text-[14px] text-muted mt-1.5">
-            Live ranking by total portfolio growth. Updated daily at 12:00 UTC.
+            {rows.length} {rows.length === 1 ? "team" : "teams"} · live FDV mark-to-market
           </p>
         </div>
-        <Countdown to={round.resolvesAt} label="Round resolves" />
+        {round.status === "ACTIVE" && (
+          <Countdown to={round.resolves_at} label="Round resolves" />
+        )}
       </div>
 
-      {/* Podium — top 3 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        {top3.map((row, i) => (
-          <PodiumCard key={row.handle} row={row} place={i + 1} />
-        ))}
-      </div>
-
-      {/* Rest of the table */}
-      <div className="glass rounded-xl overflow-hidden">
-        <div className="grid grid-cols-[60px_1fr_120px_140px_180px] gap-4 px-5 py-3 border-b border-border/60 font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
-          <div className="text-right">Rank</div>
-          <div>Player</div>
-          <div className="text-right">Growth</div>
-          <div className="text-right">Portfolio</div>
-          <div className="text-right">Top mover</div>
+      {top3.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {top3.map((row, i) => (
+            <PodiumCard key={row.discordId} row={row} place={i + 1} />
+          ))}
         </div>
-        {rest.map((row) => (
-          <div
-            key={row.handle}
-            className="grid grid-cols-[60px_1fr_120px_140px_180px] gap-4 px-5 py-3 border-b border-border/30 last:border-b-0 transition-colors hover:bg-white/[0.02]"
-            style={row.isYou ? { background: "rgba(124,106,255,0.06)" } : undefined}
-          >
-            <div className="text-right font-mono text-[13px] text-muted/80 tabular-nums">
-              {String(row.rank).padStart(2, "0")}
-            </div>
-            <div className="flex items-center gap-2.5">
-              <Avatar handle={row.handle} />
-              <span className="font-display text-[14px] font-medium truncate">
-                {row.handle}
-                {row.isYou && (
-                  <span className="ml-2 font-mono text-[9px] uppercase tracking-[0.12em] text-accent">
-                    you
-                  </span>
-                )}
-              </span>
-            </div>
-            <div
-              className="text-right font-mono text-[13px] tabular-nums"
-              style={{ color: row.pctGrowth > 0 ? "#34d399" : row.pctGrowth < 0 ? "#f87171" : "var(--color-muted)" }}
-            >
-              {fmtPct(row.pctGrowth, { showSign: true })}
-            </div>
-            <div className="text-right font-mono text-[13px] tabular-nums text-text">
-              {fmtUsd(row.totalValueUsd, { compact: true })}
-            </div>
-            <div className="text-right">
-              <span className="font-display text-[12px] text-text/90">{row.topPick.domain}</span>
-              <span
-                className="ml-1.5 font-mono text-[11px] tabular-nums"
-                style={{ color: row.topPick.gainPct > 0 ? "#34d399" : "#f87171" }}
-              >
-                {fmtPct(row.topPick.gainPct, { showSign: true })}
-              </span>
-            </div>
+      )}
+
+      {rest.length > 0 && (
+        <div className="glass rounded-xl overflow-hidden">
+          <div className="grid grid-cols-[60px_1fr_120px_140px_180px] gap-4 px-5 py-3 border-b border-border/60 font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+            <div className="text-right">Rank</div>
+            <div>Player</div>
+            <div className="text-right">Growth</div>
+            <div className="text-right">Portfolio</div>
+            <div className="text-right">Top mover</div>
           </div>
-        ))}
-      </div>
+          {rest.map((row, idx) => (
+            <div
+              key={row.discordId}
+              className="grid grid-cols-[60px_1fr_120px_140px_180px] gap-4 px-5 py-3 border-b border-border/30 last:border-b-0 transition-colors hover:bg-white/[0.02]"
+              style={row.isYou ? { background: "rgba(124,106,255,0.06)" } : undefined}
+            >
+              <div className="text-right font-mono text-[13px] text-muted/80 tabular-nums">
+                {String(idx + 4).padStart(2, "0")}
+              </div>
+              <div className="flex items-center gap-2.5">
+                <Avatar handle={row.shortName} />
+                <span className="font-display text-[14px] font-medium truncate">
+                  {row.shortName}
+                  {row.isYou && (
+                    <span className="ml-2 font-mono text-[9px] uppercase tracking-[0.12em] text-accent">
+                      you
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div
+                className="text-right font-mono text-[13px] tabular-nums"
+                style={{ color: row.pctGrowth > 0 ? "#34d399" : row.pctGrowth < 0 ? "#f87171" : "var(--color-muted)" }}
+              >
+                {fmtPct(row.pctGrowth, { showSign: true })}
+              </div>
+              <div className="text-right font-mono text-[13px] tabular-nums text-text">
+                {fmtUsd(row.totalValueUsd, { compact: true })}
+              </div>
+              <div className="text-right">
+                {row.topMover ? (
+                  <>
+                    <span className="font-display text-[12px] text-text/90">{row.topMover.domain}</span>
+                    <span
+                      className="ml-1.5 font-mono text-[11px] tabular-nums"
+                      style={{ color: row.topMover.gainPct > 0 ? "#34d399" : "#f87171" }}
+                    >
+                      {fmtPct(row.topMover.gainPct, { showSign: true })}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-muted/60">—</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <p className="mt-6 text-center text-[11px] text-muted/70 font-mono">
-        Demo data · live-data wiring in commit two
+        names shown as <span className="text-text/80">user-XXXX</span> (last 4 digits of Discord ID) until usernames sync
       </p>
+    </div>
+  );
+}
+
+/* ───────────────── components ───────────────── */
+
+function EmptyState({
+  title,
+  body,
+  countdown,
+}: {
+  title: string;
+  body: string;
+  countdown?: { to: string; label: string };
+}) {
+  return (
+    <div className="mx-auto max-w-2xl px-6 pt-24 pb-20">
+      <div className="glass rounded-2xl p-10">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted mb-3">
+          Standings
+        </div>
+        <h1 className="font-display text-[32px] font-bold tracking-[-0.025em] leading-tight mb-3">
+          {title}
+        </h1>
+        <p className="text-[15px] text-muted leading-relaxed mb-6">{body}</p>
+        {countdown && <Countdown to={countdown.to} label={countdown.label} />}
+      </div>
     </div>
   );
 }
@@ -152,23 +248,17 @@ function PodiumCard({ row, place }: { row: LeaderRow; place: number }) {
         border: `1px solid ${a.tone}33`,
       }}
     >
-      <div
-        className="absolute inset-x-0 top-0 h-[3px]"
-        style={{ background: a.gradient }}
-      />
+      <div className="absolute inset-x-0 top-0 h-[3px]" style={{ background: a.gradient }} />
 
       <div className="flex items-center justify-between mb-3">
-        <span
-          className="font-mono text-[10px] uppercase tracking-[0.18em]"
-          style={{ color: a.tone }}
-        >
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: a.tone }}>
           {a.label}
         </span>
-        <Avatar handle={row.handle} large />
+        <Avatar handle={row.shortName} large />
       </div>
 
       <div className="font-display text-[20px] font-bold mb-1 truncate">
-        {row.handle}
+        {row.shortName}
         {row.isYou && (
           <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.12em] text-accent align-middle">
             you
@@ -185,25 +275,24 @@ function PodiumCard({ row, place }: { row: LeaderRow; place: number }) {
 
       <div className="mt-3 flex items-baseline justify-between text-[12px] font-mono">
         <span className="text-muted">Portfolio</span>
-        <span className="text-text tabular-nums">
-          {fmtUsd(row.totalValueUsd, { compact: true })}
-        </span>
+        <span className="text-text tabular-nums">{fmtUsd(row.totalValueUsd, { compact: true })}</span>
       </div>
-      <div className="mt-1 flex items-baseline justify-between text-[12px] font-mono">
-        <span className="text-muted">Top mover</span>
-        <span className="text-text">
-          {row.topPick.domain}{" "}
-          <span style={{ color: row.topPick.gainPct > 0 ? "#34d399" : "#f87171" }}>
-            {fmtPct(row.topPick.gainPct, { showSign: true })}
+      {row.topMover && (
+        <div className="mt-1 flex items-baseline justify-between text-[12px] font-mono">
+          <span className="text-muted">Top mover</span>
+          <span className="text-text">
+            {row.topMover.domain}{" "}
+            <span style={{ color: row.topMover.gainPct > 0 ? "#34d399" : "#f87171" }}>
+              {fmtPct(row.topMover.gainPct, { showSign: true })}
+            </span>
           </span>
-        </span>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function Avatar({ handle, large }: { handle: string; large?: boolean }) {
-  // Deterministic colour from the handle.
   let h = 0;
   for (let i = 0; i < handle.length; i++) h = (h * 31 + handle.charCodeAt(i)) & 0xffffff;
   const hue = Math.abs(h) % 360;
@@ -220,7 +309,7 @@ function Avatar({ handle, large }: { handle: string; large?: boolean }) {
         textShadow: "0 1px 2px rgba(0,0,0,0.3)",
       }}
     >
-      {handle.slice(0, 2).toUpperCase()}
+      {handle.slice(-2).toUpperCase()}
     </div>
   );
 }
