@@ -66,7 +66,14 @@
       "Bash(curl -s \"https://blog.doma.xyz/domainfi-explained-how-domain-buyouts-work-on-doma/\")",
       "Bash(npm i:*)",
       "Bash(node -e \"require\\(''''@vercel/analytics/next''''\\)\")",
-      "Bash(python -c \"import json,sys; p=json.load\\(sys.stdin\\); print\\(p.get\\(''''version''''\\)\\); print\\(list\\(p.get\\(''''exports'''',{}\\).keys\\(\\)\\)[:10]\\)\")"
+      "Bash(python -c \"import json,sys; p=json.load\\(sys.stdin\\); print\\(p.get\\(''''version''''\\)\\); print\\(list\\(p.get\\(''''exports'''',{}\\).keys\\(\\)\\)[:10]\\)\")",
+      "Bash(node -e \":*)",
+      "Bash(vercel logs:*)",
+      "Bash(vercel --prod)",
+      "Bash(grep -n \"ArticleClient\\\\|extractToc\\\\|parseArticleSections\" src/app/[subdomain]/guides/[slug]/page.tsx)",
+      "Bash(grep -n \"sectionToHtml\" src/app/[subdomain]/guides/[slug]/page.tsx)",
+      "Bash(python3 -c \":*)",
+      "Bash(python -c \":*)"
     ]
   }
 }
