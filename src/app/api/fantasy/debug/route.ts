@@ -4,12 +4,10 @@
  * Reports what the service-role client can actually see, without
  * leaking any secrets. Visit:
  *
- *   https://web3guides.com/api/fantasy/_debug
+ *   https://web3guides.com/api/fantasy/debug
  *
- * It returns counts of fantasy_auth_codes rows visible to the
- * server-side client. If counts come back as 0 when rows exist
- * in the DB, RLS is filtering and the env var isn't a true
- * service_role key.
+ * If row counts come back as 0 when rows exist in the DB, RLS is
+ * filtering and the env var isn't a true service_role key.
  */
 
 import { NextResponse } from "next/server";
@@ -35,7 +33,6 @@ export async function GET() {
   try {
     const db = fantasyDb();
 
-    // Count by table — RLS-restricted reads return 0 silently
     const tables = [
       "fantasy_auth_codes",
       "fantasy_users",
@@ -53,7 +50,6 @@ export async function GET() {
     }
     result.row_counts_visible_to_service_role = counts;
 
-    // Decode JWT role claim (no secret leak — role is in the payload)
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
     const parts = key.split(".");
     if (parts.length === 3) {
