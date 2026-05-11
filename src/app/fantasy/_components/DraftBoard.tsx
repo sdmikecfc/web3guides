@@ -34,14 +34,28 @@ const TARGET_PICKS = 10;
 export function DraftBoard({
   tokens,
   budgetUsd,
+  initialPicks = [],
 }: {
   tokens: FantasyToken[];
   budgetUsd: number;
+  /** Pre-loaded picks from the DB, as token_address (CAIP-10) strings */
+  initialPicks?: string[];
 }) {
-  const [selected, setSelected] = useState<string[]>([]);  // domain names, in pick order
+  // Map initialPicks (addresses) -> domain names for the existing UI state.
+  const initialDomains = useMemo(() => {
+    const byAddr = new Map(tokens.map((t) => [t.address.toLowerCase(), t.domain]));
+    return initialPicks
+      .map((a) => byAddr.get(String(a).toLowerCase()))
+      .filter((d): d is string => Boolean(d));
+  }, [tokens, initialPicks]);
+
+  const [selected, setSelected] = useState<string[]>(initialDomains);  // domain names, in pick order
   const [tierFilter, setTierFilter] = useState<Tier | "ALL">("ALL");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("fdv");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
 
   const tokenByDomain = useMemo(() => {
     const m = new Map<string, FantasyToken>();
@@ -78,14 +92,39 @@ export function DraftBoard({
   const overBudget = remaining < 0;
 
   const togglePick = (domain: string) => {
+    setSavedAt(null); setSaveError(null);
     setSelected((prev) => {
       if (prev.includes(domain)) return prev.filter((d) => d !== domain);
       if (prev.length >= TARGET_PICKS) return prev;
       return [...prev, domain];
     });
   };
-  const removePick = (domain: string) =>
+  const removePick = (domain: string) => {
+    setSavedAt(null); setSaveError(null);
     setSelected((prev) => prev.filter((d) => d !== domain));
+  };
+
+  const submitPicks = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const addresses = pickedTokens.map((t) => t.address);
+      const resp = await fetch("/api/fantasy/draft/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ picks: addresses }),
+      });
+      const body = await resp.json().catch(() => ({}));
+      if (!resp.ok || !body?.ok) {
+        throw new Error(body?.error || `save failed (${resp.status})`);
+      }
+      setSavedAt(Date.now());
+    } catch (err: any) {
+      setSaveError(err?.message || "save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
@@ -197,6 +236,10 @@ export function DraftBoard({
           budgetUsd={budgetUsd}
           overBudget={overBudget}
           onRemove={removePick}
+          onSubmit={submitPicks}
+          saving={saving}
+          saveError={saveError}
+          savedAt={savedAt}
         />
       </aside>
     </div>
@@ -311,6 +354,10 @@ function TeamPanel({
   budgetUsd,
   overBudget,
   onRemove,
+  onSubmit,
+  saving,
+  saveError,
+  savedAt,
 }: {
   picked: FantasyToken[];
   totalCost: number;
@@ -318,6 +365,10 @@ function TeamPanel({
   budgetUsd: number;
   overBudget: boolean;
   onRemove: (domain: string) => void;
+  onSubmit: () => void | Promise<void>;
+  saving: boolean;
+  saveError: string | null;
+  savedAt: number | null;
 }) {
   const filledCount = picked.length;
   const fillPct = Math.min(100, Math.max(0, (totalCost / budgetUsd) * 100));
@@ -390,13 +441,13 @@ function TeamPanel({
       </div>
 
       {/* Action */}
-      <div className="px-3 pb-3">
+      <div className="px-3 pb-3 space-y-2">
         <button
           type="button"
-          disabled={filledCount !== TARGET_PICKS || overBudget}
+          disabled={filledCount !== TARGET_PICKS || overBudget || saving}
           className="w-full rounded-xl py-3 font-display font-semibold text-[14px] tracking-tight transition-all duration-200 disabled:cursor-not-allowed"
           style={
-            filledCount === TARGET_PICKS && !overBudget
+            filledCount === TARGET_PICKS && !overBudget && !saving
               ? {
                   background: "linear-gradient(135deg, #7c6aff, #4f3cc9)",
                   color: "#fff",
@@ -409,17 +460,39 @@ function TeamPanel({
                 }
           }
           onClick={() => {
-            if (filledCount === TARGET_PICKS && !overBudget) {
-              alert("Demo: would lock these 10 picks for the week.");
+            if (filledCount === TARGET_PICKS && !overBudget && !saving) {
+              void onSubmit();
             }
           }}
         >
-          {overBudget
-            ? `Over budget by ${fmtUsd(-remaining, { compact: true })}`
-            : filledCount < TARGET_PICKS
-              ? `Pick ${TARGET_PICKS - filledCount} more`
-              : "Lock in 10 picks"}
+          {saving
+            ? "Saving…"
+            : overBudget
+              ? `Over budget by ${fmtUsd(-remaining, { compact: true })}`
+              : filledCount < TARGET_PICKS
+                ? `Pick ${TARGET_PICKS - filledCount} more`
+                : "Lock in 10 picks"}
         </button>
+
+        {saveError && (
+          <div
+            className="rounded-lg px-3 py-2 text-[12px]"
+            style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)", color: "#fca5a5" }}
+          >
+            {saveError}
+          </div>
+        )}
+        {savedAt && !saveError && (
+          <div
+            className="rounded-lg px-3 py-2 text-[12px] flex items-center gap-2"
+            style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.25)", color: "#86efac" }}
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Team saved — you can keep editing until the draft locks.
+          </div>
+        )}
       </div>
     </div>
   );

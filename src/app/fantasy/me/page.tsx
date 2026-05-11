@@ -1,57 +1,77 @@
-import {
-  getPoolStats,
-  getRoundInfo,
-  fmtUsd,
-  fmtPct,
-} from "../_data/tokens";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { readSession } from "@/lib/fantasy/session";
+import { getLatestRound, getUserHoldings, decorateHoldings } from "@/lib/fantasy/db";
+import { fmtUsd, fmtPct } from "../_data/tokens";
 import { TierBadge } from "../_components/TierBadge";
 import { Countdown } from "../_components/Countdown";
 
-interface MockHolding {
-  domain: string;
-  costBasisUsd: number;     // FDV at draft
-  currentFdvUsd: number;    // mark-to-market
-  tier: "PREMIUM" | "UPPER_MID" | "MID" | "SMALL";
-}
+export const dynamic = "force-dynamic";
 
-function buildMockTeam(): MockHolding[] {
-  // Deterministic — pulled from the live top-of-pool to look familiar.
-  return [
-    { domain: "ALERT.ai",       costBasisUsd: 240520, currentFdvUsd: 268900, tier: "PREMIUM" },
-    { domain: "TRENCHES.ai",    costBasisUsd:  32504, currentFdvUsd:  93000, tier: "UPPER_MID" },
-    { domain: "WINES.xyz",      costBasisUsd:  10879, currentFdvUsd:  34300, tier: "UPPER_MID" },
-    { domain: "MISHKA.ai",      costBasisUsd:   3576, currentFdvUsd:   7920, tier: "MID" },
-    { domain: "TAXATTORNEYS.xyz", costBasisUsd: 3271, currentFdvUsd:   2950, tier: "MID" },
-    { domain: "FOUNDATIONS.xyz",  costBasisUsd: 3094, currentFdvUsd:   2700, tier: "MID" },
-    { domain: "cryptobancs.com",  costBasisUsd: 2297, currentFdvUsd:   2810, tier: "MID" },
-    { domain: "DISCORDWALLETS.com", costBasisUsd: 1992, currentFdvUsd: 1820, tier: "SMALL" },
-    { domain: "fastchain.xyz",   costBasisUsd:   850, currentFdvUsd:   1140, tier: "SMALL" },
-    { domain: "kooche.com",      costBasisUsd:   620, currentFdvUsd:    790, tier: "SMALL" },
-  ];
-}
+type Tier = "PREMIUM" | "UPPER_MID" | "MID" | "SMALL";
 
-export default function MyTeamPage() {
-  const stats = getPoolStats();
-  const round = getRoundInfo();
-  const team = buildMockTeam();
-  const totalCost = team.reduce((s, h) => s + h.costBasisUsd, 0);
-  const totalValue = team.reduce((s, h) => s + h.currentFdvUsd, 0);
-  const unspent = stats.budgetUsd - totalCost;
+export default async function MyTeamPage() {
+  const session = readSession();
+  if (!session) redirect("/fantasy/login?error=session-required");
+
+  const round = await getLatestRound();
+  if (!round) {
+    return <EmptyState title="No round yet" body="The first round will open soon." />;
+  }
+
+  const rawHoldings = await getUserHoldings(round.round_id, session.sub);
+  if (rawHoldings.length === 0) {
+    if (round.status === "DRAFTING") {
+      return (
+        <EmptyState
+          title="You haven't drafted yet"
+          body={`The draft window is open. Build a 10-domain portfolio under the ${fmtUsd(Number(round.budget_usd), { compact: true })} budget.`}
+          cta={{ href: "/fantasy/draft", label: "Open draft" }}
+        />
+      );
+    }
+    return (
+      <EmptyState
+        title="You weren't in this round"
+        body="No holdings on record. Wait for the next round to open and run !fantasy enter to play."
+      />
+    );
+  }
+
+  const holdings = await decorateHoldings(rawHoldings);
+  const budget = Number(round.budget_usd);
+  const totalCost = holdings.reduce((s, h) => s + h.cost_basis_fdv_usd, 0);
+  const totalValue = holdings.reduce((s, h) => s + h.current_fdv_usd, 0);
+  const unspent = budget - totalCost;
   const grandTotal = totalValue + unspent;
-  const pctGrowth = ((grandTotal - stats.budgetUsd) / stats.budgetUsd) * 100;
+  const pctGrowth = budget > 0 ? ((grandTotal - budget) / budget) * 100 : 0;
+
+  const phaseLabel =
+    round.status === "DRAFTING" ? "drafting" :
+    round.status === "ACTIVE" ? "scoring" :
+    round.status === "COMPLETE" ? "complete" : "upcoming";
+
+  const countdownTarget =
+    round.status === "DRAFTING" ? round.draft_locks_at :
+    round.status === "ACTIVE" ? round.resolves_at :
+    null;
 
   return (
     <div className="mx-auto max-w-[1380px] px-6 pt-12 pb-20">
       {/* Header */}
       <div className="mb-8">
         <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted mb-2">
-          Round {String(round.roundNumber).padStart(2, "0")} · scoring
+          {round.name} · {phaseLabel}
         </div>
         <h1 className="font-display text-[40px] font-bold tracking-[-0.025em] leading-tight mb-1.5">
           Your portfolio
         </h1>
         <p className="text-[14px] text-muted">
-          Lineup locked. Held positions tracked against live FDV until the round resolves.
+          {round.status === "DRAFTING"
+            ? "Editable until the draft locks. Your picks are saved live."
+            : round.status === "ACTIVE"
+              ? "Lineup locked. Held positions tracked against live FDV until the round resolves."
+              : "Round complete. Final values frozen."}
         </p>
       </div>
 
@@ -62,7 +82,12 @@ export default function MyTeamPage() {
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">
               Total portfolio
             </span>
-            <Countdown to={round.resolvesAt} label="Round resolves" />
+            {countdownTarget && (
+              <Countdown
+                to={countdownTarget}
+                label={round.status === "DRAFTING" ? "Draft locks" : "Round resolves"}
+              />
+            )}
           </div>
           <div className="mt-2">
             <div className="font-display text-[48px] font-bold tracking-[-0.025em] tabular-nums leading-none">
@@ -76,7 +101,7 @@ export default function MyTeamPage() {
                 {fmtPct(pctGrowth, { showSign: true })}
               </span>
               <span className="text-[12px] text-muted">
-                from {fmtUsd(stats.budgetUsd, { compact: true })} starting budget
+                from {fmtUsd(budget, { compact: true })} starting budget
               </span>
             </div>
           </div>
@@ -88,7 +113,7 @@ export default function MyTeamPage() {
           <div className="h-px bg-border/60 my-2" />
           <Row label="Total" value={fmtUsd(grandTotal, { compact: true })} bold />
           <Row
-            label="Realized this round"
+            label={round.status === "COMPLETE" ? "Final result" : "Realized this round"}
             value={fmtPct(pctGrowth, { showSign: true })}
             color={pctGrowth >= 0 ? "#34d399" : "#f87171"}
           />
@@ -101,17 +126,26 @@ export default function MyTeamPage() {
           <div className="flex items-center gap-2">
             <span className="h-px w-6 bg-accent/60" />
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">
-              Holdings (10/10) · locked
+              Holdings ({holdings.length}/10){round.status !== "DRAFTING" ? " · locked" : ""}
             </span>
           </div>
-          <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted/70">
-            no swaps · results day 10
-          </span>
+          {round.status === "DRAFTING" ? (
+            <Link
+              href="/fantasy/draft"
+              className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted hover:text-accent transition-colors"
+            >
+              Edit picks →
+            </Link>
+          ) : (
+            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted/70">
+              no swaps · resolves day 4
+            </span>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {team.map((h) => (
-            <HoldingCard key={h.domain} h={h} />
+          {holdings.map((h) => (
+            <HoldingCard key={h.token_address} h={h} />
           ))}
         </div>
       </section>
@@ -119,8 +153,52 @@ export default function MyTeamPage() {
   );
 }
 
-function HoldingCard({ h }: { h: MockHolding }) {
-  const pct = ((h.currentFdvUsd - h.costBasisUsd) / h.costBasisUsd) * 100;
+function EmptyState({
+  title,
+  body,
+  cta,
+}: {
+  title: string;
+  body: string;
+  cta?: { href: string; label: string };
+}) {
+  return (
+    <div className="mx-auto max-w-2xl px-6 pt-24 pb-20">
+      <div className="glass rounded-2xl p-10">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted mb-3">My team</div>
+        <h1 className="font-display text-[32px] font-bold tracking-[-0.025em] leading-tight mb-3">
+          {title}
+        </h1>
+        <p className="text-[15px] text-muted leading-relaxed mb-6">{body}</p>
+        {cta && (
+          <Link
+            href={cta.href}
+            className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 font-display font-semibold text-[14px] tracking-tight"
+            style={{
+              background: "linear-gradient(135deg, #7c6aff, #4f3cc9)",
+              color: "#fff",
+              boxShadow: "0 8px 24px rgba(124,106,255,0.35)",
+            }}
+          >
+            {cta.label} →
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function HoldingCard({
+  h,
+}: {
+  h: {
+    domain_name: string;
+    cost_basis_fdv_usd: number;
+    current_fdv_usd: number;
+    pct_change: number;
+  };
+}) {
+  const pct = h.pct_change;
   const positive = pct >= 0;
 
   return (
@@ -128,10 +206,9 @@ function HoldingCard({ h }: { h: MockHolding }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="font-display text-[18px] font-semibold truncate leading-tight">
-            {h.domain}
+            {h.domain_name}
           </div>
           <div className="mt-1 flex items-center gap-2">
-            <TierBadge tier={h.tier} size="sm" />
             <span className="font-mono text-[10px] text-muted/70">drafted</span>
           </div>
         </div>
@@ -144,8 +221,8 @@ function HoldingCard({ h }: { h: MockHolding }) {
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-3">
-        <Cell label="Cost basis" value={fmtUsd(h.costBasisUsd, { compact: true })} />
-        <Cell label="Current FDV" value={fmtUsd(h.currentFdvUsd, { compact: true })} />
+        <Cell label="Cost basis" value={fmtUsd(h.cost_basis_fdv_usd, { compact: true })} />
+        <Cell label="Current FDV" value={fmtUsd(h.current_fdv_usd, { compact: true })} />
         <Cell
           label="Δ"
           value={fmtPct(pct, { showSign: true })}
