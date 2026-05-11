@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import type { TocItem } from "@/lib/extractToc";
 
-export interface TocItem { id: string; text: string; level: 2 | 3; }
+export type { TocItem };
 
 interface Props {
   accentHex: string;
@@ -52,15 +53,16 @@ export function ArticleClient({ accentHex, toc }: Props) {
                    onClick={e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
                    style={{
                      display: "block",
-                     paddingLeft: level === 3 ? 12 : 0,
-                     padding: `5px ${level === 3 ? 12 : 0}px 5px ${level === 3 ? 12 : 0}px`,
+                     paddingTop: 5,
+                     paddingBottom: 5,
+                     paddingLeft: level === 3 ? 16 : 8,
+                     paddingRight: 0,
                      fontFamily: "'DM Sans', sans-serif",
                      fontSize: level === 2 ? "0.8rem" : "0.75rem",
                      fontWeight: level === 2 ? 600 : 400,
                      color: activeId === id ? accentHex : "#6b7280",
                      textDecoration: "none",
                      borderLeft: activeId === id ? `2px solid ${accentHex}` : "2px solid transparent",
-                     paddingLeft: level === 3 ? 16 : 8,
                      lineHeight: 1.4,
                      transition: "color 0.15s, border-color 0.15s",
                    }}>
@@ -86,19 +88,3 @@ export function ArticleClient({ accentHex, toc }: Props) {
   );
 }
 
-/** Extract TOC from markdown string (server-safe — pure function) */
-export function extractToc(md: string): TocItem[] {
-  const lines = md.split("\n");
-  const toc: TocItem[] = [];
-  for (const line of lines) {
-    const h2 = line.match(/^## (.+)$/);
-    const h3 = line.match(/^### (.+)$/);
-    if (h2) toc.push({ id: slugId(h2[1]), text: h2[1], level: 2 });
-    else if (h3) toc.push({ id: slugId(h3[1]), text: h3[1], level: 3 });
-  }
-  return toc;
-}
-
-function slugId(text: string) {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}

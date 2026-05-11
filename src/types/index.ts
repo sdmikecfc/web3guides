@@ -1,3 +1,17 @@
+// ─── Article visuals ─────────────────────────────────────────────────────────
+// Structured visual data authored by the AI alongside article content.
+// Stored as JSONB in Supabase and injected between sections at render time.
+
+export interface StatVisualItem  { value: string; label: string; }
+export interface StepVisualItem  { step: string; detail: string; }
+
+export type ArticleVisual =
+  | { type: "stats";      after_section: string; items: StatVisualItem[] }
+  | { type: "comparison"; after_section: string; left: { label: string; points: string[] }; right: { label: string; points: string[] } }
+  | { type: "steps";      after_section: string; heading?: string; items: StepVisualItem[] }
+  | { type: "callout";    after_section: string; variant: "insight" | "warning" | "tip"; heading: string; body: string }
+  | { type: "checklist";  after_section: string; heading: string; items: string[] };
+
 // ─── Guide ───────────────────────────────────────────────────────────────────
 
 export type Difficulty = "beginner" | "intermediate" | "advanced";
@@ -16,6 +30,8 @@ export interface Guide {
   read_time_minutes?: number | null;
   author?: string | null;
   content?: string | null;
+  visuals?: ArticleVisual[] | null;
+  key_points?: string[] | null;
 }
 
 // ─── Subdomain config ────────────────────────────────────────────────────────
@@ -28,6 +44,7 @@ export interface SubdomainConfig {
   accentHex: string;             // Hex used for inline styles / CSS vars
   glowHex: string;               // rgba glow
   emoji: string;
+  logoUrl?: string;          // optional image logo — overrides emoji when set
   gradientFrom: string;
   gradientTo: string;
 }
@@ -50,4 +67,8 @@ export type SubdomainKey =
   | "jobs"
   | "medium"
   | "advanced"
-  | "doma";
+  | "doma"
+  | "aivm"
+  | "pai3"
+  | "ink"
+  | "domains";

@@ -23,27 +23,32 @@ export default function SubdomainHeader({ subdomain }: Props) {
 
   return (
     <header style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", borderBottom: "1px solid #e5e7eb" }}>
-      <div style={{ margin: "0 auto", maxWidth: 1280, display: "flex", height: 56, alignItems: "center", justifyContent: "space-between", gap: 16, padding: "0 24px" }}>
+      <div style={{ margin: "0 auto", maxWidth: 1380, display: "flex", height: 56, alignItems: "center", justifyContent: "space-between", gap: 16, padding: "0 24px" }}>
 
         {/* Left — brand + subdomain */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
           <a
             href={homeHref}
-            style={{ fontFamily: "'Bungee', cursive", fontSize: "1.1rem", fontWeight: 400, background: "linear-gradient(135deg, #ff6b35, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", textDecoration: "none", flexShrink: 0 }}
+            style={{ fontFamily: "'Bungee', cursive", fontSize: "1.1rem", fontWeight: 400, background: "linear-gradient(135deg, #ff6b35, #ec4899)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "transparent", textDecoration: "none", flexShrink: 0 }}
           >
             W3G
           </a>
           <span style={{ color: "#d1d5db" }}>/</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <a
+            href={subdomainHref(subdomain.key)}
+            style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}
+          >
             <span
               style={{ display: "flex", height: 28, width: 28, alignItems: "center", justifyContent: "center", borderRadius: 8, fontSize: "0.95rem", background: `${subdomain.accentHex}15`, border: `1px solid ${subdomain.accentHex}30` }}
             >
-              {subdomain.emoji}
+              {subdomain.logoUrl
+                ? <img src={subdomain.logoUrl} alt={subdomain.label} style={{ width: 18, height: 18, objectFit: "contain" }} />
+                : subdomain.emoji}
             </span>
             <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", fontWeight: 700, color: subdomain.accentHex }}>
               {subdomain.label}
             </span>
-          </div>
+          </a>
         </div>
 
         {/* Right — nav */}
@@ -72,7 +77,11 @@ export default function SubdomainHeader({ subdomain }: Props) {
                         onClick={() => setMenuOpen(false)}
                         style={{ display: "flex", alignItems: "center", gap: 10, borderRadius: 8, padding: "8px 12px", textDecoration: "none", fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", fontWeight: active ? 700 : 400, color: active ? cfg.accentHex : "#374151", background: active ? `${cfg.accentHex}10` : "transparent", transition: "background 0.15s" }}
                       >
-                        <span>{cfg.emoji}</span>
+                        <span style={{ display: "flex", alignItems: "center", width: 18, justifyContent: "center" }}>
+                          {cfg.logoUrl
+                            ? <img src={cfg.logoUrl} alt={cfg.label} style={{ width: 16, height: 16, objectFit: "contain" }} />
+                            : cfg.emoji}
+                        </span>
                         <span style={{ flex: 1 }}>{cfg.label}</span>
                         {active && (
                           <span style={{ height: 6, width: 6, borderRadius: "50%", background: cfg.accentHex, flexShrink: 0 }} />

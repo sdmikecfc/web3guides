@@ -169,9 +169,9 @@ function DifficultyPyramid({ accentHex, palette, difficulty }: { accentHex: stri
 /* ── Network Diagram ──────────────────────────────────────── */
 function NetworkDiagram({ accentHex, palette }: { accentHex: string; palette: ReturnType<typeof buildPalette> }) {
   const nodes = [
-    { x: 140, y: 50, label: "Core", r: 22, main: true },
-    { x: 60,  y: 30, label: "Node A", r: 14, main: false },
-    { x: 220, y: 30, label: "Node B", r: 14, main: false },
+    { x: 140, y: 50,  label: "Core",   r: 22, main: true },
+    { x: 60,  y: 30,  label: "Node A", r: 14, main: false },
+    { x: 220, y: 30,  label: "Node B", r: 14, main: false },
     { x: 50,  y: 100, label: "Node C", r: 14, main: false },
     { x: 230, y: 100, label: "Node D", r: 14, main: false },
     { x: 140, y: 130, label: "Node E", r: 14, main: false },
@@ -227,22 +227,22 @@ function StatsCard({ accentHex, palette, subdomain }: { accentHex: string; palet
 
 const STATS_DATA: Record<string, { value: string; label: string; sub: string }[]> = {
   staking: [
-    { value: "3.5%",  label: "Avg ETH APY",       sub: "staking rewards" },
-    { value: "32",    label: "ETH Required",       sub: "solo validator" },
-    { value: "~12s",  label: "Block Time",         sub: "post-merge" },
-    { value: "99.9%", label: "Uptime Target",      sub: "avoid slashing" },
+    { value: "3.5%",  label: "Avg ETH APY",        sub: "staking rewards" },
+    { value: "32",    label: "ETH Required",        sub: "solo validator" },
+    { value: "~12s",  label: "Block Time",          sub: "post-merge" },
+    { value: "99.9%", label: "Uptime Target",       sub: "avoid slashing" },
   ],
   defi: [
-    { value: "$80B+", label: "Total Value Locked", sub: "DeFi protocols" },
-    { value: "5-20%", label: "Avg Yield",          sub: "stable pools" },
-    { value: "0.3%",  label: "Typical Swap Fee",   sub: "DEX standard" },
-    { value: "100+",  label: "Active Protocols",   sub: "multi-chain" },
+    { value: "$80B+", label: "Total Value Locked",  sub: "DeFi protocols" },
+    { value: "5-20%", label: "Avg Yield",           sub: "stable pools" },
+    { value: "0.3%",  label: "Typical Swap Fee",    sub: "DEX standard" },
+    { value: "100+",  label: "Active Protocols",    sub: "multi-chain" },
   ],
   rwa: [
-    { value: "$12B+", label: "RWA On-Chain",       sub: "tokenized assets" },
-    { value: "4-5%",  label: "T-Bill Yield",       sub: "tokenized" },
-    { value: "30+",   label: "Issuers",            sub: "live platforms" },
-    { value: "2025",  label: "Breakout Year",      sub: "institutional" },
+    { value: "$12B+", label: "RWA On-Chain",        sub: "tokenized assets" },
+    { value: "4-5%",  label: "T-Bill Yield",        sub: "tokenized" },
+    { value: "30+",   label: "Issuers",             sub: "live platforms" },
+    { value: "2025",  label: "Breakout Year",       sub: "institutional" },
   ],
   tax: [
     { value: "37%",   label: "Short-Term Cap Gain", sub: "under 1 year" },
@@ -251,10 +251,10 @@ const STATS_DATA: Record<string, { value: string; label: string; sub: string }[]
     { value: "Apr 15", label: "Filing Deadline",   sub: "US taxpayers" },
   ],
   default: [
-    { value: "10K+",  label: "Daily Users",        sub: "avg platform" },
-    { value: "99%",   label: "Uptime",             sub: "protocol SLA" },
-    { value: "< 1s",  label: "Confirmation",       sub: "optimistic L2" },
-    { value: "2025",  label: "Current Year",       sub: "stay updated" },
+    { value: "10K+",  label: "Daily Users",         sub: "avg platform" },
+    { value: "99%",   label: "Uptime",              sub: "protocol SLA" },
+    { value: "< 1s",  label: "Confirmation",        sub: "optimistic L2" },
+    { value: "2025",  label: "Current Year",        sub: "stay updated" },
   ],
 };
 

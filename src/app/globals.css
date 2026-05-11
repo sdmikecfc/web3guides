@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Bungee&family=JetBrains+Mono:wght@400;500&family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bungee&family=Chakra+Petch:wght@400;600;700&family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -495,9 +495,9 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
    ARTICLE DASHBOARD LAYOUT
 ═══════════════════════════════════════════════════ */
 .article-page-wrap {
-  max-width: 1200px;
+  max-width: 1380px;
   margin: 0 auto;
-  padding: 32px 24px 80px;
+  padding: 32px 32px 80px;
 }
 
 .article-breadcrumb {
@@ -512,23 +512,21 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
 /* 3-column grid: TOC | article | sidebar */
 .article-grid {
   display: grid;
-  grid-template-columns: 220px 1fr 220px;
-  gap: 32px;
+  grid-template-columns: 240px 1fr 240px;
+  gap: 36px;
   align-items: start;
 }
 
 .article-toc-col {
-  /* Spacer column — the actual TOC is rendered by ArticleClient as a fixed aside */
-  width: 220px;
+  width: 240px;
 }
 
 .article-main {
   min-width: 0;
-  max-width: 720px;
 }
 
 .article-sidebar {
-  width: 220px;
+  width: 240px;
 }
 
 /* Article body typography */
@@ -553,11 +551,28 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
   font-size: 0.85em;
 }
 
+/* ── Key points grid inside hero ─── */
+.hero-key-points {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 48px;
+  max-width: 700px;
+}
+
+/* ── Article section block list bullets ─── */
+.article-body ul li::before {
+  content: "→";
+  color: currentColor;
+  opacity: 0.4;
+  margin-right: 8px;
+  font-size: 0.75em;
+}
+
 /* Hide right sidebar on tablet, show mobile related below */
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
   .article-grid {
-    grid-template-columns: 200px 1fr;
-    gap: 24px;
+    grid-template-columns: 220px 1fr;
+    gap: 28px;
   }
   .article-sidebar { display: none; }
   .article-related-mobile { display: block !important; }
@@ -566,6 +581,7 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
 /* Collapse to single column on mobile */
 @media (max-width: 768px) {
   .article-page-wrap { padding: 20px 16px 60px; }
+  .hero-key-points { grid-template-columns: 1fr; }
 
   .article-grid {
     grid-template-columns: 1fr;

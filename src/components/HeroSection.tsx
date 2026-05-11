@@ -37,7 +37,9 @@ export default function HeroSection({ config, total }: Props) {
             fontFamily: "'Space Mono', monospace", fontSize: "0.7rem",
           }}
         >
-          <span style={{ fontSize: "1rem", lineHeight: 1 }}>{config.emoji}</span>
+          {config.logoUrl
+            ? <img src={config.logoUrl} alt={config.label} style={{ width: 20, height: 20, objectFit: "contain" }} />
+            : <span style={{ fontSize: "1rem", lineHeight: 1 }}>{config.emoji}</span>}
           <span style={{ opacity: 0.7 }}>{config.key}.web3guides.com</span>
         </div>
 

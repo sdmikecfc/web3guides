@@ -36,7 +36,29 @@ export default function SubdomainLayout({ children, params }: Props) {
   const cfg = getSubdomainConfig(params.subdomain);
   if (!cfg) notFound();
 
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "web3guides.com";
+  const subUrl = `https://${cfg.key}.${rootDomain}`;
+  const collectionJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": subUrl,
+    name: `${cfg.label} Guides`,
+    description: cfg.description,
+    url: subUrl,
+    inLanguage: "en-GB",
+    isPartOf: { "@type": "WebSite", "@id": `https://${rootDomain}/#website`, name: "Web3 Guides", url: `https://${rootDomain}` },
+    breadcrumb: {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Web3 Guides", item: `https://${rootDomain}` },
+        { "@type": "ListItem", position: 2, name: `${cfg.label} Guides`, item: subUrl },
+      ],
+    },
+  };
+
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }} />
     <div
       style={{
         "--subdomain-accent": cfg.accentHex,
@@ -53,5 +75,6 @@ export default function SubdomainLayout({ children, params }: Props) {
         <SubdomainFooter subdomain={cfg} />
       </div>
     </div>
+    </>
   );
 }
