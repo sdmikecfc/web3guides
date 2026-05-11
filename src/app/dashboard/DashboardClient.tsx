@@ -23,15 +23,17 @@ const FIRST_LAUNCH = new Date("2026-05-01T11:38:14Z");
 // together if you ever fully exit + redeploy.
 //   ⚠ TIME IS UTC. Don't paste your local-time clock here.
 //
-// PHASE 4: 5 May 2026 14:00 UTC, fresh $400 USDC.e deposit.
-// Baseline = actual API total_value at deposit moment.
-const LP_BASELINE_TIME       = new Date("2026-05-05T14:00:00Z");
-const LP_BASELINE_VALUE      = 401.60;     // actual total_value from API after deposit
-const LP_BASELINE_FEES       = 20802.35;   // lifetime_fees carry-forward (broken bot count, ignored anyway)
-const LP_BASELINE_SWAP_COSTS = 11.72;      // total_swap_fees_paid_usd carry-forward
+// PHASE 5: 11 May 2026 13:14 UTC, +$300 USDC.e dropped on top of running Phase 4.
+// Baseline = pre-deposit total_value ($413.79) + $300 = $713.79.
+// No bot-side commands run; bot will auto-detect and compound naturally.
+const LP_BASELINE_TIME       = new Date("2026-05-11T13:14:00Z");
+const LP_BASELINE_VALUE      = 713.79;     // 413.79 (Phase 4 final) + 300 (deposit)
+const LP_BASELINE_FEES       = 26336.26;   // lifetime_fees carry-forward (broken bot count, ignored anyway)
+const LP_BASELINE_SWAP_COSTS = 12.41;      // total_swap_fees_paid_usd carry-forward
 
-// LP capital basis — fresh $400 deposit at Phase 4 start.
-const LP_TOTAL_DEPOSITED = 400.00;
+// LP capital basis — cumulative net capital deposited.
+// Phase 4: $400  ·  Phase 5: +$300  =  $700 total
+const LP_TOTAL_DEPOSITED = 700.00;
 
 
 /* ── Arb bot baseline ──────────────────────────────────────────────────────
@@ -129,6 +131,19 @@ const LP_PHASES: LPPhase[] = [
     finalValueUsd: 253.00,    // ← estimate; replace with exact pre-add total_value
     feesEarnedUsd: 3.50,      // ≈ net gain across the phase
     swapCostsUsd:  0.10,      // estimate
+  },
+  // ── Phase 4: $400 Era ──────────────────────────────────────────
+  // Ran 5 May 14:00 → 11 May 13:14 UTC (~6 days) on fresh $400 deposit.
+  // Pre-deposit close: total_value $413.79, lifetime_fees jumped from
+  // $20,802 → $26,336 (broken bot count), swap costs $11.72 → $12.41.
+  {
+    label:         "Phase 4: $400 Era",
+    startTime:     new Date("2026-05-05T14:00:00Z"),
+    endTime:       new Date("2026-05-11T13:14:00Z"),
+    depositedUsd:  400.00,
+    finalValueUsd: 413.79,
+    feesEarnedUsd: 12.88,     // implied: net gain ($12.19) + swap costs ($0.69)
+    swapCostsUsd:  0.69,      // = lifetimeSwap delta ($12.41 − $11.72)
   },
 ];
 
