@@ -3963,16 +3963,19 @@ function KPISummaryBar({
    full panel renders below (BotPanel / LPPanel). Only one open at a time
    so the page stays short. */
 function BotCard({
-  label, pair, accent, glance, expanded, onToggle, mobile, sublabel,
+  label, pair, accent, glance, expanded, onToggle, mobile, sublabel, runningSince,
 }: {
-  label:    string;
-  pair:     string;
-  accent:   string;
-  glance:   AtAGlance;
-  expanded: boolean;
-  onToggle: () => void;
-  mobile:   boolean;
-  sublabel?: string;
+  label:        string;
+  pair:         string;
+  accent:       string;
+  glance:       AtAGlance;
+  expanded:     boolean;
+  onToggle:     () => void;
+  mobile:       boolean;
+  sublabel?:    string;
+  /** Start time of the current phase / deployment. If set, the card shows
+   *  "Running 1d 4h" under the status pill. */
+  runningSince?: Date;
 }) {
   const pnlColor    = glance.pnl >= 0 ? C.green : C.red;
   const statusColor = glance.status === "live"    ? C.green
@@ -4036,17 +4039,30 @@ function BotCard({
             </div>
           )}
         </div>
-        <span style={{
-          display: "inline-flex", alignItems: "center", gap: 5,
-          fontSize: 9, fontFamily: "'Space Mono', monospace",
-          color: statusColor, letterSpacing: 0.9, fontWeight: 800,
-          background: statusColor + "1a", border: `1px solid ${statusColor}44`,
-          padding: "4px 9px", borderRadius: 50, textTransform: "uppercase" as const,
-          flexShrink: 0,
+        <div style={{
+          display: "flex", flexDirection: "column" as const,
+          alignItems: "flex-end", gap: 6, flexShrink: 0,
         }}>
-          {glance.status === "live" && <Pulse color={statusColor} />}
-          {statusLabel}
-        </span>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            fontSize: 9, fontFamily: "'Space Mono', monospace",
+            color: statusColor, letterSpacing: 0.9, fontWeight: 800,
+            background: statusColor + "1a", border: `1px solid ${statusColor}44`,
+            padding: "4px 9px", borderRadius: 50, textTransform: "uppercase" as const,
+          }}>
+            {glance.status === "live" && <Pulse color={statusColor} />}
+            {statusLabel}
+          </span>
+          {runningSince && (
+            <span style={{
+              fontSize: 9, color: C.text3, fontFamily: "'Space Mono', monospace",
+              letterSpacing: 0.9, textTransform: "uppercase" as const, fontWeight: 700,
+              whiteSpace: "nowrap" as const,
+            }}>
+              {fmtRunning(runningSince)} <span style={{ color: C.text4 }}>UP</span>
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Headline value */}
@@ -4294,6 +4310,7 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
               onToggle={() => setOpenBot(openBot === "sniper" ? null : "sniper")}
               mobile={mobile}
               sublabel="Buys early, sells on the curve"
+              runningSince={FIRST_LAUNCH}
             />
             <BotCard
               label="Liquidity · SOFTWARE.ai"
@@ -4304,6 +4321,7 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
               onToggle={() => setOpenBot(openBot === "soft" ? null : "soft")}
               mobile={mobile}
               sublabel="Concentrated LP · Doma V3"
+              runningSince={LP_BOT_SOFT.baselineTime}
             />
             <BotCard
               label="Liquidity · WETH"
@@ -4314,6 +4332,7 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
               onToggle={() => setOpenBot(openBot === "eth" ? null : "eth")}
               mobile={mobile}
               sublabel="Concentrated LP · Doma V3"
+              runningSince={LP_BOT_ETH.baselineTime}
             />
           </div>
 
