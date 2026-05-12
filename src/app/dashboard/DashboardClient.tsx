@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { VALID_SUBDOMAINS } from "@/lib/subdomains";
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -3752,11 +3752,439 @@ function Empty({ text }: { text: string }) {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
+   AT-A-GLANCE LAYER — lightweight fetch hooks + summary components
+
+   These power the new dashboard layout: a KPI summary bar across all bots
+   at the top, three compact bot cards underneath, and a single tabbed
+   logs drawer at the bottom. Click a card to expand the full per-bot
+   panel below (BotPanel / LPPanel) — same components as before, just
+   rendered conditionally instead of all-stacked-all-the-time.
+
+   These hooks fetch independently from the per-bot panels (BotPanel /
+   LPPanel each do their own polling). Two fetches per bot is fine — the
+   data is small and it keeps the cards live even when no panel is open.
+════════════════════════════════════════════════════════════════════════ */
+
+type BotStatus = "live" | "loading" | "offline";
+
+interface AtAGlance {
+  status:      BotStatus;
+  totalValue:  number;   // current $ value of the bot
+  pnl:         number;   // current-phase $ P&L
+  pnlPct:      number;   // current-phase %
+  feesEarned:  number;   // current-phase fees (LP only — 0 for sniper)
+  detail:      string;   // small subtitle: "3 positions" / "In range" / etc.
+  updatedAt?:  Date;
+}
+
+function useSniperGlance(): AtAGlance {
+  const [data, setData]     = useState<BotSummary | null>(null);
+  const [status, setStatus] = useState<BotStatus>("loading");
+  const [updated, setUpd]   = useState<Date | undefined>(undefined);
+
+  useEffect(() => {
+    const tick = async () => {
+      try {
+        const r = await fetch("/api/bot", { cache: "no-store" });
+        const j = await r.json();
+        if (!r.ok) { setStatus("offline"); return; }
+        setData(j); setStatus("live"); setUpd(new Date());
+      } catch { setStatus("offline"); }
+    };
+    tick();
+    const t = setInterval(tick, 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const state      = data?.state ?? {};
+  const positions  = data?.positions ?? [];
+  const balance    = (state.usdc_balance as number) ?? (state.balance as number) ?? 0;
+  const totalValue = (state.total_value as number) ?? balance;
+  const pnl        = totalValue - INITIAL_BALANCE;
+  const pnlPct     = INITIAL_BALANCE > 0 ? (pnl / INITIAL_BALANCE) * 100 : 0;
+  const n          = positions.length;
+
+  return {
+    status,
+    totalValue,
+    pnl,
+    pnlPct,
+    feesEarned: 0,
+    detail: status === "live" ? `${n} position${n === 1 ? "" : "s"}` : "—",
+    updatedAt: updated,
+  };
+}
+
+function useLPGlance(bot: LPBotConfig): AtAGlance {
+  const [data, setData]     = useState<LPSummary | null>(null);
+  const [status, setStatus] = useState<BotStatus>("loading");
+  const [updated, setUpd]   = useState<Date | undefined>(undefined);
+
+  useEffect(() => {
+    const tick = async () => {
+      try {
+        const r = await fetch(bot.apiUrl, { cache: "no-store" });
+        const j = await r.json();
+        if (!r.ok) { setStatus("offline"); return; }
+        setData(j); setStatus("live"); setUpd(new Date());
+      } catch { setStatus("offline"); }
+    };
+    tick();
+    const t = setInterval(tick, 30_000);
+    return () => clearInterval(t);
+  }, [bot.apiUrl]);
+
+  const state            = data?.state ?? {};
+  const positions        = data?.positions ?? [];
+  const totalValue       = state.total_value ?? 0;
+  const lifetimeSwapFees = state.total_swap_fees_paid_usd ?? 0;
+  const swapFees         = Math.max(0, lifetimeSwapFees - bot.baselineSwapCosts);
+  const uncollected      = positions.reduce(
+    (s, p) => s + ((p.fees_earned_usd as number) ?? 0), 0,
+  );
+  const netPnl    = (totalValue + uncollected) - bot.baselineValue;
+  const fees      = Math.max(0, netPnl + swapFees);
+  const pnlPct    = bot.baselineValue > 0 ? (netPnl / bot.baselineValue) * 100 : 0;
+  const inRange   = positions.length > 0 && positions.every(p => p.in_range !== false);
+  const detail    = status !== "live"
+    ? "—"
+    : positions.length === 0
+      ? "No active position"
+      : inRange ? "In range" : "Out of range";
+
+  return {
+    status,
+    totalValue,
+    pnl: netPnl,
+    pnlPct,
+    feesEarned: fees,
+    detail,
+    updatedAt: updated,
+  };
+}
+
+/* ── KPI summary bar ─────────────────────────────────────────────────────
+   Renders four totals across the top of the dashboard: combined deployed
+   capital, combined phase fees, combined phase P&L, and a live/offline
+   status indicator. Designed to be the "one glance, am I OK?" view. */
+function KPISummaryBar({
+  sniper, soft, eth, mobile,
+}: {
+  sniper: AtAGlance; soft: AtAGlance; eth: AtAGlance; mobile: boolean;
+}) {
+  const bots         = [sniper, soft, eth];
+  const totDeployed  = bots.reduce((s, b) => s + b.totalValue, 0);
+  const totFees      = soft.feesEarned + eth.feesEarned;
+  const totPnl       = bots.reduce((s, b) => s + b.pnl, 0);
+  const liveCount    = bots.filter(b => b.status === "live").length;
+  const pnlColor     = totPnl >= 0 ? C.green : C.red;
+
+  const stat = (label: string, value: React.ReactNode, accent: string = C.text, sub?: string) => (
+    <div style={{ flex: 1, minWidth: 0, padding: mobile ? "0" : "0 8px" }}>
+      <div style={{
+        fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace",
+        letterSpacing: 1.3, textTransform: "uppercase" as const, fontWeight: 800,
+        marginBottom: 8,
+      }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: mobile ? 22 : 30, fontFamily: "'Bungee', cursive",
+        letterSpacing: -0.5, color: accent, lineHeight: 1.05,
+      }}>
+        {value}
+      </div>
+      {sub && (
+        <div style={{
+          marginTop: 6, fontSize: 11, color: C.text3,
+          fontFamily: "'Space Mono', monospace", letterSpacing: 0.5,
+        }}>
+          {sub}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(4, 1fr)",
+      gap: mobile ? 22 : 8,
+      padding: mobile ? "22px 20px" : "26px 28px",
+      background: `
+        linear-gradient(135deg, rgba(99,102,241,0.10), rgba(236,72,153,0.04) 60%, transparent),
+        ${C.surface}
+      `,
+      border: `1px solid ${C.borderHi}`,
+      borderRadius: 18,
+      marginBottom: 24,
+      position: "relative" as const,
+      overflow: "hidden" as const,
+    }}>
+      {/* subtle accent stripe at top */}
+      <span style={{
+        position: "absolute" as const, top: 0, left: 0, right: 0, height: 2,
+        background: `linear-gradient(90deg, ${C.indigo}, ${C.pink}, ${C.orange})`,
+        opacity: 0.6,
+      }} />
+      {stat("Total Deployed", `$${fmtNum(totDeployed)}`)}
+      {stat("Phase Fees", `$${fmtNum(totFees)}`, C.green, "Both LP pools combined")}
+      {stat(
+        "Phase P&L",
+        <span>{totPnl >= 0 ? "+" : ""}${fmtNum(totPnl)}</span>,
+        pnlColor,
+        `${totPnl >= 0 ? "+" : ""}${fmtNum((totPnl / (totDeployed - totPnl || 1)) * 100, 2)}% blended`,
+      )}
+      {stat(
+        "Bots Live",
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
+          <span>{liveCount}<span style={{ color: C.text4 }}>/3</span></span>
+          <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+            {bots.map((b, i) => (
+              <span key={i} style={{
+                width: 9, height: 9, borderRadius: "50%",
+                background: b.status === "live"   ? C.green
+                          : b.status === "loading" ? C.yellow
+                          :                          C.red,
+                boxShadow: b.status === "live" ? `0 0 8px ${C.green}80` : "none",
+              }} />
+            ))}
+          </span>
+        </span>,
+        liveCount === 3 ? C.green : liveCount === 0 ? C.red : C.yellow,
+        liveCount === 3 ? "All systems online" : liveCount === 0 ? "All offline" : "Partial outage",
+      )}
+    </div>
+  );
+}
+
+/* ── BotCard — compact tile, click-to-expand ─────────────────────────────
+   Three of these in a row across the dashboard. Click one and the matching
+   full panel renders below (BotPanel / LPPanel). Only one open at a time
+   so the page stays short. */
+function BotCard({
+  label, pair, accent, glance, expanded, onToggle, mobile, sublabel,
+}: {
+  label:    string;
+  pair:     string;
+  accent:   string;
+  glance:   AtAGlance;
+  expanded: boolean;
+  onToggle: () => void;
+  mobile:   boolean;
+  sublabel?: string;
+}) {
+  const pnlColor    = glance.pnl >= 0 ? C.green : C.red;
+  const statusColor = glance.status === "live"    ? C.green
+                    : glance.status === "loading" ? C.yellow
+                    :                                C.red;
+  const statusLabel = glance.status === "live"    ? "LIVE"
+                    : glance.status === "loading" ? "…"
+                    :                                "OFFLINE";
+
+  return (
+    <button
+      onClick={onToggle}
+      style={{
+        textAlign: "left" as const,
+        background: expanded
+          ? `linear-gradient(160deg, ${accent}22, ${accent}05 60%, ${C.surface})`
+          : C.surface,
+        border: `1px solid ${expanded ? accent + "66" : C.border}`,
+        borderRadius: 16,
+        padding: mobile ? "18px 16px" : "22px 22px",
+        cursor: "pointer",
+        color: C.text,
+        fontFamily: "'DM Sans', system-ui, sans-serif",
+        transition: "border-color 0.2s, background 0.2s",
+        position: "relative" as const,
+        overflow: "hidden" as const,
+        width: "100%",
+        boxShadow: expanded ? `0 6px 24px ${accent}22` : "none",
+      }}
+      onMouseEnter={(e) => { if (!expanded) e.currentTarget.style.borderColor = accent + "44"; }}
+      onMouseLeave={(e) => { if (!expanded) e.currentTarget.style.borderColor = C.border; }}
+    >
+      {/* top accent stripe */}
+      <span style={{
+        position: "absolute" as const, top: 0, left: 0, right: 0, height: 3,
+        background: accent, opacity: expanded ? 1 : 0.55,
+      }} />
+
+      {/* Header row: pair + label  ·  status pill */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 16 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{
+            fontSize: 9, color: accent, fontFamily: "'Space Mono', monospace",
+            letterSpacing: 1.4, textTransform: "uppercase" as const, fontWeight: 800,
+            marginBottom: 6,
+          }}>
+            {pair}
+          </div>
+          <div style={{
+            fontFamily: "'Bungee', cursive", fontSize: 15, letterSpacing: 0.3,
+            lineHeight: 1.15,
+          }}>
+            {label}
+          </div>
+          {sublabel && (
+            <div style={{
+              marginTop: 4, fontSize: 11, color: C.text3,
+              fontFamily: "'Space Mono', monospace", letterSpacing: 0.5,
+            }}>
+              {sublabel}
+            </div>
+          )}
+        </div>
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          fontSize: 9, fontFamily: "'Space Mono', monospace",
+          color: statusColor, letterSpacing: 0.9, fontWeight: 800,
+          background: statusColor + "1a", border: `1px solid ${statusColor}44`,
+          padding: "4px 9px", borderRadius: 50, textTransform: "uppercase" as const,
+          flexShrink: 0,
+        }}>
+          {glance.status === "live" && <Pulse color={statusColor} />}
+          {statusLabel}
+        </span>
+      </div>
+
+      {/* Headline value */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{
+          fontSize: mobile ? 30 : 36, fontFamily: "'Bungee', cursive",
+          letterSpacing: -1, color: C.text, lineHeight: 1,
+        }}>
+          ${fmtNum(glance.totalValue)}
+        </div>
+        {glance.status === "live" && (
+          <div style={{
+            fontSize: 12, color: pnlColor, fontWeight: 800,
+            fontFamily: "'Space Mono', monospace", marginTop: 8,
+            display: "inline-flex", alignItems: "center", gap: 6,
+          }}>
+            <span>{glance.pnl >= 0 ? "▲" : "▼"}</span>
+            <span>{glance.pnl >= 0 ? "+" : ""}${fmtNum(glance.pnl)}</span>
+            <span style={{ color: C.text4 }}>·</span>
+            <span>{fmtPct(glance.pnlPct)}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Footer row: detail + open/close */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+        <span style={{
+          fontSize: 11, color: C.text3, fontFamily: "'Space Mono', monospace",
+          letterSpacing: 0.4,
+        }}>
+          {glance.feesEarned > 0 ? `${glance.detail} · Fees $${fmtNum(glance.feesEarned)}` : glance.detail}
+        </span>
+        <span style={{
+          fontSize: 10, color: expanded ? accent : C.text3,
+          fontFamily: "'Space Mono', monospace", letterSpacing: 1.2,
+          fontWeight: 800, textTransform: "uppercase" as const,
+          display: "inline-flex", alignItems: "center", gap: 5,
+          flexShrink: 0,
+        }}>
+          {expanded ? "Close ▴" : "Open ▾"}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+/* ── LogsDrawer — tabbed log streams, one visible at a time ────────────── */
+function LogsDrawer({ mobile }: { mobile: boolean }) {
+  const [tab, setTab] = useState<"sniper" | "soft" | "eth">("sniper");
+
+  const tabs = [
+    { id: "sniper" as const, label: "Auto-Sniper",      color: C.green },
+    { id: "soft"   as const, label: "LP · SOFTWARE.ai", color: LP_BOT_SOFT.poolAccent },
+    { id: "eth"    as const, label: "LP · WETH",        color: LP_BOT_ETH.poolAccent },
+  ];
+
+  return (
+    <section style={{ marginTop: 24, marginBottom: 56 }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 12, marginBottom: 18,
+        flexWrap: "wrap" as const,
+      }}>
+        <h2 style={{
+          margin: 0, fontFamily: "'Bungee', cursive", fontSize: 22,
+          color: C.text, letterSpacing: 0.3,
+        }}>
+          Log Streams
+        </h2>
+        <Tag color={C.cyan}>Live</Tag>
+        <div style={{
+          display: "flex", gap: 6, flexWrap: "wrap" as const,
+          marginLeft: mobile ? 0 : "auto",
+        }}>
+          {tabs.map(t => {
+            const active = tab === t.id;
+            return (
+              <button key={t.id} onClick={() => setTab(t.id)} className="dash-tab"
+                style={{
+                  background: active ? t.color + "22" : "transparent",
+                  border: `1px solid ${active ? t.color + "66" : C.border}`,
+                  borderRadius: 8, color: active ? C.text : C.text3,
+                  fontSize: 11, fontWeight: 800, padding: "7px 14px",
+                  cursor: "pointer", fontFamily: "'Space Mono', monospace",
+                  letterSpacing: 0.5,
+                }}>
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {tab === "sniper" && <BotLogs />}
+      {tab === "soft"   && (
+        <LPLogs
+          logsUrl="/api/lp-logs"
+          title="LP Bot · SOFTWARE.ai · Logs"
+          logPath="~/lp-bot/logs/lp_bot.log"
+        />
+      )}
+      {tab === "eth" && (
+        <LPLogs
+          logsUrl="/api/lp-eth-logs"
+          title="LP Bot · WETH · Logs"
+          logPath="~/lp-bot-eth/logs/lp_bot_eth.log"
+        />
+      )}
+    </section>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
    MAIN
 ════════════════════════════════════════════════════════════════════════ */
 
 export default function DashboardClient({ emailCount, guideCount }: Props) {
   const mobile = useMobile();
+
+  // Which bot's full panel is expanded below the cards row.
+  // null = collapsed (compact cards only — quickest scan view).
+  const [openBot, setOpenBot] = useState<"sniper" | "soft" | "eth" | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // At-a-glance summaries for the KPI bar + bot cards.
+  // These fetch independently of the per-bot panels — keeps cards live
+  // even when no panel is expanded.
+  const sniperGlance = useSniperGlance();
+  const softGlance   = useLPGlance(LP_BOT_SOFT);
+  const ethGlance    = useLPGlance(LP_BOT_ETH);
+
+  // Smooth-scroll the expanded panel into view when a card opens.
+  // Offset for the sticky top bar (64px) + a little breathing room.
+  useEffect(() => {
+    if (openBot && panelRef.current) {
+      const top = panelRef.current.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top, behavior: "smooth" });
+    }
+  }, [openBot]);
 
   return (
     <>
@@ -3808,71 +4236,98 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
           </div>
         </div>
 
-        <main style={{ maxWidth: 1440, margin: "0 auto", padding: mobile ? "32px 18px 80px" : "48px 24px 100px" }}>
+        <main style={{ maxWidth: 1440, margin: "0 auto", padding: mobile ? "28px 18px 80px" : "40px 24px 100px" }}>
 
-          {/* ── Page hero ──────────────────────────────────────────── */}
-          <header style={{ marginBottom: 48 }}>
+          {/* ── Compact hero ───────────────────────────────────────── */}
+          <header style={{ marginBottom: 28 }}>
             <div style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               background: "rgba(99,102,241,0.10)",
               border: `1px solid ${C.borderHi}`,
-              borderRadius: 50, padding: "5px 14px", marginBottom: 20,
+              borderRadius: 50, padding: "5px 14px", marginBottom: 16,
             }}>
               <Pulse color={C.green} />
               <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: "#a5b4fc", letterSpacing: 1.2, fontWeight: 700 }}>
-                LIVE OPERATIONS
+                LIVE OPERATIONS · UPDATED EVERY 30s
               </span>
             </div>
 
             <h1 style={{
-              margin: "0 0 14px",
+              margin: "0 0 10px",
               fontFamily: "'Bungee', cursive",
-              fontSize: mobile ? 40 : 60,
+              fontSize: mobile ? 32 : 48,
               lineHeight: 1.05,
-              letterSpacing: -1.5,
+              letterSpacing: -1,
               background: `linear-gradient(135deg, ${C.text} 0%, #94a3b8 50%, ${C.indigo} 100%)`,
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
             }}>
-              Public Dashboard
+              Bot Command Center
             </h1>
-            <p style={{ margin: 0, color: C.text3, fontSize: mobile ? 14 : 16, lineHeight: 1.6, maxWidth: 640 }}>
-              Real-time snapshot of two automated bots — an auto-sniper trading domain launches and a concentrated-liquidity provider on Doma V3. Every position, every trade, every log line. Built in the open. Updated every 30 seconds.
+            <p style={{ margin: 0, color: C.text3, fontSize: mobile ? 13 : 15, lineHeight: 1.55, maxWidth: 680 }}>
+              Three automated bots running on the open web. Glance the totals up top, tap a card to dig in, and watch the live logs at the bottom. Every number, every trade, every position — public and verifiable.
             </p>
           </header>
 
-          {/* ── Sections ───────────────────────────────────────────── */}
-          {/* Auto-sniper, then both LP pools (SOFTWARE.ai + WETH). */}
-          <BotPanel />
-          <LPPanel bot={LP_BOT_SOFT} />
-          <LPPanel bot={LP_BOT_ETH} />
-          {/* Arb bot temporarily hidden — bot is off, may return with a
-              different pool. Uncomment when bringing it back. */}
-          {/* <ArbPanel /> */}
+          {/* ── KPI summary across all bots ────────────────────────── */}
+          <KPISummaryBar
+            sniper={sniperGlance}
+            soft={softGlance}
+            eth={ethGlance}
+            mobile={mobile}
+          />
 
-          {/* Logs grid — auto-sniper on top row, both LP bot logs on bottom row */}
+          {/* ── Bot cards row ──────────────────────────────────────── */}
           <div style={{
             display: "grid",
-            gridTemplateColumns: mobile ? "1fr" : "1fr 1fr",
-            gap: 18,
-            marginBottom: 18,
+            gridTemplateColumns: mobile ? "1fr" : "repeat(3, 1fr)",
+            gap: 16,
+            marginBottom: 28,
           }}>
-            <div><BotLogs /></div>
-            <div>
-              <LPLogs
-                logsUrl="/api/lp-logs"
-                title="LP Bot · SOFTWARE.ai · Logs"
-                logPath="~/lp-bot/logs/lp_bot.log"
-              />
-            </div>
+            <BotCard
+              label="Auto-Sniper"
+              pair="Doma Launches"
+              accent={C.green}
+              glance={sniperGlance}
+              expanded={openBot === "sniper"}
+              onToggle={() => setOpenBot(openBot === "sniper" ? null : "sniper")}
+              mobile={mobile}
+              sublabel="Buys early, sells on the curve"
+            />
+            <BotCard
+              label="Liquidity · SOFTWARE.ai"
+              pair={LP_BOT_SOFT.poolPairLabel}
+              accent={LP_BOT_SOFT.poolAccent}
+              glance={softGlance}
+              expanded={openBot === "soft"}
+              onToggle={() => setOpenBot(openBot === "soft" ? null : "soft")}
+              mobile={mobile}
+              sublabel="Concentrated LP · Doma V3"
+            />
+            <BotCard
+              label="Liquidity · WETH"
+              pair={LP_BOT_ETH.poolPairLabel}
+              accent={LP_BOT_ETH.poolAccent}
+              glance={ethGlance}
+              expanded={openBot === "eth"}
+              onToggle={() => setOpenBot(openBot === "eth" ? null : "eth")}
+              mobile={mobile}
+              sublabel="Concentrated LP · Doma V3"
+            />
           </div>
-          <LPLogs
-            logsUrl="/api/lp-eth-logs"
-            title="LP Bot · WETH · Logs"
-            logPath="~/lp-bot-eth/logs/lp_bot_eth.log"
-          />
-          {/* <ArbLogs /> */}
+
+          {/* ── Expanded panel (one at a time) ─────────────────────── */}
+          {openBot && (
+            <div ref={panelRef} style={{ marginBottom: 8 }}>
+              {openBot === "sniper" && <BotPanel />}
+              {openBot === "soft"   && <LPPanel bot={LP_BOT_SOFT} />}
+              {openBot === "eth"    && <LPPanel bot={LP_BOT_ETH} />}
+            </div>
+          )}
+
+          {/* ── Tabbed logs drawer ─────────────────────────────────── */}
+          <LogsDrawer mobile={mobile} />
 
           <SupportCard mobile={mobile} />
           <SiteSnapshot guideCount={guideCount} emailCount={emailCount} mobile={mobile} />
