@@ -3873,11 +3873,29 @@ function KPISummaryBar({
   sniper: AtAGlance; soft: AtAGlance; eth: AtAGlance; mobile: boolean;
 }) {
   const bots         = [sniper, soft, eth];
-  const totDeployed  = bots.reduce((s, b) => s + b.totalValue, 0);
-  const totFees      = soft.feesEarned + eth.feesEarned;
-  const totPnl       = bots.reduce((s, b) => s + b.pnl, 0);
-  const liveCount    = bots.filter(b => b.status === "live").length;
+  // Only count bots whose summary has actually loaded — otherwise their
+  // baseline shows up as a phantom -$600 P&L during the first fetch.
+  const liveBots     = bots.filter(b => b.status === "live");
+  const totDeployed  = liveBots.reduce((s, b) => s + b.totalValue, 0);
+  const totFees      = (soft.status === "live" ? soft.feesEarned : 0)
+                     + (eth.status  === "live" ? eth.feesEarned  : 0);
+  const totPnl       = liveBots.reduce((s, b) => s + b.pnl, 0);
+  const liveCount    = liveBots.length;
+  const offlineCount = bots.filter(b => b.status === "offline").length;
+  const loadingCount = bots.filter(b => b.status === "loading").length;
   const pnlColor     = totPnl >= 0 ? C.green : C.red;
+  // Blended % vs the capital basis (deployed minus P&L = baseline capital)
+  const blendedBasis = totDeployed - totPnl;
+  const blendedPct   = blendedBasis > 0 ? (totPnl / blendedBasis) * 100 : 0;
+
+  const statusLabel  = offlineCount > 0
+    ? (offlineCount === bots.length ? "All bots offline" : "Partial outage")
+    : loadingCount > 0
+      ? "Loading bots…"
+      : "All systems online";
+  const statusAccent = offlineCount > 0 ? (offlineCount === bots.length ? C.red : C.yellow)
+                     : loadingCount > 0 ? C.yellow
+                     :                    C.green;
 
   const stat = (label: string, value: React.ReactNode, accent: string = C.text, sub?: string) => (
     <div style={{ flex: 1, minWidth: 0, padding: mobile ? "0" : "0 8px" }}>
@@ -3927,23 +3945,35 @@ function KPISummaryBar({
         background: `linear-gradient(90deg, ${C.indigo}, ${C.pink}, ${C.orange})`,
         opacity: 0.6,
       }} />
-      {stat("Total Deployed", `$${fmtNum(totDeployed)}`)}
-      {stat("Phase Fees", `$${fmtNum(totFees)}`, C.green, "Both LP pools combined")}
+      {stat(
+        "Total Deployed",
+        liveCount > 0 ? `$${fmtNum(totDeployed)}` : "—",
+        C.text,
+        liveCount < bots.length ? `${liveCount}/${bots.length} bots loaded` : undefined,
+      )}
+      {stat(
+        "Phase Fees",
+        liveCount > 0 ? `$${fmtNum(totFees)}` : "—",
+        C.green,
+        "Both LP pools combined",
+      )}
       {stat(
         "Phase P&L",
-        <span>{totPnl >= 0 ? "+" : ""}${fmtNum(totPnl)}</span>,
-        pnlColor,
-        `${totPnl >= 0 ? "+" : ""}${fmtNum((totPnl / (totDeployed - totPnl || 1)) * 100, 2)}% blended`,
+        liveCount > 0
+          ? <span>{totPnl >= 0 ? "+" : ""}${fmtNum(totPnl)}</span>
+          : "—",
+        liveCount > 0 ? pnlColor : C.text,
+        liveCount > 0 ? `${totPnl >= 0 ? "+" : ""}${fmtNum(blendedPct, 2)}% blended` : undefined,
       )}
       {stat(
         "Bots Live",
         <span style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
-          <span>{liveCount}<span style={{ color: C.text4 }}>/3</span></span>
+          <span>{liveCount}<span style={{ color: C.text4 }}>/{bots.length}</span></span>
           <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
             {bots.map((b, i) => (
               <span key={i} style={{
                 width: 9, height: 9, borderRadius: "50%",
-                background: b.status === "live"   ? C.green
+                background: b.status === "live"    ? C.green
                           : b.status === "loading" ? C.yellow
                           :                          C.red,
                 boxShadow: b.status === "live" ? `0 0 8px ${C.green}80` : "none",
@@ -3951,8 +3981,8 @@ function KPISummaryBar({
             ))}
           </span>
         </span>,
-        liveCount === 3 ? C.green : liveCount === 0 ? C.red : C.yellow,
-        liveCount === 3 ? "All systems online" : liveCount === 0 ? "All offline" : "Partial outage",
+        statusAccent,
+        statusLabel,
       )}
     </div>
   );
@@ -4069,11 +4099,12 @@ function BotCard({
       <div style={{ marginBottom: 14 }}>
         <div style={{
           fontSize: mobile ? 30 : 36, fontFamily: "'Bungee', cursive",
-          letterSpacing: -1, color: C.text, lineHeight: 1,
+          letterSpacing: -1, color: glance.status === "live" ? C.text : C.text4,
+          lineHeight: 1,
         }}>
-          ${fmtNum(glance.totalValue)}
+          {glance.status === "live" ? `$${fmtNum(glance.totalValue)}` : "$—"}
         </div>
-        {glance.status === "live" && (
+        {glance.status === "live" ? (
           <div style={{
             fontSize: 12, color: pnlColor, fontWeight: 800,
             fontFamily: "'Space Mono', monospace", marginTop: 8,
@@ -4083,6 +4114,13 @@ function BotCard({
             <span>{glance.pnl >= 0 ? "+" : ""}${fmtNum(glance.pnl)}</span>
             <span style={{ color: C.text4 }}>·</span>
             <span>{fmtPct(glance.pnlPct)}</span>
+          </div>
+        ) : (
+          <div style={{
+            fontSize: 11, color: C.text4, marginTop: 8,
+            fontFamily: "'Space Mono', monospace", letterSpacing: 0.5,
+          }}>
+            {glance.status === "loading" ? "Fetching summary…" : "API unreachable"}
           </div>
         )}
       </div>
