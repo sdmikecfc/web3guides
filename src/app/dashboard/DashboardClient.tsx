@@ -100,11 +100,11 @@ const LP_BOT_ETH: LPBotConfig = {
   apiEnvVarName:     "LP_API_KEY_ETH",
   walletAddress:     "0x3B91B18c0a88E74651b45c4505367aeB8e5CEdc9",
   nftExplorerBase:   "https://explorer.doma.xyz/token/0xce126ca6aceBBDCe95D7b8A3Ce637951640811E0/instance/",
-  // Phase 1 starts fresh on deploy. Update these when you have an API snapshot.
-  baselineTime:      new Date("2026-05-11T13:14:00Z"),  // ← placeholder; reset on first real deploy
-  baselineValue:     600.00,           // ← starting capital target ($600 USDC.e + WETH equivalent)
-  baselineFees:      0.0,
-  baselineSwapCosts: 0.0,
+  // PHASE 1: 12 May 2026 13:08 UTC — fresh $600 deploy into USDC.e/WETH 0.05% pool.
+  baselineTime:      new Date("2026-05-12T13:08:35Z"),  // first_deployed_at from API
+  baselineValue:     597.50,           // total_value at Phase 1 start
+  baselineFees:      0.18,             // total_fees_earned at start (≈0, just initial accrual)
+  baselineSwapCosts: 0.16,             // total_swap_fees_paid_usd at start (3 swaps to set up)
   totalDeposited:    600.00,
   tokenSymbol:       "WETH",
   tokenDecimals:     18,
