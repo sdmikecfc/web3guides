@@ -92,7 +92,8 @@
       "WebFetch(domain:support.claude.com)",
       "Bash(python -c ' *)",
       "Bash(python -c \"import ast; ast.parse\\(open\\('lp_bot.py'\\).read\\(\\)\\); print\\('OK'\\)\")",
-      "Bash(python -c \"import ast; ast.parse\\(open\\('api.py'\\).read\\(\\)\\); print\\('OK'\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\('api.py'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(git pull *)"
     ]
   }
 }

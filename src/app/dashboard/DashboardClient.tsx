@@ -23,17 +23,94 @@ const FIRST_LAUNCH = new Date("2026-05-01T11:38:14Z");
 // together if you ever fully exit + redeploy.
 //   ⚠ TIME IS UTC. Don't paste your local-time clock here.
 //
-// PHASE 5: 11 May 2026 13:14 UTC, +$300 USDC.e dropped on top of running Phase 4.
-// Baseline = pre-deposit total_value ($413.79) + $300 = $713.79.
-// No bot-side commands run; bot will auto-detect and compound naturally.
-const LP_BASELINE_TIME       = new Date("2026-05-11T13:14:00Z");
-const LP_BASELINE_VALUE      = 713.79;     // 413.79 (Phase 4 final) + 300 (deposit)
-const LP_BASELINE_FEES       = 26336.26;   // lifetime_fees carry-forward (broken bot count, ignored anyway)
-const LP_BASELINE_SWAP_COSTS = 12.41;      // total_swap_fees_paid_usd carry-forward
+// ── LP bot configs ────────────────────────────────────────────────────────
+// Both bots (SOFTWARE.ai pool + WETH pool) share the same API schema, panel
+// component, and helper components — they just have different endpoints,
+// baselines, and phase history. Each bot is fully self-contained in its
+// LPBotConfig so the same <LPPanel bot={...} /> renders both.
+//
+// To add a new pool: define a new config object, point it at its proxy
+// route + log endpoint, and drop another <LPPanel> in the section composition.
 
-// LP capital basis — cumulative net capital deposited.
-// Phase 4: $400  ·  Phase 5: +$300  =  $700 total
-const LP_TOTAL_DEPOSITED = 700.00;
+interface LPPhase {
+  label:          string;
+  startTime:      Date;
+  endTime:        Date;
+  depositedUsd:   number;
+  finalValueUsd:  number;
+  feesEarnedUsd:  number;
+  swapCostsUsd:   number;
+}
+
+interface LPBotConfig {
+  id:                  string;        // "soft" | "eth" — for React keys
+  label:               string;        // hero section header, e.g. "Liquidity Bot · SOFTWARE.ai"
+  poolPairLabel:       string;        // tag text in the section header, e.g. "USDC.e/SOFTWARE.ai"
+  poolAccent:          string;        // hex color for the pair tag (visual differentiation)
+  apiUrl:              string;        // "/api/lp" | "/api/lp-eth"
+  logsUrl:             string;        // "/api/lp-logs" | "/api/lp-eth-logs"
+  apiEnvVarName:       string;        // for the error message when proxy can't auth
+  walletAddress:       string;        // for explorer links
+  nftExplorerBase:     string;        // for `https://explorer.../instance/{tokenId}` link construction
+  // Baselines: capital basis at the start of the active phase
+  baselineTime:        Date;
+  baselineValue:       number;
+  baselineFees:        number;        // lifetime_fees carry-forward (broken bot count, ignored anyway)
+  baselineSwapCosts:   number;        // total_swap_fees_paid_usd carry-forward
+  totalDeposited:      number;        // cumulative net capital deposited
+  // Token display
+  tokenSymbol:         string;        // "SOFT" | "WETH" (for balance display)
+  tokenDecimals:       number;        // 6 | 18 (for raw-amount formatting if needed)
+  pricePrecision:      number;        // decimals shown for `current_price` (price is per-token in USDC.e)
+  // Past phases (locked snapshots)
+  phases:              LPPhase[];
+}
+
+/* ── SOFTWARE.ai LP bot (port 5002, the original) ─────────────────────── */
+const LP_BOT_SOFT: LPBotConfig = {
+  id:                "soft",
+  label:             "Liquidity Bot · SOFTWARE.ai",
+  poolPairLabel:     "USDC.e/SOFTWARE.ai",
+  poolAccent:        "#a855f7",        // purple
+  apiUrl:            "/api/lp",
+  logsUrl:           "/api/lp-logs",
+  apiEnvVarName:     "LP_BOT_API_KEY",
+  walletAddress:     "0x3EB5504c32c927D31718edaCDc9E661Fc315474a",
+  nftExplorerBase:   "https://explorer.doma.xyz/token/0xce126ca6aceBBDCe95D7b8A3Ce637951640811E0/instance/",
+  // PHASE 5: 11 May 2026 13:14 UTC, +$300 USDC.e dropped on top of Phase 4.
+  baselineTime:      new Date("2026-05-11T13:14:00Z"),
+  baselineValue:     713.79,           // 413.79 (Phase 4 final) + 300 (deposit)
+  baselineFees:      26336.26,         // lifetime_fees carry-forward (broken bot count)
+  baselineSwapCosts: 12.41,            // total_swap_fees_paid_usd carry-forward
+  totalDeposited:    700.00,           // $400 + $300 cumulative
+  tokenSymbol:       "SOFT",
+  tokenDecimals:     6,
+  pricePrecision:    6,
+  phases:            [], // populated below — TypeScript doesn't let us forward-ref `phases`
+};
+
+/* ── WETH LP bot (port 5005, new) ─────────────────────────────────────── */
+const LP_BOT_ETH: LPBotConfig = {
+  id:                "eth",
+  label:             "Liquidity Bot · WETH",
+  poolPairLabel:     "USDC.e/WETH",
+  poolAccent:        "#627eea",        // ETH blue
+  apiUrl:            "/api/lp-eth",
+  logsUrl:           "/api/lp-eth-logs",
+  apiEnvVarName:     "LP_API_KEY_ETH",
+  walletAddress:     "0x3B91B18c0a88E74651b45c4505367aeB8e5CEdc9",
+  nftExplorerBase:   "https://explorer.doma.xyz/token/0xce126ca6aceBBDCe95D7b8A3Ce637951640811E0/instance/",
+  // Phase 1 starts fresh on deploy. Update these when you have an API snapshot.
+  baselineTime:      new Date("2026-05-11T13:14:00Z"),  // ← placeholder; reset on first real deploy
+  baselineValue:     600.00,           // ← starting capital target ($600 USDC.e + WETH equivalent)
+  baselineFees:      0.0,
+  baselineSwapCosts: 0.0,
+  totalDeposited:    600.00,
+  tokenSymbol:       "WETH",
+  tokenDecimals:     18,
+  pricePrecision:    2,                // ETH at ~$2,287 — 2 decimals is plenty
+  phases:            [],
+};
 
 
 /* ── Arb bot baseline ──────────────────────────────────────────────────────
@@ -78,22 +155,16 @@ const ARB_PHASES: ArbPhase[] = [
 
    When you add or withdraw capital:
      1. Note the exact moment + total_value + lifetime_fees + swap_costs
-     2. Append a new entry to LP_PHASES below with those numbers
+     2. Append a new entry to phases below with those numbers
      3. Update LP_TOTAL_DEPOSITED to the new total ever deposited
-     4. Update LP_BASELINE_TIME / LP_BASELINE_VALUE / LP_BASELINE_FEES to
+     4. Update bot.baselineTime / bot.baselineValue / bot.baselineFees to
         the moment of the deposit so the equity chart + APR get a fresh start
 */
-interface LPPhase {
-  label:           string;
-  startTime:       Date;
-  endTime:         Date;
-  depositedUsd:    number;   // capital at start of phase
-  finalValueUsd:   number;   // total wallet+position value at phase end
-  feesEarnedUsd:   number;   // fees earned during this phase only
-  swapCostsUsd:    number;   // swap costs paid during this phase only
-}
-
-const LP_PHASES: LPPhase[] = [
+// ── Locked phase history for the SOFTWARE.ai LP bot ──────────────────────
+// Attached to LP_BOT_SOFT.phases below (TypeScript forward-declaration trick:
+// we declare empty arrays on the configs above, then assign the populated
+// lists here once LPPhase[] is in scope).
+LP_BOT_SOFT.phases = [
   // ── Phase 1: $75 Test  ─────────────────────────────────────────
   // Locked-in snapshot at the moment of the $125 add (27 Apr 07:54:50 UTC).
   {
@@ -119,18 +190,14 @@ const LP_PHASES: LPPhase[] = [
     swapCostsUsd:  0.16,      // approximate swap costs across the phase
   },
   // ── Phase 3: $249.66 Redeploy ──────────────────────────────────
-  // 1 May redeploy with 125 USDC + 432.84 SOFTWARE.ai through 5 May
-  // when the $400 add bumped capital and started Phase 4.
-  // finalValueUsd is an estimate — refine with the exact pre-add total_value
-  // from the API if you want the locked stats more precise.
   {
     label:         "Phase 3: $249.66 Redeploy",
     startTime:     new Date("2026-05-01T11:38:14Z"),
     endTime:       new Date("2026-05-05T14:00:00Z"),
     depositedUsd:  249.66,
-    finalValueUsd: 253.00,    // ← estimate; replace with exact pre-add total_value
-    feesEarnedUsd: 3.50,      // ≈ net gain across the phase
-    swapCostsUsd:  0.10,      // estimate
+    finalValueUsd: 253.00,
+    feesEarnedUsd: 3.50,
+    swapCostsUsd:  0.10,
   },
   // ── Phase 4: $400 Era ──────────────────────────────────────────
   // Ran 5 May 14:00 → 11 May 13:14 UTC (~6 days) on fresh $400 deposit.
@@ -146,6 +213,7 @@ const LP_PHASES: LPPhase[] = [
     swapCostsUsd:  0.69,      // = lifetimeSwap delta ($12.41 − $11.72)
   },
 ];
+// LP_BOT_ETH.phases is intentionally left empty — fresh tracker.
 
 /* ── Closed-trade backfill ───────────────────────────────────────────────────
    Empty for the new phase that started 1 May 2026. The /api/bot endpoint
@@ -1433,7 +1501,7 @@ function relativeTime(iso?: string): string {
   return `${Math.floor(ms / 86400_000)}d ago`;
 }
 
-function LPPanel() {
+function LPPanel({ bot }: { bot: LPBotConfig }) {
   const mobile                  = useMobile();
   const [data, setData]         = useState<LPSummary | null>(null);
   const [error, setError]       = useState<string | null>(null);
@@ -1445,7 +1513,7 @@ function LPPanel() {
   async function fetchLP() {
     setR(true);
     try {
-      const res  = await fetch("/api/lp", { cache: "no-store" });
+      const res  = await fetch(bot.apiUrl, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? `Error ${res.status}`); return; }
       setData(json);
@@ -1479,7 +1547,7 @@ function LPPanel() {
   const swapCount        = state.swap_count ?? 0;
 
   // Current-phase swap costs (subtract carry-forward).
-  const swapFees = Math.max(0, lifetimeSwapFees - LP_BASELINE_SWAP_COSTS);
+  const swapFees = Math.max(0, lifetimeSwapFees - bot.baselineSwapCosts);
 
   // Live uncollected fees — sum of `fees_earned_usd` on each active
   // position. This is the V3 `feeGrowthInside` math result the bot
@@ -1494,7 +1562,7 @@ function LPPanel() {
   // Net P&L (current phase) is verifiable on-chain truth: current wealth
   // minus the value at phase start. Wealth = total_value (which excludes
   // uncollected) + currently uncollected fees.
-  const netPnl = (totalValue + uncollectedFees) - LP_BASELINE_VALUE;
+  const netPnl = (totalValue + uncollectedFees) - bot.baselineValue;
 
   // Fees: derived from value change + live uncollected, rather than the
   // bot's broken `lifetime_fees` field (it produces absurd phantom values
@@ -1513,7 +1581,7 @@ function LPPanel() {
   // IL = residual after fees + swaps explain the gain. With this fee
   // formulation, IL collapses to ~0 by construction.
   const il     = netPnl - fees + swapFees;
-  const pnlPct = LP_BASELINE_VALUE > 0 ? (netPnl / LP_BASELINE_VALUE) * 100 : 0;
+  const pnlPct = bot.baselineValue > 0 ? (netPnl / bot.baselineValue) * 100 : 0;
   const activeCount  = state.active_positions ?? positions.length;
   const rebalCount   = state.rebalance_count  ?? rebalances.length;
 
@@ -1524,15 +1592,15 @@ function LPPanel() {
   const ilColor   = il     >= 0 ? C.green : C.red;
   const online    = !error && !loading && !!data;
 
-  // APR / time deployed — anchored to LP_BASELINE_TIME so the dashboard tells
+  // APR / time deployed — anchored to bot.baselineTime so the dashboard tells
   // a consistent post-reset story. Only fees earned since baseline are
   // counted in the APR projection. We floor at 1 hour to avoid divide-by-zero
   // and absurd numbers right after a reset, but otherwise use real elapsed time.
   const daysSinceBaseline = Math.max(
     1 / 24,
-    (Date.now() - LP_BASELINE_TIME.getTime()) / 86400_000
+    (Date.now() - bot.baselineTime.getTime()) / 86400_000
   );
-  // `fees` is already current-phase (LP_BASELINE_FEES already subtracted),
+  // `fees` is already current-phase (bot.baselineFees already subtracted),
   // so don't subtract it again.
   const apyPct = totalValue > 0
     ? (fees / daysSinceBaseline) * 365 / totalValue * 100
@@ -1540,7 +1608,7 @@ function LPPanel() {
   const dailyAvgPct = totalValue > 0
     ? (fees / totalValue / daysSinceBaseline) * 100
     : 0;
-  const timeDeployedStr = fmtRunning(LP_BASELINE_TIME);
+  const timeDeployedStr = fmtRunning(bot.baselineTime);
 
   const activePos = positions[0];
 
@@ -1550,14 +1618,14 @@ function LPPanel() {
        step   = each rebalance bumps cumulative fees
        end    = (now, totalValue)
      Once the bot starts emitting per-tick snapshots this gets richer. */
-  // Equity chart uses a fixed baseline snapshot (LP_BASELINE_TIME / VALUE)
+  // Equity chart uses a fixed baseline snapshot (bot.baselineTime / VALUE)
   // so it shows real progression instead of recomputing start-point on every poll.
-  const lpInitialValue = LP_BASELINE_VALUE;
+  const lpInitialValue = bot.baselineValue;
   const equityPoints = (() => {
     const tN = Date.now();
-    // Safety: if someone sets LP_BASELINE_TIME in the future (e.g. confused
+    // Safety: if someone sets bot.baselineTime in the future (e.g. confused
     // local-time vs UTC) clamp it to 1 hour ago so the chart still renders.
-    const t0 = Math.min(LP_BASELINE_TIME.getTime(), tN - 3600_000);
+    const t0 = Math.min(bot.baselineTime.getTime(), tN - 3600_000);
 
     // Two-point line: baseline → current value.
     // We deliberately do NOT step up at rebalance events using
@@ -1579,12 +1647,12 @@ function LPPanel() {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Pulse color={online ? C.cyan : error ? C.red : C.text3} />
           <h2 style={{ margin: 0, fontFamily: "'Bungee', cursive", fontSize: 22, color: C.text, letterSpacing: 0.3 }}>
-            Liquidity Bot
+            {bot.label}
           </h2>
           <Tag color={online ? C.cyan : C.text3}>
             {loading ? "Connecting" : online ? "Live" : "Offline"}
           </Tag>
-          <Tag color={C.purple}>Doma V3</Tag>
+          <Tag color={bot.poolAccent}>{bot.poolPairLabel}</Tag>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 11, color: C.text3, fontFamily: "'Space Mono', monospace" }}>
           {!!state.updated_at && (
@@ -1615,7 +1683,7 @@ function LPPanel() {
 
       {error && !loading && (
         <div style={{ background: "rgba(244,63,94,0.07)", border: "1px solid rgba(244,63,94,0.25)", borderRadius: 14, padding: "18px 22px", color: "#fca5a5", fontSize: 13 }}>
-          ⚠️ {error} — endpoint may not be deployed yet (set <code style={{ color: "#fde68a", fontFamily: "'Space Mono', monospace" }}>LP_BOT_API_KEY</code> on Vercel and confirm <code style={{ color: "#fde68a", fontFamily: "'Space Mono', monospace" }}>/api/lp/summary</code> is reachable on the droplet).
+          ⚠️ {error} — endpoint may not be deployed yet (set <code style={{ color: "#fde68a", fontFamily: "'Space Mono', monospace" }}>{bot.apiEnvVarName}</code> on Vercel and confirm <code style={{ color: "#fde68a", fontFamily: "'Space Mono', monospace" }}>{bot.apiUrl}</code> is reachable on the droplet).
         </div>
       )}
 
@@ -1676,7 +1744,7 @@ function LPPanel() {
                 <MiniStat label="Active Positions" value={String(activeCount)} accent={activeCount > 0 ? C.purple : C.text4} />
                 <MiniStat label="Phase Fees"       value={`$${fmtNum(fees, 4)}`} accent={C.green} sub={uncollectedFees > 0 ? `$${fmtNum(uncollectedFees, 4)} uncollected` : `all compounded`} />
                 <MiniStat label="Time Deployed"    value={timeDeployedStr} accent={C.cyan}
-                  sub={`since ${LP_BASELINE_TIME.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`} />
+                  sub={`since ${bot.baselineTime.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`} />
                 <MiniStat label="Fee APR"          value={fmtPct(apyPct, 1)} accent={apyPct >= 0 ? C.green : C.red}
                   sub={`over ${daysSinceBaseline.toFixed(1)} days`} />
               </div>
@@ -1734,7 +1802,7 @@ function LPPanel() {
           </div>
 
           {/* ── PHASE HISTORY ───────────────────────────────────── */}
-          <PhaseHistory mobile={mobile} />
+          <PhaseHistory mobile={mobile} phases={bot.phases} label={`${bot.label} · Phase History`} />
 
           {/* ── EQUITY CURVE ────────────────────────────────────── */}
           {equityPoints.length >= 2 && (
@@ -1758,7 +1826,7 @@ function LPPanel() {
                   <Tag color={pnlColor}>{fmtPct(pnlPct)} all-time</Tag>
                 </div>
                 <span style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5 }}>
-                  {rebalCount} REBALANCES · SINCE {LP_BASELINE_TIME.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }).toUpperCase()}
+                  {rebalCount} REBALANCES · SINCE {bot.baselineTime.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }).toUpperCase()}
                 </span>
               </div>
               <EquityChart points={equityPoints} height={mobile ? 140 : 180} baseline={lpInitialValue} />
@@ -1791,7 +1859,7 @@ function LPPanel() {
                 </div>
                 {activePos.nft_token_id && (
                   <a
-                    href={`https://explorer.doma.xyz/token/0xce126ca6aceBBDCe95D7b8A3Ce637951640811E0/instance/${activePos.nft_token_id}`}
+                    href={`${bot.nftExplorerBase}${activePos.nft_token_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="dash-tab"
@@ -1934,11 +2002,11 @@ function LPPanel() {
 }
 
 /* Phase History — frozen snapshots of past capital phases.
-   Renders nothing if LP_PHASES is empty.
+   Renders nothing if phases is empty.
    Switches to a stacked single-column layout on mobile so columns stop
    piling on top of each other on narrow screens. */
-function PhaseHistory({ mobile }: { mobile: boolean }) {
-  if (LP_PHASES.length === 0) return null;
+function PhaseHistory({ mobile, phases, label = "Phase History" }: { mobile: boolean; phases: LPPhase[]; label?: string }) {
+  if (phases.length === 0) return null;
 
   return (
     <div className="dash-card" style={{
@@ -1951,15 +2019,15 @@ function PhaseHistory({ mobile }: { mobile: boolean }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, flexWrap: "wrap" as const }}>
         <span style={{ color: C.indigo, fontSize: 14 }}>◷</span>
         <span style={{ fontSize: 12, fontWeight: 800, color: C.text2, letterSpacing: 0.6, textTransform: "uppercase" as const, fontFamily: "'Space Mono', monospace" }}>
-          Phase History
+          {label}
         </span>
         <span style={{ fontSize: 10, color: C.text4, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5, marginLeft: 4 }}>
-          {LP_PHASES.length} COMPLETED · 1 ACTIVE
+          {phases.length} COMPLETED · 1 ACTIVE
         </span>
       </div>
 
       <div style={{ display: "grid", gap: 12 }}>
-        {LP_PHASES.map((phase, i) => {
+        {phases.map((phase, i) => {
           const netPnl     = phase.finalValueUsd - phase.depositedUsd;
           const netPnlPct  = (netPnl / phase.depositedUsd) * 100;
           const durationMs = phase.endTime.getTime() - phase.startTime.getTime();
@@ -2107,7 +2175,11 @@ function PositionKV({ k, v, accent }: { k: string; v: string; accent: string }) 
    LP LOGS — same terminal aesthetic, single process (no tabs)
 ════════════════════════════════════════════════════════════════════════ */
 
-function LPLogs() {
+function LPLogs({ logsUrl, title = "LP Bot Logs", logPath = "~/lp-bot/logs/lp_bot.log" }: {
+  logsUrl: string;
+  title?: string;
+  logPath?: string;
+}) {
   const [data, setData]       = useState<LogData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setR]    = useState(false);
@@ -2116,7 +2188,7 @@ function LPLogs() {
   async function fetchLogs(n = lines) {
     setR(true);
     try {
-      const res  = await fetch(`/api/lp-logs?lines=${n}`, { cache: "no-store" });
+      const res  = await fetch(`${logsUrl}?lines=${n}`, { cache: "no-store" });
       const json = await res.json();
       setData(json);
     } catch { setData({ error: "Unreachable" }); }
@@ -2146,7 +2218,7 @@ function LPLogs() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap" as const, gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <h2 style={{ margin: 0, fontFamily: "'Bungee', cursive", fontSize: 22, color: C.text, letterSpacing: 0.3 }}>
-            LP Bot Logs
+            {title}
           </h2>
           <Tag color={C.cyan}>Live Stream</Tag>
         </div>
@@ -2182,7 +2254,7 @@ function LPLogs() {
           <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#f59e0b" }} />
           <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#10b981" }} />
           <span style={{ marginLeft: 14, fontFamily: "'Space Mono', monospace", fontSize: 11, color: C.text3 }}>
-            ~/lp-bot/logs/lp_bot.log
+            {logPath}
           </span>
         </div>
         {loading && logLines.length === 0 ? (
@@ -3771,15 +3843,15 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
           </header>
 
           {/* ── Sections ───────────────────────────────────────────── */}
-          {/* Bots first, stacked. Each is a self-contained section. */}
+          {/* Auto-sniper, then both LP pools (SOFTWARE.ai + WETH). */}
           <BotPanel />
-          <LPPanel />
+          <LPPanel bot={LP_BOT_SOFT} />
+          <LPPanel bot={LP_BOT_ETH} />
           {/* Arb bot temporarily hidden — bot is off, may return with a
-              different pool. Uncomment <ArbPanel /> + <ArbLogs /> below
-              when bringing it back. */}
+              different pool. Uncomment when bringing it back. */}
           {/* <ArbPanel /> */}
 
-          {/* Logs grid — auto-sniper + LP side-by-side at desktop */}
+          {/* Logs grid — auto-sniper on top row, both LP bot logs on bottom row */}
           <div style={{
             display: "grid",
             gridTemplateColumns: mobile ? "1fr" : "1fr 1fr",
@@ -3787,8 +3859,19 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
             marginBottom: 18,
           }}>
             <div><BotLogs /></div>
-            <div><LPLogs /></div>
+            <div>
+              <LPLogs
+                logsUrl="/api/lp-logs"
+                title="LP Bot · SOFTWARE.ai · Logs"
+                logPath="~/lp-bot/logs/lp_bot.log"
+              />
+            </div>
           </div>
+          <LPLogs
+            logsUrl="/api/lp-eth-logs"
+            title="LP Bot · WETH · Logs"
+            logPath="~/lp-bot-eth/logs/lp_bot_eth.log"
+          />
           {/* <ArbLogs /> */}
 
           <SupportCard mobile={mobile} />

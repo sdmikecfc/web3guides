@@ -79,7 +79,7 @@ export default async function LeaderboardPage() {
 
   const budget = Number(round.budget_usd);
   const rows: LeaderRow[] = [];
-  for (const [discordId, userHoldings] of byUser.entries()) {
+  for (const [discordId, userHoldings] of Array.from(byUser.entries())) {
     let holdingsValue = 0;
     let costBasis = 0;
     let topMover: { domain: string; gainPct: number } | null = null;

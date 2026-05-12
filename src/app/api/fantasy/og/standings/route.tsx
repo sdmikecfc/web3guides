@@ -80,7 +80,7 @@ async function getStandings(roundIdParam: string | null): Promise<{
 
   const budget = Number(round.budget_usd);
   const ranked: { discordId: string; totalValue: number; pct: number; topPick: string }[] = [];
-  for (const [discordId, userHoldings] of byUser.entries()) {
+  for (const [discordId, userHoldings] of Array.from(byUser.entries())) {
     let holdingsValue = 0;
     let costBasis = 0;
     let bestPick = { domain: "", pct: -Infinity };
