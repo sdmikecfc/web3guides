@@ -10,7 +10,10 @@ import { cookies } from "next/headers";
 import crypto from "node:crypto";
 
 const COOKIE_NAME = "fantasy_session";
-const SESSION_TTL_SECONDS = 24 * 60 * 60; // 24h
+// 10 days — matches a full round (3 days draft + 7 days scoring). Users
+// who enter on draft-open stay signed in through resolution. Existing
+// shorter cookies keep their own exp until they expire naturally.
+const SESSION_TTL_SECONDS = 10 * 24 * 60 * 60;
 
 function getSecret(): string {
   const secret = process.env.FANTASY_SESSION_SECRET;
