@@ -78,6 +78,13 @@ export interface BotGuideProps {
   /** Setup walkthrough video URL */
   setupVideoUrl?:     string;
   setupVideoTitle?:    string;
+
+  /** Optional iframe URL for the OVERVIEW slot. Takes precedence over video.
+   *  Use for embedding interactive Claude Design exports / standalone HTML
+   *  presentations stored in /public. */
+  overviewIframeUrl?: string;
+  /** Optional iframe URL for the SETUP slot. */
+  setupIframeUrl?:    string;
 }
 
 /* ────────────────────────────────────────────────────────────────────── */
@@ -101,6 +108,57 @@ const C = {
 };
 
 /* ────────────────────────────────────────────────────────────────────── */
+
+function MediaIframe({ src, title, accent }: { src: string; title: string; accent: string }) {
+  return (
+    <figure style={{ margin: "32px 0", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{
+        position: "relative" as const,
+        width: "100%",
+        aspectRatio: "16 / 9",
+        background: "#000F16",
+        border: `1px solid ${accent}33`,
+        borderRadius: 16,
+        overflow: "hidden" as const,
+        boxShadow: "0 12px 48px -16px rgba(0,0,0,0.6)",
+      }}>
+        <iframe
+          src={src}
+          title={title}
+          loading="lazy"
+          allow="fullscreen; autoplay; clipboard-write"
+          allowFullScreen
+          style={{
+            position: "absolute" as const, inset: 0,
+            width: "100%", height: "100%",
+            border: 0, display: "block",
+          }}
+        />
+      </div>
+      <figcaption style={{
+        marginTop: 10,
+        display: "flex",
+        justifyContent: "space-between" as const,
+        alignItems: "center" as const,
+        gap: 12,
+        flexWrap: "wrap" as const,
+      }}>
+        <span style={{
+          fontSize: 12, color: C.text3, fontFamily: "'Space Mono', monospace",
+          letterSpacing: 0.5,
+        }}>
+          ▶ {title}
+        </span>
+        <a href={src} target="_blank" rel="noopener noreferrer" style={{
+          fontSize: 11, color: accent, textDecoration: "none",
+          fontFamily: "'Space Mono', monospace", letterSpacing: 0.6, fontWeight: 800,
+        }}>
+          Open full-screen ↗
+        </a>
+      </figcaption>
+    </figure>
+  );
+}
 
 function VideoPlaceholder({ title, accent }: { title: string; accent: string }) {
   return (
@@ -196,6 +254,8 @@ export default function BotGuidePage(props: BotGuideProps) {
     overviewVideoTitle = "Overview — what this bot does in 60 seconds",
     setupVideoUrl,
     setupVideoTitle = "Setup walkthrough — wallet to first swap",
+    overviewIframeUrl,
+    setupIframeUrl,
   } = props;
 
   return (
@@ -386,7 +446,9 @@ export default function BotGuidePage(props: BotGuideProps) {
         </section>
 
         {/* ── Overview video ────────────────────────────────────────── */}
-        {overviewVideoUrl ? (
+        {overviewIframeUrl ? (
+          <MediaIframe src={overviewIframeUrl} title={overviewVideoTitle} accent={accent} />
+        ) : overviewVideoUrl ? (
           <VideoEmbed src={overviewVideoUrl} title={overviewVideoTitle} duration="0:60" accent={accent} />
         ) : (
           <VideoPlaceholder title={overviewVideoTitle} accent={accent} />
@@ -438,7 +500,9 @@ export default function BotGuidePage(props: BotGuideProps) {
         </section>
 
         {/* ── Setup walkthrough video ───────────────────────────────── */}
-        {setupVideoUrl ? (
+        {setupIframeUrl ? (
+          <MediaIframe src={setupIframeUrl} title={setupVideoTitle} accent={accent} />
+        ) : setupVideoUrl ? (
           <VideoEmbed src={setupVideoUrl} title={setupVideoTitle} duration="0:60" accent={accent} />
         ) : (
           <VideoPlaceholder title={setupVideoTitle} accent={accent} />

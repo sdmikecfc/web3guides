@@ -101,7 +101,11 @@ export default function VolumeBotPage() {
       ]}
 
       overviewVideoTitle="Doma Volume Bot — what it does in 60 seconds"
-      setupVideoTitle="Volume Bot setup — wallet to first swap"
+      setupVideoTitle="Doma Volume Bot — Setup Guide (interactive · 7:50)"
+      // Interactive Claude-Design setup walkthrough, exported as standalone
+      // HTML and dropped into /public. The MediaIframe renderer in
+      // BotGuidePage embeds it inline (with a 'Open full-screen' escape hatch).
+      setupIframeUrl="/volume-bot-setup.html"
     />
   );
 }
