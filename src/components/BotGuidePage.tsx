@@ -109,52 +109,108 @@ const C = {
 
 /* ────────────────────────────────────────────────────────────────────── */
 
-function MediaIframe({ src, title, accent }: { src: string; title: string; accent: string }) {
+/* MediaLauncher — poster card for standalone HTML presentations.
+   Inline iframes are unreliable for Claude-Design's self-unpacking bundle
+   format (text/babel + document.documentElement.replaceWith → silently
+   fails in some iframe contexts). A click-to-launch card is more robust:
+   nothing loads until the user clicks, and the design opens at full
+   viewport size — which is what it was built for. */
+function MediaLauncher({
+  src, title, accent, duration,
+}: {
+  src: string; title: string; accent: string; duration?: string;
+}) {
   return (
     <figure style={{ margin: "32px 0", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{
-        position: "relative" as const,
-        width: "100%",
-        aspectRatio: "16 / 9",
-        background: "#000F16",
-        border: `1px solid ${accent}33`,
-        borderRadius: 16,
-        overflow: "hidden" as const,
-        boxShadow: "0 12px 48px -16px rgba(0,0,0,0.6)",
-      }}>
-        <iframe
-          src={src}
-          title={title}
-          loading="lazy"
-          allow="fullscreen; autoplay; clipboard-write"
-          allowFullScreen
-          style={{
-            position: "absolute" as const, inset: 0,
-            width: "100%", height: "100%",
-            border: 0, display: "block",
-          }}
-        />
-      </div>
+      <a href={src} target="_blank" rel="noopener noreferrer"
+        style={{
+          display: "block", position: "relative" as const,
+          width: "100%", aspectRatio: "16 / 9",
+          background: `
+            radial-gradient(circle at 30% 30%, ${accent}33 0%, transparent 55%),
+            radial-gradient(circle at 70% 70%, rgba(236,72,153,0.12) 0%, transparent 50%),
+            #000F16
+          `,
+          border: `1px solid ${accent}55`,
+          borderRadius: 16,
+          overflow: "hidden" as const,
+          boxShadow: "0 12px 48px -16px rgba(0,0,0,0.6)",
+          textDecoration: "none",
+          color: "#fff",
+        }}>
+        {/* Decorative grid */}
+        <div style={{
+          position: "absolute" as const, inset: 0,
+          backgroundImage:
+            "linear-gradient(rgba(99,102,241,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.06) 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+          maskImage: "radial-gradient(ellipse 60% 80% at 50% 50%, black 0%, transparent 75%)",
+          WebkitMaskImage: "radial-gradient(ellipse 60% 80% at 50% 50%, black 0%, transparent 75%)",
+          pointerEvents: "none" as const,
+        }} />
+
+        {/* Centered content */}
+        <div style={{
+          position: "absolute" as const, inset: 0,
+          display: "flex", flexDirection: "column" as const,
+          alignItems: "center" as const, justifyContent: "center" as const,
+          padding: "32px 24px",
+          textAlign: "center" as const,
+        }}>
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            background: accent + "1a",
+            border: `1px solid ${accent}55`,
+            borderRadius: 50, padding: "5px 14px", marginBottom: 18,
+            fontSize: 10, color: accent,
+            fontFamily: "'Space Mono', monospace",
+            letterSpacing: 1.3, fontWeight: 800,
+            textTransform: "uppercase" as const,
+          }}>
+            ● Interactive · click to launch
+          </div>
+
+          <div style={{
+            fontFamily: "'Bungee', cursive",
+            fontSize: "clamp(20px, 3vw, 30px)",
+            color: "#fff", lineHeight: 1.2, marginBottom: 12,
+            maxWidth: "85%",
+          }}>
+            {title}
+          </div>
+
+          {duration && (
+            <div style={{
+              fontSize: 11, color: "rgba(255,255,255,0.55)",
+              fontFamily: "'Space Mono', monospace", letterSpacing: 1.2,
+              marginBottom: 22,
+            }}>
+              {duration}
+            </div>
+          )}
+
+          {/* Big launch button */}
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 10,
+            background: `linear-gradient(135deg, ${accent}, ${C.pink})`,
+            color: "#fff",
+            padding: "12px 22px", borderRadius: 12,
+            fontFamily: "'Space Mono', monospace", fontSize: 12,
+            fontWeight: 800, letterSpacing: 0.6,
+            boxShadow: `0 10px 30px -10px ${accent}80`,
+          }}>
+            ▶ Launch full-screen
+          </span>
+        </div>
+      </a>
+
       <figcaption style={{
         marginTop: 10,
-        display: "flex",
-        justifyContent: "space-between" as const,
-        alignItems: "center" as const,
-        gap: 12,
-        flexWrap: "wrap" as const,
+        fontSize: 12, color: C.text4,
+        fontFamily: "'Space Mono', monospace",
+        letterSpacing: 0.5, textAlign: "center" as const,
       }}>
-        <span style={{
-          fontSize: 12, color: C.text3, fontFamily: "'Space Mono', monospace",
-          letterSpacing: 0.5,
-        }}>
-          ▶ {title}
-        </span>
-        <a href={src} target="_blank" rel="noopener noreferrer" style={{
-          fontSize: 11, color: accent, textDecoration: "none",
-          fontFamily: "'Space Mono', monospace", letterSpacing: 0.6, fontWeight: 800,
-        }}>
-          Open full-screen ↗
-        </a>
+        Opens in a new tab · best viewed at full screen
       </figcaption>
     </figure>
   );
@@ -445,14 +501,12 @@ export default function BotGuidePage(props: BotGuideProps) {
           </p>
         </section>
 
-        {/* ── Overview video ────────────────────────────────────────── */}
+        {/* ── Overview media slot (hidden when nothing set) ─────────── */}
         {overviewIframeUrl ? (
-          <MediaIframe src={overviewIframeUrl} title={overviewVideoTitle} accent={accent} />
+          <MediaLauncher src={overviewIframeUrl} title={overviewVideoTitle} accent={accent} />
         ) : overviewVideoUrl ? (
           <VideoEmbed src={overviewVideoUrl} title={overviewVideoTitle} duration="0:60" accent={accent} />
-        ) : (
-          <VideoPlaceholder title={overviewVideoTitle} accent={accent} />
-        )}
+        ) : null}
 
         {/* ── How it works (3 mechanics cards) ──────────────────────── */}
         <section style={{ marginBottom: 48 }}>
@@ -499,14 +553,12 @@ export default function BotGuidePage(props: BotGuideProps) {
           </div>
         </section>
 
-        {/* ── Setup walkthrough video ───────────────────────────────── */}
+        {/* ── Setup media slot (hidden when nothing set) ────────────── */}
         {setupIframeUrl ? (
-          <MediaIframe src={setupIframeUrl} title={setupVideoTitle} accent={accent} />
+          <MediaLauncher src={setupIframeUrl} title={setupVideoTitle} accent={accent} duration="7:50 interactive" />
         ) : setupVideoUrl ? (
           <VideoEmbed src={setupVideoUrl} title={setupVideoTitle} duration="0:60" accent={accent} />
-        ) : (
-          <VideoPlaceholder title={setupVideoTitle} accent={accent} />
-        )}
+        ) : null}
 
         {/* ── Quickstart steps ──────────────────────────────────────── */}
         <section style={{ marginBottom: 48 }}>
