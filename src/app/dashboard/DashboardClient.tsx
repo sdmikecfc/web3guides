@@ -3870,15 +3870,17 @@ function useLPGlance(bot: LPBotConfig): AtAGlance {
 function KPISummaryBar({
   sniper, soft, eth, mobile,
 }: {
-  sniper: AtAGlance; soft: AtAGlance; eth: AtAGlance; mobile: boolean;
+  sniper: AtAGlance; soft: AtAGlance; eth?: AtAGlance; mobile: boolean;
 }) {
-  const bots         = [sniper, soft, eth];
+  // eth is optional so individual bots can be temporarily hidden without
+  // the rest of the dashboard math going wrong.
+  const bots         = [sniper, soft, ...(eth ? [eth] : [])];
   // Only count bots whose summary has actually loaded — otherwise their
   // baseline shows up as a phantom -$600 P&L during the first fetch.
   const liveBots     = bots.filter(b => b.status === "live");
   const totDeployed  = liveBots.reduce((s, b) => s + b.totalValue, 0);
   const totFees      = (soft.status === "live" ? soft.feesEarned : 0)
-                     + (eth.status  === "live" ? eth.feesEarned  : 0);
+                     + (eth && eth.status === "live" ? eth.feesEarned  : 0);
   const totPnl       = liveBots.reduce((s, b) => s + b.pnl, 0);
   const liveCount    = liveBots.length;
   const offlineCount = bots.filter(b => b.status === "offline").length;
@@ -4154,7 +4156,8 @@ function LogsDrawer({ mobile }: { mobile: boolean }) {
   const tabs = [
     { id: "sniper" as const, label: "Auto-Sniper",      color: C.green },
     { id: "soft"   as const, label: "LP · SOFTWARE.ai", color: LP_BOT_SOFT.poolAccent },
-    { id: "eth"    as const, label: "LP · WETH",        color: LP_BOT_ETH.poolAccent },
+    // ETH LP bot temporarily hidden — uncomment to bring its log tab back.
+    // { id: "eth" as const, label: "LP · WETH", color: LP_BOT_ETH.poolAccent },
   ];
 
   return (
@@ -4229,7 +4232,9 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
   // even when no panel is expanded.
   const sniperGlance = useSniperGlance();
   const softGlance   = useLPGlance(LP_BOT_SOFT);
-  const ethGlance    = useLPGlance(LP_BOT_ETH);
+  // ETH LP bot temporarily hidden from the dashboard. Hook left intact (and
+  // commented out) so re-enabling is a one-line uncomment.
+  // const ethGlance    = useLPGlance(LP_BOT_ETH);
 
   // Smooth-scroll the expanded panel into view when a card opens.
   // Offset for the sticky top bar (64px) + a little breathing room.
@@ -4320,7 +4325,7 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
               Bot Command Center
             </h1>
             <p style={{ margin: 0, color: C.text3, fontSize: mobile ? 13 : 15, lineHeight: 1.55, maxWidth: 680 }}>
-              Three automated bots running on the open web. Glance the totals up top, tap a card to dig in, and watch the live logs at the bottom. Every number, every trade, every position — public and verifiable.
+              Two automated bots running on the open web. Glance the totals up top, tap a card to dig in, and watch the live logs at the bottom. Every number, every trade, every position — public and verifiable.
             </p>
           </header>
 
@@ -4328,14 +4333,14 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
           <KPISummaryBar
             sniper={sniperGlance}
             soft={softGlance}
-            eth={ethGlance}
+            // eth={ethGlance}    // ETH LP bot temporarily hidden
             mobile={mobile}
           />
 
           {/* ── Bot cards row ──────────────────────────────────────── */}
           <div style={{
             display: "grid",
-            gridTemplateColumns: mobile ? "1fr" : "repeat(3, 1fr)",
+            gridTemplateColumns: mobile ? "1fr" : "repeat(2, 1fr)",
             gap: 16,
             marginBottom: 28,
           }}>
@@ -4361,6 +4366,7 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
               sublabel="Concentrated LP · Doma V3"
               runningSince={LP_BOT_SOFT.baselineTime}
             />
+            {/* ETH LP bot card temporarily hidden — uncomment to restore.
             <BotCard
               label="Liquidity · WETH"
               pair={LP_BOT_ETH.poolPairLabel}
@@ -4372,6 +4378,7 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
               sublabel="Concentrated LP · Doma V3"
               runningSince={LP_BOT_ETH.baselineTime}
             />
+            */}
           </div>
 
           {/* ── Expanded panel (one at a time) ─────────────────────── */}
@@ -4379,7 +4386,7 @@ export default function DashboardClient({ emailCount, guideCount }: Props) {
             <div ref={panelRef} style={{ marginBottom: 8 }}>
               {openBot === "sniper" && <BotPanel />}
               {openBot === "soft"   && <LPPanel bot={LP_BOT_SOFT} />}
-              {openBot === "eth"    && <LPPanel bot={LP_BOT_ETH} />}
+              {/* {openBot === "eth" && <LPPanel bot={LP_BOT_ETH} />} */}
             </div>
           )}
 

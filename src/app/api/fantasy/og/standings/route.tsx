@@ -308,6 +308,10 @@ export async function GET(req: Request) {
     {
       width: 1200,
       height: 675,
+      headers: {
+        // Edge-cache the image for 60s, serve stale up to 5min while revalidating
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+      },
     }
   );
 }

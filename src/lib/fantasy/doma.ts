@@ -20,6 +20,7 @@ type RawToken = {
 };
 
 let _cache: { tokens: Map<string, RawToken>; at: number } | null = null;
+let _inflight: Promise<Map<string, RawToken>> | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 async function fetchPage(skip: number, take: number): Promise<RawToken[]> {
@@ -53,24 +54,38 @@ function caip10(addr: string | null): string | null {
   return `eip155:${CHAIN}:${addr.toLowerCase()}`;
 }
 
-/** Fetch every fractional token, paginated. Cached 5min server-wide. */
+/**
+ * Fetch every fractional token, paginated. Cached 5min within a single
+ * Vercel function instance. Concurrent calls share the same in-flight
+ * promise — without this, 50 simultaneous page renders would each
+ * trigger their own 5-call paginated fetch.
+ */
 export async function getAllTokensByAddress(): Promise<Map<string, RawToken>> {
   if (_cache && Date.now() - _cache.at < CACHE_TTL_MS) return _cache.tokens;
-  const out = new Map<string, RawToken>();
-  let skip = 0;
-  // Bound for safety — current count is ~478, so 1500 is plenty of headroom.
-  while (skip < 1500) {
-    const page = await fetchPage(skip, 100);
-    if (page.length === 0) break;
-    for (const t of page) {
-      const key = caip10(t.address);
-      if (key) out.set(key, t);
+  if (_inflight) return _inflight;
+
+  _inflight = (async () => {
+    try {
+      const out = new Map<string, RawToken>();
+      let skip = 0;
+      while (skip < 1500) {
+        const page = await fetchPage(skip, 100);
+        if (page.length === 0) break;
+        for (const t of page) {
+          const key = caip10(t.address);
+          if (key) out.set(key, t);
+        }
+        if (page.length < 100) break;
+        skip += 100;
+      }
+      _cache = { tokens: out, at: Date.now() };
+      return out;
+    } finally {
+      _inflight = null;
     }
-    if (page.length < 100) break;
-    skip += 100;
-  }
-  _cache = { tokens: out, at: Date.now() };
-  return out;
+  })();
+
+  return _inflight;
 }
 
 export function invalidateTokenCache() {
