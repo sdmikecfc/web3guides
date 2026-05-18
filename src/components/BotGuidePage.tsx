@@ -85,6 +85,14 @@ export interface BotGuideProps {
   overviewIframeUrl?: string;
   /** Optional iframe URL for the SETUP slot. */
   setupIframeUrl?:    string;
+
+  /** Static infographic for the OVERVIEW slot — used when iframe/video are
+   *  not available. Render falls through iframe → video → image → null. */
+  overviewImageUrl?:     string;
+  overviewImageCaption?: string;
+  /** Static infographic for the SETUP slot. */
+  setupImageUrl?:        string;
+  setupImageCaption?:    string;
 }
 
 /* ────────────────────────────────────────────────────────────────────── */
@@ -216,6 +224,48 @@ function MediaLauncher({
   );
 }
 
+/* StaticInfographic — full-width 16:9 image card with a caption underneath.
+   Used when a slot has neither an interactive embed nor a video — typical
+   for AI-generated infographics that explain how the bot works. */
+function StaticInfographic({
+  src, title, caption, accent,
+}: {
+  src: string; title: string; caption?: string; accent: string;
+}) {
+  return (
+    <figure style={{ margin: "32px 0", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{
+        position: "relative" as const,
+        width: "100%",
+        aspectRatio: "3 / 2",
+        background: "#000F16",
+        border: `1px solid ${accent}33`,
+        borderRadius: 16,
+        overflow: "hidden" as const,
+        boxShadow: "0 12px 48px -16px rgba(0,0,0,0.6)",
+      }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={title}
+          loading="lazy"
+          style={{
+            width: "100%", height: "100%",
+            objectFit: "cover" as const, display: "block",
+          }}
+        />
+      </div>
+      <figcaption style={{
+        marginTop: 10, fontSize: 12, color: C.text3,
+        fontFamily: "'Space Mono', monospace", letterSpacing: 0.5,
+        textAlign: "center" as const,
+      }}>
+        {caption ?? title}
+      </figcaption>
+    </figure>
+  );
+}
+
 function VideoPlaceholder({ title, accent }: { title: string; accent: string }) {
   return (
     <figure style={{ margin: "32px 0", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
@@ -312,6 +362,10 @@ export default function BotGuidePage(props: BotGuideProps) {
     setupVideoTitle = "Setup walkthrough — wallet to first swap",
     overviewIframeUrl,
     setupIframeUrl,
+    overviewImageUrl,
+    overviewImageCaption,
+    setupImageUrl,
+    setupImageCaption,
   } = props;
 
   return (
@@ -506,6 +560,13 @@ export default function BotGuidePage(props: BotGuideProps) {
           <MediaLauncher src={overviewIframeUrl} title={overviewVideoTitle} accent={accent} />
         ) : overviewVideoUrl ? (
           <VideoEmbed src={overviewVideoUrl} title={overviewVideoTitle} duration="0:60" accent={accent} />
+        ) : overviewImageUrl ? (
+          <StaticInfographic
+            src={overviewImageUrl}
+            title={overviewVideoTitle}
+            caption={overviewImageCaption}
+            accent={accent}
+          />
         ) : null}
 
         {/* ── How it works (3 mechanics cards) ──────────────────────── */}
@@ -558,6 +619,13 @@ export default function BotGuidePage(props: BotGuideProps) {
           <MediaLauncher src={setupIframeUrl} title={setupVideoTitle} accent={accent} duration="7:50 interactive" />
         ) : setupVideoUrl ? (
           <VideoEmbed src={setupVideoUrl} title={setupVideoTitle} duration="0:60" accent={accent} />
+        ) : setupImageUrl ? (
+          <StaticInfographic
+            src={setupImageUrl}
+            title={setupVideoTitle}
+            caption={setupImageCaption}
+            accent={accent}
+          />
         ) : null}
 
         {/* ── Quickstart steps ──────────────────────────────────────── */}

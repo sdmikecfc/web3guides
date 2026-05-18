@@ -24,9 +24,8 @@ function shortNameFor(discordId: string): string {
 }
 
 export default async function LeaderboardPage() {
-  // Auth required so we can highlight the "you" row.
+  // Public page — session is optional. If logged in, we highlight "you".
   const session = readSession();
-  if (!session) redirect("/fantasy/login?error=session-required");
 
   const round = await getLatestRound();
   if (!round) return <EmptyState title="No round yet" body="The first round will open soon." />;
@@ -77,6 +76,17 @@ export default async function LeaderboardPage() {
     byUser.get(h.discord_id)!.push(h);
   }
 
+  // Fetch Discord display names from fantasy_users (set by bot on !fantasy enter)
+  const userIds = Array.from(byUser.keys());
+  const { data: userRows } = await db
+    .from("fantasy_users")
+    .select("discord_id, display_name")
+    .in("discord_id", userIds);
+  const nameById = new Map<string, string>();
+  for (const u of userRows || []) {
+    if (u.display_name) nameById.set(u.discord_id, u.display_name);
+  }
+
   const budget = Number(round.budget_usd);
   const rows: LeaderRow[] = [];
   for (const [discordId, userHoldings] of Array.from(byUser.entries())) {
@@ -99,11 +109,11 @@ export default async function LeaderboardPage() {
     const pctGrowth = budget > 0 ? ((totalValueUsd - budget) / budget) * 100 : 0;
     rows.push({
       discordId,
-      shortName: shortNameFor(discordId),
+      shortName: nameById.get(discordId) || shortNameFor(discordId),
       totalValueUsd,
       pctGrowth,
       topMover,
-      isYou: discordId === session.sub,
+      isYou: session ? discordId === session.sub : false,
     });
   }
 

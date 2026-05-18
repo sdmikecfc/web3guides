@@ -78,6 +78,17 @@ async function getStandings(roundIdParam: string | null): Promise<{
     byUser.get(h.discord_id)!.push(h);
   }
 
+  // Discord display names from fantasy_users
+  const userIds = Array.from(byUser.keys());
+  const { data: userRows } = await db
+    .from("fantasy_users")
+    .select("discord_id, display_name")
+    .in("discord_id", userIds);
+  const nameById = new Map<string, string>();
+  for (const u of userRows || []) {
+    if (u.display_name) nameById.set(u.discord_id, u.display_name);
+  }
+
   const budget = Number(round.budget_usd);
   const ranked: { discordId: string; totalValue: number; pct: number; topPick: string }[] = [];
   for (const [discordId, userHoldings] of Array.from(byUser.entries())) {
@@ -102,7 +113,7 @@ async function getStandings(roundIdParam: string | null): Promise<{
 
   const rows: Row[] = ranked.slice(0, 10).map((r, i) => ({
     rank: i + 1,
-    handle: shortNameFor(r.discordId),
+    handle: nameById.get(r.discordId) || shortNameFor(r.discordId),
     pct: r.pct,
     topPick: r.topPick,
   }));
