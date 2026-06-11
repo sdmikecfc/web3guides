@@ -7,6 +7,11 @@ import { VALID_SUBDOMAINS } from "@/lib/subdomains";
    CONFIG
 ════════════════════════════════════════════════════════════════════════ */
 
+// Set to true to show the dashboard maintenance screen instead of the
+// live bot panels. All bot wiring is left in place — flipping this back
+// to false restores the full dashboard with no other code changes.
+const MAINTENANCE_MODE = true;
+
 // Update this if you deposit or withdraw from the bot wallet.
 // e.g. add $50 → 150. Withdraw $20 → 80.
 const INITIAL_BALANCE = 100;
@@ -4215,12 +4220,180 @@ function LogsDrawer({ mobile }: { mobile: boolean }) {
   );
 }
 
+/* ── MaintenanceScreen — renders when MAINTENANCE_MODE === true ───────────── */
+function MaintenanceScreen({ mobile }: { mobile: boolean }) {
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />
+      <div style={{
+        minHeight: "100vh",
+        background: `
+          radial-gradient(ellipse 80% 50% at 50% -20%, rgba(245,158,11,0.10) 0%, transparent 60%),
+          radial-gradient(ellipse 60% 40% at 100% 100%, rgba(236,72,153,0.05) 0%, transparent 60%),
+          ${C.bg}
+        `,
+        color: C.text,
+        fontFamily: "'DM Sans', system-ui, sans-serif",
+        display: "flex" as const,
+        flexDirection: "column" as const,
+      }}>
+        {/* Top bar */}
+        <div style={{
+          background: "rgba(5,7,15,0.7)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          borderBottom: `1px solid ${C.border}`,
+        }}>
+          <div style={{
+            maxWidth: 1440, margin: "0 auto", padding: "0 24px",
+            height: 64, display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <a href="/" style={{ display: "flex", alignItems: "center", gap: 14, textDecoration: "none" }}>
+              <span style={{
+                fontFamily: "'Bungee', cursive", fontSize: 16,
+                background: `linear-gradient(135deg, ${C.orange}, ${C.pink})`,
+                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                backgroundClip: "text", letterSpacing: 0.5,
+              }}>Web3 Guides</span>
+              {!mobile && (
+                <>
+                  <span style={{ width: 1, height: 18, background: C.text5 }} />
+                  <span style={{
+                    fontSize: 12, color: C.text3, fontFamily: "'Space Mono', monospace",
+                    letterSpacing: 1, textTransform: "uppercase" as const,
+                  }}>Public Dashboard</span>
+                </>
+              )}
+            </a>
+            <a href="/" className="dash-link" style={{
+              fontSize: 12, color: C.text3, textDecoration: "none",
+              fontFamily: "'Space Mono', monospace", letterSpacing: 0.5,
+            }}>← Back to site</a>
+          </div>
+        </div>
+
+        {/* Centered maintenance panel */}
+        <main style={{
+          flex: 1, display: "flex", alignItems: "center" as const, justifyContent: "center" as const,
+          padding: mobile ? "60px 18px" : "80px 24px",
+        }}>
+          <div style={{
+            maxWidth: 620, width: "100%",
+            background: `linear-gradient(160deg, rgba(245,158,11,0.08), rgba(236,72,153,0.04) 60%, ${C.surface})`,
+            border: `1px solid ${C.yellow}55`,
+            borderRadius: 20,
+            padding: mobile ? "36px 26px" : "48px 44px",
+            textAlign: "center" as const,
+            position: "relative" as const,
+            overflow: "hidden" as const,
+            boxShadow: `0 20px 60px -20px ${C.yellow}33`,
+          }}>
+            {/* Top accent stripe */}
+            <span style={{
+              position: "absolute" as const, top: 0, left: 0, right: 0, height: 3,
+              background: `linear-gradient(90deg, ${C.yellow}, ${C.orange}, ${C.pink})`,
+            }} />
+
+            {/* Maintenance pill */}
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 10,
+              background: `${C.yellow}1a`,
+              border: `1px solid ${C.yellow}55`,
+              borderRadius: 50, padding: "6px 16px", marginBottom: 28,
+            }}>
+              <Pulse color={C.yellow} />
+              <span style={{
+                fontFamily: "'Space Mono', monospace", fontSize: 11,
+                color: C.yellow, letterSpacing: 1.4, fontWeight: 800,
+                textTransform: "uppercase" as const,
+              }}>
+                Maintenance
+              </span>
+            </div>
+
+            <h1 style={{
+              margin: "0 0 18px",
+              fontFamily: "'Bungee', cursive",
+              fontSize: mobile ? 32 : 44,
+              lineHeight: 1.1, letterSpacing: -1,
+              background: `linear-gradient(135deg, ${C.text} 0%, ${C.yellow} 100%)`,
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}>
+              Bots are currently down
+            </h1>
+
+            <p style={{
+              margin: "0 0 32px", color: C.text2,
+              fontSize: mobile ? 15 : 17, lineHeight: 1.65,
+            }}>
+              Working on new versions of each. Check back soon!
+            </p>
+
+            <div style={{
+              display: "flex", gap: 12, flexWrap: "wrap" as const,
+              justifyContent: "center" as const,
+            }}>
+              <a href="/" className="dash-link" style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                background: C.text, color: C.bg, textDecoration: "none",
+                padding: "12px 22px", borderRadius: 12,
+                fontFamily: "'Space Mono', monospace", fontSize: 12,
+                fontWeight: 800, letterSpacing: 0.6,
+              }}>
+                Back to web3guides.com
+              </a>
+              <a href="/auto-sniper" className="dash-link" style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                background: "transparent", color: C.text2, textDecoration: "none",
+                padding: "12px 22px", borderRadius: 12,
+                fontFamily: "'Space Mono', monospace", fontSize: 12,
+                fontWeight: 800, letterSpacing: 0.6,
+                border: `1px solid ${C.borderHi}`,
+              }}>
+                Read the bot guides ↗
+              </a>
+            </div>
+          </div>
+        </main>
+
+        {/* Footer */}
+        <footer style={{
+          padding: "20px 24px",
+          borderTop: `1px solid ${C.border}`,
+          display: "flex", justifyContent: "space-between", alignItems: "center" as const,
+          flexWrap: "wrap" as const, gap: 12,
+          fontSize: 11, color: C.text4,
+          fontFamily: "'Space Mono', monospace", letterSpacing: 0.6,
+          maxWidth: 1440, margin: "0 auto", width: "100%",
+        }}>
+          <span>BUILT BY <a href="https://bigmike.web3guides.com" className="dash-link" style={{ color: C.text3, textDecoration: "none", fontWeight: 700 }}>BIG MIKE</a></span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Pulse color={C.yellow} />
+            <span style={{ letterSpacing: 1 }}>UPGRADING</span>
+          </span>
+        </footer>
+      </div>
+    </>
+  );
+}
+
 /* ════════════════════════════════════════════════════════════════════════
    MAIN
 ════════════════════════════════════════════════════════════════════════ */
 
 export default function DashboardClient({ emailCount, guideCount }: Props) {
   const mobile = useMobile();
+
+  // Maintenance toggle — when true, the full dashboard is suppressed and
+  // a polished "down for maintenance" screen renders instead. Flip the
+  // MAINTENANCE_MODE constant at the top of this file to restore.
+  if (MAINTENANCE_MODE) {
+    // Touch the data props so eslint doesn't yell about unused values
+    // while maintenance mode is on.
+    void emailCount; void guideCount;
+    return <MaintenanceScreen mobile={mobile} />;
+  }
 
   // Which bot's full panel is expanded below the cards row.
   // null = collapsed (compact cards only — quickest scan view).

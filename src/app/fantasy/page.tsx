@@ -60,7 +60,7 @@ export default async function FantasyLanding() {
             <>Pick 10 fractionalized Doma domains under a fixed budget.</>
           )}{" "}
           You have 3 days to draft, then 7 days of price movements decide it. Three rounds
-          every month. Top finishers earn Flipper points and round trophies.
+          every month. Top finishers earn rewards and round trophies.
         </p>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -147,7 +147,7 @@ export default async function FantasyLanding() {
           <HowCard
             num="03"
             title="Win the round"
-            body="Round resolves on day 10. Top 3 earn Flipper points and trophy roles. Three fresh rounds every month — no wallet needed to play."
+            body="Round resolves on day 10. Top 3 earn rewards and trophy roles. Three fresh rounds every month — no wallet needed to play."
           />
         </div>
       </section>

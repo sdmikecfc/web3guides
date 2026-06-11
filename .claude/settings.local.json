@@ -98,7 +98,8 @@
       "Bash(where pandoc *)",
       "Bash(python -c \"import docx; print\\('ok'\\)\")",
       "Bash(python -c \"from docx import Document; d=Document\\(r'C:\\\\Users\\\\Mike\\\\Downloads\\\\Discord AMA Ish Milly, Pricing the Future1 .docx'\\); [print\\(p.text\\) for p in d.paragraphs[:5]]\")",
-      "Bash(grep -n -B 1 -A 2 -E \"lemonlawlawyer|foodies\\\\.club|Monte|artauctions|bankruptcyai|\\\\$19,999|psychiatristlosangeles\" \"C:\\\\Users\\\\Mike\\\\Desktop\\\\patched-ish-milly-pricing-the-future-ama.md\")"
+      "Bash(grep -n -B 1 -A 2 -E \"lemonlawlawyer|foodies\\\\.club|Monte|artauctions|bankruptcyai|\\\\$19,999|psychiatristlosangeles\" \"C:\\\\Users\\\\Mike\\\\Desktop\\\\patched-ish-milly-pricing-the-future-ama.md\")",
+      "Bash(python generate_auto_sniper_images.py)"
     ]
   }
 }

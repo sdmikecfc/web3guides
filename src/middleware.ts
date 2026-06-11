@@ -4,6 +4,29 @@ import { VALID_SUBDOMAINS } from "@/lib/subdomains";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // ── Referral capture (Launch Wars, Session 7) ────────────────────────────
+  // A visitor arriving via web3guides.com/launch-wars?ref=CODE gets an httpOnly
+  // lw_ref cookie. The wallet-link verify route (/api/wallet/verify) later reads
+  // it and attributes the referral to the wallet the visitor SIWE-signs with —
+  // the bridge between the marketing page and their Discord identity, with no
+  // OAuth or bot permissions. Format-validated; only set on /launch-wars.
+  const refRaw = request.nextUrl.searchParams.get("ref");
+  const refCode =
+    refRaw && /^[A-Za-z0-9]{4,16}$/.test(refRaw) ? refRaw.toUpperCase() : null;
+  const withRef = (res: NextResponse): NextResponse => {
+    if (refCode && pathname.startsWith("/launch-wars")) {
+      res.cookies.set("lw_ref", refCode, {
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        path: "/",
+        sameSite: "lax",
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+      });
+    }
+    return res;
+  };
+
   // Use x-forwarded-host on Vercel, fallback to host header
   const hostname =
     request.headers.get("x-forwarded-host") ??
@@ -34,14 +57,14 @@ export function middleware(request: NextRequest) {
       : null;
 
   if (!subdomain) {
-    return NextResponse.next();
+    return withRef(NextResponse.next());
   }
 
   // ── Rewrite  eth.web3guides.com/foo  →  /eth/foo ─────────────────────────
   const rewriteUrl = request.nextUrl.clone();
   rewriteUrl.pathname = `/${subdomain}${pathname === "/" ? "" : pathname}`;
 
-  return NextResponse.rewrite(rewriteUrl);
+  return withRef(NextResponse.rewrite(rewriteUrl));
 }
 
 export const config = {

@@ -109,7 +109,7 @@ export async function GET(
                 textShadow: `0 0 30px ${C.violet}66`,
               }}
             >
-              LINES
+              PREDICTIONS
             </span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
