@@ -67,7 +67,7 @@ export type SubdomainKey =
   | "jobs"
   | "medium"
   | "advanced"
-  | "doma"
+  | "domainfi"
   | "aivm"
   | "pai3"
   | "ink"

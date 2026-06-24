@@ -188,10 +188,10 @@ export const SUBDOMAINS: Record<SubdomainKey, SubdomainConfig> = {
     gradientFrom: "#150f33",
     gradientTo: "#0a0a0f",
   },
-  doma: {
-    key: "doma",
-    label: "Doma Protocol",
-    description: "Own your corner of Web3 — guides on minting, using, and building with Doma Protocol subdomains.",
+  domainfi: {
+    key: "domainfi",
+    label: "DomainFi",
+    description: "Domain finance on-chain — guides on tokenising, trading, and building with domains via Doma Protocol and the wider DomainFi ecosystem.",
     accentColor: "accent",
     accentHex: "#7c6aff",
     glowHex: "rgba(124,106,255,0.15)",

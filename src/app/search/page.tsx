@@ -35,7 +35,7 @@ const TOPIC_LINKS = [
   { key: "rwa",      label: "Real Assets", color: "#fbbf24" },
   { key: "legal",    label: "Regulation",  color: "#60a5fa" },
   { key: "bridge",   label: "Bridges",     color: "#c084fc" },
-  { key: "doma",     label: "Doma",        color: "#38bdf8" },
+  { key: "domainfi", label: "DomainFi",    color: "#38bdf8" },
   { key: "jobs",     label: "Web3 Jobs",   color: "#a3e635" },
 ];
 

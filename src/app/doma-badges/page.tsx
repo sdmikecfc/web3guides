@@ -47,7 +47,7 @@ export default function DomaBadgesPage() {
         <a href="/" style={{ fontFamily: "'Bungee', cursive", fontSize: 16, background: "linear-gradient(135deg,#ff6b35,#ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", textDecoration: "none" }}>
           Web3 Guides
         </a>
-        <a href="https://doma.web3guides.com" style={{ fontSize: 13, color: "#475569", textDecoration: "none" }}>Doma Hub →</a>
+        <a href="https://domainfi.web3guides.com" style={{ fontSize: 13, color: "#475569", textDecoration: "none" }}>DomainFi Hub →</a>
       </nav>
 
       <div style={{ maxWidth: 820, margin: "0 auto", padding: "52px 24px 100px" }}>
@@ -161,8 +161,8 @@ export default function DomaBadgesPage() {
         <div style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(236,72,153,0.08) 100%)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: "32px", textAlign: "center" as const }}>
           <div style={{ fontSize: 20, fontWeight: 800, color: "#f1f5f9", marginBottom: 10 }}>Want to go deeper on Doma?</div>
           <p style={{ color: "#64748b", fontSize: 14, margin: "0 0 20px" }}>Our Doma hub covers tokenisation mechanics, the DOT/DST dual-token model, bonding curves, and more.</p>
-          <a href="https://doma.web3guides.com" style={{ display: "inline-block", background: "linear-gradient(135deg,#6366f1,#ec4899)", color: "#fff", fontWeight: 700, fontSize: 14, padding: "12px 28px", borderRadius: 10, textDecoration: "none" }}>
-            Visit the Doma Hub →
+          <a href="https://domainfi.web3guides.com" style={{ display: "inline-block", background: "linear-gradient(135deg,#6366f1,#ec4899)", color: "#fff", fontWeight: 700, fontSize: 14, padding: "12px 28px", borderRadius: 10, textDecoration: "none" }}>
+            Visit the DomainFi Hub →
           </a>
         </div>
 

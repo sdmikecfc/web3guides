@@ -77,7 +77,7 @@ function SubdomainIcon({ sdKey, color }: { sdKey: string; color: string }) {
     case "jobs": return (
       <svg viewBox="0 0 24 24" width="22" height="22"><rect x="2" y="7" width="20" height="14" rx="2" {...s}/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" {...s}/><line x1="12" y1="12" x2="12" y2="16" {...s}/><line x1="10" y1="14" x2="14" y2="14" {...s}/></svg>
     );
-    case "doma": return (
+    case "domainfi": return (
       <svg viewBox="0 0 24 24" width="22" height="22">
         <circle cx="12" cy="12" r="9" {...s}/>
         <circle cx="12" cy="12" r="3" {...f} opacity={0.9}/>
@@ -900,7 +900,7 @@ const FOOTER_COLS = [
     links: [
       { label: "AIVM / ChainGPT", href: "https://aivm.web3guides.com" },
       { label: "Ink / Kraken L2", href: "https://ink.web3guides.com" },
-      { label: "Doma Protocol", href: subUrl("doma") },
+      { label: "DomainFi (Doma)", href: subUrl("domainfi") },
     ],
   },
   {

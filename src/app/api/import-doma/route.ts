@@ -244,7 +244,7 @@ export async function POST(req: NextRequest) {
   const { data: existing } = await supabase
     .from("guides")
     .select("source_url")
-    .eq("subdomain", "doma")
+    .eq("subdomain", "domainfi")
     .like("source_url", `${DOMA_BLOG_BASE}%`);
 
   const existingUrls = new Set((existing ?? []).map((r) => r.source_url));
@@ -274,14 +274,14 @@ export async function POST(req: NextRequest) {
       const { data: slugConflict } = await supabase
         .from("guides")
         .select("id")
-        .eq("subdomain", "doma")
+        .eq("subdomain", "domainfi")
         .eq("slug", slug)
         .single();
 
       const finalSlug = slugConflict ? `${slug}-${Date.now()}` : slug;
 
       const { error: insertError } = await supabase.from("guides").insert({
-        subdomain: "doma",
+        subdomain: "domainfi",
         title: article.title,
         summary: article.summary,
         content: article.content,

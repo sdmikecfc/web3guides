@@ -96,13 +96,13 @@ export default async function SubdomainPage({ params, searchParams }: Props) {
     return <DomainsPage guides={guides} cfg={cfg} />;
   }
 
-  // Doma subdomain: custom page with referral + guides
-  if (params.subdomain === "doma") {
+  // DomainFi subdomain (formerly doma): custom page with referral + guides
+  if (params.subdomain === "domainfi") {
     const page = Math.max(1, parseInt(searchParams.page ?? "1", 10));
     const offset = (page - 1) * PAGE_SIZE;
     const [guides, total] = await Promise.all([
-      getGuidesBySubdomain("doma", { limit: PAGE_SIZE, offset }),
-      countGuides("doma"),
+      getGuidesBySubdomain("domainfi", { limit: PAGE_SIZE, offset }),
+      countGuides("domainfi"),
     ]);
     return <DomaPage guides={guides} cfg={cfg} />;
   }
@@ -1315,9 +1315,9 @@ function DomainsPage({ guides, cfg }: { guides: import("@/types").Guide[]; cfg: 
                style={{ display: "inline-block", background: `linear-gradient(135deg, ${DOM_BLUE}, ${DOM_INDIGO})`, color: "#fff", fontWeight: 700, fontSize: "0.9rem", padding: "12px 28px", borderRadius: 10, textDecoration: "none", fontFamily: "'DM Sans', sans-serif" }}>
               Go to Doma.xyz →
             </a>
-            <a href="https://doma.web3guides.com"
+            <a href="https://domainfi.web3guides.com"
                style={{ display: "inline-block", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#f1f5f9", fontWeight: 600, fontSize: "0.9rem", padding: "12px 28px", borderRadius: 10, textDecoration: "none", fontFamily: "'DM Sans', sans-serif" }}>
-              Doma Protocol Guides
+              DomainFi Guides
             </a>
           </div>
         </div>
