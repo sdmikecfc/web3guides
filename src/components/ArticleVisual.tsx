@@ -60,11 +60,15 @@ function StatsGrid({ visual, accentHex }: { visual: Extract<ArticleVisual, { typ
       </div>
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(2, 1fr)",
+        // minmax(0, 1fr) lets tracks shrink below their content's min-content,
+        // so long value strings (e.g. "~$300 → ~$448,000") can't force the grid
+        // wider than the viewport on mobile.
+        gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
         gap: 12,
       }}>
         {items.map((item, i) => (
           <div key={i} style={{
+            minWidth: 0,
             borderRadius: 14,
             padding: "18px 16px",
             background: `linear-gradient(135deg, ${alpha(accentHex, 0.07)} 0%, ${alpha(accentHex, 0.02)} 100%)`,
@@ -79,6 +83,7 @@ function StatsGrid({ visual, accentHex }: { visual: Extract<ArticleVisual, { typ
               lineHeight: 1.1,
               marginBottom: 6,
               letterSpacing: "-0.01em",
+              overflowWrap: "anywhere",
             }}>
               {item.value}
             </div>
@@ -116,7 +121,7 @@ function ComparisonCard({ visual, accentHex }: { visual: Extract<ArticleVisual, 
       boxShadow: "0 2px 20px rgba(0,0,0,0.05)",
     }}>
       {/* Header row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 1px minmax(0, 1fr)" }}>
         <div style={{
           padding: "14px 20px",
           background: alpha(accentHex, 0.06),
@@ -140,7 +145,7 @@ function ComparisonCard({ visual, accentHex }: { visual: Extract<ArticleVisual, 
 
       {/* Points rows */}
       {Array.from({ length: Math.max(leftPoints.length, rightPoints.length) }).map((_, i) => (
-        <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr" }}>
+        <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 1px minmax(0, 1fr)" }}>
           <div style={{
             padding: "11px 20px",
             borderBottom: i < Math.max(leftPoints.length, rightPoints.length) - 1 ? `1px solid ${alpha(accentHex, 0.08)}` : "none",
@@ -151,7 +156,7 @@ function ComparisonCard({ visual, accentHex }: { visual: Extract<ArticleVisual, 
             {leftPoints[i] ? (
               <>
                 <span style={{ color: accentHex, flexShrink: 0, marginTop: 1, fontSize: "0.8rem" }}>✓</span>
-                <span style={{ fontFamily: FONT_BODY, fontSize: "0.82rem", color: "#374151", lineHeight: 1.45 }}>
+                <span style={{ fontFamily: FONT_BODY, fontSize: "0.82rem", color: "#374151", lineHeight: 1.45, minWidth: 0, overflowWrap: "anywhere" }}>
                   {leftPoints[i]}
                 </span>
               </>
@@ -168,7 +173,7 @@ function ComparisonCard({ visual, accentHex }: { visual: Extract<ArticleVisual, 
             {rightPoints[i] ? (
               <>
                 <span style={{ color: "#9ca3af", flexShrink: 0, marginTop: 1, fontSize: "0.8rem" }}>✓</span>
-                <span style={{ fontFamily: FONT_BODY, fontSize: "0.82rem", color: "#374151", lineHeight: 1.45 }}>
+                <span style={{ fontFamily: FONT_BODY, fontSize: "0.82rem", color: "#374151", lineHeight: 1.45, minWidth: 0, overflowWrap: "anywhere" }}>
                   {rightPoints[i]}
                 </span>
               </>
