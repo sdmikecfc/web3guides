@@ -1,18 +1,22 @@
 /**
  * Font loader for OG-Tournament image routes.
  *
- * @vercel/og (Satori) ships a default font that has zero CJK glyph coverage —
- * Japanese / Chinese / Korean display names render as tofu boxes (□□□□). To
- * fix that, we fetch Noto Sans JP at request time and pass it to ImageResponse.
- * Noto Sans JP covers both Latin and CJK, so a single font handles everything.
+ * @vercel/og (Satori) ships a default font with zero CJK glyph coverage, so
+ * Chinese / Japanese / Korean display names render as tofu boxes. We fetch a
+ * Noto Sans CJK subset at request time and pass it to ImageResponse.
  *
- * The font ArrayBuffer is cached in a module-level Promise — first request per
- * server instance pays the ~4MB fetch, subsequent requests are instant. We also
- * use Next.js fetch revalidation (1 day) so the CDN response itself stays warm.
+ * PRIMARY = Simplified Chinese (Noto Sans SC) so the CN edition renders correct
+ * Simplified glyphs with native shapes. FALLBACK = Japanese (Noto Sans JP), the
+ * subset that has been serving in production; if the SC fetch ever fails (bad
+ * path, CDN hiccup), we drop to JP rather than to tofu. The registered font name
+ * stays "NotoSansJP" so the six route files keep their existing fontFamily string
+ * without edits.
  *
- * If the fetch fails (CDN hiccup, network), we return `undefined` and the route
- * falls back to Satori's default font — so the image still renders, just with
- * tofu boxes for non-Latin characters. Failure is non-fatal.
+ * The ArrayBuffer is cached in a module-level Promise — first request per server
+ * instance pays the fetch, the rest are instant. Next.js fetch revalidation keeps
+ * the CDN response warm. If BOTH SC and JP fail we return `undefined` and the
+ * route falls back to Satori's default font (tofu for non-Latin); failure is
+ * non-fatal to the image.
  */
 
 import "server-only";
@@ -24,17 +28,22 @@ type SatoriFont = {
   style: "normal";
 };
 
-const CJK_REGULAR_URL =
+// Primary: Simplified Chinese.
+const SC_REGULAR_URL =
+  "https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/SubsetTTF/SC/NotoSansSC-Regular.ttf";
+const SC_BOLD_URL =
+  "https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/SubsetTTF/SC/NotoSansSC-Bold.ttf";
+// Fallback: Japanese (the subset proven in production). Covers most shared Han.
+const JP_REGULAR_URL =
   "https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/SubsetTTF/JP/NotoSansJP-Regular.ttf";
-const CJK_BOLD_URL =
+const JP_BOLD_URL =
   "https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/SubsetTTF/JP/NotoSansJP-Bold.ttf";
 
 let regularPromise: Promise<ArrayBuffer> | null = null;
 let boldPromise:    Promise<ArrayBuffer> | null = null;
 
 // Hard timeout — if the CDN hangs, we'd rather render the image without the
-// CJK font (a few names show as tofu boxes) than have the whole route stall
-// past Discord's image-fetch deadline (~10s).
+// CJK font than stall past Discord's image-fetch deadline (~10s).
 const FONT_FETCH_TIMEOUT_MS = 4000;
 
 async function fetchFont(url: string): Promise<ArrayBuffer> {
@@ -52,18 +61,29 @@ async function fetchFont(url: string): Promise<ArrayBuffer> {
   }
 }
 
+// Try the Simplified-Chinese subset first; if it fails for any reason, fall back
+// to the Japanese subset that is known to serve. Only throws if BOTH fail.
+async function fetchFontWithFallback(primary: string, fallback: string): Promise<ArrayBuffer> {
+  try {
+    return await fetchFont(primary);
+  } catch (err) {
+    console.warn(`[og-tournament] primary CJK font failed (${primary}), falling back to JP:`, err);
+    return await fetchFont(fallback);
+  }
+}
+
 export async function loadCjkFonts(): Promise<SatoriFont[] | undefined> {
   try {
-    if (!regularPromise) regularPromise = fetchFont(CJK_REGULAR_URL);
-    if (!boldPromise)    boldPromise    = fetchFont(CJK_BOLD_URL);
+    if (!regularPromise) regularPromise = fetchFontWithFallback(SC_REGULAR_URL, JP_REGULAR_URL);
+    if (!boldPromise)    boldPromise    = fetchFontWithFallback(SC_BOLD_URL, JP_BOLD_URL);
     const [regular, bold] = await Promise.all([regularPromise, boldPromise]);
     return [
       { name: "NotoSansJP", data: regular, weight: 400, style: "normal" },
       { name: "NotoSansJP", data: bold,    weight: 700, style: "normal" },
     ];
   } catch (err) {
-    console.warn("[og-tournament] CJK font load failed — falling back to default:", err);
-    // Reset so the next request can retry (in case CDN had a transient hiccup)
+    console.warn("[og-tournament] CJK font load failed (SC and JP) — falling back to default:", err);
+    // Reset so the next request can retry (in case the CDN had a transient hiccup)
     regularPromise = null;
     boldPromise    = null;
     return undefined;

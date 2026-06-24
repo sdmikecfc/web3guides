@@ -1,0 +1,956 @@
+{
+  "season": "Season 1",
+  "winningFleet": "DISINTERMEDIATION.com",
+  "generatedAt": "2026-06-23T13:21:05.989Z",
+  "totals": {
+    "participants": 117,
+    "winners": 73,
+    "byStatus": {
+      "Paid (winning fleet + boss damage)": 5,
+      "Sold before the end": 12,
+      "Paid (winning fleet)": 60,
+      "Paid (boss damage)": 8,
+      "Fleet did not place": 15,
+      "Under the $10 boss minimum": 1,
+      "Participated": 16
+    }
+  },
+  "rows": [
+    {
+      "name": "ØG.crypto {🐳}",
+      "isFounder": true,
+      "joined": "2026-06-01",
+      "fleetPoints": 11443,
+      "bossContribution": 64.58,
+      "status": "Paid (winning fleet + boss damage)"
+    },
+    {
+      "name": "Herozen",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 11236,
+      "bossContribution": 10.05,
+      "status": "Paid (winning fleet + boss damage)"
+    },
+    {
+      "name": "Richman",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 10857,
+      "bossContribution": 5.03,
+      "status": "Sold before the end"
+    },
+    {
+      "name": "TUANPHAM",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 10660,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Asuninha",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 10118,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Saurav Anand",
+      "isFounder": true,
+      "joined": "2026-06-04",
+      "fleetPoints": 8641,
+      "bossContribution": 34.19,
+      "status": "Paid (boss damage)"
+    },
+    {
+      "name": "crisstalay",
+      "isFounder": true,
+      "joined": "2026-06-01",
+      "fleetPoints": 7978,
+      "bossContribution": 11.53,
+      "status": "Paid (winning fleet + boss damage)"
+    },
+    {
+      "name": "Strange Sound 🧟",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 7938,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Ro-ro-ro HIdT",
+      "isFounder": true,
+      "joined": "2026-06-01",
+      "fleetPoints": 7550,
+      "bossContribution": 0,
+      "status": "Fleet did not place"
+    },
+    {
+      "name": "Laohac234 (❖,❖)",
+      "isFounder": true,
+      "joined": "2026-06-01",
+      "fleetPoints": 7000,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Luinka",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 6952,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Julia457",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 6935,
+      "bossContribution": 0,
+      "status": "Under the $10 boss minimum"
+    },
+    {
+      "name": "TDL Zaky.Doma",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 6752,
+      "bossContribution": 32.55,
+      "status": "Paid (winning fleet + boss damage)"
+    },
+    {
+      "name": "Indra_3 - Daddy Dopaminter",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 6350,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Tantontum",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 6224,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "flaytchramires",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 6189,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Nik199",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 6183,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "piramidon",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 6144,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "gidranakramas",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 6099,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Brann",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 6083,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "dilijans",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 6067,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "TaxaStar",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 6041,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "𝐓𝐞𝐦𝐮 𝐤𝐚𝐫𝐭𝐡𝐢𝐤𝟐𝟑𝟐",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 5954,
+      "bossContribution": 0,
+      "status": "Fleet did not place"
+    },
+    {
+      "name": "rendyrhey.xyz | Doma",
+      "isFounder": true,
+      "joined": "2026-06-01",
+      "fleetPoints": 5829,
+      "bossContribution": 2.99,
+      "status": "Sold before the end"
+    },
+    {
+      "name": "myshkin_gomy",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 5622,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "teqilakek",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 5605,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "MeowyMeister",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 5603,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "andrydavid",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 5574,
+      "bossContribution": 2.27,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "vodota34",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 5558,
+      "bossContribution": 1.77,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "ScrubCakeJake",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 5461,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "mand",
+      "isFounder": true,
+      "joined": "2026-06-01",
+      "fleetPoints": 5376,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "pionerer",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 5365,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "balkazhan",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 5349,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "xartkamnevart",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 5318,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Gallezkaaa | DOMA",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 5249,
+      "bossContribution": 0,
+      "status": "Fleet did not place"
+    },
+    {
+      "name": "INVESTOR MIRACLE!",
+      "isFounder": false,
+      "joined": "2026-06-06",
+      "fleetPoints": 5245,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Cryptondo",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 5232,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "pdthang810",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 5231,
+      "bossContribution": 0,
+      "status": "Fleet did not place"
+    },
+    {
+      "name": "crystallkirym",
+      "isFounder": true,
+      "joined": "2026-06-04",
+      "fleetPoints": 5214,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "El Niño",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 5198,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "not_bot_me",
+      "isFounder": true,
+      "joined": "2026-06-04",
+      "fleetPoints": 5180,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "annkarpova1987",
+      "isFounder": true,
+      "joined": "2026-06-04",
+      "fleetPoints": 5174,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "saveliizavdv",
+      "isFounder": true,
+      "joined": "2026-06-04",
+      "fleetPoints": 5174,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "user_rekil",
+      "isFounder": true,
+      "joined": "2026-06-04",
+      "fleetPoints": 5114,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "samuraigena",
+      "isFounder": true,
+      "joined": "2026-06-04",
+      "fleetPoints": 5099,
+      "bossContribution": 2.96,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "lisva11",
+      "isFounder": true,
+      "joined": "2026-06-04",
+      "fleetPoints": 5099,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "twistagain1",
+      "isFounder": true,
+      "joined": "2026-06-04",
+      "fleetPoints": 5084,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "morphlnk",
+      "isFounder": true,
+      "joined": "2026-06-04",
+      "fleetPoints": 5074,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "evgeniilotus",
+      "isFounder": true,
+      "joined": "2026-06-04",
+      "fleetPoints": 5063,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "zachemtik",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 4962,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "DUYTHANH",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 4805,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Abbagigo",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 4514,
+      "bossContribution": 0,
+      "status": "Fleet did not place"
+    },
+    {
+      "name": "Snowman",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 3995,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Vag",
+      "isFounder": false,
+      "joined": "2026-06-04",
+      "fleetPoints": 3743,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "breeze",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 3702,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Huymoi18",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 3549,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Alex",
+      "isFounder": false,
+      "joined": "2026-06-05",
+      "fleetPoints": 3347,
+      "bossContribution": 0,
+      "status": "Fleet did not place"
+    },
+    {
+      "name": "DL",
+      "isFounder": false,
+      "joined": "2026-06-05",
+      "fleetPoints": 3056,
+      "bossContribution": 0,
+      "status": "Fleet did not place"
+    },
+    {
+      "name": "Medvejonok",
+      "isFounder": true,
+      "joined": "2026-06-01",
+      "fleetPoints": 2955,
+      "bossContribution": 0,
+      "status": "Sold before the end"
+    },
+    {
+      "name": "Oksa",
+      "isFounder": false,
+      "joined": "2026-06-05",
+      "fleetPoints": 2928,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Rock star ✨",
+      "isFounder": false,
+      "joined": "2026-06-05",
+      "fleetPoints": 2915,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Tim_invest",
+      "isFounder": false,
+      "joined": "2026-06-07",
+      "fleetPoints": 2784,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "ThanhCao",
+      "isFounder": false,
+      "joined": "2026-06-05",
+      "fleetPoints": 2716,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "xRyder ⚡",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 2697,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Stranik ./",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 2456,
+      "bossContribution": 0,
+      "status": "Sold before the end"
+    },
+    {
+      "name": "Light",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 2399,
+      "bossContribution": 10.38,
+      "status": "Paid (winning fleet + boss damage)"
+    },
+    {
+      "name": "KaWin",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 2402,
+      "bossContribution": 0,
+      "status": "Sold before the end"
+    },
+    {
+      "name": "ganginthisbbeach",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 2375,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Mizuu",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 1959,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Kyo | NamLongDao",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 1742,
+      "bossContribution": 3.82,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Juggernaut | DOMA szn.",
+      "isFounder": true,
+      "joined": "2026-06-01",
+      "fleetPoints": 603,
+      "bossContribution": 0.12,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "𝐈ᴛᴏꜱʜɪ ◕ ‿ ◕",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 588,
+      "bossContribution": 0,
+      "status": "Fleet did not place"
+    },
+    {
+      "name": "SYED🙌🏻",
+      "isFounder": false,
+      "joined": "2026-06-05",
+      "fleetPoints": 562,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Edward",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 496,
+      "bossContribution": 0,
+      "status": "Sold before the end"
+    },
+    {
+      "name": "HASSAN",
+      "isFounder": false,
+      "joined": "2026-06-06",
+      "fleetPoints": 382,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "NetSle Sweating.Doma",
+      "isFounder": true,
+      "joined": "2026-06-01",
+      "fleetPoints": 378,
+      "bossContribution": 1.77,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "hannieieieie",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 376,
+      "bossContribution": 0,
+      "status": "Fleet did not place"
+    },
+    {
+      "name": "Big Olli | DOMA",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 355,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "forever young",
+      "isFounder": true,
+      "joined": "2026-06-04",
+      "fleetPoints": 331,
+      "bossContribution": 0,
+      "status": "Fleet did not place"
+    },
+    {
+      "name": "jambu (❖,❖)",
+      "isFounder": true,
+      "joined": "2026-06-04",
+      "fleetPoints": 264,
+      "bossContribution": 0,
+      "status": "Fleet did not place"
+    },
+    {
+      "name": "酷三六.DOMA",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 259,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "Anatole",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 209,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "uu344",
+      "isFounder": true,
+      "joined": "2026-06-01",
+      "fleetPoints": 110,
+      "bossContribution": 29.85,
+      "status": "Paid (boss damage)"
+    },
+    {
+      "name": "pound",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 105,
+      "bossContribution": 30,
+      "status": "Paid (boss damage)"
+    },
+    {
+      "name": "jal",
+      "isFounder": false,
+      "joined": "2026-06-14",
+      "fleetPoints": 106,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "alexxx",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 82,
+      "bossContribution": 0,
+      "status": "Fleet did not place"
+    },
+    {
+      "name": "uiyi0355",
+      "isFounder": false,
+      "joined": "2026-06-12",
+      "fleetPoints": 0,
+      "bossContribution": 75.17,
+      "status": "Paid (boss damage)"
+    },
+    {
+      "name": "Lil Niyo  ♊",
+      "isFounder": false,
+      "joined": "2026-06-05",
+      "fleetPoints": 69,
+      "bossContribution": 0,
+      "status": "Fleet did not place"
+    },
+    {
+      "name": "ynxgnk",
+      "isFounder": false,
+      "joined": "2026-06-08",
+      "fleetPoints": 36,
+      "bossContribution": 0,
+      "status": "Fleet did not place"
+    },
+    {
+      "name": "Captain 3596",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 26.63,
+      "status": "Paid (boss damage)"
+    },
+    {
+      "name": "pj9hu",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 3,
+      "bossContribution": 20.94,
+      "status": "Paid (boss damage)"
+    },
+    {
+      "name": "六九69",
+      "isFounder": false,
+      "joined": "2026-06-11",
+      "fleetPoints": 0,
+      "bossContribution": 23.82,
+      "status": "Paid (boss damage)"
+    },
+    {
+      "name": "DavidTình",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 15,
+      "bossContribution": 0,
+      "status": "Fleet did not place"
+    },
+    {
+      "name": "teemo",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 0,
+      "bossContribution": 10.95,
+      "status": "Paid (boss damage)"
+    },
+    {
+      "name": "Digege",
+      "isFounder": false,
+      "joined": "2026-06-08",
+      "fleetPoints": 3,
+      "bossContribution": 0,
+      "status": "Paid (winning fleet)"
+    },
+    {
+      "name": "ycc123.DOMA",
+      "isFounder": true,
+      "joined": "2026-06-01",
+      "fleetPoints": 2,
+      "bossContribution": 0,
+      "status": "Sold before the end"
+    },
+    {
+      "name": "pasha123321",
+      "isFounder": true,
+      "joined": "2026-06-03",
+      "fleetPoints": 1,
+      "bossContribution": 0.05,
+      "status": "Sold before the end"
+    },
+    {
+      "name": "temu marginla",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 0,
+      "bossContribution": 0.34,
+      "status": "Sold before the end"
+    },
+    {
+      "name": "Tà Râm Giáo Chủ",
+      "isFounder": true,
+      "joined": "2026-06-01",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Sold before the end"
+    },
+    {
+      "name": "Big Mike",
+      "isFounder": true,
+      "joined": "2026-06-01",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "LegendLeO 🇻🇳 ./",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "𝐀𝐧𝐥𝐨𝐠",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "cg123",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "WorlldZ |",
+      "isFounder": true,
+      "joined": "2026-06-01",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "jasmin",
+      "isFounder": true,
+      "joined": "2026-06-02",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "𝗥𝗔𝗩𝗜𝗡𝗗𝗥𝗔_𝟴𝗦",
+      "isFounder": false,
+      "joined": "2026-06-05",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Xennn.Doma",
+      "isFounder": true,
+      "joined": "2026-06-04",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "cybertron",
+      "isFounder": false,
+      "joined": "2026-06-05",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "!Ayaan09(❖,🦞)",
+      "isFounder": true,
+      "joined": "2026-06-04",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Evgeniusz",
+      "isFounder": false,
+      "joined": "2026-06-13",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "G4",
+      "isFounder": false,
+      "joined": "2026-06-06",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Yungvicdrums",
+      "isFounder": false,
+      "joined": "2026-06-09",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "HAT891690",
+      "isFounder": false,
+      "joined": "2026-06-06",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Cream",
+      "isFounder": false,
+      "joined": "2026-06-07",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Djayend",
+      "isFounder": false,
+      "joined": "2026-06-13",
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Captain 5537",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Sold before the end"
+    },
+    {
+      "name": "Captain 5138",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Sold before the end"
+    }
+  ]
+}

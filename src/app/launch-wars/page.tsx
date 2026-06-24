@@ -256,6 +256,7 @@ export default async function LaunchWarsPage({
     }}>
       <Masthead />
       <InviteBanner show={!!refCode} inviterName={inviterName} />
+      <TimelineBanner />
       <Intro season={season} bossesAlive={bossesAlive} />
       <LiveBoard season={season} teams={teams} memberCounts={memberCounts}
         bosses={bosses} bossHp={bossHp} bossesAlive={bossesAlive} />
@@ -405,6 +406,42 @@ function InviteBanner({ show, inviterName }: { show: boolean; inviterName: strin
   );
 }
 
+// ── Season 2 hero: Conquer the Seas is LIVE; link out + jump to S1 results ──
+function TimelineBanner() {
+  const SEAS_TEAL = "#46b3c9";
+  return (
+    <div style={{ maxWidth: MAXW, margin: "0 auto", padding: "24px 24px 0" }}>
+      <Panel accent={SEAS_TEAL}>
+        <div style={{
+          padding: "26px 24px", display: "flex", flexWrap: "wrap",
+          alignItems: "center", justifyContent: "space-between", gap: 18,
+        }}>
+          <div style={{ minWidth: 0, flex: "1 1 480px" }}>
+            <Chip label="LIVE NOW" color={SEAS_TEAL} />
+            <div style={{ fontSize: "clamp(22px, 3vw, 30px)", fontWeight: 800, color: T.text, marginTop: 12, letterSpacing: -0.5, lineHeight: 1.15 }}>
+              🌊 Season 2 · Conquer the Seas
+            </div>
+            <div style={{ fontSize: 15, color: T.mut, marginTop: 8, lineHeight: 1.6, maxWidth: 560 }}>
+              Five fleets at war over one ocean of treasure. Pick a flag, play daily, post for Glory,
+              and win a share of the cash. Free to start.
+            </div>
+          </div>
+          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+            <a href="https://seas.web3guides.com" style={{
+              textDecoration: "none", fontSize: 15, fontWeight: 700, color: T.bg,
+              background: SEAS_TEAL, padding: "13px 22px", borderRadius: 11, whiteSpace: "nowrap", textAlign: "center",
+            }}>Enter the Seas →</a>
+            <a href="#board" style={{
+              textDecoration: "none", fontSize: 13, fontWeight: 600, color: T.mut,
+              padding: "4px 0", whiteSpace: "nowrap", textAlign: "center",
+            }}>See Season 1 results ↓</a>
+          </div>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
 // ── Intro ────────────────────────────────────────────────────────────────
 function Intro({ season, bossesAlive }: { season: Season | null; bossesAlive: boolean }) {
   const chip = season ? seasonChip(season.status) : { label: "NEXT SEASON SOON", color: T.amber };
@@ -412,15 +449,15 @@ function Intro({ season, bossesAlive }: { season: Season | null; bossesAlive: bo
     <Section>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: 14 }}>
         <h1 style={{ fontSize: "clamp(30px, 4.5vw, 44px)", fontWeight: 800, margin: 0, letterSpacing: -1 }}>
-          Launch Wars
+          Launch Wars · Season 1
         </h1>
         <Chip label={chip.label} color={chip.color} />
         {bossesAlive && <Chip label="World Bosses live" color={T.rose} />}
       </div>
       <p style={{ fontSize: 16, color: T.mut, margin: "10px 0 0", lineHeight: 1.6, maxWidth: 720 }}>
-        A community game on Doma premium domains. Teams race to bond their domain and split the
-        cash. World Bosses are co-op: the whole server hunts the same domain for a bounty.
-        Hold to earn. Selling early always costs you.
+        Season 1 is complete. The final board is below: teams raced to bond their Doma domains and
+        split the cash, with co-op World Bosses for a bounty. <b>Season 2, Conquer the Seas, is live
+        now</b> at <a href="https://seas.web3guides.com" style={{ color: T.text }}>seas.web3guides.com</a>.
       </p>
     </Section>
   );

@@ -1,0 +1,603 @@
+/* ============================================================
+   Launch Wars S2 — Conquer the Seas (/seas, seas.web3guides.com)
+   Adapted from the Claude Design hero export (design-exports/Hero).
+   EVERYTHING is scoped under .seas-root so no token or element
+   style can leak into the rest of web3guides.
+   ============================================================ */
+
+.seas-root {
+  /* Doma ink tokens (subset used here) */
+  --surface-0: #000f16;
+  --fg-1: #f8fdff;
+  --fg-2: rgba(248, 253, 255, 0.88);
+  --fg-3: rgba(248, 253, 255, 0.64);
+  --fg-4: rgba(248, 253, 255, 0.48);
+  --border-default: rgba(248, 253, 255, 0.08);
+  --border-strong: rgba(248, 253, 255, 0.16);
+
+  /* Pirate accents, harmonized against Doma ink */
+  --lw-gold: #f0b45c;
+  --lw-gold-bright: #ffcf7e;
+  --lw-gold-soft: rgba(240, 180, 92, 0.14);
+  --lw-gold-border: rgba(240, 180, 92, 0.32);
+
+  /* Radius + spacing (4px base) */
+  --radius-sm: 10px;
+  --radius-lg: 18px;
+  --radius-full: 1000px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Type */
+  --type-h4: 18px;
+  --type-body-lg: 16px;
+  --type-body: 14px;
+  --type-body-sm: 12px;
+  --tracking-tight: -0.008em;
+  --leading-normal: 1.44;
+
+  /* Fonts: next/font variables wired in page.tsx */
+  --font-sans: var(--font-aktiv), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-condensed: var(--font-aktiv-cd), var(--font-aktiv), system-ui, sans-serif;
+  --font-display-serif: var(--font-cinzel), Georgia, serif;
+
+  background: var(--surface-0);
+  color: var(--fg-1);
+  font-family: var(--font-sans);
+  letter-spacing: -0.001em;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+.seas-root p {
+  margin: 0;
+}
+
+/* ---------- Hero stage ---------- */
+.seas-root .hero {
+  position: relative;
+  width: 100%;
+  height: 100svh;
+  min-height: 560px;
+  max-height: 1100px;
+  overflow: hidden;
+}
+.seas-root .hero-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.seas-root .hero-grade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(0, 10, 15, 0.62) 0%, rgba(0, 10, 15, 0.34) 38%, rgba(0, 10, 15, 0.05) 68%, rgba(0, 10, 15, 0.25) 100%),
+    linear-gradient(180deg, rgba(0, 10, 15, 0.55) 0%, rgba(0, 10, 15, 0) 26%, rgba(0, 10, 15, 0) 62%, rgba(0, 10, 15, 0.6) 100%);
+}
+.seas-root .hero-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 46%, rgba(0, 0, 0, 0) 55%, rgba(0, 6, 10, 0.5) 100%);
+}
+
+/* ---------- Nav (floating capsule) ---------- */
+.seas-root .nav {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1192px, calc(100% - 32px));
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0 var(--space-3) 0 var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  background: linear-gradient(180deg, rgba(0, 15, 22, 0.55), rgba(0, 15, 22, 0.35));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 20;
+}
+.seas-root .nav-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  text-decoration: none;
+  color: var(--fg-1);
+}
+.seas-root .nav-wordmark {
+  font-family: var(--font-display-serif);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+}
+.seas-root .nav-chip {
+  font-family: var(--font-condensed);
+  font-weight: 500;
+  font-size: var(--type-body-sm);
+  letter-spacing: 0.04em;
+  color: var(--lw-gold);
+  border: 1px solid var(--lw-gold-border);
+  background: var(--lw-gold-soft);
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+.seas-root .nav-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.seas-root .nav-count {
+  font-size: var(--type-body);
+  color: var(--fg-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.seas-root .nav-count strong {
+  color: var(--fg-2);
+  font-weight: 500;
+}
+.seas-root .nav-map-link {
+  font-size: var(--type-body);
+  color: var(--lw-gold);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.seas-root .nav-map-link:hover {
+  color: var(--lw-gold-bright);
+}
+
+/* ---------- Buttons ---------- */
+.seas-root .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: var(--type-body-lg);
+  letter-spacing: var(--tracking-tight);
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 200ms ease-out, transform 120ms ease-out, box-shadow 200ms ease-out;
+  white-space: nowrap;
+}
+.seas-root .btn:active {
+  transform: scale(0.98);
+}
+.seas-root .btn-primary {
+  height: 52px;
+  padding: 0 var(--space-8);
+  color: #1b1206;
+  background: linear-gradient(180deg, var(--lw-gold-bright), var(--lw-gold));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 4px 13px rgba(240, 180, 92, 0.1),
+    0 8px 26px rgba(240, 180, 92, 0.16),
+    0 13px 40px rgba(240, 180, 92, 0.22);
+}
+.seas-root .btn-primary:hover {
+  background: linear-gradient(180deg, #ffd993, var(--lw-gold-bright));
+}
+.seas-root .btn-nav {
+  height: 38px;
+  padding: 0 var(--space-4);
+  font-size: var(--type-body);
+  color: #1b1206;
+  background: linear-gradient(180deg, var(--lw-gold-bright), var(--lw-gold));
+}
+.seas-root .btn-nav:hover {
+  background: linear-gradient(180deg, #ffd993, var(--lw-gold-bright));
+}
+
+/* ---------- Hero content (helm variant: left-aligned) ---------- */
+.seas-root .hero-content {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: min(1192px, calc(100% - 48px));
+  left: 50%;
+  transform: translateX(-50%);
+}
+.seas-root .hero-copy {
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-5);
+}
+.seas-root .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-condensed);
+  font-weight: 500;
+  font-size: var(--type-body);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lw-gold);
+}
+.seas-root .eyebrow::before {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: var(--lw-gold-border);
+}
+.seas-root .headline {
+  font-family: var(--font-display-serif);
+  font-weight: 600;
+  font-size: clamp(44px, 6.4vw, 88px);
+  line-height: 1.04;
+  letter-spacing: 0.01em;
+  color: var(--fg-1);
+  margin: 0;
+  text-wrap: balance;
+  text-shadow: 0 2px 24px rgba(0, 8, 12, 0.6);
+}
+.seas-root .subline {
+  font-size: var(--type-h4);
+  line-height: var(--leading-normal);
+  color: var(--fg-2);
+  max-width: 480px;
+  margin: 0;
+  text-wrap: pretty;
+  text-shadow: 0 1px 12px rgba(0, 8, 12, 0.6);
+}
+.seas-root .hero-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+.seas-root .cta-note {
+  font-size: var(--type-body);
+  color: var(--fg-3);
+  margin: 0;
+}
+
+/* ---------- Entrance (armed by SeaCanvas once visible) ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .seas-root.seas-animate .hero-copy > * {
+    animation: seas-rise 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .seas-root.seas-animate .hero-copy > *:nth-child(2) {
+    animation-delay: 120ms;
+  }
+  .seas-root.seas-animate .hero-copy > *:nth-child(3) {
+    animation-delay: 240ms;
+  }
+  .seas-root.seas-animate .hero-copy > *:nth-child(4) {
+    animation-delay: 360ms;
+  }
+}
+@keyframes seas-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+   Below the fold
+   ============================================================ */
+.seas-root .seas-section {
+  width: min(1192px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: var(--space-16) 0 var(--space-6);
+}
+.seas-root .section-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-condensed);
+  font-weight: 500;
+  font-size: var(--type-body-sm);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lw-gold);
+  margin-bottom: var(--space-3);
+}
+.seas-root .section-eyebrow::before {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: var(--lw-gold-border);
+}
+.seas-root .section-title {
+  font-family: var(--font-display-serif);
+  font-weight: 600;
+  font-size: clamp(26px, 3.4vw, 40px);
+  line-height: 1.12;
+  margin: 0 0 var(--space-2);
+  text-wrap: balance;
+}
+.seas-root .section-sub {
+  color: var(--fg-3);
+  font-size: var(--type-body-lg);
+  line-height: var(--leading-normal);
+  max-width: 640px;
+  margin-bottom: var(--space-8);
+}
+
+/* Fleet lineup */
+.seas-root .fleet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(206px, 1fr));
+  gap: var(--space-3);
+}
+.seas-root .fleet-card {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: radial-gradient(at 0% 0%, rgba(248, 253, 255, 0) 0%, rgba(248, 253, 255, 0.03) 100%);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 132px;
+}
+.seas-root .fleet-crest {
+  display: block;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto var(--space-3);
+  object-fit: contain;
+  border-radius: var(--radius-full);
+  padding: 4px;
+  background: radial-gradient(circle at 50% 38%, var(--lw-gold-soft) 0%, rgba(240, 180, 92, 0) 70%);
+  box-shadow:
+    inset 0 0 0 1px var(--lw-gold-border),
+    0 4px 14px rgba(0, 0, 0, 0.45),
+    0 0 18px rgba(240, 180, 92, 0.12);
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5));
+}
+.seas-root .fleet-day {
+  font-family: var(--font-condensed);
+  font-weight: 500;
+  font-size: var(--type-body-sm);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lw-gold);
+}
+.seas-root .fleet-domain {
+  font-size: var(--type-h4);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg-1);
+  word-break: break-all;
+}
+.seas-root .fleet-hint {
+  font-size: var(--type-body);
+  color: var(--fg-3);
+  line-height: var(--leading-normal);
+}
+.seas-root .fleet-note {
+  margin-top: var(--space-4);
+  font-size: var(--type-body);
+  color: var(--fg-4);
+}
+
+/* How it works */
+.seas-root .how-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-3);
+}
+.seas-root .how-card {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: radial-gradient(at 0% 0%, rgba(248, 253, 255, 0) 0%, rgba(248, 253, 255, 0.03) 100%);
+  padding: var(--space-6) var(--space-5);
+}
+.seas-root .how-icon {
+  font-size: 22px;
+  margin-bottom: var(--space-3);
+}
+.seas-root .how-name {
+  font-family: var(--font-condensed);
+  font-weight: 500;
+  font-size: var(--type-body);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lw-gold);
+  margin-bottom: var(--space-2);
+}
+.seas-root .how-text {
+  font-size: var(--type-body-lg);
+  color: var(--fg-2);
+  line-height: var(--leading-normal);
+}
+
+/* Drop log */
+.seas-root .log-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.seas-root .log-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  min-width: 168px;
+  flex: 1;
+}
+.seas-root .log-date {
+  font-family: var(--font-condensed);
+  font-weight: 500;
+  font-size: var(--type-body-sm);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lw-gold);
+}
+.seas-root .log-what {
+  font-size: var(--type-body-lg);
+  color: var(--fg-2);
+}
+
+/* Prize band */
+.seas-root .prize-band {
+  border: 1px solid var(--lw-gold-border);
+  background: var(--lw-gold-soft);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6) var(--space-6);
+}
+.seas-root .prize-headline {
+  font-family: var(--font-display-serif);
+  font-weight: 600;
+  font-size: clamp(20px, 2.4vw, 28px);
+  margin-bottom: var(--space-2);
+}
+.seas-root .prize-text {
+  color: var(--fg-2);
+  font-size: var(--type-body-lg);
+  line-height: var(--leading-normal);
+  max-width: 760px;
+}
+
+/* CTA band */
+.seas-root .cta-band {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-4);
+  padding: var(--space-16) 0;
+}
+.seas-root .cta-title {
+  font-family: var(--font-display-serif);
+  font-weight: 600;
+  font-size: clamp(28px, 4vw, 48px);
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+/* Season 1 strip + footer */
+.seas-root .s1-strip {
+  width: min(1192px, calc(100% - 48px));
+  margin: 0 auto;
+  border-top: 1px solid var(--border-default);
+  padding: var(--space-6) 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--fg-3);
+  font-size: var(--type-body);
+}
+.seas-root .s1-strip a {
+  color: var(--lw-gold);
+  text-decoration: none;
+}
+.seas-root .s1-strip a:hover {
+  color: var(--lw-gold-bright);
+}
+.seas-root .seas-footer {
+  width: min(1192px, calc(100% - 48px));
+  margin: 0 auto;
+  border-top: 1px solid var(--border-default);
+  padding: var(--space-6) 0 var(--space-10);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  justify-content: space-between;
+  color: var(--fg-4);
+  font-size: var(--type-body-sm);
+}
+.seas-root .seas-footer a {
+  color: var(--fg-3);
+  text-decoration: none;
+}
+.seas-root .seas-footer a:hover {
+  color: var(--fg-1);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 860px) {
+  .seas-root .nav {
+    height: 56px;
+    padding: 0 var(--space-2) 0 var(--space-4);
+  }
+  .seas-root .nav-count {
+    display: none;
+  }
+  .seas-root .nav-wordmark {
+    font-size: 15px;
+    letter-spacing: 0.1em;
+  }
+  .seas-root .hero-copy {
+    gap: var(--space-4);
+  }
+  .seas-root .headline {
+    font-size: clamp(38px, 10vw, 56px);
+  }
+  .seas-root .subline {
+    font-size: var(--type-body-lg);
+  }
+  .seas-root .seas-section {
+    padding-top: var(--space-12);
+  }
+}
+@media (max-width: 480px) {
+  .seas-root .nav-chip {
+    display: none;
+  }
+  .seas-root .btn-primary {
+    width: 100%;
+  }
+  .seas-root .hero-cta {
+    width: 100%;
+  }
+  /* Keep the top bar on a single line on phones (was overflowing off-screen) */
+  .seas-root .nav {
+    gap: 8px;
+    padding: 0 10px 0 14px;
+  }
+  .seas-root .nav-right {
+    gap: 10px;
+  }
+  .seas-root .nav-wordmark {
+    font-size: 13px;
+    letter-spacing: 0.06em;
+  }
+  .seas-root .nav-map-link {
+    font-size: 13px;
+  }
+  .seas-root .nav-right .btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
+@media (max-width: 380px) {
+  /* Smallest phones: drop the secondary map link so the CTA always fits */
+  .seas-root .nav-map-link {
+    display: none;
+  }
+}

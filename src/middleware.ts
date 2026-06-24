@@ -36,6 +36,18 @@ export function middleware(request: NextRequest) {
   // Strip port so "eth.localhost:3000" → "eth.localhost"
   const hostClean = hostname.split(":")[0];
 
+  // ── Season 2: seas.web3guides.com serves the Conquer the Seas surface ────
+  // Explicit host branch, deliberately separate from VALID_SUBDOMAINS so the
+  // guide-site machinery (and its static params/sitemaps) is untouched.
+  // Covers seas.localhost in dev too.
+  if (hostClean === "seas.web3guides.com" || hostClean.startsWith("seas.")) {
+    const seasUrl = request.nextUrl.clone();
+    seasUrl.pathname = pathname.startsWith("/seas")
+      ? pathname
+      : `/seas${pathname === "/" ? "" : pathname}`;
+    return withRef(NextResponse.rewrite(seasUrl));
+  }
+
   // ── Try to extract a subdomain from the hostname ─────────────────────────
   // Strategy: split on "." and check if the first segment is a valid subdomain.
   // This works for:
@@ -69,6 +81,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|api/.*|go/.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|eot|otf|css|js|map)).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|api/.*|go/.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|eot|otf|css|js|map|mp4|webm)).*)",
   ],
 };

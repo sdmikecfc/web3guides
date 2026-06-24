@@ -155,6 +155,34 @@ export async function GET(
     if (u.display_name) nameById.set(u.discord_id, u.display_name);
   }
 
+  // Language flag: CN-edition tournaments render the labels in Chinese; every
+  // other edition keeps the original English. Driven by the tournament row so the
+  // shared route serves both without forking.
+  const isCn = t.edition === "cn";
+  const L = isCn
+    ? {
+        suffix: "OG 锦标赛",
+        standings: "当前排行榜",
+        phase: "推荐阶段",
+        voters: "推荐人",
+        candidates: "候选人",
+        recs: "推荐数",
+        empty: "还没有推荐，快来当第一个。",
+        footer: "前 16 名进入对阵。并列时，最早获得首个推荐的人胜出。",
+        cmd: "推荐 @用户",
+      }
+    : {
+        suffix: "OG Tournament",
+        standings: "Current Standings",
+        phase: "Recommend Phase",
+        voters: "Voters",
+        candidates: "Candidates",
+        recs: "Recs",
+        empty: "No recommendations yet, be the first.",
+        footer: "Top 16 → bracket. Tied at the cut? Earliest first recommendation wins.",
+        cmd: "!recommend @user",
+      };
+
   const top16 = rows.slice(0, 16);
   const maxCount = rows[0]?.rec_count || 1;
   const podiumTone = [C.amber, C.silver, C.bronze];
@@ -191,20 +219,20 @@ export async function GET(
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 20, zIndex: 1 }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <span style={{ fontSize: 13, color: C.amber, letterSpacing: 4, textTransform: "uppercase", fontWeight: 700 }}>
-              {t.display_name} OG Tournament
+              {t.display_name} {L.suffix}
             </span>
             <span style={{ fontSize: 36, fontWeight: 900, color: C.white, marginTop: 6, letterSpacing: -1 }}>
-              Current Standings
+              {L.standings}
             </span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
             <span style={{ fontSize: 13, color: C.muted, letterSpacing: 3, textTransform: "uppercase", fontWeight: 600 }}>
-              Recommend Phase
+              {L.phase}
             </span>
             <div style={{ display: "flex", gap: 22, marginTop: 6 }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
                 <span style={{ fontSize: 11, color: C.muted, letterSpacing: 1.5, textTransform: "uppercase" }}>
-                  Voters
+                  {L.voters}
                 </span>
                 <span style={{ fontSize: 22, color: C.white, fontFamily: "monospace", fontWeight: 800 }}>
                   {uniqueVoters}
@@ -212,7 +240,7 @@ export async function GET(
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
                 <span style={{ fontSize: 11, color: C.muted, letterSpacing: 1.5, textTransform: "uppercase" }}>
-                  Candidates
+                  {L.candidates}
                 </span>
                 <span style={{ fontSize: 22, color: C.white, fontFamily: "monospace", fontWeight: 800 }}>
                   {candidates}
@@ -220,7 +248,7 @@ export async function GET(
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
                 <span style={{ fontSize: 11, color: C.muted, letterSpacing: 1.5, textTransform: "uppercase" }}>
-                  Recs
+                  {L.recs}
                 </span>
                 <span style={{ fontSize: 22, color: C.amber, fontFamily: "monospace", fontWeight: 800 }}>
                   {totalRecs}
@@ -243,7 +271,7 @@ export async function GET(
               zIndex: 1,
             }}
           >
-            No recommendations yet — be the first.
+            {L.empty}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 4, zIndex: 1, flex: 1 }}>
@@ -280,7 +308,7 @@ export async function GET(
             })}
             {rows.length > 16 && (
               <div style={{ display: "flex", justifyContent: "center", marginTop: 8, fontSize: 13, color: C.muted, fontStyle: "italic" }}>
-                +{rows.length - 16} more candidate{rows.length - 16 === 1 ? "" : "s"} below top-16 cut
+                {isCn ? `还有 ${rows.length - 16} 位候选人未进前 16` : `+${rows.length - 16} more candidate${rows.length - 16 === 1 ? "" : "s"} below top-16 cut`}
               </div>
             )}
           </div>
@@ -302,10 +330,10 @@ export async function GET(
           }}
         >
           <span style={{ display: "flex" }}>
-            Top 16 → bracket. Tied at the cut? Earliest first recommendation wins.
+            {L.footer}
           </span>
           <span style={{ display: "flex", fontFamily: "monospace", color: C.amber, fontWeight: 700 }}>
-            !recommend @user
+            {L.cmd}
           </span>
         </div>
       </div>
@@ -315,7 +343,11 @@ export async function GET(
       height: 900,
       fonts,
       headers: {
-        "Cache-Control": "no-store, must-revalidate",
+        // Short CDN cache so repeated fetches of the SAME posted image (Discord's
+        // proxy re-validating, viewers, scrapers) are served from cache instead of
+        // re-rendering on every hit. The bot cache-busts each new post with ?t=, so
+        // freshly-posted leaderboards still render live; this only blunts re-fetches.
+        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120",
       },
     }
   );
