@@ -1,0 +1,328 @@
+/* ============================================================
+   Doma Design System — Colors & Type
+   Derived from the Doma App Figma (Nov 2025 review)
+   ============================================================ */
+
+/* ---------- Web fonts -----------------------------------------
+   Aktiv Grotesk is the brand family.
+   - Aktiv Grotesk (default width): UI workhorse — 14px body, 500 labels
+   - Aktiv Grotesk Ex (extended):    display headlines
+   - Aktiv Grotesk Cd (condensed):   dense data labels, chips
+   Three width axes, nine weights each: Hair 100, Thin 200, Light 300,
+   Regular 400, Medium 500, SemiBold 600, Bold 700, XBold 800, Black 900.
+   Variable font provided for continuous weight+width animation.
+   -------------------------------------------------------------- */
+
+/* --- Aktiv Grotesk (default width) --- */
+@font-face { font-family: 'Aktiv Grotesk'; font-weight: 100; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGrotesk_Hair.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk'; font-weight: 200; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGrotesk_Th.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk'; font-weight: 300; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGrotesk_Lt.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk'; font-weight: 400; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGrotesk_Rg.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk'; font-weight: 500; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGrotesk_Md.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk'; font-weight: 600; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGrotesk_SBd.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk'; font-weight: 700; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGrotesk_Bd.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk'; font-weight: 800; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGrotesk_XBd.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk'; font-weight: 900; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGrotesk_Blk.ttf') format('truetype'); }
+
+/* --- Aktiv Grotesk Ex (extended — display) --- */
+@font-face { font-family: 'Aktiv Grotesk Ex'; font-weight: 100; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskEx_Hair.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Ex'; font-weight: 200; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskEx_Th.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Ex'; font-weight: 300; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskEx_Lt.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Ex'; font-weight: 400; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskEx_Rg.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Ex'; font-weight: 500; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskEx_Md.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Ex'; font-weight: 600; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskEx_SBd.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Ex'; font-weight: 700; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskEx_Bd.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Ex'; font-weight: 800; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskEx_XBd.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Ex'; font-weight: 900; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskEx_Blk.ttf') format('truetype'); }
+
+/* --- Aktiv Grotesk Cd (condensed — dense UI / chips) --- */
+@font-face { font-family: 'Aktiv Grotesk Cd'; font-weight: 100; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskCd_Hair.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Cd'; font-weight: 200; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskCd_Th.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Cd'; font-weight: 300; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskCd_Lt.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Cd'; font-weight: 400; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskCd_Rg.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Cd'; font-weight: 500; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskCd_Md.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Cd'; font-weight: 600; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskCd_SBd.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Cd'; font-weight: 700; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskCd_Bd.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Cd'; font-weight: 800; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskCd_XBd.ttf') format('truetype'); }
+@font-face { font-family: 'Aktiv Grotesk Cd'; font-weight: 900; font-style: normal; font-display: swap;
+  src: url('fonts/AktivGroteskCd_Blk.ttf') format('truetype'); }
+
+/* --- Aktiv Grotesk VF (variable: weight 100–900, width 75–125) --- */
+@font-face {
+  font-family: 'Aktiv Grotesk VF';
+  font-weight: 100 900;
+  font-stretch: 75% 125%;
+  font-style: normal;
+  font-display: swap;
+  src: url('fonts/AktivGroteskVF_WghtWdth.ttf') format('truetype-variations'),
+       url('fonts/AktivGroteskVF_WghtWdth.ttf') format('truetype');
+}
+
+:root {
+  /* ---------- Core palette (raw) ---------- */
+  --doma-ink-900: #000F16;          /* rgb(0,15,22)    — primary background */
+  --doma-ink-800: #071820;          /* slight elevation over 900 */
+  --doma-ink-700: #0D2129;
+  --doma-ink-600: #11282F;
+
+  --doma-paper: #F8FDFF;            /* rgb(248,253,255) — primary text/fg */
+  --doma-pure-white: #FFFFFF;
+
+  /* Brand blue — the signature Doma accent */
+  --doma-blue-50:  #D6F2FF;         /* rgb(214,242,255) */
+  --doma-blue-100: #7FD7FF;         /* rgb(127,215,255) */
+  --doma-blue-400: #4AC6FF;         /* rgb(74,198,255)  — MARK/ACCENT */
+  --doma-blue-500: #20A5E2;         /* rgb(32,165,226)  — buttons base */
+  --doma-blue-600: #0078AF;         /* rgb(0,120,175) */
+  --doma-blue-800: #005379;         /* rgb(0,83,121) */
+
+  /* Mint / green (gains, success, chart up) */
+  --doma-mint-200: #4AFFBA;         /* rgb(74,255,186) */
+  --doma-mint-300: #4AFF98;         /* rgb(74,255,152) */
+  --doma-mint-400: #3DE3A4;         /* rgb(61,227,164) — primary "up" */
+  --doma-mint-500: #23C8AD;         /* rgb(35,200,173) */
+
+  /* Rose / pink (brand secondary, warnings soft) */
+  --doma-rose-100: #FFDBDF;         /* rgb(255,219,223) */
+  --doma-rose-200: #FFCDD3;         /* rgb(255,205,211) */
+
+  /* Red (loss, error) */
+  --doma-red-500:  #FF4A56;         /* rgb(255,74,86) */
+
+  /* Purple accent (rare — gamification) */
+  --doma-iris-500: #594FF4;         /* rgb(89,79,244) */
+
+  /* ---------- Foreground scale (paper + alpha) ---------- */
+  --fg-1: var(--doma-paper);                   /* primary text */
+  --fg-2: rgba(248,253,255,0.88);              /* secondary text */
+  --fg-3: rgba(248,253,255,0.64);              /* tertiary / subtitles */
+  --fg-4: rgba(248,253,255,0.48);              /* disabled / hint */
+  --fg-5: rgba(248,253,255,0.24);              /* placeholder / divider label */
+  --fg-6: rgba(248,253,255,0.12);              /* subtle line */
+  --fg-7: rgba(248,253,255,0.08);              /* border line */
+  --fg-8: rgba(248,253,255,0.04);              /* faintest wash */
+
+  /* ---------- Surface scale (glass on dark) ---------- */
+  --surface-0: var(--doma-ink-900);            /* canvas */
+  --surface-1: rgba(248,253,255,0.024);        /* barely-there card wash */
+  --surface-2: rgba(248,253,255,0.032);        /* card */
+  --surface-3: rgba(248,253,255,0.048);        /* card hover */
+  --surface-4: rgba(248,253,255,0.06);         /* input */
+  --surface-5: rgba(248,253,255,0.08);         /* input focus */
+
+  /* ---------- Accent (interactive) ---------- */
+  --accent:          var(--doma-blue-400);     /* mark blue */
+  --accent-fill:     rgba(32,165,226,0.8);     /* primary button fill */
+  --accent-fill-hov: rgba(32,165,226,1);
+  --accent-soft:     rgba(74,198,255,0.12);    /* accent wash */
+  --accent-soft-2:   rgba(74,198,255,0.24);
+
+  /* ---------- Semantic ---------- */
+  --success: var(--doma-mint-400);
+  --success-soft: rgba(61,227,164,0.12);
+  --danger:  var(--doma-red-500);
+  --danger-soft: rgba(255,74,86,0.12);
+  --warning: #FFB547;
+  --info:    var(--doma-blue-400);
+
+  /* ---------- Borders ---------- */
+  --border-subtle: rgba(248,253,255,0.06);
+  --border-default: rgba(248,253,255,0.08);
+  --border-strong: rgba(248,253,255,0.16);
+  --border-focus: var(--doma-blue-400);
+
+  /* ---------- Shadows & glow ---------- */
+  --shadow-card: 0 8px 24px 0 rgba(0,0,0,0.24);
+  --shadow-elev: 0 20px 60px 0 rgba(0,0,0,0.4);
+  --glow-blue:
+    inset 1px -2px 3px rgba(248,253,255,0.24),
+    0 4px 13px rgba(32,165,226,0.06),
+    0 8px 26px rgba(32,165,226,0.12),
+    0 13px 40px rgba(32,165,226,0.24);
+  --inset-highlight: inset 0 1px 0 rgba(248,253,255,0.06);
+
+  /* ---------- Radius ---------- */
+  --radius-xs: 6px;
+  --radius-sm: 10px;       /* buttons */
+  --radius-md: 14px;       /* list rows */
+  --radius-lg: 18px;       /* cards */
+  --radius-xl: 20px;       /* section cards */
+  --radius-2xl: 24px;      /* hero / balance */
+  --radius-3xl: 40px;      /* page container */
+  --radius-full: 1000px;
+
+  /* ---------- Spacing scale (4px base) ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 104px;       /* page padding */
+  --space-30: 120px;       /* section padding */
+
+  /* ---------- Typography ---------- */
+  --font-sans: 'Aktiv Grotesk', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --font-display: 'Aktiv Grotesk Ex', 'Aktiv Grotesk', system-ui, sans-serif;
+  --font-condensed: 'Aktiv Grotesk Cd', 'Aktiv Grotesk', system-ui, sans-serif;
+  --font-variable: 'Aktiv Grotesk VF', 'Aktiv Grotesk', system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --tracking-tight: -0.008em;
+  --tracking-default: -0.001em;
+
+  --leading-tight: 1.0;
+  --leading-snug: 1.2;
+  --leading-normal: 1.44;
+
+  /* Type scale — pulled from Figma sizes */
+  --type-display-xl: 80px;     /* Hero "Trade & Earn with domains" */
+  --type-display-lg: 56px;     /* Section titles */
+  --type-display-md: 40px;     /* Balance, Level display */
+  --type-display-sm: 32px;     /* Secondary display */
+  --type-h1: 28px;
+  --type-h2: 24px;
+  --type-h3: 20px;
+  --type-h4: 18px;
+  --type-body-lg: 16px;
+  --type-body: 14px;           /* 14px is the app workhorse (104k uses) */
+  --type-body-sm: 12px;
+  --type-micro: 10px;
+  --type-mini: 8px;
+}
+
+/* ============================================================
+   Semantic element styles
+   ============================================================ */
+
+body {
+  font-family: var(--font-sans);
+  color: var(--fg-1);
+  background: var(--surface-0);
+  letter-spacing: var(--tracking-default);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, .type-display-xl {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: var(--type-display-xl);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-default);
+  color: var(--fg-1);
+  margin: 0;
+}
+h2, .type-display-lg {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: var(--type-display-lg);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-default);
+  color: var(--fg-1);
+  margin: 0;
+}
+h3, .type-h1 {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: var(--type-h1);
+  line-height: var(--leading-snug);
+  color: var(--fg-1);
+  margin: 0;
+}
+h4, .type-h2 {
+  font-weight: 500;
+  font-size: var(--type-h2);
+  line-height: var(--leading-snug);
+  color: var(--fg-1);
+  margin: 0;
+}
+h5, .type-h3 {
+  font-weight: 500;
+  font-size: var(--type-h3);
+  line-height: var(--leading-snug);
+  color: var(--fg-1);
+  margin: 0;
+}
+p, .type-body {
+  font-size: var(--type-body);
+  line-height: var(--leading-normal);
+  color: var(--fg-2);
+  margin: 0;
+}
+.type-subtitle {
+  font-size: var(--type-h3);
+  line-height: var(--leading-normal);
+  color: var(--fg-3);
+}
+.type-body-sm {
+  font-size: var(--type-body-sm);
+  line-height: var(--leading-normal);
+  color: var(--fg-3);
+}
+.type-label {
+  font-weight: 500;
+  font-size: var(--type-body);
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg-1);
+}
+.type-mono {
+  font-family: var(--font-mono);
+  font-size: var(--type-body-sm);
+  color: var(--fg-2);
+}
+.type-value-lg {
+  font-weight: 400;
+  font-size: var(--type-display-md);
+  line-height: var(--leading-snug);
+  color: var(--fg-1);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Color utility classes */
+.fg-1 { color: var(--fg-1); }
+.fg-2 { color: var(--fg-2); }
+.fg-3 { color: var(--fg-3); }
+.fg-4 { color: var(--fg-4); }
+.text-accent { color: var(--accent); }
+.text-success { color: var(--success); }
+.text-danger { color: var(--danger); }
+
+/* Glass card base */
+.doma-card {
+  background:
+    radial-gradient(at 0% 0%, rgba(248,253,255,0) 0%, rgba(248,253,255,0.032) 100%);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-default);
+}

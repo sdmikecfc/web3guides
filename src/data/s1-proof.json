@@ -1,18 +1,18 @@
 {
   "season": "Season 1",
   "winningFleet": "DISINTERMEDIATION.com",
-  "generatedAt": "2026-06-23T13:21:05.989Z",
+  "generatedAt": "2026-06-26T08:19:21.725Z",
   "totals": {
-    "participants": 117,
+    "participants": 120,
     "winners": 73,
     "byStatus": {
       "Paid (winning fleet + boss damage)": 5,
-      "Sold before the end": 12,
+      "Sold before the end": 11,
       "Paid (winning fleet)": 60,
       "Paid (boss damage)": 8,
-      "Fleet did not place": 15,
-      "Under the $10 boss minimum": 1,
-      "Participated": 16
+      "Fleet did not place": 16,
+      "Under the $10 boss minimum": 2,
+      "Participated": 18
     }
   },
   "rows": [
@@ -550,7 +550,7 @@
       "joined": "2026-06-02",
       "fleetPoints": 2402,
       "bossContribution": 0,
-      "status": "Sold before the end"
+      "status": "Fleet did not place"
     },
     {
       "name": "ganginthisbbeach",
@@ -951,6 +951,30 @@
       "fleetPoints": 0,
       "bossContribution": 0,
       "status": "Sold before the end"
+    },
+    {
+      "name": "Captain 5652",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Captain 6882",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Captain 7171",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Under the $10 boss minimum"
     }
   ]
 }

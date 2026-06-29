@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"></meta>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"></meta>
+<title>Launch Wars · Season 2 · Conquer the Seas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"></link>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"></link>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&amp;display=swap" rel="stylesheet"></link>
+<link rel="stylesheet" href="assets/doma.css"></link>
+<link rel="stylesheet" href="hero.css"></link>
+</head>
+<body data-variant="helm">
+
+<section class="hero" data-screen-label="S2 Hero">
+
+  <!-- Cinematic sea: canvas placeholder graded to the final video's palette.
+       When the real loop lands, set data-video-src on <body> (or add a <source>
+       to #heroVideo) and the video fades in over the canvas. -->
+  <canvas class="hero-bg" id="sea"></canvas>
+  <video class="hero-video" id="heroVideo" autoplay="autoplay" muted="muted" loop="loop" playsinline="playsinline"></video>
+
+  <div class="hero-grade"></div>
+  <div class="hero-vignette"></div>
+
+  <nav class="nav">
+    <a class="nav-brand" href="#">
+      <span class="nav-wordmark">LAUNCH WARS</span>
+      <span class="nav-chip">Season 2 · Conquer the Seas</span>
+    </a>
+    <div class="nav-right">
+      <span class="nav-count" id="navCount">Season 2 begins <strong>June 15</strong></span>
+      <a class="btn btn-nav" href="https://discord.gg/doma" target="_blank" rel="noopener">Join the Discord</a>
+    </div>
+  </nav>
+
+  <div class="hero-content">
+    <div class="hero-copy">
+      <p class="eyebrow">Season 2 · June 15 to 29</p>
+      <h1 class="headline" id="headline">Conquer the seas</h1>
+      <p class="subline" id="subline">Five fleets at war over one ocean of treasure. Pick your flag, fight with your crew, and win a share of real prizes.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="https://discord.gg/doma" target="_blank" rel="noopener">Join the Discord</a>
+        <p class="cta-note">Free to start. No wallet needed.</p>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<div id="tweaks-root"></div>
+
+<script src="hero-bg.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- countdown (subtle, in the nav) ---------- */
+  var target = Date.UTC(2026, 5, 15, 10, 0, 0); /* Jun 15 2026, 10:00 UTC */
+  var seasonEnd = Date.UTC(2026, 5, 30, 0, 0, 0);
+  var el = document.getElementById('navCount');
+
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function tick() {
+    var now = Date.now();
+    var d = target - now;
+    if (d > 0) {
+      var days = Math.floor(d / 86400000);
+      var hrs = Math.floor(d % 86400000 / 3600000);
+      var min = Math.floor(d % 3600000 / 60000);
+      el.innerHTML = 'Season 2 begins in <strong>' + days + 'd ' + pad(hrs) + 'h ' + pad(min) + 'm</strong>';
+    } else if (now < seasonEnd) {
+      el.innerHTML = '<strong>Season 2 is live</strong> · ends June 29';
+    } else {
+      el.innerHTML = 'Season 2 has ended';
+    }
+  }
+  tick();
+  setInterval(tick, 15000);
+
+  /* ---------- entrance animation: only when actually visible ---------- */
+  function arm() {
+    if (document.visibilityState === 'visible') {
+      document.body.classList.add('lw-animate');
+      document.removeEventListener('visibilitychange', arm);
+    }
+  }
+  arm();
+  document.addEventListener('visibilitychange', arm);
+
+  /* ---------- future video loop slot ---------- */
+  var src = document.body.getAttribute('data-video-src');
+  var video = document.getElementById('heroVideo');
+  if (src) {
+    video.src = src;
+    video.addEventListener('canplay', function () { video.classList.add('is-live'); });
+    video.play().catch(function () {});
+  }
+})();
+</script>
+
+<!-- Tweaks (hidden unless the host enables them) -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="hero-tweaks.jsx"></script>
+
+</body>
+</html>

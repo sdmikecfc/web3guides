@@ -40,18 +40,18 @@ const cinzel = Cinzel({
 export const metadata: Metadata = {
   title: { absolute: "Launch Wars · Season 2 · Conquer the Seas" },
   description:
-    "Five fleets at war over one ocean of treasure. Launch Wars Season 2 runs June 16 to 30 on Doma. Pick your flag, fight with your crew, and win a share of real prizes. Free to start.",
+    "Five fleets at war over one ocean of treasure. Launch Wars Season 2 runs June 16 to 29 on Doma. Pick your flag, fight with your crew, and win a share of real prizes. Free to start.",
   openGraph: {
     title: "Launch Wars · Season 2 · Conquer the Seas",
     description:
-      "Five fleets at war over one ocean of treasure. June 16 to 30. Pick your flag, fight with your crew, and win a share of real prizes.",
+      "Five fleets at war over one ocean of treasure. June 16 to 29. Pick your flag, fight with your crew, and win a share of real prizes.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Launch Wars · Season 2 · Conquer the Seas",
     description:
-      "Five fleets at war over one ocean of treasure. June 16 to 30. Free to start.",
+      "Five fleets at war over one ocean of treasure. June 16 to 29. Free to start.",
   },
 };
 
@@ -72,7 +72,7 @@ const DROPS = [
   { date: "Jun 16", what: "The season opens. Every game and a daily battle, every day." },
   { date: "Jun 17 to 21", what: "A new fleet sets sail almost every day. Five founder windows." },
   { date: "Jun 23", what: "The Kraken Armada arrives. Week 2 world bosses." },
-  { date: "Jun 30", what: "The seas settle. Final standings, prizes paid." },
+  { date: "Jun 29", what: "The seas settle. Final standings frozen, prizes follow." },
 ];
 
 export default function SeasPage() {
@@ -102,7 +102,7 @@ export default function SeasPage() {
 
         <div className="hero-content">
           <div className="hero-copy">
-            <p className="eyebrow">Season 2 · June 16 to 30</p>
+            <p className="eyebrow">Season 2 · June 16 to 29</p>
             <h1 className="headline">Conquer the seas</h1>
             <p className="subline">
               Five fleets at war over one ocean of treasure. Pick your flag, fight with your crew,

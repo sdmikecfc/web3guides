@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 /** Subtle nav countdown to the Season 2 opening (Jun 15 2026, 10:00 UTC). */
 const TARGET = Date.UTC(2026, 5, 15, 10, 0, 0);
-const SEASON_END = Date.UTC(2026, 5, 30, 0, 0, 0); // season runs to June 29
+const SEASON_END = Date.UTC(2026, 5, 29, 8, 0, 0); // S2 ends June 29, 08:00 UTC (1h before S3 STARFALL)
 
 function pad(n: number) {
   return n < 10 ? `0${n}` : `${n}`;
@@ -18,7 +18,7 @@ function label(now: number): string {
     const min = Math.floor((d % 3600000) / 60000);
     return `Season 2 begins in ${days}d ${pad(hrs)}h ${pad(min)}m`;
   }
-  if (now < SEASON_END) return "Season 2 is live · ends June 29";
+  if (now < SEASON_END) return "Season 2 is live · ends June 29, 08:00 UTC";
   return "Season 2 has ended";
 }
 

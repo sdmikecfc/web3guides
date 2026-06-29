@@ -48,6 +48,17 @@ export function middleware(request: NextRequest) {
     return withRef(NextResponse.rewrite(seasUrl));
   }
 
+  // ── Season 3: stars.web3guides.com serves the Starfall (SPACE) surface ────
+  // Same explicit-host pattern as seas; the /stars app tree is self-contained.
+  // Covers stars.localhost in dev too.
+  if (hostClean === "stars.web3guides.com" || hostClean.startsWith("stars.")) {
+    const starsUrl = request.nextUrl.clone();
+    starsUrl.pathname = pathname.startsWith("/stars")
+      ? pathname
+      : `/stars${pathname === "/" ? "" : pathname}`;
+    return withRef(NextResponse.rewrite(starsUrl));
+  }
+
   // ── Try to extract a subdomain from the hostname ─────────────────────────
   // Strategy: split on "." and check if the first segment is a valid subdomain.
   // This works for:
