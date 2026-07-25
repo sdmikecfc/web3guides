@@ -197,7 +197,7 @@ export default async function GuidePage({ params }: Props) {
                     ? <img src={cfg.logoUrl} alt={cfg.label} style={{ width: 18, height: 18, objectFit: "contain" }} />
                     : <span style={{ fontSize: 16 }}>{cfg.emoji}</span>}
                   <span style={{
-                    fontFamily: "'Space Mono', monospace", fontSize: "0.65rem",
+                    fontFamily: "'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace", fontSize: "0.65rem",
                     letterSpacing: 3, color: cfg.accentHex, fontWeight: 700,
                   }}>
                     {cfg.label.toUpperCase()}
@@ -208,18 +208,18 @@ export default async function GuidePage({ params }: Props) {
                 <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 16 }}>
                   <DifficultyBadge difficulty={guide.difficulty} />
                   {guide.read_time_minutes && (
-                    <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "rgba(255,255,255,0.45)" }}>
+                    <span style={{ fontFamily: "'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace", fontSize: "0.7rem", color: "rgba(255,255,255,0.45)" }}>
                       {guide.read_time_minutes} min read
                     </span>
                   )}
-                  <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "rgba(255,255,255,0.35)" }}>
+                  <span style={{ fontFamily: "'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace", fontSize: "0.7rem", color: "rgba(255,255,255,0.35)" }}>
                     {formatDate(guide.published_at)}
                   </span>
                 </div>
 
                 {/* Title */}
                 <h1 style={{
-                  fontFamily: "'Bungee', cursive", fontWeight: 400,
+                  fontFamily: "'Bungee', 'Noto Sans KR', 'Noto Sans SC', cursive", fontWeight: 400,
                   fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)",
                   lineHeight: 1.1, color: "#ffffff",
                   marginBottom: 16, letterSpacing: "-0.01em",
@@ -229,7 +229,7 @@ export default async function GuidePage({ params }: Props) {
 
                 {/* Summary */}
                 <p style={{
-                  fontFamily: "'DM Sans', sans-serif", fontSize: "1.05rem",
+                  fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "1.05rem",
                   lineHeight: 1.65, color: "rgba(255,255,255,0.6)",
                   marginBottom: guide.tags?.length > 0 ? 20 : 0, maxWidth: 560,
                 }}>
@@ -242,7 +242,7 @@ export default async function GuidePage({ params }: Props) {
                     {guide.tags.map((tag: string) => (
                       <Link key={tag} href={`/?tag=${encodeURIComponent(tag)}`}
                         style={{
-                          fontFamily: "'Space Mono', monospace", fontSize: "0.62rem",
+                          fontFamily: "'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace", fontSize: "0.62rem",
                           padding: "3px 10px", borderRadius: 50,
                           background: `rgba(${r},${g},${b},0.15)`,
                           color: cfg.accentHex,
@@ -262,7 +262,7 @@ export default async function GuidePage({ params }: Props) {
                     marginTop: 24, paddingTop: 22,
                   }}>
                     <div style={{
-                      fontFamily: "'Space Mono', monospace", fontSize: "0.58rem",
+                      fontFamily: "'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace", fontSize: "0.58rem",
                       letterSpacing: 3, color: "rgba(255,255,255,0.35)",
                       textTransform: "uppercase", marginBottom: 14,
                     }}>
@@ -276,7 +276,7 @@ export default async function GuidePage({ params }: Props) {
                             fontSize: "0.8rem", marginTop: 2, fontWeight: 700,
                           }}>→</span>
                           <span style={{
-                            fontFamily: "'DM Sans', sans-serif",
+                            fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif",
                             fontSize: "0.85rem", color: "rgba(255,255,255,0.7)",
                             lineHeight: 1.5,
                           }}>
@@ -305,11 +305,11 @@ export default async function GuidePage({ params }: Props) {
                 textAlign: "center",
               }}>
                 <div style={{
-                  fontFamily: "'Bungee', cursive", fontWeight: 400,
+                  fontFamily: "'Bungee', 'Noto Sans KR', 'Noto Sans SC', cursive", fontWeight: 400,
                   fontSize: "1.5rem", color: cfg.accentHex, lineHeight: 1,
                 }}>{item.value}</div>
                 <div style={{
-                  fontFamily: "'Space Mono', monospace", fontSize: "0.6rem",
+                  fontFamily: "'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace", fontSize: "0.6rem",
                   color: "#6b7280", marginTop: 6, letterSpacing: 0.5,
                   textTransform: "uppercase",
                 }}>{item.label}</div>
@@ -370,7 +370,7 @@ export default async function GuidePage({ params }: Props) {
                         {/* Section header: number badge + heading */}
                         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 22 }}>
                           <span style={{
-                            fontFamily: "'Space Mono', monospace",
+                            fontFamily: "'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace",
                             fontSize: "0.58rem", fontWeight: 700,
                             color: cfg.accentHex,
                             background: `${cfg.accentHex}10`,
@@ -381,7 +381,7 @@ export default async function GuidePage({ params }: Props) {
                             {String(h2Num).padStart(2, "0")}
                           </span>
                           <h2 id={section.id} style={{
-                            fontFamily: "'Bungee', cursive", fontWeight: 400,
+                            fontFamily: "'Bungee', 'Noto Sans KR', 'Noto Sans SC', cursive", fontWeight: 400,
                             fontSize: "1.3rem", color: "#1a1a1a",
                             scrollMarginTop: 100, margin: 0, lineHeight: 1.2,
                           }}>
@@ -405,7 +405,7 @@ export default async function GuidePage({ params }: Props) {
                   return (
                     <div key={section.id} style={{ paddingLeft: 8, marginBottom: 12 }}>
                       <h3 id={section.id} style={{
-                        fontFamily: "'Bungee', cursive", fontWeight: 400,
+                        fontFamily: "'Bungee', 'Noto Sans KR', 'Noto Sans SC', cursive", fontWeight: 400,
                         fontSize: "1.05rem", color: "#374151",
                         margin: "20px 0 10px", scrollMarginTop: 100,
                         borderLeft: `3px solid ${cfg.accentHex}40`,
@@ -429,16 +429,16 @@ export default async function GuidePage({ params }: Props) {
             ) : (
               /* External guide fallback */
               <div style={{ marginBottom: 40, borderRadius: 16, background: `${cfg.accentHex}08`, border: `1px solid ${cfg.accentHex}25`, padding: 24 }}>
-                <p style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.08em", color: cfg.accentHex, marginBottom: 8 }}>
+                <p style={{ fontFamily: "'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.08em", color: cfg.accentHex, marginBottom: 8 }}>
                   Read the full guide
                 </p>
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "#6b7280", marginBottom: 20 }}>
+                <p style={{ fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "0.9rem", color: "#6b7280", marginBottom: 20 }}>
                   This guide is hosted externally. Click below to read the complete article.
                 </p>
                 <a
                   href={guide.source_url}
                   target="_blank" rel="noopener noreferrer"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 12, padding: "10px 20px", fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", fontWeight: 700, color: "#fff", textDecoration: "none", background: cfg.accentHex }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 12, padding: "10px 20px", fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "0.9rem", fontWeight: 700, color: "#fff", textDecoration: "none", background: cfg.accentHex }}
                 >
                   Open guide ↗
                 </a>
@@ -459,10 +459,10 @@ export default async function GuidePage({ params }: Props) {
               }}>
                 <span style={{ fontSize: "1.4rem", flexShrink: 0, marginTop: 2 }}>✍️</span>
                 <div>
-                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", fontWeight: 700, color: "#1a1a1a", margin: "0 0 4px 0" }}>
+                  <p style={{ fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "0.85rem", fontWeight: 700, color: "#1a1a1a", margin: "0 0 4px 0" }}>
                     Originally published by {guide.author ?? "Doma Foundation"}
                   </p>
-                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.8rem", color: "#6b7280", margin: 0, lineHeight: 1.5 }}>
+                  <p style={{ fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "0.8rem", color: "#6b7280", margin: 0, lineHeight: 1.5 }}>
                     This article was first published on the{" "}
                     <a href={guide.source_url} target="_blank" rel="noopener noreferrer"
                       style={{ color: cfg.accentHex, fontWeight: 600, textDecoration: "none" }}>
@@ -477,7 +477,7 @@ export default async function GuidePage({ params }: Props) {
 
             {/* Author */}
             {guide.author && !guide.source_url?.startsWith("https://blog.doma.xyz") && (
-              <p style={{ marginTop: 24, marginBottom: 12, fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#9ca3af" }}>
+              <p style={{ marginTop: 24, marginBottom: 12, fontFamily: "'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace", fontSize: "0.7rem", color: "#9ca3af" }}>
                 Written by <span style={{ color: "#374151", fontWeight: 700 }}>{guide.author}</span>
               </p>
             )}
@@ -485,7 +485,7 @@ export default async function GuidePage({ params }: Props) {
             {/* Mobile related */}
             {relatedGuides.length > 0 && (
               <section className="article-related-mobile" style={{ marginTop: 48, borderTop: "1px solid #e5e7eb", paddingTop: 32 }}>
-                <h2 style={{ fontFamily: "'Bungee', cursive", fontWeight: 400, fontSize: "1rem", color: "#1a1a1a", marginBottom: 16 }}>
+                <h2 style={{ fontFamily: "'Bungee', 'Noto Sans KR', 'Noto Sans SC', cursive", fontWeight: 400, fontSize: "1rem", color: "#1a1a1a", marginBottom: 16 }}>
                   More {cfg.label} guides
                 </h2>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -494,10 +494,10 @@ export default async function GuidePage({ params }: Props) {
                       style={{ display: "flex", alignItems: "flex-start", gap: 12, borderRadius: 12, background: "#f9fafb", border: "1px solid #e5e7eb", padding: 14, textDecoration: "none" }}>
                       <DifficultyBadge difficulty={g.difficulty} compact />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", fontWeight: 700, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <p style={{ fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "0.85rem", fontWeight: 700, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {g.title}
                         </p>
-                        <p style={{ marginTop: 3, fontFamily: "'DM Sans', sans-serif", fontSize: "0.78rem", color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.summary}</p>
+                        <p style={{ marginTop: 3, fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "0.78rem", color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.summary}</p>
                       </div>
                       <span style={{ color: cfg.accentHex, flexShrink: 0, marginTop: 2 }}>→</span>
                     </Link>
@@ -511,36 +511,36 @@ export default async function GuidePage({ params }: Props) {
           <aside className="article-sidebar">
             <div style={{ position: "sticky", top: 80 }}>
               <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 16 }}>
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.6rem", letterSpacing: 2, color: "#9ca3af", textTransform: "uppercase", marginBottom: 12 }}>
+                <div style={{ fontFamily: "'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace", fontSize: "0.6rem", letterSpacing: 2, color: "#9ca3af", textTransform: "uppercase", marginBottom: 12 }}>
                   About this guide
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.78rem", color: "#9ca3af" }}>Difficulty</span>
+                    <span style={{ fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "0.78rem", color: "#9ca3af" }}>Difficulty</span>
                     <DifficultyBadge difficulty={guide.difficulty} compact />
                   </div>
                   {guide.read_time_minutes && (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.78rem", color: "#9ca3af" }}>Read time</span>
-                      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.72rem", color: "#374151" }}>{guide.read_time_minutes} min</span>
+                      <span style={{ fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "0.78rem", color: "#9ca3af" }}>Read time</span>
+                      <span style={{ fontFamily: "'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace", fontSize: "0.72rem", color: "#374151" }}>{guide.read_time_minutes} min</span>
                     </div>
                   )}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.78rem", color: "#9ca3af" }}>Published</span>
-                    <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.72rem", color: "#374151" }}>{formatDate(guide.published_at)}</span>
+                    <span style={{ fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "0.78rem", color: "#9ca3af" }}>Published</span>
+                    <span style={{ fontFamily: "'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace", fontSize: "0.72rem", color: "#374151" }}>{formatDate(guide.published_at)}</span>
                   </div>
                   {guide.author && (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.78rem", color: "#9ca3af" }}>Author</span>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.78rem", fontWeight: 700, color: "#374151" }}>{guide.author}</span>
+                      <span style={{ fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "0.78rem", color: "#9ca3af" }}>Author</span>
+                      <span style={{ fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "0.78rem", fontWeight: 700, color: "#374151" }}>{guide.author}</span>
                     </div>
                   )}
                   {guide.source_url?.startsWith("https://blog.doma.xyz") && (
                     <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #f3f4f6" }}>
                       <a href={guide.source_url} target="_blank" rel="noopener noreferrer"
                         style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none" }}>
-                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.78rem", color: "#9ca3af" }}>Original source</span>
-                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.78rem", fontWeight: 700, color: cfg.accentHex }}>Doma Blog ↗</span>
+                        <span style={{ fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "0.78rem", color: "#9ca3af" }}>Original source</span>
+                        <span style={{ fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "0.78rem", fontWeight: 700, color: cfg.accentHex }}>Doma Blog ↗</span>
                       </a>
                     </div>
                   )}
@@ -549,7 +549,7 @@ export default async function GuidePage({ params }: Props) {
 
               {relatedGuides.length > 0 && (
                 <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16 }}>
-                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.6rem", letterSpacing: 2, color: "#9ca3af", textTransform: "uppercase", marginBottom: 14 }}>
+                  <div style={{ fontFamily: "'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace", fontSize: "0.6rem", letterSpacing: 2, color: "#9ca3af", textTransform: "uppercase", marginBottom: 14 }}>
                     More {cfg.label}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -560,13 +560,13 @@ export default async function GuidePage({ params }: Props) {
                           borderBottom: i < relatedGuides.length - 1 ? "1px solid #f3f4f6" : "none",
                           textDecoration: "none",
                         }}>
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.82rem", fontWeight: 700, color: "#1a1a1a", lineHeight: 1.3, marginBottom: 4 }}>
+                        <p style={{ fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "0.82rem", fontWeight: 700, color: "#1a1a1a", lineHeight: 1.3, marginBottom: 4 }}>
                           {g.title}
                         </p>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <DifficultyBadge difficulty={g.difficulty} compact />
                           {g.read_time_minutes && (
-                            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.62rem", color: "#9ca3af" }}>
+                            <span style={{ fontFamily: "'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace", fontSize: "0.62rem", color: "#9ca3af" }}>
                               {g.read_time_minutes}m
                             </span>
                           )}
@@ -574,7 +574,7 @@ export default async function GuidePage({ params }: Props) {
                       </Link>
                     ))}
                   </div>
-                  <Link href="/" style={{ display: "block", marginTop: 14, textAlign: "center", fontFamily: "'DM Sans', sans-serif", fontSize: "0.8rem", fontWeight: 700, color: cfg.accentHex, textDecoration: "none" }}>
+                  <Link href="/" style={{ display: "block", marginTop: 14, textAlign: "center", fontFamily: "'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif", fontSize: "0.8rem", fontWeight: 700, color: cfg.accentHex, textDecoration: "none" }}>
                     View all guides →
                   </Link>
                 </div>
@@ -593,7 +593,7 @@ function sectionToHtml(md: string, accent: string = "#6b7280"): string {
 
   // 1. Fenced code blocks — protect before any other processing
   s = s.replace(/```[\w]*\n([\s\S]*?)```/g, (_, code) =>
-    `<pre style="background:#1a1a2e;border-radius:10px;padding:18px 22px;overflow-x:auto;margin:20px 0;border:1px solid rgba(255,255,255,0.1)"><code style="font-family:'Space Mono',monospace;font-size:0.8em;color:#e2e8f0;line-height:1.7;white-space:pre">${
+    `<pre style="background:#1a1a2e;border-radius:10px;padding:18px 22px;overflow-x:auto;margin:20px 0;border:1px solid rgba(255,255,255,0.1)"><code style="font-family:'Space Mono','Noto Sans KR', 'Noto Sans SC',monospace;font-size:0.8em;color:#e2e8f0;line-height:1.7;white-space:pre">${
       code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     }</code></pre>`
   );
@@ -601,7 +601,7 @@ function sectionToHtml(md: string, accent: string = "#6b7280"): string {
   // 2. Images — must come before link regex so ![ is not consumed by link pattern
   s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_, alt, src) =>
     `<figure style="margin:24px 0 20px"><img src="${src}" alt="${alt}" style="width:100%;border-radius:14px;display:block;border:1px solid #e5e7eb" loading="lazy" />${
-      alt ? `<figcaption style="text-align:center;font-size:0.72rem;color:#9ca3af;margin-top:8px;font-family:'Space Mono',monospace">${alt}</figcaption>` : ""
+      alt ? `<figcaption style="text-align:center;font-size:0.72rem;color:#9ca3af;margin-top:8px;font-family:'Space Mono','Noto Sans KR', 'Noto Sans SC',monospace">${alt}</figcaption>` : ""
     }</figure>`
   );
 
@@ -613,14 +613,14 @@ function sectionToHtml(md: string, accent: string = "#6b7280"): string {
 
   // 4. H3 sub-headings
   s = s.replace(/^### (.+)$/gm, (_, t) =>
-    `<h3 id="${slugId(t)}" style="font-family:'Bungee',cursive;font-weight:400;font-size:1.05rem;color:#374151;margin:24px 0 10px;scroll-margin-top:100px;padding-left:14px;border-left:3px solid ${accent}40">${t}</h3>`
+    `<h3 id="${slugId(t)}" style="font-family:'Bungee','Noto Sans KR', 'Noto Sans SC',cursive;font-weight:400;font-size:1.05rem;color:#374151;margin:24px 0 10px;scroll-margin-top:100px;padding-left:14px;border-left:3px solid ${accent}40">${t}</h3>`
   );
 
   // 5. Bold → italic → inline code (bold first so ** isn't accidentally caught by single-* rule)
   s = s
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`([^`\n]+)`/g, `<code style="font-family:'Space Mono',monospace;font-size:0.82em;background:#f0ece4;border-radius:4px;padding:2px 6px;color:#374151">$1</code>`);
+    .replace(/`([^`\n]+)`/g, `<code style="font-family:'Space Mono','Noto Sans KR', 'Noto Sans SC',monospace;font-size:0.82em;background:#f0ece4;border-radius:4px;padding:2px 6px;color:#374151">$1</code>`);
 
   // 6. Blockquotes → styled pull-quotes
   s = s.replace(/^> (.+)$/gm, (_, text) =>

@@ -1,4 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Bungee&family=Chakra+Petch:wght@400;600;700&family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&display=swap");
+/* CJK support for translated guides (Korean / Chinese). Google serves these with
+   unicode-range subsetting, so the font files only download on pages that
+   actually contain CJK glyphs. Latin text keeps using Bungee / DM Sans etc,
+   because browsers pick the first family in the stack that has the glyph. */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;500;700;900&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -29,20 +34,20 @@ html {
 body {
   background-color: var(--color-bg);
   color: var(--color-text);
-  font-family: "DM Sans", sans-serif;
+  font-family: "DM Sans", 'Noto Sans KR', 'Noto Sans SC', sans-serif;
   min-height: 100vh;
   line-height: 1.6;
   overflow-x: hidden;
 }
 
 h1,h2,h3,h4,h5,h6 {
-  font-family: "Syne", sans-serif;
+  font-family: "Syne", 'Noto Sans KR', 'Noto Sans SC', sans-serif;
   font-weight: 700;
   letter-spacing: -0.025em;
   line-height: 1.18;
 }
 
-code, pre, .mono { font-family: "JetBrains Mono", monospace; }
+code, pre, .mono { font-family: "JetBrains Mono", 'Noto Sans KR', 'Noto Sans SC', monospace; }
 
 /* ═══════════════════════════════════════════════════
    ANIMATED BACKGROUND
@@ -418,7 +423,7 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
   gap: 4px;
   background: linear-gradient(135deg, #ff6b35, #ec4899);
   color: #fff;
-  font-family: 'Space Mono', monospace;
+  font-family: 'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace;
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 1px;
@@ -505,7 +510,7 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
   align-items: center;
   gap: 8px;
   margin-bottom: 28px;
-  font-family: 'Space Mono', monospace;
+  font-family: 'Space Mono', 'Noto Sans KR', 'Noto Sans SC', monospace;
   font-size: 0.75rem;
 }
 
@@ -531,7 +536,7 @@ code, pre, .mono { font-family: "JetBrains Mono", monospace; }
 
 /* Article body typography */
 .article-body {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'DM Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif;
   font-size: 1rem;
   line-height: 1.85;
   color: #374151;
