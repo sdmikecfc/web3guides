@@ -24,6 +24,7 @@ import { Button, ChipTab, CoinChip, Dot, Panel, Sheet, uiCss } from "../_ui/prim
 import { FONT_BODY, FONT_DISPLAY, FONT_MONO, FONT_TOY, K, M, PAINTS, R, TAP, TIER_COLOR } from "../_ui/tokens";
 import { buildGarage, paintRigSockets, type BayTag, type GarageHandle, type TagDot } from "../_view/garage";
 import { ART_OF_SOCKET, type PartArt } from "../_view/rig";
+import type { Socket } from "@/lib/bots/fixtures";
 import { maskFile, partFile } from "../_view/rig-points";
 import { buildStreet, type StreetHandle } from "../_view/street";
 import {
@@ -183,6 +184,8 @@ export default function GarageClient() {
   const [sheet, setSheet] = useState<SheetState>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  /** every bay's art is on its rig (the shot harness waits on this) */
+  const [artDone, setArtDone] = useState(false);
   const [small, setSmall] = useState(false);
   const [focus, setFocus] = useState(1);
   const [centre, setCentre] = useState<number>(ME.garageNo);
@@ -326,34 +329,54 @@ export default function GarageClient() {
     return art;
   }, []);
 
-  // push every bay's build into its rig whenever the garage changes
+  // push every bay's build into its rig whenever the garage changes. Every
+  // part of every bay loads IN PARALLEL: the first 1440 shot caught the
+  // sequential version still on bay 2 after two seconds (28 textures, one
+  // await each, through the dev server), which read as "two bots, not four"
   useEffect(() => {
     const g = garageRef.current;
     if (!g || !ready) return;
     let cancelled = false;
+    setArtDone(false);
+    type Loaded = { socket: Socket; part: OwnedPart | null; art: PartArt | null };
     (async () => {
-      for (const b of bays) {
-        const build = st.builds[b];
+      const loaded = await Promise.all(
+        bays.map(async (b) => {
+          const build = st.builds[b];
+          if (!build) return null;
+          const arts: Loaded[] = await Promise.all(
+            SOCKETS.map(async (socket) => {
+              const part = partByUid(st, build.cards[CARD_OF_SOCKET[socket]]);
+              // a missing file must never empty the bay: the socket stays bare
+              const art = part ? await loadArt(g, part).catch(() => null) : null;
+              return { socket, part, art };
+            }),
+          );
+          return { b, build, arts };
+        }),
+      );
+      if (cancelled) return;
+      bays.forEach((b, i) => {
+        const r = loaded[i];
         const rig = g.rigs[b - 1];
-        if (!build) {
+        if (!r) {
           g.setBotVisible(b, false);
-          continue;
+          return;
         }
-        const paints: Partial<Record<(typeof SOCKETS)[number], number>> = {};
-        for (const socket of SOCKETS) {
-          const part = partByUid(st, build.cards[CARD_OF_SOCKET[socket]]);
-          const art = part ? await loadArt(g, part) : null;
-          if (cancelled) return;
+        const paints: Partial<Record<Socket, number>> = {};
+        for (const { socket, part, art } of r.arts) {
           rig.setArt(socket, art);
-          if (part) paints[socket] = hexNum(PAINTS[part.paint]);
+          // an unpainted part (a weapon) keeps its clay: a white multiply is no tint
+          if (part) paints[socket] = part.paint ? hexNum(PAINTS[part.paint]) : 0xffffff;
         }
         // the decal reads the torso's colour; then every socket takes its own
-        const torso = partByUid(st, build.cards.torso);
+        const torso = partByUid(st, r.build.cards.torso);
         rig.setPaint(hexNum(PAINTS[torso?.paint ?? "mint"]));
         paintRigSockets(rig, paints);
-        rig.setDecal(build.decal);
+        rig.setDecal(r.build.decal);
         g.setBotVisible(b, true);
-      }
+      });
+      setArtDone(true);
     })();
     return () => {
       cancelled = true;
@@ -446,6 +469,7 @@ export default function GarageClient() {
     const w = window as unknown as Record<string, unknown>;
     w.__bots = {
       ready: true,
+      artReady: artDone,
       openPaper: () => setSheet({ kind: "paper" }),
       openBay: (b: number) => setSheet({ kind: "bay", bay: b }),
       openRecycle: (b: number) => setSheet({ kind: "recycle", bay: b }),
@@ -454,11 +478,13 @@ export default function GarageClient() {
       focus: (b: number) => setFocus(b),
       reset: () => resetGarage(Date.now()),
       state: () => ({ coins: st.coins, bays: statuses, spares: spares.length }),
+      /** which rigs are on their stands (the beauty gate's three painted bots) */
+      bots: () => garageRef.current?.rigs.map((r) => r.root.visible) ?? [],
     };
     return () => {
       delete w.__bots;
     };
-  }, [ready, st.coins, statuses, spares.length]);
+  }, [ready, artDone, st.coins, statuses, spares.length]);
 
   // ── pieces ──────────────────────────────────────────────────────────────
   const paperLine = (line: (typeof PAPER.lines)[number], i: number) => (
@@ -524,7 +550,8 @@ export default function GarageClient() {
           <span style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: FONT_DISPLAY, fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {build ? nameText(build.name) : fill(t.ui.bayLabel, { n: b })}
             {build ? <Dot color={tier ? TIER_COLOR[tier] : M.muted} /> : null}
-            {build ? <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: M.muted, letterSpacing: "0.08em" }}>{tier ? fill(t.ui.tierBadge, { t: tier }) : t.ui.notReadyBadge}</span> : null}
+            {/* the tier word fits the 500px panel; a phone row keeps the dot only */}
+            {build && !tall ? <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: M.muted, letterSpacing: "0.08em" }}>{tier ? fill(t.ui.tierBadge, { t: tier }) : t.ui.notReadyBadge}</span> : null}
           </span>
         </span>
         <StatusChip chip={chip} />
@@ -837,8 +864,8 @@ function SpareLore({ part, onPutOn, onRecycle }: { part: OwnedPart; onPutOn: () 
             {t.ui.card[part.slot]} . {fill(t.ui.tierWord, { t: part.tier })} . {fill(t.ui.pts, { n: partTotal(part) })}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: FONT_MONO, fontSize: 11, color: M.muted, marginTop: 4 }}>
-            <span aria-hidden style={{ width: 9, height: 9, borderRadius: R.pill, background: PAINTS[part.paint], display: "inline-block" }} />
-            {fill(t.set.line, { family: part.family, color: t.paintName[part.paint] })}
+            {part.paint ? <span aria-hidden style={{ width: 9, height: 9, borderRadius: R.pill, background: PAINTS[part.paint], display: "inline-block" }} /> : null}
+            {part.familyName ? fill(t.set.line, { family: part.familyName, color: part.paint ? t.paintName[part.paint] : t.set.noPaint }) : t.set.weaponLine}
           </div>
         </div>
       </div>

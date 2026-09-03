@@ -25,9 +25,24 @@ const { PNG } = require("pngjs");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
-const RAW = path.join(ROOT, "public", "bots-art", "_raw", "props");
-const OUT = path.join(ROOT, "public", "bots-art", "props");
+// --dir parts keys the parts wave instead: _raw/parts/<slot>-t<tier>-<design>.png
+// -> public/bots-art/parts/<slot>/t<tier>-<design>.png (the bake's file names,
+// so the rig and the art check keep working unchanged).
+const argv = process.argv.slice(2);
+const DIR = argv.includes("--dir") ? argv[argv.indexOf("--dir") + 1] : "props";
+const RAW = path.join(ROOT, "public", "bots-art", "_raw", DIR);
+const OUT = path.join(ROOT, "public", "bots-art", DIR);
 fs.mkdirSync(OUT, { recursive: true });
+// Parts are NOT written to public/bots-art/parts here: a keyed part is a tight
+// crop at generation resolution, while the rig expects the placeholder's
+// contract canvas and pivots. scripts/bots-import-parts.py registers the
+// keyed crop into that canvas. So parts mode writes to _raw/parts/keyed/.
+const KEYED = path.join(RAW, "keyed");
+function outPathFor(name) {
+  if (DIR !== "parts") return path.join(OUT, `${name}.png`);
+  fs.mkdirSync(KEYED, { recursive: true });
+  return path.join(KEYED, `${name}.png`);
+}
 
 // Squared-distance thresholds to pure magenta (255,0,255). Same as key-magenta.js.
 const T_IN = 62 * 62;    // <= this: background (alpha 0)
@@ -66,13 +81,19 @@ function keyOne(name) {
   const w = maxX - minX + 1, h = maxY - minY + 1;
   const out = new PNG({ width: w, height: h });
   PNG.bitblt(png, out, minX, minY, w, h, 0, 0);
-  fs.writeFileSync(path.join(OUT, `${name}.png`), PNG.sync.write(out));
+  fs.writeFileSync(outPathFor(name), PNG.sync.write(out));
   console.log(`  ok ${name}: ${w}x${h}, cleared ${(100 * cleared / (d.length / 4)).toFixed(0)}% bg, ${feathered} feather px`);
   return true;
 }
 
-const arg = process.argv[2];
-const names = arg ? [arg] : fs.readdirSync(RAW).filter((f) => f.endsWith(".png")).map((f) => f.slice(0, -4));
+// positional name (basename, no .png) after the optional --dir pair
+const positional = argv.filter((a, i) => a !== "--dir" && argv[i - 1] !== "--dir");
+const arg = positional[0];
+const names = arg
+  ? [arg]
+  : fs.readdirSync(RAW)
+      .filter((f) => f.endsWith(".png") && !f.startsWith("_") && !f.includes(".keyed") && !f.includes("-masked"))
+      .map((f) => f.slice(0, -4));
 let ok = 0;
 for (const n of names) if (keyOne(n)) ok++;
 console.log(`keyed ${ok} of ${names.length}`);

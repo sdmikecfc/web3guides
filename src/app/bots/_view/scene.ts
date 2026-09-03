@@ -71,7 +71,7 @@ export const BOT_X: readonly [number, number] = [560, 1040];
 export const FLOOR_Y = 600;
 /** the pit floor's front edge (the plate's cream floor measured: back edge
  * y 386, front edge y 614 at the centre, the rim spanning x 160 to 1440) */
-const PIT_FLOOR = { cx: SIM_W / 2, cy: 500, rx: 640, ry: 114 } as const;
+const PIT_FLOOR = { cx: SIM_W / 2, cy: 500, rx: 560, ry: 114 } as const;
 /** a bot stands about 320 sim px tall in the pit */
 const RIG_SCALE = 320 / RIG_HEIGHT;
 const HOP_PX = 120;
@@ -94,6 +94,10 @@ const BAR_AT: Record<Socket, readonly [number, number]> = {
 };
 const BAR_W = 36;
 const BAR_H = 5;
+/** shoulder to hand in rig units, and the weapon's rest angle in the hand
+ * (both as rig.ts has them; the rig does not export its privates) */
+const HAND = { x: RIG.arm.hand[0] - RIG.arm.shoulder[0], y: RIG.arm.hand[1] - RIG.arm.shoulder[1] };
+const WEAPON_REST = -0.62;
 
 /** the bulbs on the WebP plate's front rim, measured off the render (sim
  * px); the fallback pit draws its own string on the same arc */
@@ -532,7 +536,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
       const socket = SOCKET_OF_PIECE[p.piece];
       const dir = p.side === 0 ? -1 : 1; // away from the hit: away from the other bot
       const at = restPoint(p.side, socket);
-      const d = spawnDebris(fx, p.side, p.piece, p.key, at.x, at.y, dir, FLOOR_Y + 26, PIT_FLOOR);
+      const d = spawnDebris(fx, p.side, p.piece, p.key, at.x, at.y, dir, FLOOR_Y + 14, PIT_FLOOR);
       if (!d) continue;
       // hide the rig node and build a matching debris piece from the same art
       const node = nodes[p.side].get(socket);
@@ -672,11 +676,12 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
       const p = stepped(s.lean, LEAN_S);
       pose.rot -= 8 * DEG * Math.sin(Math.PI * p);
     }
-    // the block: the arm swings across
+    // the block: the arm swings across (the far arm's node is mirrored in
+    // rig.ts, so its sign flips to bring the hand forward)
     if (s.block >= 0) {
       const p = stepped(s.block, BLOCK_S);
       const up = -1.4 * Math.sin(Math.PI * Math.min(1, p * 1.2));
-      if (s.blockArm === PIECE.ARM_L) pose.armL += up;
+      if (s.blockArm === PIECE.ARM_L) pose.armL -= up;
       else pose.armR += up;
     }
     // the stagger: a wobble for 30 frames, stepped by the frame count
@@ -693,11 +698,15 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     } else if (legsGone === 2 && !down) {
       pose.sink += 150;
     }
-    // the knockout: the loser sits, the torso rotates 20 degrees and drops
+    // the knockout: the loser sits and drops; the 20 degree lean goes on the
+    // root (pivot at the feet) plus a small slump on the torso node, because
+    // the head and arms are the torso's siblings, not its children, and a
+    // torso-only rotation would pull the neck out from under the head
     if (down) {
       const p = ease(stepped(s.sit, SIT_S));
       pose.sink += (legsGone === 2 ? 150 : 140) * p;
-      pose.torsoRot = -20 * DEG * p;
+      pose.rot -= 14 * DEG * p;
+      pose.torsoRot = -6 * DEG * p;
       pose.head = 0.25 * p;
       pose.legL = 0.75 * p;
       pose.legR = -0.75 * p;
@@ -761,8 +770,21 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
       add("legR", p.legR);
       add("head", p.head);
       add("torso", p.torsoRot);
-      // the weapon rides the near hand: give it the same swing
-      add("weapon", p.armR);
+      // the weapon rides the near hand: recompute the hand from the arm's
+      // total rotation the way rig.ts does (HAND is shoulder to hand, the
+      // rest angle is rig.ts's WEAPON_REST), so a swing carries the weapon
+      {
+        const arm = nm.get("armR");
+        const wn = nm.get("weapon");
+        if (arm && wn) {
+          const ar = arm.rotation;
+          wn.position.set(
+            arm.position.x + HAND.x * Math.cos(ar) - HAND.y * Math.sin(ar),
+            arm.position.y + HAND.x * Math.sin(ar) + HAND.y * Math.cos(ar),
+          );
+          wn.rotation = ar + WEAPON_REST;
+        }
+      }
       // gone pieces stay hidden (a seek makes them visible again in reset)
       for (let piece = 0; piece < PIECE_COUNT; piece++) {
         if (s.gone[piece] && fx.hitStop <= 0 && piece !== PIECE.BODY) {
@@ -878,6 +900,12 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
       fx.hitStop = 0;
       detach(fx);
       settleFightFx(fx);
+      // a replayed hit leaves a two-frame flash armed; a still frame must
+      // not show it (found on the reduced-motion capture: the winner was white)
+      for (const rig of rigs) {
+        rig.update(fx.time * 1000);
+        rig.update(fx.time * 1000);
+      }
     },
     glint(side) {
       rigs[side].flash("weapon");

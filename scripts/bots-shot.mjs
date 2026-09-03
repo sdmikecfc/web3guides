@@ -52,7 +52,10 @@ const EVAL = EVAL_FILE ? readFileSync(EVAL_FILE, "utf8") : arg("--eval", null);
 // a touch-capable UA and touch event support, which is what decides whether
 // hover styles apply and how the canvas is sized on a phone.
 const MOBILE = process.argv.includes("--mobile");
-const PORT = 9222 + Math.floor(process.uptime() * 7) % 300;
+// per-process port and profile (week 2): process.uptime() is ~0 this early,
+// so every run landed on 9222 and a Chrome left behind by a killed run held
+// its profile dir open (EBUSY on "Account Web Data"); the pid spreads them
+const PORT = Number(arg("--port", "0")) || 9222 + (process.pid % 300);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -60,7 +63,15 @@ async function cdp() {
   const exe = CHROMES.find(existsSync);
   if (!exe) throw new Error("no Chrome or Edge found");
   const profile = join(tmpdir(), `bots-shot-${PORT}`);
-  rmSync(profile, { recursive: true, force: true });
+  // --keep with a fixed --port reuses the profile, so localStorage survives
+  // between two runs (the save-then-load check on the Build screen)
+  if (!process.argv.includes("--keep")) {
+    try {
+      rmSync(profile, { recursive: true, force: true });
+    } catch {
+      /* a locked stale profile is not fatal: Chrome reuses it */
+    }
+  }
 
   const child = spawn(exe, [
     "--headless", "--disable-gpu", "--no-sandbox", "--hide-scrollbars",
@@ -95,6 +106,18 @@ async function cdp() {
       const { res, rej } = pending.get(msg.id);
       pending.delete(msg.id);
       msg.error ? rej(new Error(JSON.stringify(msg.error))) : res(msg.result);
+      return;
+    }
+    // week 2: a canvas that never boots leaves a blank frame and a "1 error"
+    // pill; print the page's exceptions and console errors so the reason is
+    // in the log, not behind a headless overlay
+    if (msg.method === "Runtime.exceptionThrown") {
+      const d = msg.params?.exceptionDetails;
+      const text = d?.exception?.description || d?.text || "";
+      console.warn("page exception:", text.split("\n").slice(0, 4).join(" | "));
+    } else if (msg.method === "Runtime.consoleAPICalled" && msg.params?.type === "error") {
+      const parts = (msg.params.args || []).map((a) => a.value ?? a.description ?? "").join(" ");
+      console.warn("page console.error:", String(parts).split("\n").slice(0, 3).join(" | "));
     }
   });
   const send = (method, params = {}) =>

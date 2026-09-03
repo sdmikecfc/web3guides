@@ -71,8 +71,9 @@ export interface FightClientProps {
 const t = STRINGS.en;
 const FIXED_DT = 1 / 60; // the engine's beat (resolve.ts BEAT.FPS)
 const MAX_SUBSTEPS = 8; // spiral-of-death guard, the RunShell value
-/** a commentary line holds for at least this many frames */
-const DWELL_F = 48;
+/** a commentary line holds for at least this many frames (two thirds of a
+ * second: a break line and its effect line both get read) */
+const DWELL_F = 40;
 /** the KO slow motion measured in presentation seconds (1.5 s of wall time) */
 const KO_SLOW_FX = SLOWMO_S * SLOWMO_RATE;
 /** the result card and the Share offer come right after the slow motion */
@@ -189,9 +190,13 @@ export default function FightClient(p: FightClientProps) {
         uiFrameRef.current = fr;
         setFrame(fr);
       }
+      // the commentary clock keeps running after the last engine frame (the
+      // queued break and knockout lines land while the loser sits), so it
+      // reads presentation time, which equals the sim frame until the end
+      const lineClock = Math.max(fr, Math.floor(fx.time * 60));
       let idx = -1;
       for (let i = 0; i < full.disp.length; i++) {
-        if (full.disp[i] <= fr) idx = i;
+        if (full.disp[i] <= lineClock) idx = i;
         else break;
       }
       if (idx !== lineRef.current) {
@@ -224,14 +229,17 @@ export default function FightClient(p: FightClientProps) {
       while (f.st.frame < want && !f.st.done) stepFight(f);
       if (scene) for (const e of f.st.log) scene.onEvent(e, f.st, fx);
       fightRef.current = f;
-      fx.time = f.st.frame / 60;
+      // a seek that lands on the end is a settled still: past the last
+      // queued commentary line, so the closing lines have all been said
+      const lastLine = full.disp.length ? full.disp[full.disp.length - 1] : 0;
+      fx.time = f.st.done ? Math.max(f.st.frame + 180, lastLine + 6) / 60 : f.st.frame / 60;
       scene?.settle(fx);
       accRef.current = 0;
       logLenRef.current = -1;
       syncUi(true);
       if (scene && reducedRef.current) scene.render(f.st, fx);
     },
-    [p.seed, p.a, p.b, p.mode, oa, ob, full.result.frames, syncUi],
+    [p.seed, p.a, p.b, p.mode, oa, ob, full.result.frames, full.disp, syncUi],
   );
 
   /** One engine frame, live: new events go to the scene and the speaker. */

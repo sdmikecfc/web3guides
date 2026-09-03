@@ -62,11 +62,17 @@ export interface SetItem {
   flip?: boolean;
 }
 
+/**
+ * Placed 2026-09-03 off the first 1440 shot: the bench and the crew sit a
+ * step BEHIND the stands (a smaller ground y is further up the floor, so
+ * the bots draw in front and the figures fill the gaps between them); the
+ * corkboard rides high enough that bay 1's head only clips its bottom edge.
+ */
 export const GARAGE_SET: readonly SetItem[] = [
-  { key: "corkboard", x: 360, y: 330, s: 0.55, anchor: "wall" },
-  { key: "tool-board", x: 2440, y: 330, s: 0.58, anchor: "wall" },
+  { key: "corkboard", x: 340, y: 290, s: 0.52, anchor: "wall" },
+  { key: "tool-board", x: 2440, y: 320, s: 0.58, anchor: "wall" },
   { key: "ceiling-fan", x: 1400, y: 130, s: 0.3, anchor: "wall" },
-  { key: "workbench", x: 1150, y: 840, s: 0.34, anchor: "floor" },
+  { key: "workbench", x: 1150, y: 790, s: 0.3, anchor: "floor" },
   { key: "toolbox", x: 2660, y: 935, s: 0.22, anchor: "floor" },
 ];
 
@@ -79,13 +85,15 @@ export const BOT_HEIGHT = 480;
 
 /** One clay figure per live strategy (doc 3.1, "Crew figures"). */
 export const CREW_SPOT: Readonly<Record<StrategyKind, SetItem>> = {
-  blsh: { key: "crew-hammer", x: 1060, y: 880, s: 0.42, anchor: "floor" },
-  position: { key: "crew-flywheel", x: 1250, y: 880, s: 0.42, anchor: "floor", flip: true },
-  limit: { key: "crew-tripwire", x: 2150, y: 975, s: 0.36, anchor: "floor" },
+  // the hammer works the bench between bays 2 and 3; the flywheel leans
+  // between bays 3 and 4; the trip wire crosses the gap between bays 4 and 5
+  blsh: { key: "crew-hammer", x: 1150, y: 830, s: 0.36, anchor: "floor" },
+  position: { key: "crew-flywheel", x: 1650, y: 830, s: 0.36, anchor: "floor", flip: true },
+  limit: { key: "crew-tripwire", x: 2150, y: 900, s: 0.28, anchor: "floor" },
 };
 
 /** The trip wire the limit-order figure watches: two pegs on the floor. */
-export const TRIP_WIRE = { x0: 1990, x1: 2320, y: 985 } as const;
+export const TRIP_WIRE = { x0: 2040, x1: 2270, y: 905 } as const;
 
 /**
  * SPROCKET ROW (doc 3.1): the street plate, seven doors with BLANK brass

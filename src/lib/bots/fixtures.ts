@@ -9,25 +9,28 @@
  * fight all read the same numbers. The seed only ever SELECTS from that
  * list (the shop rotation below); nothing here rolls a part.
  *
- * ADAPTER, ONE LINE TO SWITCH: the engine lane is adding `family` and
- * `color` to PartCard and cutting STARTER_PARTS to five cards. Until those
- * land, `withSet()` fills them from SET_TABLE below and `setProgress()`
- * holds the guide's set rule locally. TODO(engine): when `family`/`color`
- * are on every catalog card and `setBonus`/`describeSet` are exported from
- * src/app/bots/_engine/derive.ts, delete SET_TABLE and point setProgress at
- * them; nothing else in this file changes.
+ * SETS come from the engine too: `family` is the engine's Family id and
+ * `color` its factory paint; setProgress() counts with the engine's own
+ * partFamily / partColor and takes the bonus from setBonus(), so the panel
+ * can never disagree with the fight. The only thing added per card is the
+ * art design number (which baked still draws it) and the family's display
+ * name (FAMILY_INDEX, so "Kettle set: 3 of 4" reads off the shelf).
  *
  * Renderer-free by law (the tokens.ts rule): no Pixi, no React, no clock.
  * Days and times arrive as inputs (shopListings takes the date; the fixture
  * repair countdown is an OFFSET that garage-state resolves at hydrate).
  */
 
-import { PARTS, STARTER_PARTS } from "@/app/bots/_engine/catalog";
+import { CARD_INDEX, FAMILY_INDEX, PARTS, STARTER_PARTS } from "@/app/bots/_engine/catalog";
 import {
   PRICE_BY_TIER,
-  SLOTS,
   botTier as engineBotTier,
+  partColor,
+  partFamily,
   partTier as enginePartTier,
+  setBonus,
+  type Build as EngineBuild,
+  type Part as EnginePart,
   type PartCard as EnginePartCard,
   type Slot,
   type Stats as EngineStats,
@@ -119,15 +122,14 @@ export type Stats = EngineStats;
 /* ── the catalog, adapted ────────────────────────────────────────────────── */
 
 /**
- * The engine PartCard plus the set fields and the art design number. `s` is
- * the engine's field; nothing here is called `stats`.
+ * The engine PartCard plus what the screens need: the family's display name
+ * (the engine keeps the id) and the baked art design number. `s` is the
+ * engine's field; nothing here is called `stats`. `family` and `color` stay
+ * the engine's (absent on a weapon; starter scrap has a colour, no family).
  */
 export interface PartCard extends EnginePartCard {
-  /** style family (Kettle, Piston, Lantern...); body parts of one family
-   * across all four slots are a style set */
-  family: string;
-  /** the colour it ships in, one of the eight paints */
-  color: PaintId;
+  /** "Kettle" for a launch body part, "Scrap" for starter scrap, null for a weapon */
+  familyName: string | null;
   /** which of the two baked designs per slot per tier draws it */
   design: 1 | 2;
 }
@@ -138,47 +140,20 @@ export interface OwnedPart extends PartCard {
   uid: string;
   /** written once at purchase, drop or recycle, never changes */
   provenance: string;
-  /** the CURRENT colour: the catalog colour until a paid paint job changes it */
-  paint: PaintId;
+  /** the CURRENT colour: the factory colour until a paid paint job changes
+   * it; absent on a weapon, which never carries paint (the engine's own
+   * Part.paint shape, so an owned part IS a fight part) */
+  paint?: PaintId;
 }
 
 export const PRICE_OF_TIER = PRICE_BY_TIER;
 
-type SetRow = readonly [family: string, color: PaintId];
-
-/**
- * TODO(engine): delete when catalog.ts carries family and color. Two
- * families per tier (design 1 and design 2) spanning all four body slots, so
- * a full Kettle body is collectable. Colours vary INSIDE a family on purpose:
- * a style set is not a colour set for free, paint earns the second bonus.
- * Weapons ride their tier's family line for the shop card but never count.
- */
-const SET_TABLE: Readonly<Record<string, SetRow>> = {
-  "legs.tinPegs": ["Tin", "cream"], "arms.tinMitts": ["Tin", "cream"], "torso.tinCan": ["Tin", "sky"], "head.tinCap": ["Tin", "cream"],
-  "legs.copperStilts": ["Copper", "coral"], "arms.copperHooks": ["Copper", "butter"], "torso.copperBox": ["Copper", "coral"], "head.bucketHelm": ["Copper", "moss"],
-  "legs.springShins": ["Kettle", "mint"], "arms.boltMitts": ["Kettle", "butter"], "torso.kettleChest": ["Kettle", "mint"], "head.lanternDome": ["Kettle", "butter"],
-  "legs.ironStruts": ["Iron", "ink"], "arms.ironClamps": ["Iron", "sky"], "torso.barrelDrum": ["Iron", "ink"], "head.owlEye": ["Iron", "lilac"],
-  "legs.pistonBoots": ["Piston", "coral"], "arms.pistonFists": ["Piston", "coral"], "torso.boilerFrame": ["Piston", "sky"], "head.beaconScope": ["Piston", "butter"],
-  "legs.brassTreads": ["Brass", "moss"], "arms.steelGrips": ["Brass", "cream"], "torso.brassShell": ["Brass", "moss"], "head.prismLens": ["Brass", "lilac"],
-  "legs.rocketHooves": ["Rocket", "sky"], "arms.clawLevers": ["Rocket", "ink"], "torso.vaultHull": ["Rocket", "sky"], "head.hawkVisor": ["Rocket", "cream"],
-  "legs.steelSprings": ["Furnace", "lilac"], "arms.brassPistons": ["Furnace", "coral"], "torso.furnaceCore": ["Furnace", "coral"], "head.brassMask": ["Furnace", "ink"],
-  "weapon.rustySpanner": ["Tin", "cream"], "weapon.tinMallet": ["Copper", "coral"], "weapon.ironWrench": ["Kettle", "mint"], "weapon.sparkDrill": ["Iron", "ink"],
-  "weapon.steelSaw": ["Piston", "coral"], "weapon.brassPike": ["Brass", "moss"], "weapon.pistonHammer": ["Rocket", "sky"], "weapon.anvilCleaver": ["Furnace", "lilac"],
-  "starter.scrapPegs": ["Scrap", "cream"], "starter.scrapStilts": ["Scrap", "cream"], "starter.scrapMitts": ["Scrap", "cream"],
-  "starter.scrapHooks": ["Scrap", "cream"], "starter.scrapCan": ["Scrap", "sky"], "starter.scrapCap": ["Scrap", "cream"], "starter.scrapSpanner": ["Scrap", "cream"],
-};
-
-type MaybeSet = EnginePartCard & { family?: string; color?: string };
-
-/** the engine's own fields win; the table fills the gap; a card in neither
- * is catalog drift and must throw rather than ship as "Scrap . cream" */
-function withSet(card: EnginePartCard, design: 1 | 2): PartCard {
-  const m = card as MaybeSet;
-  const row = SET_TABLE[card.id];
-  const family = m.family ?? row?.[0];
-  const color = (m.color as PaintId | undefined) ?? row?.[1];
-  if (!family || !color) throw new Error(`bots fixtures: no family or color for ${card.id}`);
-  return { ...card, family, color, design };
+/** the family's display name, or the starter kit's "Scrap" (the catalog's
+ * rule: a body part's first word IS its family) */
+function familyNameOf(card: EnginePartCard): string | null {
+  if (card.slot === "weapon") return null;
+  if (card.family) return FAMILY_INDEX[card.family]?.name ?? card.name.split(" ")[0];
+  return card.name.split(" ")[0];
 }
 
 /** the design number is the card's position inside its slot and tier group,
@@ -189,24 +164,16 @@ function adaptCatalog(cards: readonly EnginePartCard[]): PartCard[] {
     const key = `${c.slot}:${c.tier}`;
     const n = (seen.get(key) ?? 0) + 1;
     seen.set(key, n);
-    return withSet(c, n === 1 ? 1 : 2);
+    return { ...c, familyName: familyNameOf(c), design: n === 1 ? 1 : 2 };
   });
 }
 
 /** The forty launch parts, adapted. Order: catalog order. */
 export const CATALOG_PARTS: readonly PartCard[] = adaptCatalog(PARTS);
 
-/**
- * The starter kit: FIVE cards (a legs pair, an arms pair, a torso, a head, a
- * weapon) at 15 coins each, 75 of the 120 starter coins (the guide). The
- * engine still ships seven; the first card per slot is the kit.
- * TODO(engine): becomes `STARTER_PARTS.map(withSet)` when the engine cuts to five.
- */
-export const STARTER_KIT: readonly PartCard[] = SLOTS.map((slot) => {
-  const c = STARTER_PARTS.find((p) => p.slot === slot);
-  if (!c) throw new Error(`bots fixtures: starter set has no ${slot}`);
-  return withSet(c, 1);
-});
+/** The starter kit: the engine's FIVE cards (a legs pair, an arms pair, a
+ * torso, a head, a weapon) at 15 coins each, 75 of the 120 starter coins. */
+export const STARTER_KIT: readonly PartCard[] = STARTER_PARTS.map((c) => ({ ...c, familyName: familyNameOf(c), design: 1 as const }));
 
 export const CARD_BY_ID: Readonly<Record<string, PartCard>> = Object.fromEntries(
   [...CATALOG_PARTS, ...STARTER_KIT].map((p) => [p.id, p]),
@@ -247,26 +214,27 @@ export const LEVEL_FOR_TIER: Readonly<Record<Tier, number>> = { 1: 1, 2: 1, 3: 5
 function owned(uid: string, id: string, provenance: string, paint?: PaintId): OwnedPart {
   const c = CARD_BY_ID[id];
   if (!c) throw new Error(`bots fixtures: no catalog card ${id}`);
-  return { ...c, uid, provenance, paint: paint ?? c.color };
+  return { ...c, uid, provenance, paint: c.slot === "weapon" ? undefined : paint ?? c.color };
 }
 
 /**
  * Twenty five owned parts: four bots' worth plus six spares on the tool
- * board. Bay 1 is three Kettle parts painted mint plus a mint-painted head
- * (Kettle set 3 of 4, Color set 4 of 4); bay 2 is a full Piston body.
+ * board. Bay 1 is three Kettle parts and a Hornet head, all painted mint
+ * (Kettle set 3 of 4, Color set 4 of 4); bay 2 is a full Piston body in its
+ * factory colours; bay 3 is the starter kit painted butter.
  */
 export const OWNED_PARTS: readonly OwnedPart[] = [
   // bay 1: Sparky Kettle 7
-  owned("p_001", "legs.springShins", "Found in the Monday shop . 1 Sep"),
-  owned("p_002", "arms.boltMitts", "Found in the Sunday shop . 31 Aug", "mint"),
-  owned("p_003", "torso.kettleChest", "Found in the Tuesday shop . 2 Sep"),
-  owned("p_004", "head.prismLens", "Found in the Wednesday shop . 3 Sep", "mint"),
+  owned("p_001", "legs.kettleShins", "Found in the Monday shop . 1 Sep", "mint"),
+  owned("p_002", "arms.kettleGrips", "Found in the Sunday shop . 31 Aug", "mint"),
+  owned("p_003", "torso.kettleChest", "Found in the Tuesday shop . 2 Sep", "mint"),
+  owned("p_004", "head.hornetScope", "Found in the Wednesday shop . 3 Sep", "mint"),
   owned("p_005", "weapon.steelSaw", "Found in the Tuesday shop . 2 Sep"),
   // bay 2: Iron Otter 41 (in the shop)
-  owned("p_006", "legs.pistonBoots", "Found in the Friday shop . 29 Aug"),
-  owned("p_007", "arms.pistonFists", "Found in the Saturday shop . 30 Aug"),
-  owned("p_008", "torso.boilerFrame", "Recycled from Sleepy Kettle . 29 Aug"),
-  owned("p_009", "head.beaconScope", "Found in the Thursday shop . 28 Aug"),
+  owned("p_006", "legs.pistonTreads", "Found in the Friday shop . 29 Aug"),
+  owned("p_007", "arms.pistonLevers", "Found in the Saturday shop . 30 Aug"),
+  owned("p_008", "torso.pistonShell", "Recycled from Sleepy Kettle . 29 Aug"),
+  owned("p_009", "head.pistonVisor", "Found in the Thursday shop . 28 Aug"),
   owned("p_010", "weapon.pistonHammer", "Found in the Wednesday shop . 27 Aug"),
   // bay 3: Tiny Biscuit (the starter kit, painted butter)
   owned("p_011", "starter.scrapPegs", "Starter part", "butter"),
@@ -275,17 +243,17 @@ export const OWNED_PARTS: readonly OwnedPart[] = [
   owned("p_014", "starter.scrapCap", "Starter part", "butter"),
   owned("p_015", "starter.scrapSpanner", "Starter part"),
   // bay 4: Dusty Wagon (no arms yet)
-  owned("p_016", "legs.tinPegs", "Found in the Monday shop . 1 Sep"),
-  owned("p_017", "torso.tinCan", "Found in the Monday shop . 1 Sep"),
-  owned("p_018", "head.tinCap", "Found in the Sunday shop . 31 Aug"),
+  owned("p_016", "legs.sprocketPegs", "Found in the Monday shop . 1 Sep"),
+  owned("p_017", "torso.sprocketCan", "Found in the Monday shop . 1 Sep"),
+  owned("p_018", "head.sprocketCap", "Found in the Sunday shop . 31 Aug"),
   owned("p_019", "weapon.rustySpanner", "Found in the Sunday shop . 31 Aug"),
   // the tool board
-  owned("p_020", "legs.ironStruts", "Found in the Saturday shop . 30 Aug"),
-  owned("p_021", "head.owlEye", "Found in the Friday shop . 29 Aug"),
-  owned("p_022", "arms.copperHooks", "Recycled from Sleepy Kettle . 29 Aug"),
+  owned("p_020", "legs.lanternStruts", "Found in the Saturday shop . 30 Aug"),
+  owned("p_021", "head.lanternLens", "Found in the Friday shop . 29 Aug"),
+  owned("p_022", "arms.peeperHooks", "Recycled from Sleepy Kettle . 29 Aug"),
   owned("p_023", "weapon.tinMallet", "Found in the Thursday shop . 28 Aug"),
-  owned("p_024", "torso.brassShell", "Found in the Tuesday shop . 2 Sep"),
-  owned("p_025", "head.hawkVisor", "Found in the Wednesday shop . 3 Sep"),
+  owned("p_024", "torso.hornetFrame", "Found in the Tuesday shop . 2 Sep"),
+  owned("p_025", "head.bulldozerHelm", "Found in the Wednesday shop . 3 Sep"),
 ];
 
 /* ── builds ──────────────────────────────────────────────────────────────── */
@@ -415,55 +383,72 @@ export function emptySockets(build: Build): Socket[] {
   return SOCKETS.filter((s) => build.cards[CARD_OF_SOCKET[s]] == null);
 }
 
-/** The four body parts on a build, in BODY_SLOTS order, skipping empties. */
-export function bodyParts(build: Build, parts: readonly OwnedPart[]): OwnedPart[] {
-  const out: OwnedPart[] = [];
-  for (const slot of BODY_SLOTS) {
+/**
+ * The engine's Build for a bay: id, stats and the painted colour per part,
+ * exactly what the resolver and setBonus read. An empty slot becomes a
+ * placeholder part the card index cannot see (no family, no colour), so an
+ * incomplete bot still gets an honest count.
+ */
+export function engineBuild(build: Build, parts: readonly OwnedPart[]): EngineBuild {
+  const part = (slot: CardSlot): EnginePart => {
     const uid = build.cards[slot];
     const p = uid ? parts.find((x) => x.uid === uid) : undefined;
-    if (p) out.push(p);
-  }
-  return out;
+    if (!p) return { id: `empty.${slot}`, s: [1, 0, 0] };
+    const e: EnginePart = { id: p.id, s: [p.s[0], p.s[1], p.s[2]] };
+    if (p.paint && p.slot !== "weapon") e.paint = p.paint;
+    return e;
+  };
+  return { legs: part("legs"), arms: part("arms"), torso: part("torso"), head: part("head"), weapon: part("weapon") };
 }
 
 /* ── matched sets (the guide, "Matched sets") ────────────────────────────── */
 
 export interface SetProgress {
-  /** the family with the most body parts on the bot, and how many (0 to 4) */
+  /** the family with the most body parts on the bot (display name), and how many (0 to 4) */
   family: string | null;
   familyCount: number;
   /** the paint with the most body parts on the bot, and how many (0 to 4) */
   color: PaintId | null;
   colorCount: number;
-  /** +1 colour set, +2 style set, +3 both; applies in fights only */
+  /** +1 colour set, +2 style set, +3 both; the engine's number, fights only */
   bonus: number;
 }
 
 /**
- * Colour set: all four body parts the same PAINTED colour = +1 to every stat
- * in the fight. Style set: all four from one family = +2. Both = +3. The
- * weapon never counts. Never changes the total or the tier.
- * TODO(engine): replace with setBonus / describeSet from _engine/derive.ts.
+ * Counts with the engine's own partFamily / partColor over CARD_INDEX and
+ * takes the bonus from setBonus(), so the panel and the pit agree. A tie
+ * goes to the earlier slot in BODY_SLOTS order.
  */
 export function setProgress(build: Build, parts: readonly OwnedPart[]): SetProgress {
-  const body = bodyParts(build, parts);
-  const top = <T extends string>(keys: T[]): [T | null, number] => {
-    const count = new Map<T, number>();
-    for (const k of keys) count.set(k, (count.get(k) ?? 0) + 1);
-    let best: T | null = null;
+  const b = engineBuild(build, parts);
+  const famCount = new Map<string, number>();
+  const colCount = new Map<PaintId, number>();
+  for (const slot of BODY_SLOTS) {
+    const f = partFamily(b[slot], CARD_INDEX);
+    if (f) famCount.set(f, (famCount.get(f) ?? 0) + 1);
+    const c = partColor(b[slot], CARD_INDEX);
+    if (c) colCount.set(c, (colCount.get(c) ?? 0) + 1);
+  }
+  const lead = <K,>(m: Map<K, number>): [K | null, number] => {
+    let best: K | null = null;
     let n = 0;
-    count.forEach((c, k) => {
-      if (c > n) {
+    m.forEach((count, k) => {
+      if (count > n) {
         best = k;
-        n = c;
+        n = count;
       }
     });
     return [best, n];
   };
-  const [family, familyCount] = top(body.map((p) => p.family));
-  const [color, colorCount] = top(body.map((p) => p.paint));
-  const bonus = (colorCount === 4 ? 1 : 0) + (familyCount === 4 ? 2 : 0);
-  return { family, familyCount, color, colorCount, bonus };
+  const [famId, familyCount] = lead(famCount);
+  const [color, colorCount] = lead(colCount);
+  return {
+    family: famId ? FAMILY_INDEX[famId]?.name ?? famId : null,
+    familyCount,
+    color,
+    colorCount,
+    bonus: setBonus(b, CARD_INDEX).perStat,
+  };
 }
 
 /* ── the shop rotation (economy doc section 3) ───────────────────────────── */

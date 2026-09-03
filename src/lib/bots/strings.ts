@@ -222,6 +222,9 @@ const en = {
     weapon: "The weapon never counts toward a set.",
     /** "Kettle . mint" on every card (family, then colour) */
     line: "{family} . {color}",
+    /** a weapon carries no family and no paint */
+    weaponLine: "Weapon . no set",
+    noPaint: "no paint",
   },
 
   /** the PAINT panel now charges coins */

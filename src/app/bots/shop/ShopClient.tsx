@@ -80,8 +80,8 @@ function ShopCard({ listing, state, onBuy }: { listing: ShopListing; state: BuyS
             {t.ui.card[c.slot]} . {fill(t.ui.tierWord, { t: c.tier })} . {fill(t.ui.pts, { n: partTotal(c) })}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: M.muted, marginTop: 4 }}>
-            <span aria-hidden style={{ width: 9, height: 9, borderRadius: R.pill, background: PAINTS[c.color], display: "inline-block", flex: "0 0 auto" }} />
-            {fill(t.set.line, { family: c.family, color: t.paintName[c.color] })}
+            {c.color ? <span aria-hidden style={{ width: 9, height: 9, borderRadius: R.pill, background: PAINTS[c.color], display: "inline-block", flex: "0 0 auto" }} /> : null}
+            {c.familyName ? fill(t.set.line, { family: c.familyName, color: c.color ? t.paintName[c.color] : t.set.noPaint }) : t.set.weaponLine}
           </div>
         </div>
       </div>

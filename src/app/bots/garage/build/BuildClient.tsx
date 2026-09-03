@@ -76,7 +76,7 @@ import {
   type StatKey,
   type Tier,
 } from "@/lib/bots/fixtures";
-import { bayOfPart, isGarageHydrated, paintCost, paintParts, saveBuild, useGarage } from "@/lib/bots/garage-state";
+import { bayOfPart, isHydratedState, paintCost, paintParts, saveBuild, useGarage } from "@/lib/bots/garage-state";
 import { STRINGS, fill } from "@/lib/bots/strings";
 
 const t = STRINGS.en;
@@ -326,12 +326,16 @@ function TierBadge({ tier, total, empty, pop }: { tier: Tier | null; total: numb
   );
 }
 
-/** "Kettle . mint" with the colour as a small swatch (every card, the guide). */
+/** "Kettle . mint" with the colour as a small swatch (every card, the guide);
+ * a weapon says so, since it never carries a family or paint. */
 function SetLine({ part }: { part: OwnedPart }) {
+  if (!part.familyName) {
+    return <span style={{ fontFamily: FONT_BODY, fontSize: 11, color: M.muted, whiteSpace: "nowrap" }}>{t.set.weaponLine}</span>;
+  }
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: FONT_BODY, fontSize: 11, color: M.muted, whiteSpace: "nowrap" }}>
-      <span aria-hidden style={{ width: 8, height: 8, borderRadius: R.pill, background: PAINTS[part.paint], display: "inline-block", flex: "0 0 auto" }} />
-      {fill(t.set.line, { family: part.family, color: t.paintName[part.paint] })}
+      {part.paint ? <span aria-hidden style={{ width: 8, height: 8, borderRadius: R.pill, background: PAINTS[part.paint], display: "inline-block", flex: "0 0 auto" }} /> : null}
+      {fill(t.set.line, { family: part.familyName, color: part.paint ? t.paintName[part.paint] : t.set.noPaint })}
     </span>
   );
 }
@@ -436,10 +440,11 @@ function PartCard({
           </span>
           {onBot ? <Dot color={M.good} size={6} /> : null}
         </span>
+        {/* "Legs . T2" then "Kettle . mint": the green dot already says "on bot",
+            so the words make room for the set line inside 264px */}
         <span style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: FONT_BODY, fontSize: 11, color: M.muted, minWidth: 0 }}>
           <span style={{ whiteSpace: "nowrap" }}>
-            {t.ui.card[part.slot]} . {fill(t.ui.tierWord, { t: part.tier })}
-            {onBot ? ` . ${t.ui.onBot}` : ""}
+            {t.ui.card[part.slot]} . T{part.tier}
           </span>
           <SetLine part={part} />
         </span>
@@ -622,7 +627,7 @@ export default function BuildClient() {
   // ── the saved build, once the store has hydrated ────────────────────────
   const loadedBay = useRef<number | null>(null);
   useEffect(() => {
-    if (!isGarageHydrated() || loadedBay.current === bayNo) return;
+    if (!isHydratedState(st) || loadedBay.current === bayNo) return;
     loadedBay.current = bayNo;
     const saved = st.builds[bayNo];
     setBuild(saved ? { ...saved, cards: { ...saved.cards } } : starterBuild(bayNo));
@@ -715,7 +720,8 @@ export default function BuildClient() {
         const art = part ? await loadArt(bay, part) : null;
         if (cancelled) return;
         bay.rig.setArt(socket, art);
-        if (part) paints[socket] = hexNum(PAINTS[part.paint]);
+        // an unpainted part (a weapon) keeps its clay: a white multiply is no tint
+        if (part) paints[socket] = part.paint ? hexNum(PAINTS[part.paint]) : 0xffffff;
       }
       // the decal reads the torso's colour; then every socket takes its own
       const torso = partOf(build.cards.torso);

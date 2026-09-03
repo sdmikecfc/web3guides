@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   title: "Fight | Battle Bots",
 };
 
+/** A replay is a stored row read per request (week 3), never a prerender. */
+export const dynamic = "force-dynamic";
+
 interface MockFight {
   seed: number;
   a: Build;

@@ -47,10 +47,12 @@ export const BARS_SHOW_S = 2; // every HP bar shows for the first 2 s
 export const DEBRIS_LIFE_S = 3; // a tumble is surely at rest by then
 export const SHARE_AFTER_S = 1.5; // the Share offer after the KO
 
-/** Debris physics (screens doc 4.2 break), sim px and seconds. */
+/** Debris physics (screens doc 4.2 break), sim px and seconds. The doc's
+ * 260 to 420 px/s carried a piece onto the rim of this pit (measured on the
+ * first KO screenshot); 100 to 180 lands it on the floor under the bots. */
 export const TUMBLE = {
-  VX_LO: 260,
-  VX_HI: 420,
+  VX_LO: 100,
+  VX_HI: 180,
   VY: -380,
   SPIN_DPS: 540,
   GRAVITY: 1400,

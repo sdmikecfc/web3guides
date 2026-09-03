@@ -123,7 +123,12 @@ function load(): GarageState | null {
     const st = JSON.parse(raw) as GarageState;
     if (!st || st.v !== 1 || !Array.isArray(st.parts) || typeof st.coins !== "number") return null;
     // a part whose card left the catalog is dropped, and the socket it filled opens
-    const parts = st.parts.filter((p) => p && CARD_BY_ID[p.id]).map((p) => ({ ...CARD_BY_ID[p.id], uid: p.uid, provenance: p.provenance, paint: p.paint ?? CARD_BY_ID[p.id].color }));
+    const parts: OwnedPart[] = st.parts
+      .filter((p) => p && CARD_BY_ID[p.id])
+      .map((p) => {
+        const card = CARD_BY_ID[p.id];
+        return { ...card, uid: p.uid, provenance: p.provenance, paint: card.slot === "weapon" ? undefined : p.paint ?? card.color };
+      });
     const have = new Set(parts.map((p) => p.uid));
     const builds: Record<number, Build> = {};
     for (const [k, b] of Object.entries(st.builds ?? {})) {
@@ -206,6 +211,17 @@ export function hydrateGarage(nowMs: number): void {
 
 export function isGarageHydrated(): boolean {
   return hydrated;
+}
+
+/**
+ * Whether THIS snapshot is the hydrated one. A screen that loads a saved
+ * build must gate on the snapshot it rendered with, not on the module flag:
+ * hydrate() flips the flag synchronously inside an earlier effect, so a
+ * later effect in the same commit still holds the server seed (found on the
+ * Build screen's save-then-reload check, 2026-09-03).
+ */
+export function isHydratedState(st: GarageState): boolean {
+  return st !== SERVER_SEED;
 }
 
 /** Dev and harness only: throw the saved garage away and reseed. */
@@ -363,7 +379,7 @@ export function buyListing(listing: ShopListing, day: string, provenance: string
   const price = listing.card.price;
   if (price > state.coins) return { ok: false, reason: "coins", need: price - state.coins };
   const uid = `p_${String(state.nextUid).padStart(3, "0")}`;
-  const part: OwnedPart = { ...listing.card, uid, provenance, paint: listing.card.color };
+  const part: OwnedPart = { ...listing.card, uid, provenance, paint: listing.card.slot === "weapon" ? undefined : listing.card.color };
   setState({
     ...state,
     coins: state.coins - price,
