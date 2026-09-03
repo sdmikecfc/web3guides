@@ -35,3 +35,13 @@ yarn-error.log*
 next-env.d.ts
 
 .env*.local
+
+# Vast ComfyUI jupyter_token. Credential, never commit.
+.comfy_token
+
+# Raw CC0 asset packs (Quaternius/Kenney) - bake sources, never shipped, never committed
+art-src/
+
+.dev-captures/
+.dk-preview/
+.crypt-v1-backup

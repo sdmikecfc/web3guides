@@ -1,0 +1,888 @@
+/**
+ * THE FIGHT VIEWER (screens doc 4.2, engine doc 6): the pit in a lit frame,
+ * two identity strips above, one commentary sentence under, the controls
+ * row, the result card with the chain sentence, and a Stat sheet.
+ *
+ * THE CLIENT STEPS THE SAME stepFight THE SERVER RAN. The fight is resolved
+ * once at mount (runFight) for the truth: total frames, the hash, the event
+ * ticks and the commentary lines. A second Fight is then stepped for the
+ * picture, one 60 Hz frame at a time through a fixed-timestep accumulator
+ * (the RunShell pattern, src/app/s7/games/_shared/RunShell.tsx: FIXED_DT,
+ * MAX_SUBSTEPS, paused on document.hidden). The renderer reads the engine's
+ * state and the events it appended; nothing here decides an outcome. A seek
+ * rebuilds the playback fight and steps it to the frame, so a scrub, a
+ * "skip to the knockout" and a replay all land on the same deterministic
+ * picture. prefers-reduced-motion renders one settled frame.
+ *
+ * Client shell in the BuildClient shape (garage/build/BuildClient.tsx): owns
+ * the rAF, builds the scene through one pixi chain, fits it with a
+ * ResizeObserver on the wrapper (never the canvas), keeps every number in
+ * the DOM in mono. The HUD silhouettes are DOM (SVG) over the canvas, never
+ * on the Pixi stage, so a stage extract can never leak them (the DK postcard
+ * law).
+ */
+"use client";
+
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PageShell } from "../_components/PageShell";
+import { IconPlay, IconReplay, IconShare, STAT_ICON } from "../_ui/icons";
+import { Button, Dot, Panel } from "../_ui/primitives";
+import { FONT_BODY, FONT_DISPLAY, FONT_MONO, M, PAINTS, TIER_COLOR, type PaintId } from "../_ui/tokens";
+import { buildFightScene, type FightSceneHandle } from "../_view/scene";
+import { SLOWMO_RATE, SLOWMO_S, TELL_F, mkFightFx, resetFightFx, tickFightFx } from "../_view/fightfx";
+import { createBotsSfx, type BotsSfx } from "../_view/sfx";
+import { NO_ORDERS, PIECE, botTier, buildTotal, type Build, type FightEvent, type Mode, type Orders, type Side } from "../_engine/parts";
+import { createFight, resultOf, runFight, stepFight, type Fight } from "../_engine/resolve";
+import { aggregates, type Aggregates } from "../_engine/derive";
+import { chainSummary, narrate } from "../_engine/commentary";
+import { STRINGS, fill } from "@/lib/bots/strings";
+import css from "./fight.module.css";
+
+export interface FightIdentity {
+  /** the bot's name (two words from the fixed tables) */
+  name: string;
+  /** a wallet name, never an address */
+  wallet: string;
+  wins: number;
+  losses: number;
+  /** the owner's strategy label for the stat sheet */
+  strategy: string;
+  paint: PaintId;
+}
+
+export interface FightClientProps {
+  seed: number;
+  a: Build;
+  b: Build;
+  ids: [FightIdentity, FightIdentity];
+  mode: Mode;
+  /** the mono line between the strips: "SPAR . SEED 7", "PVE . SCRAPPER" */
+  modeLabel: string;
+  orders?: [Orders, Orders];
+  /** the stored hash when a server row exists; a mismatch is version skew */
+  expectedHash?: number;
+  /** the replay link, which is the share link */
+  replayUrl: string;
+  /** where "Watch another" goes */
+  watchAnotherHref: string;
+}
+
+const t = STRINGS.en;
+const FIXED_DT = 1 / 60; // the engine's beat (resolve.ts BEAT.FPS)
+const MAX_SUBSTEPS = 8; // spiral-of-death guard, the RunShell value
+/** a commentary line holds for at least this many frames */
+const DWELL_F = 48;
+/** the KO slow motion measured in presentation seconds (1.5 s of wall time) */
+const KO_SLOW_FX = SLOWMO_S * SLOWMO_RATE;
+/** the result card and the Share offer come right after the slow motion */
+const KO_OVER_FX = KO_SLOW_FX + 0.3;
+const UI_EVERY_F = 3;
+const hexNum = (h: string): number => parseInt(h.slice(1), 16);
+
+/** React StrictMode dev-mounts effects twice; two app.init() calls racing on
+ * ONE canvas kill each other's shaders (the Battlefield law). Every build AND
+ * destroy is chained through this promise. */
+let pixiChain: Promise<void> = Promise.resolve();
+
+interface FunGate {
+  watchAnother: number;
+  buildOne: number;
+  clicks: { what: string; frame: number; at: number }[];
+}
+
+function clock(frames: number): string {
+  const s = Math.floor(frames / 60);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function soundOf(e: FightEvent): "bell" | "whoosh" | "clank" | "crunch" | "clang-tumble" | "crack" | null {
+  switch (e.t) {
+    case "start":
+      return "bell";
+    case "miss":
+      return "whoosh";
+    case "block":
+      return "clank";
+    case "hit":
+      return "crunch";
+    case "break":
+      return e.part === PIECE.BODY ? "crack" : "clang-tumble";
+    case "timeout":
+      return "bell";
+    default:
+      return null;
+  }
+}
+
+export default function FightClient(p: FightClientProps) {
+  const names = useMemo<[string, string]>(() => [p.ids[0].name, p.ids[1].name], [p.ids]);
+  const oa = p.orders?.[0] ?? NO_ORDERS;
+  const ob = p.orders?.[1] ?? NO_ORDERS;
+
+  // ── the truth: resolved once, the same call the server makes ────────────
+  const full = useMemo(() => {
+    const f = runFight(p.seed, p.a, p.b, oa, ob, p.mode);
+    const result = resultOf(f);
+    const lines = narrate(result.log, names);
+    const disp: number[] = [];
+    let last = -DWELL_F;
+    for (const l of lines) {
+      const d = Math.max(l.f, last + DWELL_F);
+      disp.push(d);
+      last = d;
+    }
+    const ticks = result.log
+      .filter((e) => e.t === "break" || e.t === "ko" || e.t === "timeout")
+      .map((e) => ({ f: e.f, gold: e.t !== "break" }));
+    return {
+      result,
+      lines,
+      disp,
+      ticks,
+      hashHex: (result.hash >>> 0).toString(16).padStart(8, "0"),
+      chain: chainSummary(result.log, names),
+      stats: [aggregates(p.a, oa), aggregates(p.b, ob)] as [Aggregates, Aggregates],
+    };
+  }, [p.seed, p.a, p.b, p.mode, oa, ob, names]);
+  const versionSkew = p.expectedHash !== undefined && (p.expectedHash >>> 0) !== full.result.hash;
+
+  // ── refs (the loop never reads React state) ─────────────────────────────
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const sceneRef = useRef<FightSceneHandle | null>(null);
+  const fightRef = useRef<Fight | null>(null);
+  const fxRef = useRef(mkFightFx());
+  const sfxRef = useRef<BotsSfx | null>(null);
+  const playingRef = useRef(true);
+  const speedRef = useRef<1 | 2>(1);
+  const reducedRef = useRef(false);
+  const accRef = useRef(0);
+  const lastRef = useRef(0);
+  const uiFrameRef = useRef(-1);
+  const lineRef = useRef(-2);
+  const logLenRef = useRef(0);
+  const endedRef = useRef(false);
+  const funGate = useRef<FunGate>({ watchAnother: 0, buildOne: 0, clicks: [] });
+
+  // ── state (throttled mirrors of the refs, for the chrome) ───────────────
+  const [ready, setReady] = useState(false);
+  const [small, setSmall] = useState(false);
+  const [reduced, setReduced] = useState(false);
+  const [playing, setPlaying] = useState(true);
+  const [speed, setSpeed] = useState<1 | 2>(1);
+  const [muted, setMuted] = useState(true);
+  const [frame, setFrame] = useState(0);
+  const [lineIdx, setLineIdx] = useState(-1);
+  const [hudTick, setHudTick] = useState(0);
+  const [ended, setEnded] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [shareNote, setShareNote] = useState("");
+
+  const syncUi = useCallback(
+    (force: boolean) => {
+      const f = fightRef.current;
+      if (!f) return;
+      const fx = fxRef.current;
+      const fr = f.st.frame;
+      if (force || fr - uiFrameRef.current >= UI_EVERY_F || fr < uiFrameRef.current) {
+        uiFrameRef.current = fr;
+        setFrame(fr);
+      }
+      let idx = -1;
+      for (let i = 0; i < full.disp.length; i++) {
+        if (full.disp[i] <= fr) idx = i;
+        else break;
+      }
+      if (idx !== lineRef.current) {
+        lineRef.current = idx;
+        setLineIdx(idx);
+      }
+      if (f.st.log.length !== logLenRef.current) {
+        logLenRef.current = f.st.log.length;
+        setHudTick((n) => n + 1);
+      }
+      const over = f.st.done === 1 && (fx.ko >= KO_OVER_FX || fx.timeout >= 1);
+      if (over !== endedRef.current) {
+        endedRef.current = over;
+        setEnded(over);
+      }
+    },
+    [full.disp],
+  );
+
+  /** Rebuild the playback fight and step it to `frame`; the events are
+   * replayed into the fx silently and settled, so the picture is a still. */
+  const seekTo = useCallback(
+    (target: number) => {
+      const scene = sceneRef.current;
+      const fx = fxRef.current;
+      scene?.reset();
+      resetFightFx(fx);
+      const f = createFight(p.seed, p.a, p.b, oa, ob, p.mode);
+      const want = Math.max(0, Math.min(target, full.result.frames));
+      while (f.st.frame < want && !f.st.done) stepFight(f);
+      if (scene) for (const e of f.st.log) scene.onEvent(e, f.st, fx);
+      fightRef.current = f;
+      fx.time = f.st.frame / 60;
+      scene?.settle(fx);
+      accRef.current = 0;
+      logLenRef.current = -1;
+      syncUi(true);
+      if (scene && reducedRef.current) scene.render(f.st, fx);
+    },
+    [p.seed, p.a, p.b, p.mode, oa, ob, full.result.frames, syncUi],
+  );
+
+  /** One engine frame, live: new events go to the scene and the speaker. */
+  const stepOnce = useCallback(() => {
+    const f = fightRef.current;
+    const scene = sceneRef.current;
+    if (!f || !scene) return;
+    const fx = fxRef.current;
+    const before = f.st.log.length;
+    if (!f.st.done) stepFight(f);
+    for (let i = before; i < f.st.log.length; i++) {
+      const e = f.st.log[i];
+      scene.onEvent(e, f.st, fx);
+      const s = soundOf(e);
+      if (s) sfxRef.current?.play(s);
+    }
+    tickFightFx(fx, FIXED_DT);
+    if (!f.st.done) {
+      for (let side = 0; side < 2; side++) {
+        const ss = f.st.sides[side];
+        if (ss.staggerT === 0 && ss.swingT === TELL_F) {
+          sfxRef.current?.play("tick");
+          scene.glint(side as Side);
+        }
+      }
+    }
+  }, []);
+
+  // ── the scene and the loop ──────────────────────────────────────────────
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const wrap = wrapRef.current;
+    if (!canvas || !wrap || versionSkew) return;
+    let dead = false;
+    let raf = 0;
+    let running = false;
+    let ro: ResizeObserver | null = null;
+    const isSmall = typeof matchMedia !== "undefined" && matchMedia("(max-width: 899px)").matches;
+    const isReduced = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setSmall(isSmall);
+    setReduced(isReduced);
+    reducedRef.current = isReduced;
+
+    const loop = (now: number) => {
+      if (dead) return;
+      raf = requestAnimationFrame(loop);
+      const scene = sceneRef.current;
+      const f = fightRef.current;
+      const fx = fxRef.current;
+      if (!scene || !f) {
+        lastRef.current = now;
+        return;
+      }
+      let frameDt = (now - lastRef.current) / 1000;
+      lastRef.current = now;
+      if (!(frameDt > 0) || frameDt > 0.25) frameDt = FIXED_DT; // first tick / huge-gap guard
+      if (playingRef.current && !reducedRef.current) {
+        if (fx.hitStop > 0) {
+          // the whole scene freezes: nothing accumulates, the stop counts down in wall time
+          fx.hitStop = Math.max(0, fx.hitStop - frameDt);
+        } else {
+          const slow = fx.ko >= 0 && fx.ko < KO_SLOW_FX ? SLOWMO_RATE : 1;
+          accRef.current += frameDt * speedRef.current * slow;
+          let steps = 0;
+          while (accRef.current >= FIXED_DT && steps < MAX_SUBSTEPS) {
+            stepOnce();
+            accRef.current -= FIXED_DT;
+            steps++;
+            if (fx.hitStop > 0) {
+              accRef.current = 0;
+              break;
+            }
+          }
+          if (steps >= MAX_SUBSTEPS) accRef.current = 0;
+        }
+      }
+      scene.render(f.st, fx);
+      syncUi(false);
+    };
+    function start() {
+      if (running || isReduced) return;
+      running = true;
+      lastRef.current = performance.now();
+      raf = requestAnimationFrame(loop);
+    }
+    function stop() {
+      running = false;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    }
+    const onVis = () => {
+      if (document.hidden) stop();
+      else start();
+    };
+
+    pixiChain = pixiChain
+      .then(async () => {
+        if (dead) return null;
+        return buildFightScene(canvas, { small: isSmall, fightSeed: p.seed });
+      })
+      .then(async (scene) => {
+        if (!scene) return;
+        if (dead) {
+          scene.destroy();
+          return;
+        }
+        await scene.setBuilds(p.a, p.b, [hexNum(PAINTS[p.ids[0].paint]), hexNum(PAINTS[p.ids[1].paint])]);
+        if (dead) {
+          scene.destroy();
+          return;
+        }
+        sceneRef.current = scene;
+        const fit = () => {
+          const r = wrap.getBoundingClientRect();
+          scene.resize(r.width, r.height, Math.min(2, devicePixelRatio || 1));
+        };
+        fit();
+        ro = new ResizeObserver(fit);
+        ro.observe(wrap);
+        // reduced motion: one settled frame at the end, no loop at all
+        seekTo(isReduced ? full.result.frames : 0);
+        scene.render(fightRef.current!.st, fxRef.current);
+        document.addEventListener("visibilitychange", onVis);
+        if (!document.hidden) start();
+        setReady(true);
+      });
+    return () => {
+      dead = true;
+      stop();
+      document.removeEventListener("visibilitychange", onVis);
+      ro?.disconnect();
+      setReady(false);
+      pixiChain = pixiChain.then(() => {
+        sceneRef.current?.destroy();
+        sceneRef.current = null;
+      });
+    };
+    // the fight inputs are stable for the life of the page; the loop effect runs once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // the speaker: silent until the sound button unmutes it; on unmount the
+  // AudioContext closes (Chrome caps contexts per document, the S7 leak audit)
+  useEffect(() => {
+    sfxRef.current = createBotsSfx(false);
+    return () => {
+      sfxRef.current?.dispose();
+      sfxRef.current = null;
+    };
+  }, []);
+
+  // ── controls ────────────────────────────────────────────────────────────
+  const play = useCallback(() => {
+    if (endedRef.current) seekTo(0);
+    playingRef.current = true;
+    setPlaying(true);
+  }, [seekTo]);
+  const pause = useCallback(() => {
+    playingRef.current = false;
+    setPlaying(false);
+  }, []);
+  const setRate = useCallback((r: 1 | 2) => {
+    speedRef.current = r;
+    setSpeed(r);
+  }, []);
+  const skipToEnd = useCallback(() => {
+    seekTo(Math.max(0, full.result.frames - 60));
+    playingRef.current = true;
+    setPlaying(true);
+  }, [seekTo, full.result.frames]);
+  const toggleSound = useCallback(() => {
+    const s = sfxRef.current;
+    if (!s) return;
+    const next = !s.muted();
+    s.setMuted(next);
+    setMuted(next);
+  }, []);
+
+  const share = useCallback(async () => {
+    const winner = names[full.result.winner];
+    const loser = names[full.result.winner === 0 ? 1 : 0];
+    const text = fill(t.card.shareText, { winner, loser, url: p.replayUrl });
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        await navigator.share({ title: t.nav.wordmark, text, url: p.replayUrl });
+        setShareNote("Shared.");
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setShareNote("Link copied.");
+    } catch {
+      setShareNote("Copy the link from the address bar.");
+    }
+  }, [names, full.result.winner, p.replayUrl]);
+
+  const logGate = useCallback((what: "watchAnother" | "buildOne") => {
+    const g = funGate.current;
+    g[what] += 1;
+    const at = fightRef.current?.st.frame ?? 0;
+    g.clicks.push({ what, frame: at, at: Date.now() });
+    // eslint-disable-next-line no-console
+    console.log("[bots funGate]", what, { count: g[what], frame: at });
+    try {
+      sessionStorage.setItem("bots.funGate", JSON.stringify(g));
+    } catch {
+      /* storage blocked: the console line stands */
+    }
+  }, []);
+
+  // ── the screenshot and verifier hook (dev only; bots-shot.mjs waits on it) ─
+  useEffect(() => {
+    if (!ready) return;
+    const w = window as unknown as Record<string, unknown>;
+    w.__bots = {
+      ready: true,
+      hash: full.hashHex,
+      frames: full.result.frames,
+      winner: full.result.winner,
+      end: full.result.end,
+      plate: sceneRef.current?.plate ?? false,
+      seek: (f: number) => {
+        pause();
+        seekTo(f);
+        const scene = sceneRef.current;
+        if (scene && fightRef.current) scene.render(fightRef.current.st, fxRef.current);
+      },
+      play,
+      pause,
+      speed: setRate,
+      state: () => ({
+        frame: fightRef.current?.st.frame ?? 0,
+        done: fightRef.current?.st.done === 1,
+        ended: endedRef.current,
+        line: lineRef.current,
+      }),
+      funGate: funGate.current,
+    };
+    return () => {
+      delete w.__bots;
+    };
+  }, [ready, full.hashHex, full.result.frames, full.result.winner, full.result.end, seekTo, play, pause, setRate]);
+
+  // ── the chrome ──────────────────────────────────────────────────────────
+  const st = fightRef.current?.st;
+  const totalFrames = full.result.frames;
+  const line = lineIdx >= 0 ? full.lines[lineIdx].text : "";
+  const secs = Math.floor(totalFrames / 60);
+  const winnerName = names[full.result.winner];
+
+  if (versionSkew) {
+    return (
+      <PageShell wide>
+        <div className={css.viewer}>
+          <Panel title={t.nav.wordmark} style={{ marginTop: 24 }}>
+            <p style={{ fontFamily: FONT_DISPLAY, fontSize: 20, margin: "0 0 8px" }}>This replay needs the new version.</p>
+            <p style={{ color: M.lore, margin: "0 0 12px" }}>{full.chain}</p>
+            <p style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted, margin: 0 }}>
+              stored hash {(p.expectedHash! >>> 0).toString(16).padStart(8, "0")}, this build {full.hashHex}
+            </p>
+          </Panel>
+        </div>
+      </PageShell>
+    );
+  }
+
+  return (
+    <PageShell wide>
+      <div className={css.viewer}>
+        {/* the identity strips */}
+        <div className={css.ids}>
+          <IdentityStrip id={p.ids[0]} build={p.a} right={false} />
+          <div
+            className={css.idMode}
+            style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: M.muted }}
+          >
+            {p.modeLabel}
+          </div>
+          <IdentityStrip id={p.ids[1]} build={p.b} right />
+        </div>
+
+        {/* THE hairline: the lit pit inside the dark frame */}
+        <div ref={wrapRef} className={css.frame} data-hud={hudTick}>
+          <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} aria-label="The pit" />
+          <div className={`${css.hud} ${css.hudLeft}`}>
+            <Hud armor={st?.sides[0].armor} armorMax={st?.sides[0].armorMax} id="a" mirror={false} />
+          </div>
+          <div className={`${css.hud} ${css.hudRight}`}>
+            <Hud armor={st?.sides[1].armor} armorMax={st?.sides[1].armorMax} id="b" mirror />
+          </div>
+          {!ready ? (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: FONT_MONO,
+                fontSize: 12,
+                color: "#bfb5a6",
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+              }}
+            >
+              Opening the pit
+            </div>
+          ) : null}
+        </div>
+
+        {/* the commentary bar: one sentence, 44px, never two lines */}
+        <div className={css.commentary} aria-live="polite" style={{ fontFamily: FONT_BODY }}>
+          {line}
+        </div>
+
+        {/* the controls row */}
+        <div className={css.controls}>
+          <button
+            type="button"
+            className={css.ctl}
+            onClick={playing && !ended ? pause : play}
+            disabled={reduced}
+            aria-label={playing && !ended ? "Pause" : "Play"}
+            title={playing && !ended ? "Pause" : "Play"}
+          >
+            {playing && !ended ? <PauseGlyph /> : <IconPlay size={22} />}
+          </button>
+          <button
+            type="button"
+            className={`${css.ctl} ${speed === 2 ? css.ctlOn : ""}`}
+            onClick={() => setRate(speed === 2 ? 1 : 2)}
+            disabled={reduced}
+            aria-pressed={speed === 2}
+            aria-label="Playback speed"
+            style={{ fontFamily: FONT_MONO, fontSize: 13, fontWeight: 700 }}
+          >
+            {speed === 2 ? "2x" : "1x"}
+          </button>
+          <button
+            type="button"
+            className={css.ctl}
+            onClick={skipToEnd}
+            disabled={reduced || ended}
+            aria-label="Skip to the knockout"
+            title="Skip to the knockout"
+          >
+            <SkipGlyph />
+          </button>
+          <div className={css.scrub}>
+            <div className={css.played} style={{ width: `${totalFrames ? (Math.min(frame, totalFrames) / totalFrames) * 100 : 0}%` }} />
+            {full.ticks.map((k, i) => (
+              <span
+                key={i}
+                className={css.tick}
+                style={{ left: `${(k.f / totalFrames) * 100}%`, background: k.gold ? TIER_COLOR[4] : M.bad }}
+              />
+            ))}
+            <input
+              className={css.range}
+              type="range"
+              min={0}
+              max={totalFrames}
+              step={1}
+              value={Math.min(frame, totalFrames)}
+              onChange={(e) => seekTo(Number(e.target.value))}
+              aria-label="Fight position"
+              aria-valuetext={`${clock(frame)} of ${clock(totalFrames)}`}
+            />
+          </div>
+          <span className={css.time}>
+            {clock(Math.min(frame, totalFrames))} / {clock(totalFrames)}
+          </span>
+          <button
+            type="button"
+            className={`${css.ctl} ${!muted ? css.ctlOn : ""}`}
+            onClick={toggleSound}
+            aria-pressed={!muted}
+            aria-label={muted ? "Sound off" : "Sound on"}
+            title={muted ? "Sound off" : "Sound on"}
+          >
+            <SoundGlyph on={!muted} />
+          </button>
+          <button
+            type="button"
+            className={css.ctl}
+            onClick={share}
+            disabled={!ended}
+            aria-label={t.fight.share}
+            title={t.fight.share}
+          >
+            <IconShare size={20} />
+          </button>
+        </div>
+        {reduced ? (
+          <p style={{ fontSize: 13, color: M.muted, margin: "2px 4px 0" }}>Reduced motion is on. Move the bar to step through the fight.</p>
+        ) : null}
+
+        {/* the result card, offered after the KO */}
+        {ended ? (
+          <Panel style={{ marginTop: 14 }}>
+            <p
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 11,
+                letterSpacing: "0.32em",
+                textTransform: "uppercase",
+                color: M.muted,
+                margin: "0 0 6px",
+              }}
+            >
+              {full.result.end === "ko" ? `KO in ${secs} s` : `Time at ${secs} s`}
+            </p>
+            <p style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 8px", color: M.text }}>
+              {winnerName} wins.
+            </p>
+            <p style={{ fontSize: 15, color: M.lore, margin: "0 0 10px", lineHeight: 1.45 }}>{full.chain}</p>
+            <p style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted, margin: 0 }} data-testid="fight-hash">
+              hash {full.hashHex}, engine v{full.result.engineVersion}, {full.result.log.length} events
+            </p>
+            <div className={css.resultActions}>
+              <Button variant="primary" onClick={play}>
+                <IconReplay size={18} />
+                {t.fight.replay}
+              </Button>
+              <Button onClick={share}>
+                <IconShare size={18} />
+                {full.result.end === "ko" ? t.fight.share : "Share the fight"}
+              </Button>
+              <Link
+                href={p.watchAnotherHref}
+                onClick={() => logGate("watchAnother")}
+                className={css.ctl}
+                style={{ width: "auto", padding: "0 16px", fontWeight: 700, fontSize: 14, textDecoration: "none", fontFamily: FONT_BODY }}
+                data-fun-gate="watchAnother"
+              >
+                Watch another
+              </Link>
+              <Link
+                href="/bots/garage/build"
+                onClick={() => logGate("buildOne")}
+                className={css.ctl}
+                style={{ width: "auto", padding: "0 16px", fontWeight: 700, fontSize: 14, textDecoration: "none", fontFamily: FONT_BODY }}
+                data-fun-gate="buildOne"
+              >
+                Build one
+              </Link>
+            </div>
+            {shareNote ? (
+              <p style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted, margin: "10px 0 0" }}>{shareNote}</p>
+            ) : null}
+          </Panel>
+        ) : null}
+
+        {/* the stat sheet disclosure */}
+        <div style={{ marginTop: 14 }}>
+          <button
+            type="button"
+            onClick={() => setSheetOpen((o) => !o)}
+            aria-expanded={sheetOpen}
+            className={css.ctl}
+            style={{ width: "auto", padding: "0 16px", fontFamily: FONT_BODY, fontWeight: 700, fontSize: 14 }}
+          >
+            {sheetOpen ? "Hide the stat sheet" : "Stat sheet"}
+          </button>
+          {sheetOpen ? (
+            <Panel style={{ marginTop: 10 }}>
+              <StatSheet ids={p.ids} stats={full.stats} builds={[p.a, p.b]} small={small} />
+            </Panel>
+          ) : null}
+        </div>
+      </div>
+    </PageShell>
+  );
+}
+
+/* ── the identity strip: bot name Syne 16, wallet name, tier dot, record ── */
+
+function IdentityStrip({ id, build, right }: { id: FightIdentity; build: Build; right: boolean }) {
+  const tier = botTier(buildTotal(build));
+  return (
+    <div className={right ? css.idRight : undefined} style={{ minWidth: 0 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          justifyContent: right ? "flex-end" : "flex-start",
+          fontFamily: FONT_DISPLAY,
+          fontSize: 16,
+          fontWeight: 700,
+          color: M.text,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {right ? null : <Dot color={TIER_COLOR[tier]} />}
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{id.name}</span>
+        {right ? <Dot color={TIER_COLOR[tier]} /> : null}
+      </div>
+      <div style={{ display: "flex", gap: 10, justifyContent: right ? "flex-end" : "flex-start", alignItems: "baseline" }}>
+        <span style={{ fontFamily: FONT_BODY, fontSize: 12, color: M.muted }}>{id.wallet}</span>
+        <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: M.muted }}>
+          {fill(t.profile.record, { w: id.wins, l: id.losses })}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ── the HUD silhouette: seven pieces filled to armor percent ───────────── */
+
+const HUD_PIECES: { key: string; piece: number; x: number; y: number; w: number; h: number; r: number }[] = [
+  { key: "head", piece: PIECE.HEAD, x: 22, y: 2, w: 20, h: 20, r: 10 },
+  { key: "body", piece: PIECE.BODY, x: 20, y: 24, w: 24, h: 30, r: 5 },
+  { key: "armL", piece: PIECE.ARM_L, x: 8, y: 26, w: 9, h: 26, r: 4 },
+  { key: "armR", piece: PIECE.ARM_R, x: 47, y: 26, w: 9, h: 26, r: 4 },
+  { key: "legL", piece: PIECE.LEG_L, x: 21, y: 56, w: 10, h: 26, r: 4 },
+  { key: "legR", piece: PIECE.LEG_R, x: 33, y: 56, w: 10, h: 26, r: 4 },
+  { key: "weapon", piece: -1, x: 58, y: 8, w: 5, h: 36, r: 2 },
+];
+
+function hudColor(pct: number): string {
+  if (pct >= 0.6) return M.good;
+  if (pct >= 0.3) return M.warn;
+  return M.bad;
+}
+
+function Hud({ armor, armorMax, id, mirror }: { armor?: number[]; armorMax?: number[]; id: string; mirror: boolean }) {
+  return (
+    <svg viewBox="0 0 64 84" width="100%" height="100%" aria-hidden style={{ display: "block", transform: mirror ? "scaleX(-1)" : undefined }}>
+      <defs>
+        {HUD_PIECES.map((pc) => {
+          const pct = pc.piece < 0 ? 1 : armor && armorMax ? armor[pc.piece] / Math.max(1, armorMax[pc.piece]) : 1;
+          return (
+            <clipPath key={pc.key} id={`hud-${id}-${pc.key}`}>
+              <rect x={pc.x} y={pc.y + pc.h * (1 - pct)} width={pc.w} height={pc.h * pct} />
+            </clipPath>
+          );
+        })}
+      </defs>
+      {HUD_PIECES.map((pc) => {
+        // the weapon goes with the near arm; it is never a target itself
+        const gone = armor ? (pc.piece < 0 ? armor[PIECE.ARM_R] <= 0 : armor[pc.piece] <= 0) : false;
+        const pct = pc.piece < 0 ? 1 : armor && armorMax ? armor[pc.piece] / Math.max(1, armorMax[pc.piece]) : 1;
+        return (
+          <g key={pc.key}>
+            <rect x={pc.x} y={pc.y} width={pc.w} height={pc.h} rx={pc.r} fill={gone ? M.muted : "rgba(0,0,0,0.35)"} fillOpacity={gone ? 0.35 : 1} stroke={gone ? M.muted : M.border} strokeWidth={1} />
+            {!gone ? (
+              <rect x={pc.x} y={pc.y} width={pc.w} height={pc.h} rx={pc.r} fill={hudColor(pct)} clipPath={`url(#hud-${id}-${pc.key})`} />
+            ) : (
+              <path
+                d={`M${pc.x + 2} ${pc.y + 2} L${pc.x + pc.w - 2} ${pc.y + pc.h - 2} M${pc.x + pc.w - 2} ${pc.y + 2} L${pc.x + 2} ${pc.y + pc.h - 2}`}
+                stroke={M.muted}
+                strokeWidth={2}
+                strokeLinecap="round"
+              />
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/* ── the stat sheet: nine stats side by side, mono, with the icons ──────── */
+
+const SHEET_ROWS: { key: keyof typeof STAT_ICON; agg: keyof Aggregates; label: string }[] = [
+  { key: "speed", agg: "speed", label: t.ui.stat.speed },
+  { key: "strength", agg: "str", label: t.ui.stat.strength },
+  { key: "dodge", agg: "dodge", label: t.ui.stat.dodge },
+  { key: "damage", agg: "dmg", label: t.ui.stat.damage },
+  { key: "block", agg: "block", label: t.ui.stat.block },
+  { key: "health", agg: "health", label: t.ui.stat.health },
+  { key: "luck", agg: "luck", label: t.ui.stat.luck },
+  { key: "accuracy", agg: "acc", label: t.ui.stat.accuracy },
+  { key: "attackSpeed", agg: "atkSpd", label: t.ui.stat.attackSpeed },
+];
+
+function StatSheet({
+  ids,
+  stats,
+  builds,
+  small,
+}: {
+  ids: [FightIdentity, FightIdentity];
+  stats: [Aggregates, Aggregates];
+  builds: [Build, Build];
+  small: boolean;
+}) {
+  const head = (i: 0 | 1) => (
+    <div style={{ textAlign: "right", fontFamily: FONT_DISPLAY, fontSize: 12, fontWeight: 700, color: M.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      {small ? (i === 0 ? "A" : "B") : ids[i].name}
+    </div>
+  );
+  return (
+    <div className={css.sheetGrid}>
+      <div style={{ fontFamily: FONT_DISPLAY, fontSize: 12, letterSpacing: "0.32em", textTransform: "uppercase", color: M.muted }}>Stats</div>
+      {head(0)}
+      {head(1)}
+      {SHEET_ROWS.map((row) => {
+        const Icon = STAT_ICON[row.key];
+        return (
+          <RowCells key={row.key} icon={<Icon size={16} />} label={row.label} a={stats[0][row.agg]} b={stats[1][row.agg]} />
+        );
+      })}
+      <RowCells label="Total" a={buildTotal(builds[0])} b={buildTotal(builds[1])} />
+      <div style={{ color: M.muted, fontFamily: FONT_BODY, fontSize: 12.5 }}>Strategy</div>
+      <div style={{ textAlign: "right", fontFamily: FONT_BODY, fontSize: 12, color: M.lore, gridColumn: "2 / 3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ids[0].strategy}</div>
+      <div style={{ textAlign: "right", fontFamily: FONT_BODY, fontSize: 12, color: M.lore, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ids[1].strategy}</div>
+    </div>
+  );
+}
+
+function RowCells({ icon, label, a, b }: { icon?: React.ReactNode; label: string; a: number; b: number }) {
+  return (
+    <>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, color: M.muted, fontFamily: FONT_BODY, fontSize: 12.5 }}>
+        {icon}
+        {label}
+      </div>
+      <div style={{ textAlign: "right", color: a > b ? M.text : M.lore }}>{a}</div>
+      <div style={{ textAlign: "right", color: b > a ? M.text : M.lore }}>{b}</div>
+    </>
+  );
+}
+
+/* ── two drawn glyphs the icon set does not carry yet ───────────────────── */
+
+function PauseGlyph() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="currentColor" aria-hidden focusable="false">
+      <rect x="6" y="5" width="4.5" height="14" rx="1.5" />
+      <rect x="13.5" y="5" width="4.5" height="14" rx="1.5" />
+    </svg>
+  );
+}
+
+function SkipGlyph() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="currentColor" aria-hidden focusable="false">
+      <path d="M5 5.5v13l9-6.5z" />
+      <rect x="16" y="5" width="3" height="14" rx="1.5" />
+    </svg>
+  );
+}
+
+function SoundGlyph({ on }: { on: boolean }) {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden focusable="false">
+      <path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor" stroke="none" />
+      {on ? <path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" /> : <path d="M16 9.5l5 5M21 9.5l-5 5" />}
+    </svg>
+  );
+}
