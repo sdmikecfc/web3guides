@@ -56,7 +56,22 @@ const KO_SLOW_FX = SLOWMO_S * SLOWMO_RATE;
  * pit starts the fight over: the slow motion, then three seconds on the
  * loser sitting */
 const HOLD_FX = KO_SLOW_FX + 3;
-const FETCH_MS = 2500;
+/**
+ * HOW LONG THE PIT WAITS TO BE TOLD WHICH FIGHT, before it stops asking and
+ * puts the demo on.
+ *
+ * NOTHING IS DRAWN UNTIL THIS ANSWERS: the canvas is built from the fight, so
+ * every millisecond here is a millisecond of empty frame on the first thing
+ * anybody sees. It was 2.5 s, which on a cold route is two and a half seconds
+ * of "opening the doors" before a single robot appears.
+ *
+ * A SECOND IS THE BUDGET (Mike, 2026-09-06: the ring has to be fighting within
+ * a second or two). Missing the deadline costs nothing a visitor can see: the
+ * demo is a real fight of the real engine, the pit says which kind it is
+ * either way, and the page is not the place anybody goes to look up a
+ * particular battle. So the shorter wait is the safe side of the trade.
+ */
+const FETCH_MS = 1000;
 
 /** React StrictMode dev-mounts effects twice; two app.init() calls racing on
  * ONE canvas kill each other's shaders (the Battlefield law). Every build AND

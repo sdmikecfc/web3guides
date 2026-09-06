@@ -90,6 +90,14 @@ function backIn(until: string | null, nowMs: number): string {
   return `ready in ${mins} ${mins === 1 ? "minute" : "minutes"}`;
 }
 
+/**
+ * finisherOf() returns a fragment ("body cracked", "head off") so it can sit
+ * inside a longer sentence. Every row here STARTS a sentence with it, so it
+ * gets a capital, the way paper.ts already does. Without this the busiest
+ * list on the page reads "body cracked. Against a game robot."
+ */
+const capital = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+
 const mono = (size: number, color: string = M.muted): CSSProperties => ({
   fontFamily: FONT_MONO,
   fontSize: size,
@@ -129,11 +137,19 @@ function Thumb({ botId, tier, size = PORTRAIT_ON.botCard }: { botId: number; tie
 /**
  * A GAME robot, by the shape it is built from and the size it is built to.
  * It has no row and therefore no id, so it is named by the two values this
- * page already prints. It draws in unpainted clay with no face and no marks,
- * which is exactly how a game robot looks in the fights list below when it
- * wins one. The size is unknown until the player picks a robot, and the
- * route draws a middling one until then; the SHAPE is the day's shape either
- * way, so the picture is never of the wrong robot.
+ * page already prints.
+ *
+ * IT IS PAINTED, and it is the SAME painted robot in the fights list below.
+ * Each of the nine has its own colours, its own face and its own sticker in
+ * src/lib/bots/house-look.ts, which the portrait route reads for the ladder
+ * here and for every finished fight underneath. So Wobble is the same Wobble
+ * in both columns, and a player who has fought it twice knows it on sight.
+ * Nothing in that table is a prize: a game robot wears no stars, no patches
+ * and no crown, because it wins nothing.
+ *
+ * The size is unknown until the player picks a robot, and the route draws a
+ * middling one until then; the SHAPE is the day's shape either way, so the
+ * picture is never of the wrong robot.
  */
 function HouseThumb({ shapeId, total, tier, size }: { shapeId: string; total: number | null; tier: Tier; size: number }) {
   return <BotPortrait of={{ house: shapeId, total: total ?? undefined }} size={size} tier={tier} />;
@@ -930,7 +946,7 @@ function RecentRow({ s, nowMs }: { s: FightSummary; nowMs: number }) {
           {s.winnerName} beat {s.loserName}
         </div>
         <div style={{ fontSize: 12, color: M.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {s.finisher}. {modeWords(s)}
+          {capital(s.finisher)}. {modeWords(s)}
         </div>
       </div>
       <span style={{ ...mono(11), whiteSpace: "nowrap" }}>{ago(s.createdAt, nowMs)}</span>

@@ -12,6 +12,21 @@
   margin: 0 auto;
 }
 
+/*
+ * THE WHOLE FIGHT ON ONE SCREEN. A 1200px column makes a 675px tall pit, and
+ * 675 plus the name strips, the commentary and the transport is 8px taller
+ * than a 900px laptop window, so the play button and the scrubber sat below
+ * the fold and the first thing a person did was scroll. The column is capped
+ * by the window's HEIGHT instead: the pit keeps its 16 by 9 and the strips
+ * above it keep their alignment, because the cap is on the column and not on
+ * the canvas. 260px is the chrome above and below it, measured.
+ */
+@media (min-width: 900px) {
+  .viewer {
+    max-width: clamp(760px, calc((100vh - 260px) * 16 / 9), 1200px);
+  }
+}
+
 /* ── the identity strips over the canvas ────────────────────────────────── */
 
 .ids {
@@ -86,16 +101,195 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-.hud {
+/* ── THE LIFE BARS ───────────────────────────────────────────────────────
+ * Week 4. What used to sit here were two 64x84 robot pictograms in the top
+ * corners, painted in the good/warn/bad greens straight onto the crowd. At
+ * a demo size they read as a placeholder graphic somebody forgot to
+ * replace, and neither of them answered the only question a person watching
+ * a fight asks: WHO IS WINNING.
+ *
+ * So the corners are gone and the answer is a bar. One per robot, named,
+ * drained from the middle out the way every fighting game has done it since
+ * arcades, over a dark plate so it reads on a bright pit. The six part
+ * lamps under each bar carry what the pictogram carried (which arm, which
+ * leg, the head) in a shape that cannot be mistaken for broken art.
+ *
+ * It is DOM over the canvas, never on the Pixi stage, so a stage extract
+ * still cannot leak it (the DK postcard law, and the reason the old HUD was
+ * DOM too). */
+
+.hudBar {
   position: absolute;
-  top: 10px;
-  width: 64px;
-  height: 84px;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 10px 12px 14px;
   pointer-events: none;
+  background: linear-gradient(180deg, rgba(9, 12, 22, 0.72) 0%, rgba(9, 12, 22, 0.34) 62%, rgba(9, 12, 22, 0) 100%);
 }
 
-.hudLeft { left: 12px; }
-.hudRight { right: 12px; }
+.hudSide {
+  min-width: 0;
+}
+
+.hudTop {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 4px;
+}
+
+.hudRight .hudTop {
+  flex-direction: row-reverse;
+}
+
+.hudName {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #f2f5ff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.hudLife {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #a9b1c9;
+  flex: 0 0 auto;
+}
+
+.hudTrack {
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  background: rgba(9, 12, 22, 0.72);
+  border: 1px solid rgba(228, 232, 245, 0.22);
+  overflow: hidden;
+}
+
+.hudFill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 5px;
+  transition: width 140ms linear, background-color 200ms ease;
+}
+
+.hudRight .hudFill {
+  left: auto;
+  right: 0;
+}
+
+/* the six part lamps: head, body, both arms, both legs */
+
+.hudPips {
+  display: flex;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.hudRight .hudPips {
+  justify-content: flex-end;
+}
+
+.hudPip {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 34px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(9, 12, 22, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(228, 232, 245, 0.18);
+  overflow: hidden;
+}
+
+.hudPipFill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.hudRight .hudPipFill {
+  margin-left: auto;
+}
+
+.hudPipGone {
+  box-shadow: inset 0 0 0 1px rgba(228, 232, 245, 0.1);
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(228, 232, 245, 0.16) 0 2px,
+    rgba(9, 12, 22, 0) 2px 4px
+  );
+}
+
+/* ── the knockout title: the one frame anybody screenshots ────────────────
+ * IT SITS ABOVE THE ROBOTS, NOT ON THEM. Centred in the pit, the word landed
+ * straight across both faces at the one moment the picture is about, so the
+ * frame everybody screenshots hid the winner and the loser behind their own
+ * headline. The band between the life bars and the tops of the heads is
+ * empty blurred crowd on every fight, it is the darkest part of the picture,
+ * and cream letters read best there. Measured on a 1440 window: the bars end
+ * about 73px down and the tallest head starts about 185px down. */
+
+.koTitle {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  pointer-events: none;
+  text-align: center;
+  padding: 12% 16px 0;
+  animation: koIn 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.koWord {
+  font-size: 56px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #fff6e2;
+  text-shadow:
+    0 3px 0 rgba(27, 19, 16, 0.55),
+    0 10px 34px rgba(0, 0, 0, 0.6);
+}
+
+.koWho {
+  font-size: 19px;
+  font-weight: 700;
+  color: #fff6e2;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75);
+}
+
+@keyframes koIn {
+  from {
+    opacity: 0;
+    transform: scale(1.22);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .koTitle {
+    animation: none;
+  }
+}
 
 /* ── the commentary bar: 44px tall, and it WRAPS ─────────────────────────
  * It used to be `height: 44px` with `nowrap` and an ellipsis, so a robot
@@ -154,6 +348,15 @@
 }
 .ctlOn {
   border-color: #7c6aff;
+}
+
+/* A 44px square could not hold the word "Normal", which sat in it clipped to
+ * "Norma" with the L cut in half. The button keeps its 44px minimum and grows
+ * to the word instead. */
+.ctlWide {
+  width: auto;
+  min-width: 44px;
+  padding: 0 14px;
 }
 
 /* the scrubber: a 6px track, a 20px handle, a 44px hit area */
@@ -277,22 +480,62 @@
   .idRecord {
     font-size: 10px;
   }
-  .hud {
-    top: 6px;
-    width: 44px;
-    height: 58px;
+  .hudBar {
+    gap: 10px;
+    padding: 7px 8px 12px;
   }
-  .hudLeft { left: 6px; }
-  .hudRight { right: 6px; }
+  .hudName {
+    font-size: 11.5px;
+  }
+  .hudLife {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+  }
+  .hudTrack {
+    height: 9px;
+    border-radius: 5px;
+  }
+  .hudPip {
+    height: 4px;
+    max-width: 18px;
+  }
+  /* ON A PHONE THE EMPTY BAND IS UNDER THE ROBOTS, NOT OVER THEM.
+     Centred, the word printed straight across both faces, so the one frame
+     a person screenshots hid the winner and the loser behind their own
+     headline (read at 390x844 on 2026-09-06). The phone crop is tall and
+     the robots stand on the front of the mat, so the clear band is the lit
+     apron below their feet, which is deeper than the strip of crowd above
+     their heads. The title goes there instead. */
+  .koTitle {
+    justify-content: flex-end;
+    padding: 0 16px 9%;
+  }
+  .koWord {
+    font-size: 38px;
+  }
+  .koWho {
+    font-size: 15px;
+  }
   .commentary {
     font-size: 14px;
   }
   .controls {
     flex-wrap: wrap;
   }
+  /*
+   * TWO LINES, NOT THREE. The buttons plus the clock plus the share button
+   * came to a few pixels more than a 390 phone has, so the share button fell
+   * onto a line of its own and the scrubber onto a third, leaving a band of
+   * empty dark between the buttons and the bar. The clock moves down to sit
+   * beside the scrubber, the way it does in every video player: the buttons
+   * are then one comfortable row and the bar and its clock are the next.
+   */
   .scrub {
     order: 5;
-    flex: 1 1 100%;
+    flex: 1 1 60%;
+  }
+  .time {
+    order: 6;
   }
   .sheetGrid {
     grid-template-columns: 1fr 56px 56px;

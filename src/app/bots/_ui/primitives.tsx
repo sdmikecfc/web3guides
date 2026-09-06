@@ -349,7 +349,9 @@ export function ChipTab({
 }) {
   return (
     <button
-      className={css.press}
+      /* a text chip is a thumb target on a phone (ui.module.css tap44). The
+         square icon chip is not: it lives in the desktop tray only. */
+      className={square ? css.press : `${css.press} ${css.tap44}`}
       onClick={onClick}
       title={title}
       aria-label={title}
@@ -439,7 +441,7 @@ export function CoinChip({
 
   return (
     <button
-      className={css.press}
+      className={`${css.press} ${css.tap44}`}
       onClick={onClick}
       aria-label={ariaLabel}
       style={{

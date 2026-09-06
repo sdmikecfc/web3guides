@@ -121,7 +121,14 @@ export const PAINTS = {
   sky: "#7fb8ff",
   lilac: "#b9a7ff",
   moss: "#8fbf6a",
-  cream: "#f3e9d2",
+  // A PAINT HAS TO LOOK PAINTED. A paint tints the mask by MULTIPLY, so a
+  // near-white cream barely moves the clay: #f3e9d2 shifted it by 43 while
+  // every other paint shifted it 90 to 287, and a cream robot photographed
+  // as an unpainted one on every screen it appeared on. This warmer cream
+  // lands at 81, beside lilac, so it is still the palest of the eight and is
+  // unmistakably a colour. Bare clay keeps the old value; it lives on as
+  // NO_PAINT_HEX in src/lib/bots/look.ts, which is what a weapon wears.
+  cream: "#ecd9a8",
   ink: "#2b2f3a",
 } as const;
 export type PaintId = keyof typeof PAINTS;

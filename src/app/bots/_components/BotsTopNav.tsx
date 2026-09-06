@@ -77,6 +77,10 @@ export function BotsTopNav() {
         <Link
           href="/bots"
           style={{
+            // the way home is a thumb target, not a 24px word
+            display: "inline-flex",
+            alignItems: "center",
+            minHeight: 44,
             fontFamily: FONT_DISPLAY,
             fontSize: 15,
             fontWeight: 700,
@@ -127,7 +131,9 @@ export function BotsTopNav() {
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                minHeight: 36,
+                // the Play door is the one thing on this bar a new player
+                // presses, so it is a full thumb target on every screen
+                minHeight: 44,
                 padding: "0 16px",
                 borderRadius: 999,
                 border: `1px solid ${M.border}`,

@@ -48,6 +48,7 @@ import {
   lookOf,
 } from "@/app/bots/_server/bots";
 import { canonicalBuild, loadBattle } from "@/app/bots/_server/fight-read";
+import { HOUSE_MARKS, houseBotLook, houseShapeIdOfBuild, paintedHouseBuild } from "@/lib/bots/house-look";
 import { fnv1a } from "@/app/bots/_engine/rng";
 import { renderPortrait, type ArtCache, type LoadArt } from "./render";
 
@@ -58,6 +59,47 @@ export const dynamic = "force-dynamic";
 const ART: ArtCache = new Map();
 /** the raw bytes, so a cold cache after a redeploy is one fetch per file */
 const BYTES = new Map<string, Uint8Array | null>();
+
+/**
+ * THE FINISHED PICTURES, KEYED BY WHAT IS IN THEM.
+ *
+ * The fights list asks for a hundred portraits at once (fifty rows, two
+ * robots each) and the compositor takes a fifth of a second each, so the
+ * page painted itself in cream squares that filled in one by one over
+ * half a minute. Measured on the dev box, 2026-09-06.
+ *
+ * But those hundred requests are not a hundred DIFFERENT robots: one player
+ * beating Wobble eight times is eight rows and one picture, and the nine
+ * game robots are most of the list on their own. So the key is not the fight
+ * or the bay, it is the ROBOT: the build, the look and the marks that were
+ * about to be drawn. Two rows that would draw the same pixels now draw them
+ * once.
+ *
+ * IT CANNOT CHANGE A PICTURE. Everything the compositor reads is in the key,
+ * so a hit is the same bytes the miss would have produced. A robot that
+ * changes changes its key and misses. The ETag is untouched and still names
+ * the fight or the bay, so a browser revalidates exactly as before.
+ *
+ * BOUNDED, and oldest out first: a Map keeps insertion order, so deleting
+ * the first key is deleting the least recently added one. Four hundred
+ * pictures is a couple of full list pages at every size, and about 20 MB at
+ * the sizes a list actually asks for.
+ */
+const PNG_CACHE = new Map<string, Uint8Array>();
+const PNG_CACHE_MAX = 400;
+
+function cachedPng(key: string): Uint8Array | undefined {
+  return PNG_CACHE.get(key);
+}
+
+function keepPng(key: string, png: Uint8Array): void {
+  PNG_CACHE.set(key, png);
+  while (PNG_CACHE.size > PNG_CACHE_MAX) {
+    const oldest = PNG_CACHE.keys().next().value;
+    if (oldest === undefined) break;
+    PNG_CACHE.delete(oldest);
+  }
+}
 
 function loaderFor(origin: string): LoadArt {
   return async (path) => {
@@ -139,11 +181,17 @@ async function subjectOfBot(id: number): Promise<Subject | null> {
  * which read as a placeholder. This draws the real shape at the real size.
  *
  * IT ASKS NOTHING OF THE PLAYER'S SIDE. A shape id and a size are the two
- * values the ladder already publishes (PveLadderRow), houseBuild is the pure
- * engine function the fight route itself calls, and a game robot has no
- * owner, so no look, no marks, no hat and no paint: unpainted clay, which is
- * exactly what one looks like when it wins a fight and lands in the list.
- * There is nothing here a url could claim that has to be earned.
+ * values the ladder already publishes (PveLadderRow), and houseBuild is the
+ * pure engine function the fight route itself calls. There is nothing here a
+ * url could claim that has to be earned.
+ *
+ * IT IS PAINTED, AND UNTIL TODAY IT WAS NOT. A game robot has no parts, so
+ * it had no colours, so every one of the nine drew as grey clay next to
+ * eleven robots in four colours each and read as a picture that had failed
+ * to load. The colours, the face, the sticker and the hat come from
+ * lib/bots/house-look.ts, which is a drawing table and is read by nothing
+ * that fights. What a game robot still has is NO MARKS: stars, patches,
+ * cuffs and a crown are won, and the house wins nothing.
  */
 function subjectOfHouse(shapeId: string, total: number): Subject | null {
   let build: Build;
@@ -152,7 +200,12 @@ function subjectOfHouse(shapeId: string, total: number): Subject | null {
   } catch {
     return null; // an id the catalogue has never heard of
   }
-  return { build, look: NO_LOOK, marks: NO_MARKS, key: `h${shapeId}:${total}` };
+  return {
+    build: paintedHouseBuild(build, shapeId),
+    look: houseBotLook(shapeId),
+    marks: HOUSE_MARKS,
+    key: `h${shapeId}:${total}`,
+  };
 }
 
 /**
@@ -169,6 +222,24 @@ async function subjectOfFight(id: string, side: 0 | 1): Promise<Subject | null> 
   if (!row || row.status !== "resolved" || !row.result || row.mode === "spar") return null;
   const build = canonicalBuild(side === 0 ? row.result.buildA : row.result.buildB);
   const botId = side === 0 ? row.challenger_bot_id : row.defender_bot_id;
+  /**
+   * A GAME ROBOT ON ONE SIDE OF A FINISHED FIGHT. It has no row, so there is
+   * no bot id to read a look off, and this side used to fall through to a
+   * grey clay dummy: most of the fights list is a player beating one of the
+   * nine, so most of the list was grey. Which of the nine it was is written
+   * on the build itself (the engine names a house part house.<shape>.<slot>),
+   * so a row saved weeks before any of this existed still draws the right
+   * character.
+   */
+  const houseShape = houseShapeIdOfBuild(build);
+  if (houseShape) {
+    return {
+      build: paintedHouseBuild(build, houseShape),
+      look: houseBotLook(houseShape),
+      marks: HOUSE_MARKS,
+      key: `f${row.id}:${side}:${houseShape}`,
+    };
+  }
   let look = NO_LOOK;
   let marks = NO_MARKS;
   if (botId) {
@@ -218,6 +289,32 @@ export async function GET(req: Request) {
     return new NextResponse(null, { status: 304, headers: { ETag: etag } });
   }
 
+  // A url that carries a `v` names one version of one robot, so it can be
+  // kept for a year. One without it is a robot that may change in the next
+  // minute, so it is kept for five. A GAME robot is a pure function of its
+  // shape and its size and has no owner to change it, so it is a year too.
+  const versioned = known && (!!url.searchParams.get("v") || s.key.startsWith("h"));
+  const answer = (bytes: Uint8Array): NextResponse =>
+    new NextResponse(Buffer.from(bytes), {
+      status: 200,
+      headers: {
+        "Content-Type": "image/png",
+        "Content-Length": String(bytes.byteLength),
+        "Cache-Control": versioned
+          ? "public, max-age=31536000, immutable"
+          : known
+            ? "public, max-age=300, stale-while-revalidate=3600"
+            : "public, max-age=60",
+        ETag: etag,
+      },
+    });
+
+  // what the compositor is about to be handed, and nothing else: two rows
+  // that would draw the same robot share one drawing
+  const drawKey = `${size}:${fnv1a(JSON.stringify([s.build, s.look, s.marks])).toString(36)}`;
+  const hit = cachedPng(drawKey);
+  if (hit) return answer(hit);
+
   let png: Uint8Array;
   try {
     const out = await renderPortrait(
@@ -227,6 +324,7 @@ export async function GET(req: Request) {
       ART,
     );
     png = out.png;
+    keepPng(drawKey, png);
   } catch {
     // the compositor itself fell over: one more try with the plainest robot
     // there is, and if that fails too the caller gets an honest empty answer
@@ -239,22 +337,5 @@ export async function GET(req: Request) {
     }
   }
 
-  // A url that carries a `v` names one version of one robot, so it can be
-  // kept for a year. One without it is a robot that may change in the next
-  // minute, so it is kept for five. A GAME robot is a pure function of its
-  // shape and its size and has no owner to change it, so it is a year too.
-  const versioned = known && (!!url.searchParams.get("v") || s.key.startsWith("h"));
-  return new NextResponse(Buffer.from(png), {
-    status: 200,
-    headers: {
-      "Content-Type": "image/png",
-      "Content-Length": String(png.byteLength),
-      "Cache-Control": versioned
-        ? "public, max-age=31536000, immutable"
-        : known
-          ? "public, max-age=300, stale-while-revalidate=3600"
-          : "public, max-age=60",
-      ETag: etag,
-    },
-  });
+  return answer(png);
 }

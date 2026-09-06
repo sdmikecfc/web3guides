@@ -14,6 +14,7 @@
  */
 import "server-only";
 import { NO_LOOK, NO_MARKS, socketPaints } from "@/lib/bots/look";
+import { HOUSE_MARKS, houseBotLook, houseShapeIdOfBuild, houseSocketPaints } from "@/lib/bots/house-look";
 import { HOUSE_ROSTER, type Difficulty } from "../_engine/catalog";
 import type { Build, Mode, Orders, Part } from "../_engine/parts";
 import { type BotsDb, refuse } from "./db";
@@ -143,14 +144,36 @@ export function looksFromBuild(build: Build, id: FightIdentityView | undefined):
   };
 }
 
-/** Both robots as they looked at the bell: the snapshot when the row has
- * one, the saved build when it does not. */
+/**
+ * One of the nine game robots, drawn from the one table every surface reads
+ * (lib/bots/house-look.ts). It has won nothing, so it wears nothing it has
+ * won, and its record is not its own: the house has no wins column.
+ */
+export function houseLookView(shapeId: string): LookView {
+  return { paints: houseSocketPaints(shapeId), look: houseBotLook(shapeId), marks: HOUSE_MARKS, wins: 0 };
+}
+
+/**
+ * Both robots as they looked at the bell: the snapshot when the row has one,
+ * the saved build when it does not.
+ *
+ * A GAME ROBOT IS THE ONE EXCEPTION, and it is not a robot that was ever
+ * "as it was": it has no owner, no parts and nothing it chose, so there is
+ * nothing personal in a snapshot of one to preserve. Every row ever written
+ * stored the house side as ONE flat colour over the whole frame, which is
+ * why Wobble was butter in the ring and grey clay in the list beside it.
+ * Its look is read from lib/bots/house-look.ts instead, so the nine are the
+ * same nine characters on every surface and every row, old and new, gets
+ * them. A PLAYER's side is never touched by this.
+ */
 export function looksOf(r: ResultJson): [LookView, LookView] {
   const stored = r.looks;
-  return [
-    stored?.[0] ?? looksFromBuild(r.buildA, r.ids?.[0]),
-    stored?.[1] ?? looksFromBuild(r.buildB, r.ids?.[1]),
-  ];
+  const side = (i: 0 | 1, build: Build): LookView => {
+    const shape = houseShapeIdOfBuild(build);
+    if (shape) return houseLookView(shape);
+    return stored?.[i] ?? looksFromBuild(build, r.ids?.[i]);
+  };
+  return [side(0, r.buildA), side(1, r.buildB)];
 }
 
 // ── reading a fight ─────────────────────────────────────────────────────────

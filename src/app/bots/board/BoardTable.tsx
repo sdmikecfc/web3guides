@@ -6,14 +6,23 @@
  * Presentation only, and a SERVER component: nothing here sorts, filters or
  * fetches, so the board ships with no client JavaScript of its own.
  *
- * WHAT IS LIVE AND WHAT IS NOT (2026-09-04). Battle Points, the tier dots
- * and the rank are real, from rows the game already writes. Trading Score,
- * ROI and Strategy come from the trading tracker, which is not live yet, so
- * those three cells print a plain "not tracked yet" rather than a zero that
- * would read as a measurement. The guide's zero-strategy path describes
- * exactly this row: a garage that never sets a strategy still appears, with
- * no trading numbers and a blank strategy column. Visit waits for the Bot
- * Profile route (week 4); a link that 404s is the defect this page fixes.
+ * WHAT IS LIVE AND WHAT IS NOT (2026-09-06). Fight points, the robots and
+ * the place are real, from rows the game already writes. Trade points, the
+ * up-or-down number and the strategy come from the trading tracker, which is
+ * not live yet.
+ *
+ * THOSE THREE COLUMNS ARE NOT DRAWN, AND THE SENTENCE UNDER THE TABLE SAYS
+ * SO. They used to be here, each cell reading "not counted yet", and three
+ * of them times eight rows is twenty four cells of grey saying nothing. Worse
+ * than saying nothing: the table then needed more width than the page gives
+ * it, so on a laptop the last column was SLICED DOWN THE MIDDLE and the
+ * header read "UP O" (read on the 1440 capture, 2026-09-06). A cut off table
+ * reads as a broken page. One plain sentence underneath says the same thing
+ * once, and the five live columns fit with room to spare. Week 4 adds the
+ * columns back with numbers in them.
+ *
+ * Visit waits for the Bot Profile route (week 4); a link that 404s is the
+ * defect this page fixes.
  *
  * THE LAWS ON THIS SCREEN: wallet NAMES only, never an address. No dollar
  * figure, ever. Operator and test wallets are excluded and the exclusion
@@ -24,14 +33,13 @@ import type { CSSProperties } from "react";
 import { BotPortraitRow, PORTRAIT_ROW_SHOWN } from "../_components/BotPortrait";
 import { FONT_BODY, FONT_DISPLAY, FONT_MONO, M, R } from "../_ui/tokens";
 import type { Tier } from "../_engine/parts";
-import { STRINGS, starWord, winLossWords } from "@/lib/bots/strings";
+import { starWord, winLossWords } from "@/lib/bots/strings";
 import css from "./board.module.css";
 
 /**
  * Local copy. These lines belong in STRINGS.en.board next to `visit` and
  * `noStrategy`; that file is being edited by another lane this week, so they
- * wait here rather than collide. The two keys that DO exist are imported,
- * never retyped.
+ * wait here rather than collide.
  */
 const COPY = {
   eyebrow: "LEADERS",
@@ -41,8 +49,6 @@ const COPY = {
   empty: "Nobody is on the list yet.",
   emptyHint: "Win one fight and you are on it.",
   unavailable: "The list is not working right now. Try again in a minute.",
-  notYet: "not counted yet",
-  strategy: "Auto trading",
   bots: "Robots",
   rank: "Place",
   /** three names for one thing shipped here: the column, the sentence above
@@ -81,7 +87,6 @@ function pointsText(n: number): string {
 const HEAD: CSSProperties = { fontFamily: FONT_DISPLAY, color: M.muted };
 const CELL: CSSProperties = { color: M.text, borderTop: `1px solid ${M.border}` };
 const NUM: CSSProperties = { ...CELL, fontFamily: FONT_MONO };
-const RIGHT: CSSProperties = { textAlign: "right" };
 
 export function BoardTable({ rows, unavailable }: { rows: readonly BoardRow[]; unavailable?: boolean }) {
   return (
@@ -126,23 +131,20 @@ export function BoardTable({ rows, unavailable }: { rows: readonly BoardRow[]; u
                       <span className={css.narrowWord}>{COPY.pointsShort}</span>
                     </th>
                     <th className={`${css.h} ${css.n} ${css.record}`} style={HEAD} scope="col">
-                      {COPY.record}
-                    </th>
-                    <th className={`${css.h} ${css.n} ${css.later}`} style={HEAD} scope="col">
-                      {STRINGS.en.board.tabs[0]}
-                    </th>
-                    <th className={`${css.h} ${css.n} ${css.later}`} style={HEAD} scope="col">
-                      {STRINGS.en.board.tabs[2]}
-                    </th>
-                    <th className={`${css.h} ${css.later}`} style={HEAD} scope="col">
-                      {COPY.strategy}
+                      <span className={css.wideWord}>{COPY.record}</span>
+                      <span className={css.narrowWord}>{COPY.recordShort}</span>
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((r) => (
                     <tr key={`${r.rank}:${r.name}`}>
-                      <td className={`${css.c} ${css.n} ${css.rank}`} style={{ ...NUM, color: M.muted }}>
+                      {/* THE FIRST THREE PLACES ARE THE ONES A READER IS
+                          LOOKING FOR, so they are the only bright numbers in
+                          the column and everything under them stays quiet.
+                          The place is still just a number: no medal, no cup,
+                          nothing that has to be explained. */}
+                      <td className={`${css.c} ${css.n} ${css.rank}`} style={{ ...NUM, color: r.rank <= 3 ? M.text : M.muted, fontWeight: r.rank <= 3 ? 700 : 400 }}>
                         {r.rank}
                       </td>
                       <td className={`${css.c} ${css.name}`} style={{ ...CELL, fontWeight: 600 }}>
@@ -170,25 +172,16 @@ export function BoardTable({ rows, unavailable }: { rows: readonly BoardRow[]; u
                           />
                         )}
                       </td>
-                      <td className={`${css.c} ${css.n}`} style={NUM}>
+                      {/* the column the whole table is sorted by, so it is
+                          the strongest number on the row */}
+                      <td className={`${css.c} ${css.n}`} style={{ ...NUM, fontWeight: 700, fontSize: 15 }}>
                         {pointsText(r.battlePoints)}
                       </td>
                       <td className={`${css.c} ${css.n} ${css.record}`} style={{ ...NUM, color: M.lore }}>
-                        <span className={css.wideWord}>
-                        {winLossWords(r.wins, r.losses)}
-                      </span>
-                      <span className={css.narrowWord}>
-                        {r.wins}-{r.losses}
-                      </span>
-                      </td>
-                      <td className={`${css.c} ${css.n} ${css.later}`} style={{ ...NUM, ...RIGHT, color: M.muted, fontSize: 12.5 }}>
-                        {COPY.notYet}
-                      </td>
-                      <td className={`${css.c} ${css.n} ${css.later}`} style={{ ...NUM, ...RIGHT, color: M.muted, fontSize: 12.5 }}>
-                        {COPY.notYet}
-                      </td>
-                      <td className={`${css.c} ${css.later}`} style={{ ...CELL, color: M.muted, fontSize: 12.5 }}>
-                        {STRINGS.en.board.noStrategy}
+                        <span className={css.wideWord}>{winLossWords(r.wins, r.losses)}</span>
+                        <span className={css.narrowWord}>
+                          {r.wins}-{r.losses}
+                        </span>
                       </td>
                     </tr>
                   ))}

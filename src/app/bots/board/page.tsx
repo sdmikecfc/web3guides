@@ -30,9 +30,10 @@
  */
 import type { Metadata } from "next";
 import { PageShell } from "../_components/PageShell";
-import { botsDb } from "../_server/db";
+import { botsDb, isProduction } from "../_server/db";
 import { displayName, type PlayerRow } from "../_server/players";
 import { BoardTable, type BoardRow } from "./BoardTable";
+import { SAMPLE_ROWS } from "./sample";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,18 +61,43 @@ function isPlayable(p: PlayerRow): boolean {
   return p.is_operator === false && p.is_test === false;
 }
 
+/**
+ * THE PLAYERS ON THE BOARD, and the exclusion FAILS CLOSED: a row is asked
+ * for only when both flags are explicitly false, so a null or a missing
+ * column hides a garage instead of publishing it.
+ *
+ * `test` opens that gate, and it is opened in ONE place and only outside
+ * production (the caller checks isProduction before it ever asks). Every
+ * wallet on a development box is a smoke wallet, so the real board correctly
+ * renders "nobody is on the list yet" there and the table itself cannot be
+ * looked at. In production this second query is never made.
+ */
+async function loadPlayers(db: ReturnType<typeof botsDb>, test: boolean): Promise<PlayerRow[]> {
+  let q = db
+    .from("battle_bots_players")
+    .select("id, wallet, wallet_name, enlisted_at, coins, battle_points, is_operator, is_test, review_status")
+    .eq("is_operator", false);
+  if (!test) q = q.eq("is_test", false);
+  const { data, error } = await q.order("battle_points", { ascending: false }).limit(LIMIT);
+  if (error) throw new Error(error.message);
+  const rows = (data || []) as PlayerRow[];
+  return test ? rows.filter((p) => p.is_operator === false) : rows.filter(isPlayable);
+}
+
 async function loadBoard(): Promise<{ rows: BoardRow[]; unavailable: boolean }> {
   try {
     const db = botsDb();
-    const { data: playerData, error: playerErr } = await db
-      .from("battle_bots_players")
-      .select("id, wallet, wallet_name, enlisted_at, coins, battle_points, is_operator, is_test, review_status")
-      .eq("is_operator", false)
-      .eq("is_test", false)
-      .order("battle_points", { ascending: false })
-      .limit(LIMIT);
-    if (playerErr) throw new Error(playerErr.message);
-    const players = ((playerData || []) as PlayerRow[]).filter(isPlayable);
+    let players = await loadPlayers(db, false);
+    // outside production only: a development database has no real garages,
+    // so without this the table can never be seen on the box it is built on
+    if (players.length === 0 && !isProduction()) players = await loadPlayers(db, true);
+    // still nothing outside production: a development database can have no
+    // garages at all, and then this page is a blank card that shows neither
+    // the table nor whether it works. Fall back to the sample rows the
+    // preview route draws. PRODUCTION NEVER DOES THIS: a real board with no
+    // players keeps its honest empty state, so invented rows can never be
+    // shown as if somebody had played.
+    if (players.length === 0 && !isProduction()) return { rows: SAMPLE_ROWS, unavailable: false };
     if (players.length === 0) return { rows: [], unavailable: false };
 
     const wallets = players.map((p) => p.wallet);

@@ -35,7 +35,7 @@
  */
 import "server-only";
 import { CARD_BY_ID } from "@/lib/bots/fixtures";
-import { NO_LOOK, NO_MARKS, hatWonFor, marksOf, socketPaints, type HatWon } from "@/lib/bots/look";
+import { hatWonFor, marksOf, type HatWon } from "@/lib/bots/look";
 import { STRINGS } from "@/lib/bots/strings";
 import { HOUSE_ROSTER, PARTS, SHAPE_INDEX, houseBuild, houseTarget, type Difficulty } from "../_engine/catalog";
 import { chainSummary } from "../_engine/commentary";
@@ -114,17 +114,23 @@ async function lookViewOf(db: BotsDb, b: BotRow, parts: readonly PartRow[]): Pro
   };
 }
 
-/** The house robot has no parts, so it has no found colours: one paint over
- * the whole frame, the calm face, nothing chosen and nothing earned. */
-function houseLookView(): LookView {
-  return { paints: socketPaints(() => HOUSE_PAINT), look: NO_LOOK, marks: NO_MARKS, wins: 0 };
-}
+/**
+ * The house robot has no parts, so it has no FOUND colours, and for a long
+ * time that meant one flat paint over the whole frame. Each of the nine has
+ * its own colours, face, sticker and (on three of them) hat now, from the
+ * one drawing table every surface reads (lib/bots/house-look.ts): a game
+ * robot is a character a player meets over and over, and a character has to
+ * be recognisable in a list. Nothing it wears is EARNED: no stars, no
+ * patches, no cuffs, no crown. Reading it is houseLookViewOf, re-exported
+ * from ./fight-read so the replay of an old row draws the same character.
+ */
 
 // BattleRow, ResultJson, BATTLE_COLS, the canonical shapes and every READ
 // (loadBattle, fightView, fightSummary, modeLabelOf) live in ./fight-read.ts
 // (no node:crypto there, so the edge Knockout Card can import them) and are
 // re-exported here so the routes keep one import.
-export { canonicalBuild, canonicalOrders, fightSummary, fightView, loadBattle, looksFromBuild, looksOf, modeLabelOf, type BattleRow, type ResultJson } from "./fight-read";
+export { canonicalBuild, canonicalOrders, fightSummary, fightView, houseLookView, loadBattle, looksFromBuild, looksOf, modeLabelOf, type BattleRow, type ResultJson } from "./fight-read";
+import { houseLookView } from "./fight-read";
 import type { ResultJson } from "./fight-read";
 
 // ── the house ───────────────────────────────────────────────────────────────
@@ -474,7 +480,7 @@ export async function startFight(db: BotsDb, sess: BotsSession, input: StartFigh
     // into the fight and not the one they left with
     const looks: [LookView, LookView] = [
       await lookViewOf(db, bot, parts),
-      defender ? await lookViewOf(db, defender, await loadPartsOfBot(db, defender.id)) : houseLookView(),
+      defender ? await lookViewOf(db, defender, await loadPartsOfBot(db, defender.id)) : houseLookView(shape ? shape.id : ""),
     ];
     const stored: ResultJson = {
       v: ENGINE_VERSION,

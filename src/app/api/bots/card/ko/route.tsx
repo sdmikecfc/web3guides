@@ -230,7 +230,16 @@ async function koCard(v: FightView, fonts: Fonts, origin: string, host: string) 
     portrait(origin, v.id, l as 0 | 1, 300),
   ]);
   const points = v.rewards.attackerPoints;
-  const pointsChip = w === 0 && points > 0 ? `+${points} fight points` : w === 1 && v.mode === "pvp" ? "The saved copy won" : starWord(winner.tier);
+  /**
+   * THE CHIP SAYS WHAT THE FIGHT WAS WORTH, or it is not there at all. It
+   * used to fall back to the winner's star count, which the line above the
+   * chips already prints, so a card of a fight that paid nothing carried
+   * "1 star" twice, an arm's length apart (read on card 218, 2026-09-06). A
+   * chip that repeats the line above it is not a second fact, it is a
+   * second look at the same one, so it stands down and "Watch it again"
+   * stands alone.
+   */
+  const pointsChip = w === 0 && points > 0 ? `+${points} fight points` : w === 1 && v.mode === "pvp" ? "The saved copy won" : null;
   const title = v.end === "ko" ? "KNOCKOUT" : "TIME RAN OUT";
   /**
    * THE CARD IS A PORTRAIT OF THE ROBOT, NOT A TABLE OF NUMBERS (Mike,
@@ -243,6 +252,26 @@ async function koCard(v: FightView, fonts: Fonts, origin: string, host: string) 
    * sentence, so the sentence says "it".
    */
   const didLine = v.end === "ko" ? fill(STRINGS.en.card.beat, { loser: loser.name }) : STRINGS.en.card.stoodUp;
+  /**
+   * THE LINE UNDER THE SENTENCE: who owns the robot, how big it is, and how
+   * it has done. Two things used to make that line read as a broken card.
+   *
+   * A GAME ROBOT HAS NO OWNER. The stored fight names the house's side
+   * "House", so a card of a fight the player lost printed "House" where a
+   * player's name goes and a reader had to guess what that meant. The word
+   * for one of the nine everywhere else in the game is "game robot", so that
+   * is the word here too. The name is a literal on purpose: fights.ts, which
+   * exports it, pulls node:crypto, and this route runs on the edge.
+   *
+   * A RECORD OF NOTHING IS NOT A RECORD. The numbers are the robot's as it
+   * stepped in, so a robot winning its first fight ever printed "0 wins, 0
+   * losses" on the card celebrating that win (read on card 219, 2026-09-06).
+   * A robot with nothing behind it says nothing, and the picture, the name
+   * and the knockout say the rest.
+   */
+  const HOUSE = "House";
+  const facts = [winner.wallet === HOUSE ? "A game robot" : winner.wallet, starWord(winner.tier)];
+  if (winner.wins + winner.losses > 0) facts.push(winLossWords(winner.wins, winner.losses));
   const loserSize = 260;
   return new ImageResponse(
     (
@@ -285,11 +314,11 @@ async function koCard(v: FightView, fonts: Fonts, origin: string, host: string) 
               <div style={{ display: "flex", fontFamily: FONT_DISPLAY, fontSize: 44, fontWeight: 700, color: TEXT, marginTop: 14, lineHeight: 1.1 }}>{winner.name}</div>
               <div style={{ display: "flex", fontFamily: FONT_TOY, fontSize: 30, fontWeight: 800, color: CREAM, marginTop: 12, lineHeight: 1.2 }}>{didLine}</div>
               <div style={{ display: "flex", fontSize: 21, color: MUTED, marginTop: 12 }}>
-                {`${winner.wallet}, ${starWord(winner.tier)}, ${winLossWords(winner.wins, winner.losses)}`}
+                {facts.join(", ")}
               </div>
               <div style={{ display: "flex", fontSize: 19, color: LORE, marginTop: 10, lineHeight: 1.35 }}>{v.chain}</div>
               <div style={{ display: "flex", gap: 12, marginTop: 22 }}>
-                {chip(pointsChip, points > 0 && w === 0 ? GOLD : LORE)}
+                {pointsChip ? chip(pointsChip, points > 0 && w === 0 ? GOLD : LORE) : null}
                 {chip("Watch it again", ACCENT)}
               </div>
             </div>

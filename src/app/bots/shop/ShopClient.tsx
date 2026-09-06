@@ -26,6 +26,7 @@
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageShell } from "../_components/PageShell";
+import { HeapProp, TruckProp } from "./YardScene";
 import { STAT_ICON } from "../_ui/icons";
 import { Button, ChipTab, CoinChip, Panel, uiCss } from "../_ui/primitives";
 import { FONT_BODY, FONT_DISPLAY, FONT_MONO, K, M, PAINTS, R, TAP, TIER_COLOR, type PaintId } from "../_ui/tokens";
@@ -168,7 +169,7 @@ function Thumb({ listing, size }: { listing: Listing; size: number }) {
   const [maskOk, setMaskOk] = useState(true);
   const art = partArt(listing.card);
   const ring = TIER_COLOR[listing.tier];
-  const inner = Math.round(size * 0.82);
+  const inner = Math.round(size * 0.86);
   const tint = listing.color ? PAINTS[listing.color] : null;
   return (
     <span
@@ -177,7 +178,16 @@ function Thumb({ listing, size }: { listing: Listing; size: number }) {
         height: size,
         borderRadius: Math.round(size / 5),
         border: `3px solid ${ring}`,
-        background: `linear-gradient(180deg, ${K.paper}, ${K.floor})`,
+        /*
+         * A LIGHT BOX, ALWAYS. Mike, 2026-09-06: "a black part on a dark card
+         * is unreadable". Six of today's sixteen parts ship in the ink paint,
+         * and the plate under them used to end on the concrete grey, which put
+         * a near-black part on a mid grey ground at 44 pixels. The plate is
+         * near white at the top now and never goes below the paper cream, so
+         * every paint in the game has something to be seen against.
+         */
+        background: `linear-gradient(180deg, #fffdf7 0%, ${K.paper} 68%, #e6dac0 100%)`,
+        boxShadow: "inset 0 -6px 10px rgba(120,96,66,0.10)",
         display: "grid",
         placeItems: "center",
         flex: "0 0 auto",
@@ -194,7 +204,30 @@ function Thumb({ listing, size }: { listing: Listing; size: number }) {
             src={art.base}
             alt=""
             onError={() => setOk(false)}
-            style={{ width: inner, height: inner, objectFit: "contain", display: "block" }}
+            style={{
+              width: inner,
+              height: inner,
+              objectFit: "contain",
+              display: "block",
+              /*
+               * A LINE OF DARK, THEN A RIM OF LIGHT, THEN A SHADOW.
+               *
+               * Every part is drawn on a near white plate, and the paints run
+               * from ink to cream, so ONE rim colour cannot outline all of
+               * them: a white rim made the ink parts read and made the cream
+               * ones vanish. The dark line goes on first and hugs the part, so
+               * it is the pale end's edge; the white rim is cast off the dark
+               * line and lands outside it, so it is the ink end's edge. A part
+               * of any paint now ends on something the plate is not, and the
+               * last shadow sits it down instead of floating it.
+               *
+               * The order is the whole trick. Light first put the dark line
+               * two soft pixels out, where it was too weak to outline a cream
+               * hand at 58 pixels.
+               */
+              filter:
+                "drop-shadow(0 0 0.8px rgba(58,46,30,0.98)) drop-shadow(0 0 0.8px rgba(58,46,30,0.8)) drop-shadow(0 0 1.6px rgba(255,255,255,0.92)) drop-shadow(0 3px 3px rgba(96,80,58,0.24))",
+            }}
           />
           {tint && maskOk ? (
             <>
@@ -223,6 +256,9 @@ function Thumb({ listing, size }: { listing: Listing; size: number }) {
             height: inner,
             borderRadius: Math.round(size / 7),
             background: tint ?? K.clay,
+            // the same drawn edge the photographed part gets, for the same
+            // reason: a cream plate on a cream plate is not a plate
+            border: "1px solid rgba(84,68,46,0.55)",
             boxShadow: `inset 0 -${Math.max(2, Math.round(size / 18))}px 0 rgba(0,0,0,0.16)`,
           }}
         />
@@ -232,16 +268,30 @@ function Thumb({ listing, size }: { listing: Listing; size: number }) {
 }
 
 /**
- * A prop that hides itself when the art folder is missing, and on a phone,
- * where the 390 band is 160 tall and the sixteen thumbs need the whole
- * width (screens doc 3.3, mobile).
+ * A drawn prop, hidden on a phone, where the 390 band is 168 tall and the
+ * sixteen parts need the whole width (screens doc 3.3, mobile).
+ *
+ * It used to be an `<img>` onto public/bots-art/props. The two files it
+ * pointed at were a mint and coral bookcase with a flower on its crown and a
+ * pastel picnic crate, which made the yard read as a toy shop; they are drawn
+ * now (YardScene.tsx), so there is no file to load and nothing to 404.
  */
-function Prop({ src, height, style }: { src: string; height: number; style?: React.CSSProperties }) {
-  const [ok, setOk] = useState(true);
-  if (!ok) return null;
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img className={css.desktopOnly} src={src} alt="" onError={() => setOk(false)} style={{ height, width: "auto", ...style }} />;
+function Prop({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <span className={css.desktopOnly} style={style}>
+      {children}
+    </span>
+  );
 }
+
+/**
+ * EVERY COLOUR DOT WEARS A PALE RING. The cards and the two strips are dark
+ * surfaces, and two of the eight paints are dark: the ink dot on a listing
+ * that reads "black" was a dark circle on a dark card, which is the one dot
+ * on the page a player most needs to see. The ring is a hairline, so a mint
+ * or a butter dot looks the same as before.
+ */
+const DOT_RING = "0 0 0 1px rgba(255,253,247,0.42)";
 
 /** The colour dot and its word, the pair that appears on every body listing.
  * Was "no color" in lower case, which read like a missing value rather than
@@ -252,7 +302,15 @@ function ColorChip({ color, size = 9 }: { color: PaintId | null; size?: number }
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
       <span
         aria-hidden
-        style={{ width: size, height: size, borderRadius: R.pill, background: PAINTS[color], display: "inline-block", flex: "0 0 auto" }}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: R.pill,
+          background: PAINTS[color],
+          boxShadow: DOT_RING,
+          display: "inline-block",
+          flex: "0 0 auto",
+        }}
       />
       {t.paintName[color]}
     </span>
@@ -354,6 +412,9 @@ function ShopCard({
         color: M.text,
         fontFamily: FONT_BODY,
         scrollMarginTop: 84,
+        // fill the grid cell, so every card in a row ends on the same line and
+        // the price rows (marginTop auto, below) line up across the row
+        height: "100%",
         // a bought card sits back, but its art stays bright: it is yours now
         opacity: state.kind === "bought" ? 0.7 : 1,
       }}
@@ -362,7 +423,9 @@ function ShopCard({
              tier colour, because it is the first thing a player needs and
              the old card never said it at all. */}
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-        <Thumb listing={listing} size={72} />
+        {/* 72 was too small to tell a head from a body at a glance, and far
+            too small for an ink part, which arrives as a silhouette */}
+        <Thumb listing={listing} size={94} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div
             style={{
@@ -599,17 +662,29 @@ export default function ShopClient() {
       onClick={() => scrollTo(l.id)}
       title={shelfLabel}
       aria-label={shelfLabel}
-      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, border: "none", background: "transparent", padding: 0, cursor: "pointer" }}
+      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, border: "none", background: "transparent", padding: 0, cursor: "pointer" }}
     >
-      <Thumb listing={l} size={size} />
+      {/* the plate casts a shadow on the dirt, so the parts stand in the yard */}
+      <span style={{ display: "block", filter: "drop-shadow(0 4px 4px rgba(96,80,58,0.32))" }}>
+        <Thumb listing={l} size={size} />
+      </span>
+      {/*
+       * THE COLOUR DOT, on a white ring. It used to be a bare 10px circle,
+       * which put the ink dot on dirt at almost no contrast and lost the day's
+       * colour exactly on the parts a player most needs to tell apart. The
+       * ring reads on any ground the band can draw.
+       */}
       <span
         aria-hidden
         style={{
-          width: 10,
-          height: 10,
+          width: 13,
+          height: 13,
           borderRadius: R.pill,
-          background: l.color ? PAINTS[l.color] : "transparent",
-          border: l.color ? "none" : `1px solid ${K.floor}`,
+          background: l.color ? PAINTS[l.color] : K.paper,
+          border: `2px solid ${l.color ? "#fffdf7" : K.floor}`,
+          // a dark outer ring, not a faint one: the cream dot inside a white
+          // border, standing on pale dirt, had nothing to end on
+          boxShadow: "0 0 0 1.5px rgba(74,60,40,0.72)",
         }}
       />
     </button>
@@ -625,11 +700,28 @@ export default function ShopClient() {
             {t.shopUi.yard}
           </p>
           <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 28, margin: 0, color: M.text }}>{t.shopUi.title}</h1>
-          <p style={{ margin: "6px 0 0", fontSize: 13, color: M.lore }}>{shipment ? shipment.name : ""}</p>
-          {/* the one line that teaches the whole naming convention. A player
-              who reads it once can read every card on the page. */}
-          <p style={{ margin: "6px 0 0", fontSize: 12.5, color: M.muted, lineHeight: 1.45, maxWidth: 640 }}>{t.teach.stars}</p>
-          <p style={{ margin: "6px 0 0", fontSize: 12.5, color: M.muted, lineHeight: 1.45, maxWidth: 640 }}>{SHELF_WORDS.howToRead}</p>
+          {/* THE ONE LINE. What the picture above means, before anything else
+              on the page asks for attention. */}
+          <p style={{ margin: "7px 0 0", fontSize: 15, color: M.text, lineHeight: 1.45, maxWidth: 640 }}>{t.shopUi.yardLine}</p>
+          <p style={{ margin: "4px 0 0", fontSize: 13, color: M.lore }}>{shipment ? shipment.name : ""}</p>
+          {/* the two lines that teach the whole naming convention. A player who
+              reads them once can read every card on the page, so they stay,
+              but quietly and behind a rule: on a phone they used to be three
+              stacked paragraphs and the first thing on the screen. */}
+          <div
+            style={{
+              margin: "10px 0 0",
+              paddingLeft: 10,
+              borderLeft: `2px solid ${M.border}`,
+              maxWidth: 640,
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+            }}
+          >
+            <p style={{ margin: 0, fontSize: 12, color: M.muted, lineHeight: 1.4 }}>{t.teach.stars}</p>
+            <p style={{ margin: 0, fontSize: 12, color: M.muted, lineHeight: 1.4 }}>{SHELF_WORDS.howToRead}</p>
+          </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted }}>{fill(t.shopUi.yourLevel, { n: st.level })}</span>
@@ -654,47 +746,60 @@ export default function ShopClient() {
         </div>
       </div>
 
-      {/* ── the shelf: a lit clay band inside the dark frame ──────────────── */}
+      {/* ── the yard: the truck that brought today's parts, and the parts ── */}
       <div
         className={css.band}
         style={{
           borderRadius: R.frame,
           border: `1px solid ${M.border}`,
           boxShadow: `inset 0 1px 0 ${M.highlight}`,
-          // stepped wall bands (never a smooth gradient), then the floor
-          background: `linear-gradient(180deg, #f1e8d9 0%, #f1e8d9 12%, #ece2d2 12%, #ece2d2 24%, #e9dfcf 24%, #e9dfcf 36%, #e3d8c7 36%, #e3d8c7 48%, #dccfbd 48%, #dccfbd 60%, #d4c7b4 60%, #d4c7b4 70%, ${K.floor} 70%, ${K.floor} 100%)`,
         }}
       >
-        <Prop src="/bots-art/props/shop-shelf.png" height={186} style={{ marginBottom: 4 }} />
+        {/* the set: dusty air, a fence of corrugated tin, dirt (shop.module.css) */}
+        <span aria-hidden className={css.sky} />
+        <span aria-hidden className={css.fence} />
+        <span aria-hidden className={css.dirt} />
+
+        <Prop style={{ marginBottom: 2 }}>
+          <TruckProp height={200} />
+        </Prop>
+
         <div className={css.planks}>
-          {/* top plank: the eight Tier 1 thumbs */}
-          <div className={css.plankRow}>{shipment ? shipment.rows.t1.map((l) => bandThumb(l, 44)) : null}</div>
-          <div className={css.plankBar} style={{ width: "100%", maxWidth: 620, height: 10, borderRadius: 4, background: "#c48a4a", boxShadow: "0 5px 0 #a06f36" }} />
-          {/* bottom plank: Tier 2, then Tier 3, then the spotlight and the rack */}
-          <div className={css.plankRow} style={{ marginTop: 8 }}>
-            {shipment ? [...shipment.rows.t2, ...shipment.rows.t3].map((l) => bandThumb(l, 44)) : null}
-            {shipment ? (
-              <span style={{ position: "relative", display: "inline-flex", flexDirection: "column", alignItems: "center", marginLeft: 10 }}>
-                {/* the spotlight: a warm cone drawn behind the Tier 4 thumb */}
-                <span
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    top: -26,
-                    width: 74,
-                    height: 74,
-                    background: "radial-gradient(circle at 50% 20%, rgba(255,209,102,0.55), rgba(255,209,102,0) 70%)",
-                    pointerEvents: "none",
-                  }}
-                />
-                {bandThumb(shipment.rows.t4[0], 52)}
-              </span>
-            ) : null}
-            {shipment ? <span style={{ marginLeft: 10 }}>{bandThumb(shipment.rows.rack[0], 44)}</span> : null}
+          {/* top rack: the eight 1 star parts */}
+          <div className={css.rack}>
+            <div className={css.plankRow}>{shipment ? shipment.rows.t1.map((l) => bandThumb(l, 58)) : null}</div>
+            <div className={`${css.plankBar} ${css.girder}`} />
           </div>
-          <div className={css.plankBar} style={{ width: "100%", maxWidth: 620, height: 10, borderRadius: 4, background: "#c48a4a", boxShadow: "0 5px 0 #a06f36" }} />
+          {/* bottom rack: 2 star, then 3 star, then the day's big part and the weapon */}
+          <div className={css.rack}>
+            <div className={css.plankRow}>
+              {shipment ? [...shipment.rows.t2, ...shipment.rows.t3].map((l) => bandThumb(l, 58)) : null}
+              {shipment ? (
+                <span style={{ position: "relative", display: "inline-flex", flexDirection: "column", alignItems: "center", marginLeft: 10 }}>
+                  {/* the spotlight: a warm cone drawn behind the day's big part */}
+                  <span
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      top: -30,
+                      width: 92,
+                      height: 92,
+                      background: "radial-gradient(circle at 50% 20%, rgba(255,209,102,0.6), rgba(255,209,102,0) 70%)",
+                      pointerEvents: "none",
+                    }}
+                  />
+                  {bandThumb(shipment.rows.t4[0], 68)}
+                </span>
+              ) : null}
+              {shipment ? <span style={{ marginLeft: 10 }}>{bandThumb(shipment.rows.rack[0], 58)}</span> : null}
+            </div>
+            <div className={`${css.plankBar} ${css.girder}`} />
+          </div>
         </div>
-        <Prop src="/bots-art/props/shop-crate.png" height={120} style={{ marginBottom: 6 }} />
+
+        <Prop style={{ marginBottom: 2 }}>
+          <HeapProp height={168} />
+        </Prop>
       </div>
 
       {/* ── the colour strip ─────────────────────────────────────────────── */}
@@ -707,7 +812,7 @@ export default function ShopClient() {
                   key={tier}
                   style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: R.pill, border: `1px solid ${M.border}`, background: M.surface, whiteSpace: "nowrap" }}
                 >
-                  <span aria-hidden style={{ width: 9, height: 9, borderRadius: R.pill, background: PAINTS[c] }} />
+                  <span aria-hidden style={{ width: 9, height: 9, borderRadius: R.pill, background: PAINTS[c], boxShadow: DOT_RING }} />
                   {fillWords(SCREEN_WORDS.colorOf, { stars: starWord(tier), color: t.paintName[c] })}
                 </span>
               );
@@ -732,7 +837,7 @@ export default function ShopClient() {
               const weekColor = t4Calendar(shipment.t4.week, 0).color;
               return (
                 <>
-                  {weekColor ? <span aria-hidden style={{ width: 9, height: 9, borderRadius: R.pill, background: PAINTS[weekColor] }} /> : null}
+                  {weekColor ? <span aria-hidden style={{ width: 9, height: 9, borderRadius: R.pill, background: PAINTS[weekColor], boxShadow: DOT_RING }} /> : null}
                   {fillWords(SCREEN_WORDS.t4Week, { color: weekColor ? t.paintName[weekColor] : SCREEN_WORDS.noColor.toLowerCase() })}
                 </>
               );
@@ -842,7 +947,7 @@ export default function ShopClient() {
                   </span>
                 </div>
                 {list.length ? (
-                  <div className={css.cards}>
+                  <div className={row === "t4" ? `${css.cards} ${css.heroRow}` : css.cards}>
                     {list.map((l) => (
                       <div key={l.id} className={row === "t4" ? css.wide : undefined}>
                         <ShopCard

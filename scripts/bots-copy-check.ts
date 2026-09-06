@@ -153,6 +153,11 @@ const SURFACE_BY_KEY: readonly [string, Surface][] = [
   // the Morning Paper's own button (padding 0 12px at 12.5px), never the
   // eight character top nav
   ["garageUi.shopLink", "wrapping"],
+  // the sentence under the shop's title that says what the yard IS. It is a
+  // wrapping paragraph at 15px with a 640 max width, NOT the mono eyebrow
+  // above the title, and it has to sit above shopUi.yard because the eyebrow's
+  // key is a prefix of it and first match wins.
+  ["shopUi.yardLine", "wrapping"],
   ["shopUi.yard", "section_heading"],
   ["shopUi.calendar", "section_heading"],
   ["shopUi.row", "shop_row_heading"],

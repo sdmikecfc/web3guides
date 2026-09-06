@@ -71,7 +71,12 @@ export interface SetItem {
 export const GARAGE_SET: readonly SetItem[] = [
   { key: "corkboard", x: 340, y: 290, s: 0.52, anchor: "wall" },
   { key: "tool-board", x: 2440, y: 320, s: 0.58, anchor: "wall" },
-  { key: "ceiling-fan", x: 1400, y: 130, s: 0.3, anchor: "wall" },
+  // THE FAN HANGS FROM ABOVE, so its mount is CUT OFF by the top of the frame
+  // (Mike, 2026-09-06: it read as a propeller floating in the sky). At y 130
+  // the whole prop, mount and all, sat inside the picture with clear wall over
+  // it and nothing holding it up. Raised until the mount leaves the frame, so
+  // the blades hang in from a ceiling the picture does not have to draw.
+  { key: "ceiling-fan", x: 1400, y: 52, s: 0.3, anchor: "wall" },
   { key: "workbench", x: 1150, y: 790, s: 0.3, anchor: "floor" },
   { key: "toolbox", x: 2660, y: 935, s: 0.22, anchor: "floor" },
 ];
@@ -105,9 +110,20 @@ export const STREET = {
   file: "/bots-art/plates/street-elevation.webp",
   srcW: 2720,
   srcH: 1536,
-  /** the band the strip shows: roof tops to the pavement */
-  bandTop: 540,
-  bandBottom: 870,
+  /**
+   * The band the strip shows: a sliver of evening sky, then the WHOLE garage
+   * front, down to the pavement in front of the doors.
+   *
+   * It used to stop at 870, which is a hand's width under the brass plates
+   * and straight through the open doorway, so the strip read as a photo with
+   * its bottom torn off: roofs and half a door (Mike, 2026-09-06). The doors
+   * are the thing this strip is FOR, so the crop now holds all of one: the
+   * roof, the plate, the shutter, the lit workshop behind it and the paving
+   * the bots would walk out onto. The pavement's own kerb (1173) is left out
+   * on purpose, so the band ends on floor rather than on an edge.
+   */
+  bandTop: 470,
+  bandBottom: 1150,
   /** the seven brass plates: centres, one row */
   plateXs: [216, 596, 976, 1356, 1736, 2116, 2496],
   plateY: 740,

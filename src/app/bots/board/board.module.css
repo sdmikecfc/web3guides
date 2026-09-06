@@ -55,8 +55,8 @@
   display: none;
 }
 
-/* the Robots column is coloured dots. A dot is not a word, so every dot
- * carries "3 stars robot" for a screen reader and in its tooltip. */
+/* the Robots column is pictures. A picture is not a word, so every one of
+ * them carries "3 stars robot" for a screen reader. */
 .srOnly {
   position: absolute;
   width: 1px;
@@ -69,11 +69,10 @@
   border: 0;
 }
 
-/* 390: the columns with no data yet go first, then the win-loss record, so
- * the four live ones (rank, garage, bots, battle points) all fit without a
- * sideways scroll. The scroll box stays for anything narrower still. */
+/* 390: the win-loss record gives way, so the four that matter most (place,
+ * player, robots, fight points) all fit without a sideways scroll. The
+ * scroll box stays for anything narrower still. */
 @media (max-width: 700px) {
-  .later,
   .record {
     display: none;
   }

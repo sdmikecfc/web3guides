@@ -87,6 +87,35 @@ import { SCREEN_WORDS, STAT_NAME_OF, fillWords } from "@/lib/bots/naming-screens
 
 const t = STRINGS.en;
 const hexNum = (h: string): number => parseInt(h.slice(1), 16);
+/** finisherOf() hands back a fragment; a line that STARTS with it needs a capital. */
+const capital = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * TODAY, WRITTEN THE WAY THE PAPER WRITES IT.
+ *
+ * The fixture's date is a fixed string, so the Morning Paper (the panel, the
+ * sheet AND the sheet of paper pinned to the corkboard in the room) said
+ * "Thursday 3 September" for as long as the fixture stood. A paper dated last
+ * week is the one thing on this screen a visitor can prove is not real, so the
+ * day is read off the clock instead, in the fixture's own shape.
+ *
+ * WRITTEN OUT HERE, NOT ASKED OF THE BROWSER. toLocaleDateString hands back
+ * whatever the visitor's machine is set to, which is another language on a lot
+ * of machines and a comma and a year on plenty of the English ones, and this
+ * string sits beside copy that is checked word by word.
+ *
+ * NOBODY CALLS IT WHILE RENDERING. A date read during render is a different
+ * answer on the server and in the browser, which is a hydration mismatch; the
+ * one caller is an effect, and the first paint keeps the fixture's day.
+ */
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+] as const;
+function todaysDate(now: Date): string {
+  return `${DAY_NAMES[now.getDay()]} ${now.getDate()} ${MONTH_NAMES[now.getMonth()]}`;
+}
 
 /** React StrictMode dev-mounts effects twice; two app.init() calls racing on
  * ONE canvas kill each other's shaders (the Battlefield law). Every build AND
@@ -274,6 +303,11 @@ export default function GarageClient() {
   /** true once the token has been read after mount, so the "connect your
    * wallet" line never flashes at a player who is already signed in */
   const [earnedAsked, setEarnedAsked] = useState(false);
+  /** the paper's day: the fixture's until the browser is up, then today's */
+  const [paperDate, setPaperDate] = useState(PAPER.date);
+  useEffect(() => {
+    setPaperDate(todaysDate(new Date()));
+  }, []);
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -604,6 +638,14 @@ export default function GarageClient() {
     });
   }, [st, statuses, ready, bays]);
 
+  // the day's paper, pinned to the corkboard. The SAME masthead and date the
+  // Morning Paper panel prints a few hundred px below it, so the room and the
+  // panel can never be showing two different days.
+  useEffect(() => {
+    if (!ready) return;
+    garageRef.current?.setNews(t.garage.paper, paperDate);
+  }, [ready, paperDate]);
+
   // the crew: one figure per live strategy, and the last fill's chip once
   useEffect(() => {
     const g = garageRef.current;
@@ -749,7 +791,7 @@ export default function GarageClient() {
             <IconPin size={22} />
           </span>
           <div style={{ fontFamily: FONT_TOY, fontSize: 22, fontWeight: 800, textAlign: "center", letterSpacing: 0.4, marginTop: 6 }}>{t.garageUi.masthead}</div>
-          <div style={{ fontFamily: FONT_BODY, fontSize: 12, color: "#8a7a63", textAlign: "center", marginBottom: 10 }}>{PAPER.date}</div>
+          <div style={{ fontFamily: FONT_BODY, fontSize: 12, color: "#8a7a63", textAlign: "center", marginBottom: 10 }}>{paperDate}</div>
           <div style={{ borderTop: "1px solid #cdbf9f", marginBottom: 6 }} />
         </>
       ) : null}
@@ -890,7 +932,13 @@ export default function GarageClient() {
           <IconChevron size={18} />
         </button>
       </div>
-      <div ref={streetWrapRef} style={{ ...canvasFrame, height: small ? 80 : 170 }}>
+      {/* THE STRIP IS AS TALL AS A WHOLE GARAGE IS. The band it crops
+          (setdressing.ts STREET) is 680 source px for 2720 across, so at the
+          1400 the page gives it a whole door row lands in 350 and the plate
+          shows exactly one tile: no seam, and the art's own composition. At
+          80 and 170 the same band could only have shown roofs and half a
+          door, which is what it did. */}
+      <div ref={streetWrapRef} style={{ ...canvasFrame, height: small ? 190 : 350 }}>
         <canvas ref={streetRef} style={{ display: "block", width: "100%", height: "100%" }} />
       </div>
       <GarageCoach state={st} />
@@ -916,7 +964,7 @@ export default function GarageClient() {
       {small ? (
         <div style={{ display: "flex", justifyContent: "center", gap: 2, marginTop: 4 }}>
           {bays.map((b) => (
-            <button key={b} className={uiCss.press} onClick={() => setFocus(b)} aria-label={fill(t.garageUi.bayDot, { n: b })} aria-pressed={focus === b} style={{ width: TAP, height: 28, display: "grid", placeItems: "center", background: "transparent", border: "none", cursor: "pointer" }}>
+            <button key={b} className={uiCss.press} onClick={() => setFocus(b)} aria-label={fill(t.garageUi.bayDot, { n: b })} aria-pressed={focus === b} style={{ width: TAP, height: TAP, display: "grid", placeItems: "center", background: "transparent", border: "none", cursor: "pointer" }}>
               <span style={{ width: 7, height: 7, borderRadius: R.pill, background: focus === b ? M.accent : M.border, display: "block" }} />
             </button>
           ))}
@@ -926,7 +974,7 @@ export default function GarageClient() {
       {/* ── the three panels (desktop) ────────────────────────────────────── */}
       <div className={uiCss.desktopOnly} style={{ marginTop: 16 }}>
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 440fr) minmax(0, 500fr) minmax(0, 420fr)", gap: 20, alignItems: "start" }}>
-          <Panel title={t.garage.paper} aside={<span style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted }}>{PAPER.date}</span>}>
+          <Panel title={t.garage.paper} aside={<span style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted }}>{paperDate}</span>}>
             {paper(false)}
             <div style={{ marginTop: 10 }}>
               <Button onClick={() => setSheet({ kind: "paper" })}>{t.garageUi.readAll}</Button>
@@ -955,7 +1003,7 @@ export default function GarageClient() {
           <span style={{ fontFamily: FONT_DISPLAY, fontSize: 12, fontWeight: 700, letterSpacing: "0.32em", color: M.muted }}>{t.garageUi.bays}</span>
           <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <CoinChip coins={st.coins} ariaLabel={t.nav.coinsAria} />
-            <Button onClick={newBot} style={{ minHeight: 36, padding: "6px 12px", fontSize: 12.5 }}>{t.garageUi.newBot}</Button>
+            <Button onClick={newBot} style={{ minHeight: TAP, padding: "6px 12px", fontSize: 12.5 }}>{t.garageUi.newBot}</Button>
           </span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{bays.map((b, i) => bayRow(b, i, true))}</div>
@@ -1059,7 +1107,7 @@ export default function GarageClient() {
                         <span style={{ color: M.muted }}>, {f.wallet}</span>
                       </span>
                       <span style={{ display: "block", fontFamily: FONT_MONO, fontSize: 11, color: M.muted }}>
-                        {f.finisher}. {f.date}
+                        {capital(f.finisher)}. {f.date}
                       </span>
                     </span>
                     <Button onClick={() => router.push(`/bots/fight/${f.id}`)} style={{ minHeight: TAP, padding: "0 12px" }}>

@@ -36,7 +36,6 @@ import { PARTS } from "../_engine/catalog";
 import type { FightState } from "../_engine/resolve";
 import {
   ARMS_UP_S,
-  BARS_SHOW_S,
   BLINK_S,
   BLOCK_S,
   CHEER_S,
@@ -69,7 +68,17 @@ export const SIM_W = 1600;
 export const SIM_H = 900;
 /** the phone camera: pushed in so the pit rim spans the width (4.2) */
 const SMALL_CROP_W = 1170;
-export const BOT_X: readonly [number, number] = [560, 1040];
+/**
+ * WHERE THE TWO STAND. A robot's body measures about 220 sim px across, and
+ * at 560 and 1040 the gap between them was 260 px: more than a whole robot of
+ * empty floor. A swing hops the swinger 120 px forward (HOP_PX), so even a
+ * landed hit left daylight between the weapon and the robot it just hit, and
+ * a person watching read two toys standing apart while the line under the pit
+ * said one had hit the other. 600 and 1000 leaves 180 px at rest, which one
+ * hop closes. Nothing here reaches the engine: this is where the picture puts
+ * them, and the fight was already decided.
+ */
+export const BOT_X: readonly [number, number] = [600, 1000];
 export const FLOOR_Y = 600;
 /** the pit floor's front edge (the plate's cream floor measured: back edge
  * y 386, front edge y 614 at the centre, the rim spanning x 160 to 1440) */
@@ -114,28 +123,17 @@ const EYE_CY = HEAD_CROWN + HEAD_ART_H * 0.46; // 159.3
 const EYE_R = HEAD_CORE_W * 0.145; // 47.6
 const MOUTH_Y = HEAD_CROWN + HEAD_ART_H * 0.7; // 228.5
 /**
- * HP bar offsets from each socket pivot, in rig units. Every one of these had
- * to move with the concept contract, because every pivot did: the head's
- * pivot is its neck and the crown is now 288 above it rather than 150, and a
- * limb's pivot is now half a limb width down its own shaft rather than 20
- * from the top of a 200-tall canvas. Left alone, the head's bar drew across
- * its own forehead.
- */
-const BAR_AT: Record<Socket, readonly [number, number]> = {
-  head: [0, -HEAD_TOP - 26], torso: [0, -20], armL: [0, 74], armR: [0, 74], legL: [0, 52], legR: [0, 52], weapon: [0, 0],
-};
-/**
- * The MIDDLE of a part, for crumbs, sparks and the tumble's start. Separate
- * from BAR_AT because the two want different points and folding them into one
- * number (a bar offset plus 90 for the head) is what left the old head's
- * crumbs floating above it. Nothing here reaches the engine: a crumb's
- * position is fx state, so no replay hash can move.
+ * The MIDDLE of a part, for crumbs, sparks and the tumble's start. It used to
+ * share this job with a second table of bar offsets, and folding the two into
+ * one number (a bar offset plus 90 for the head) is what left the old head's
+ * crumbs floating above it, so they stayed apart. The bars are gone (see the
+ * note in render()); this half of the pair is still the truth about where a
+ * part's middle is. Nothing here reaches the engine: a crumb's position is fx
+ * state, so no replay hash can move.
  */
 const HIT_AT: Record<Socket, readonly [number, number]> = {
   head: [0, -HEAD_TOP * 0.55], torso: [0, -34], armL: [0, 74], armR: [0, 74], legL: [0, 66], legR: [0, 66], weapon: [0, 0],
 };
-const BAR_W = 36;
-const BAR_H = 5;
 /** the weapon's rest angle in the hand, as rig.ts has it. The shoulder to
  *  hand vector is NOT copied here any more: rig.ts exports handOffset, which
  *  carries the arm's own scale, and a second copy of that formula was one
@@ -456,22 +454,16 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     glows.push(s);
   }
 
-  // ── the scoreboard: two lamps, nothing else ──────────────────────────────
-  const board: Graphics = new PIXI.Graphics();
-  cam.addChild(board);
-  const drawBoard = (aliveA: boolean, aliveB: boolean) => {
-    board.clear();
-    board.roundRect(SIM_W / 2 - 64, 18, 128, 40, 10).fill(0x1b1917);
-    board.roundRect(SIM_W / 2 - 64, 18, 128, 40, 10).stroke({ width: 2, color: 0x3d3833 });
-    board.rect(SIM_W / 2 - 1, 8, 2, 12).fill(0x3d3833);
-    const lamp = (x: number, on: boolean) => {
-      board.circle(x, 38, 9).fill(on ? hex(M.good) : 0x2c2a28);
-      if (on) board.circle(x, 38, 14).fill({ color: hex(M.good), alpha: 0.18 });
-    };
-    lamp(SIM_W / 2 - 30, aliveA);
-    lamp(SIM_W / 2 + 30, aliveB);
-  };
-  drawBoard(true, true);
+  /*
+   * THE SCOREBOARD IS GONE (week 4). It was a 128x40 dark lozenge hanging on
+   * a 2px wire over the middle of the ring with one green lamp per robot,
+   * lit while that robot's body held. On a screen it read as an unexplained
+   * dark pill with two dots in it, and it said the same thing the life bars
+   * over the pit now say in words a person does not have to be told: it is
+   * exactly the "small unexplained shape" a demo cannot afford. The fact it
+   * carried (whether each robot is still up) is the left end of each life
+   * bar. Nothing else read it.
+   */
 
   // ── debris rests under the bots, crumbs fly over them ────────────────────
   const debrisLayer: Container = new PIXI.Container();
@@ -508,9 +500,8 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
 
   // ── overlays: HP bars, cracks, crumbs, smoke ─────────────────────────────
   const cracks: [Graphics, Graphics] = [new PIXI.Graphics(), new PIXI.Graphics()];
-  const bars: Graphics = new PIXI.Graphics();
   const puffs: Graphics = new PIXI.Graphics();
-  cam.addChild(cracks[0], cracks[1], bars, puffs);
+  cam.addChild(cracks[0], cracks[1], puffs);
 
   // ── art loading with the drawn fallback ──────────────────────────────────
   const artCache = new Map<string, PartArt>();
@@ -781,7 +772,6 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     cracks[1].clear();
     puffs.clear();
     for (const g of glows) g.alpha = 0;
-    drawBoard(true, true);
   }
 
   // ── the pose (every number a delta on the rig's idle) ────────────────────
@@ -878,7 +868,13 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     // torso-only rotation would pull the neck out from under the head
     if (down) {
       const p = ease(stepped(s.sit, SIT_S));
-      pose.sink += (legsGone === 2 ? 150 : 140) * p;
+      // HOW FAR HE DROPS. The pit floor's front edge is only a few px below
+      // the foot line (PIT_FLOOR), and dropping the root 140 rig units puts
+      // the loser 57 screen px past it: on the knockout frame he sat outside
+      // the ring, on the lights. The lean, the splayed legs and the slumped
+      // torso are what read as "sat down"; the drop only has to agree with
+      // them, so it is now about half and he lands against the rope.
+      pose.sink += (legsGone === 2 ? 92 : 80) * p;
       pose.rot -= 14 * DEG * p;
       pose.torsoRot = -6 * DEG * p;
       pose.head = 0.25 * p;
@@ -898,11 +894,6 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
   }
 
   // ── the frame ────────────────────────────────────────────────────────────
-  const barColor = (pct: number): number => {
-    if (pct >= 0.6) return hex(M.good);
-    if (pct >= 0.3) return hex(M.warn);
-    return hex(M.bad);
-  };
 
   /**
    * HOW THIS BOT IS DOING, off state the engine already published. Nothing is
@@ -957,7 +948,6 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     cam.scale.set(punch);
 
     const tMs = fx.time * 1000;
-    bars.clear();
     for (let i = 0; i < 2; i++) {
       const side = i as Side;
       const dir = side === 0 ? 1 : -1;
@@ -1050,22 +1040,17 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
         }
       }
 
-      // part HP bars: all for the first 2 s, then only the ones under 100 percent
-      const ss = st.sides[side];
-      for (let piece = 0; piece < PIECE_COUNT; piece++) {
-        if (ss.armor[piece] <= 0) continue;
-        const pct = ss.armor[piece] / ss.armorMax[piece];
-        if (fx.time > BARS_SHOW_S && pct >= 1) continue;
-        const socket = SOCKET_OF_PIECE[piece];
-        const n = nm.get(socket);
-        if (!n || !n.visible) continue;
-        const off = BAR_AT[socket];
-        const wp = worldOf(side, n.position.x + off[0], n.position.y + off[1], p);
-        const x = Math.round(wp.x - BAR_W / 2);
-        const y = Math.round(wp.y);
-        bars.roundRect(x, y, BAR_W, BAR_H, 2).fill({ color: 0x000000, alpha: 0.35 });
-        bars.roundRect(x, y, Math.max(2, Math.round(BAR_W * pct)), BAR_H, 2).fill(barColor(pct));
-      }
+      /*
+       * THE SEVEN LITTLE BARS ON THE ROBOT ARE GONE (week 4). Each was 36x5
+       * SIM px, which is 27x4 css px on a 1200 wide pit and 20x3 on a phone,
+       * drawn in gold or green with no plate under it, floating over an arm
+       * or a forehead. At the size a person actually watches this, they did
+       * not read as bars: they read as stray marks left on the art, and on
+       * a robot that had lost a head they were the most eye catching thing
+       * in the frame. Every fact they carried, per piece and to the same
+       * percent, is now in the life bars over the pit (fight.module.css
+       * .hudBar), at a size a person can read from across a room.
+       */
     }
 
     // debris follows the seeded tumble
@@ -1107,9 +1092,6 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     let glow = 0;
     if (fx.ko >= 0 && fx.ko < BLINK_S) glow = Math.max(0, Math.sin((fx.ko / BLINK_S) * Math.PI * 4));
     for (const g of glows) g.alpha = glow;
-
-    // the scoreboard lamps
-    drawBoard(st.sides[0].armor[PIECE.BODY] > 0, st.sides[1].armor[PIECE.BODY] > 0);
 
     stage.renderFrame();
   }

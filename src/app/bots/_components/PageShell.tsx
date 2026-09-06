@@ -72,13 +72,20 @@ function LegalFooter() {
         borderTop: `1px solid ${M.border}`,
         display: "flex",
         flexWrap: "wrap",
+        alignItems: "center",
         gap: 18,
         fontSize: 12.5,
         color: M.muted,
       }}
     >
       {links.map(([href, label]) => (
-        <a key={href} href={href} style={{ color: M.muted, textDecoration: "none" }}>
+        <a
+          key={href}
+          href={href}
+          /* a 20px tall word is not something a thumb can hit. The words stay
+             the same size; the box around them is a real target. */
+          style={{ display: "inline-flex", alignItems: "center", minHeight: 44, color: M.muted, textDecoration: "none" }}
+        >
           {label}
         </a>
       ))}

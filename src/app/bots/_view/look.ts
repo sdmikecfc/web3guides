@@ -213,15 +213,30 @@ export function shade(c: number, k: number): number {
   return (f((c >> 16) & 255) << 16) | (f((c >> 8) & 255) << 8) | f(c & 255);
 }
 
-/** lightened and drained: cloth over paint, which is what a repair looks like */
-export function patchColor(body: number): number {
-  const l = lum(body);
-  const f = (v: number) => {
-    const d = v + (l - v) * 0.55;
-    return Math.max(0, Math.min(255, Math.round(d + (255 - d) * 0.34)));
-  };
-  return (f((body >> 16) & 255) << 16) | (f((body >> 8) & 255) << 8) | f(body & 255);
-}
+/**
+ * NOTHING WHITE AND BOXY MAY SIT ON A ROBOT (2026-09-06, Mike, on the build
+ * screen: "three white squares with dots are stuck on the robot's chest and
+ * arms, they read as missing textures").
+ *
+ * They were patches, and the reason they read as holes is worth keeping: the
+ * old patchColor drained a paint toward its own luminance and then lightened
+ * it a third of the way to white, on the assumption that the body under it
+ * was that flat paint. It is not. A part is a SHADED sprite multiplied by the
+ * tint, so a mint torso renders around #3f8b85 while its flat paint is
+ * #8fd9c4 - the patch was computed off a colour the player never sees and
+ * landed three steps lighter than the clay it was sewn onto.
+ *
+ * So no colour is invented here at all any more. A mend is drawn as a press
+ * INTO whatever the body actually renders as: soft rings of the contrast tone
+ * at low alpha and no outline at all (see drawPatch, which also says why the
+ * corner and the dash had to go). Alpha over the sprite cannot disagree with
+ * the sprite, on any of the eight paints or any shading the art factory ships
+ * next.
+ *
+ * This number is the STRENGTH of the deepest ring; the ones outside it are
+ * fractions of it, so one edit here fades or deepens the whole mend.
+ */
+export const PATCH_PRESS = 0.16;
 
 /* ── where everything sits, all of it measured ───────────────────────────── */
 
@@ -457,56 +472,58 @@ export function drawStarRow(g: Graphics, stars: number, gold: boolean): void {
 }
 
 /**
- * ONE STITCHED PATCH. The first version was a pale rectangle with dashes so
- * fine they vanished, and it read as a sticky note stuck on the chest. What
- * says CLOTH is the outline: a dashed stitch line set in from the edge, thick
- * enough to survive, and corners with a radius, because a square with sharp
- * corners is paper and a square with soft ones is fabric.
+ * ONE MENDED SPOT: A SOFT SCUFF IN THE CLAY, AND NOTHING WITH A CORNER.
+ *
+ * THE LAW THIS KEEPS (2026-09-06, Mike, twice): nothing white, nothing boxy
+ * and nothing dashed may sit on a robot unless the player is actively
+ * choosing a spot for a sticker. Anything with four corners and a broken
+ * outline on top of a sprite reads as a MISSING TEXTURE, and a demo robot
+ * wearing three of them looks like a bug, not like a robot that has been
+ * through some fights.
+ *
+ * Three tries got here, and all three are worth keeping:
+ *   1. a pale rectangle with hairline dashes: read as a sticky note.
+ *   2. a lightened cloth fill: the three white squares. A fill mixed from the
+ *      FLAT paint can never match the shaded sprite it lands on, because a
+ *      part is a shaded sprite multiplied by its tint, so a mint torso
+ *      renders near #3f8b85 while its flat paint is #8fd9c4.
+ *   3. the same square with the fill dropped to alpha and a dashed stitch
+ *      outline kept: no longer white, still three dashed boxes on the chest.
+ *
+ * So the corner and the dash are both gone. What is drawn now is a shallow
+ * ROUND press: three nested ovals of the contrast tone at low alpha, each one
+ * a little stronger than the last, which is a soft-edged dent with no outline
+ * to read as a border. It invents no colour at all, so it can never disagree
+ * with the sprite under it, on any of the eight paints or any shading the art
+ * factory ships next; it is dark on a light paint and light on a dark one, so
+ * a mend on an ink robot is a soft lift and not a black hole.
+ *
+ * `tilt` still rides the shape, so the three mends on one chest are not the
+ * same stamp three times.
  */
 export function drawPatch(g: Graphics, x: number, y: number, body: number, tilt: number): void {
-  const c = patchColor(body);
-  const thread = shade(c, -0.42);
-  const w = 30, h = 24, r = 5;
+  const ink = contrastInk(body);
+  const rx = 16, ry = 12;
   const co = Math.cos(tilt), si = Math.sin(tilt);
-  const at = (dx: number, dy: number): [number, number] => [x + dx * co - dy * si, y + dx * si + dy * co];
-  // the cloth, as a rounded square built from its own corners so the tilt
-  // rides it (Graphics has no per-shape transform)
-  const path: number[] = [];
-  const steps = 5;
-  const corner = [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const;
-  for (let i = 0; i < 4; i++) {
-    const [sx, sy] = corner[i];
-    const cx = (sx * w) / 2 - sx * r;
-    const cy = (sy * h) / 2 - sy * r;
-    const a0 = Math.atan2(sy, sx) - Math.PI / 4;
-    for (let s = 0; s <= steps; s++) {
-      const a = a0 + (s / steps) * (Math.PI / 2);
-      const [px, py] = at(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-      path.push(px, py);
+  // an oval built from its own points so the tilt rides it: Graphics has no
+  // per-shape transform, and a rotated ellipse is the only way three mends on
+  // one chest stop looking like one stamp repeated
+  const oval = (k: number): number[] => {
+    const p: number[] = [];
+    const steps = 28;
+    for (let s = 0; s < steps; s++) {
+      const a = (s / steps) * Math.PI * 2;
+      const dx = Math.cos(a) * rx * k;
+      const dy = Math.sin(a) * ry * k;
+      p.push(x + dx * co - dy * si, y + dx * si + dy * co);
     }
-  }
-  g.poly(path).fill(c);
-  g.poly(path).stroke({ width: 1.5, color: thread, alpha: 0.35 });
-  // The stitches: SHORT dashes with real gaps between them. The first cut ran
-  // 4.4 unit dashes 1.5 apart at 2.6 wide, which closes up into a solid line
-  // at any size and turned the patch into a framed picture. A stitch has to
-  // be shorter than the gap after it or it is a border.
-  const stitch = (ax: number, ay: number, bx: number, by: number) => {
-    const [p0x, p0y] = at(ax, ay);
-    const [p1x, p1y] = at(bx, by);
-    g.moveTo(p0x, p0y).lineTo(p1x, p1y).stroke({ width: 2.2, color: thread, alpha: 0.8, cap: "round" });
+    return p;
   };
-  const ix = w / 2 - 4.5, iy = h / 2 - 4.5;
-  for (let s = 0; s < 4; s++) {
-    const t = -ix + 1.5 + s * ((ix * 2 - 3) / 3);
-    stitch(t - 1.2, -iy, t + 1.2, -iy);
-    stitch(t - 1.2, iy, t + 1.2, iy);
-  }
-  for (let s = 0; s < 3; s++) {
-    const t = -iy + 2 + s * ((iy * 2 - 4) / 2);
-    stitch(-ix, t - 1.1, -ix, t + 1.1);
-    stitch(ix, t - 1.1, ix, t + 1.1);
-  }
+  // three rings, softest first: the stack is what makes the edge fade instead
+  // of stopping, and a dent with no hard edge cannot read as a pasted-on box
+  g.poly(oval(1)).fill({ color: ink, alpha: PATCH_PRESS * 0.42 });
+  g.poly(oval(0.74)).fill({ color: ink, alpha: PATCH_PRESS * 0.52 });
+  g.poly(oval(0.44)).fill({ color: ink, alpha: PATCH_PRESS * 0.62 });
 }
 
 /** a moulded cuff band, in cream so it reads on all eight paints */

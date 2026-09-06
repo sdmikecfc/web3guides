@@ -190,10 +190,21 @@
 .navWords { display: flex; }
 .dock { display: none; }
 
+/*
+ * THE THUMB RULE. A chip is a 36px control because that is a comfortable
+ * MOUSE target on a 1440 screen. A thumb is not a mouse: the phone walk found
+ * the coin chip, the filter chips and the top bar's Play door all under the
+ * 44px a finger needs, so on a phone every one of them grows to 44 and the
+ * desktop keeps the tighter chrome it was drawn for. min-height only, so
+ * nothing that is already bigger moves.
+ */
+.tap44 { min-height: 0; }
+
 @media (max-width: 759px) {
   .shell { padding: 64px 12px 96px; }
   .navWords { display: none; }
   .dock { display: flex; }
+  .tap44 { min-height: 44px; }
 }
 
 /* ── accessibility ──────────────────────────────────────────────────────── */

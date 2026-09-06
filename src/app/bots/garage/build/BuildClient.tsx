@@ -340,6 +340,62 @@ function SetLine({ part }: { part: OwnedPart }) {
   );
 }
 
+/**
+ * ── ONE PART, IN THE COLOUR IT ARRIVED IN ────────────────────────────────
+ *
+ * THE BUG THIS FIXES (2026-09-06): every little picture of a part on this
+ * screen drew the BARE PNG, which is grey clay, while the line right beside
+ * it said "light green" and the robot on the lift two hundred pixels away
+ * WAS light green. A card that says one colour and shows another is the
+ * single most confusing thing a tray can do, and it was on every card, on
+ * the part sheet and on the ghost you drag.
+ *
+ * The reason is that a part ships as a PAIR of files: the shaded clay
+ * picture, and a white mask saying which pixels take the paint. The canvas
+ * has always used both (rig.ts lays the mask over the base at multiply, in
+ * the part's tint); the HTML only ever used the base.
+ *
+ * So this does the same two-layer trick in plain CSS: the clay picture, and
+ * over it a rectangle of the part's own colour, cut to the mask's shape and
+ * multiplied down onto the clay. Multiply is what keeps the moulded shading:
+ * the light side of the part stays light and the shadow stays a shadow,
+ * exactly as on the lift, instead of a flat colour sticker.
+ *
+ * `isolation: isolate` is not optional. Without it the multiply layer reaches
+ * past the picture and darkens the card behind it.
+ *
+ * A part with no colour (every weapon: ADR-0141) draws the clay alone, which
+ * is the true answer and the one its line already gives.
+ */
+function PartPic({ part, size }: { part: OwnedPart; size: number }) {
+  const art = partArt(part);
+  return (
+    <span style={{ position: "relative", width: size, height: size, display: "block", isolation: "isolate" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={art.base} alt="" draggable={false} style={{ width: size, height: size, objectFit: "contain", display: "block" }} />
+      {part.paint ? (
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: PAINTS[part.paint],
+            mixBlendMode: "multiply",
+            WebkitMaskImage: `url(${art.mask})`,
+            maskImage: `url(${art.mask})`,
+            WebkitMaskSize: "contain",
+            maskSize: "contain",
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+            WebkitMaskPosition: "center",
+            maskPosition: "center",
+          }}
+        />
+      ) : null}
+    </span>
+  );
+}
+
 /* ── the tray card (264x88 on desktop, full width in the sheet) ─────────── */
 
 function PartCard({
@@ -431,8 +487,7 @@ function PartCard({
           overflow: "hidden",
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={partArt(part).base} alt="" draggable={false} style={{ width: 56, height: 56, objectFit: "contain" }} />
+        <PartPic part={part} size={56} />
       </span>
       <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -494,8 +549,7 @@ function LoreBody({ part, onEquip }: { part: OwnedPart; onEquip: () => void }) {
             flex: "0 0 auto",
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={partArt(part).base} alt="" style={{ width: 80, height: 80, objectFit: "contain" }} />
+          <PartPic part={part} size={80} />
         </span>
         <div style={{ minWidth: 0 }}>
           {/* the socket word above the name, so the sheet answers "which part
@@ -1389,7 +1443,11 @@ export default function BuildClient() {
             style={{
               position: "relative",
               width: "100%",
-              aspectRatio: small ? "390 / 420" : "760 / 700",
+              // the bay's own sim space, halved: 780x840 and 1520x1224 (see
+              // _view/bay.ts). The two MUST agree or the stage letterboxes,
+              // and the desktop pair moved together on 2026-09-06 to get the
+              // look picker above the fold on a 900 px tall screen
+              aspectRatio: small ? "390 / 420" : "760 / 612",
               borderRadius: R.frame,
               border: `1px solid ${M.border}`,
               boxShadow: `inset 0 1px 0 ${M.highlight}`,
@@ -1423,11 +1481,18 @@ export default function BuildClient() {
               are one line each and the robot is directly above the tile being
               pressed, which is the only way to see what a face did. The phone
               keeps its sheet, which is why this is desktop only. */}
+          {/* THE THING YOU PRESS COMES FIRST, and the colours it is made of
+              come after. The four colour chips are a READOUT: they say what
+              the parts already are and nothing on them can be pressed. They
+              were the first row in this panel, which spent the 42 px nearest
+              the fold saying something the tray had already said, and pushed
+              the face tiles off a 900 px screen. This is the same order the
+              phone's paint row was already put in for the same reason. */}
           <div className={uiCss.desktopOnly} style={{ marginTop: 16 }}>
             <Panel title={t.ui.color} aside={<CoinChip coins={st.coins} ariaLabel={t.nav.coinsAria} />}>
-              <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>{colorChips}</div>
               {lookPanel(false)}
-              <p style={{ margin: "12px 0 0", fontSize: 11.5, color: M.muted, lineHeight: 1.45 }}>
+              <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>{colorChips}</div>
+              <p style={{ margin: "10px 0 0", fontSize: 11.5, color: M.muted, lineHeight: 1.45 }}>
                 {t.shopUi.keepsColor} {allOneColor ? "" : t.shopUi.wantSet}
               </p>
             </Panel>
@@ -1478,8 +1543,14 @@ export default function BuildClient() {
                 {t.ui.color}
               </ChipTab>
               <CoinChip coins={st.coins} ariaLabel={t.nav.coinsAria} />
-              {colorChips}
             </div>
+            {/* AND THE COLOURS ON THEIR OWN LINES. Four chips reading "Head,
+                light green" are 500 pixels of words: sharing the scrolling row
+                above put three of the four off the right edge of a 390 phone,
+                where they read as a page that had run out of room. They wrap
+                instead. Nothing here is pressed, so nothing is lost by
+                letting it take two lines. */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>{colorChips}</div>
             <p style={{ margin: "8px 0 0", fontSize: 11.5, color: M.muted, lineHeight: 1.45 }}>
               {t.shopUi.keepsColor} {allOneColor ? "" : t.shopUi.wantSet}
             </p>
@@ -1553,8 +1624,7 @@ export default function BuildClient() {
             boxShadow: "0 10px 24px rgba(0,0,0,0.4)",
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={partArt(dragPart).base} alt="" style={{ width: 56, height: 56, objectFit: "contain" }} />
+          <PartPic part={dragPart} size={56} />
         </div>
       ) : null}
 

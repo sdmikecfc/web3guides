@@ -32,6 +32,8 @@ const ALLOWED_DOMAINS = new Set(
     "launchwars.xyz", // the season's own domain (added WITH its middleware branch, per the scaffold law)
     "www.launchwars.xyz",
     "chef.web3guides.com", // DOMAIN KITCHEN subdomain (game session for saves)
+    "domainkitchen.xyz", // DOMAIN KITCHEN's own domain (added WITH its middleware branch)
+    "www.domainkitchen.xyz",
     process.env.WALLET_LINK_DOMAIN_OVERRIDE || "",
   ].filter(Boolean),
 );

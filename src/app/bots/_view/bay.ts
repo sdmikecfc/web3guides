@@ -93,15 +93,31 @@ function band(base: number, k: number): number {
 }
 
 export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promise<BayHandle> {
+  /**
+   * THE DESKTOP FRAME LOST 88 CSS PX OF EMPTY WALL (2026-09-06). It was
+   * 1520x1400 in a 760x700 box, which left 145 css px of blank wall over the
+   * bot's head and pushed the look picker under the fold on a 900 px tall
+   * screen: on the demo laptop the only way to find out a robot could have a
+   * face was to scroll past it. 1520x1224 in a 760x612 box is the SAME
+   * letterbox scale (both are exactly 2 sim px per css px), so the bot on the
+   * lift is the same size in pixels as it was and simply owns more of its
+   * frame. 74 css px of headroom is left over the crown, and the tallest hat
+   * is 30 of them (look.ts TOPPER_H at this rig scale), so nothing clips.
+   *
+   * THE PHONE'S LIFT WAS CUT IN HALF by the bottom edge: at 0.905 the lift
+   * sprite ended at sim 846 in an 840 tall canvas, so the base rail and the
+   * shadow pool under it were sliced. 0.86 puts the whole rig, its shadow and
+   * the wrencher's own shadow inside the frame with 12 sim px to spare.
+   */
   const simW = opts.small ? 780 : 1520;
-  const simH = opts.small ? 840 : 1400;
+  const simH = opts.small ? 840 : 1224;
   const stage = await createPixiStage(canvas, { background: hex(K.vignette) });
   const PIXI = stage.pixi;
   const W = stage.world;
 
   // layout, as fractions of the sim so both sizes share one scene
   const floorY = Math.round(simH * (opts.small ? 0.76 : 0.743));
-  const liftTop = Math.round(simH * (opts.small ? 0.905 : 0.8));
+  const liftTop = Math.round(simH * (opts.small ? 0.86 : 0.8));
   const liftRise = 80; // 40 css px
   const cx = simW / 2;
   const rigScale = opts.small ? 600 / RIG_HEIGHT : 830 / RIG_HEIGHT;
@@ -151,27 +167,61 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
   // bulb stays lit, because a light is not motion
   rig.setCalm(typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches);
 
-  // ── the wrencher (vector placeholder until the crew sheet lands) ─────────
+  /**
+   * ── THE WRENCHER ────────────────────────────────────────────────────────
+   *
+   * A vector mechanic until the crew sheet lands, and until 2026-09-06 a
+   * PALE one: clay (#c7cdd6) on a floor of #cfc6b8, with no outline and no
+   * contact shadow. Mike read it exactly as it was drawn, "a small white
+   * blob sits on the floor to the right of the lift".
+   *
+   * Three things turn a blob into a person at this size, and none of them is
+   * detail: a DARK BODY, so the silhouette is the thing the eye catches
+   * first and it is a shape a person recognises; an INK RIM, so nothing on
+   * the diorama floats on a floor of nearly its own colour; and a CONTACT
+   * SHADOW, so he is kneeling on the concrete rather than pasted over it.
+   * At 55 css px tall nothing smaller than those three would survive anyway,
+   * which is why the face stays two lenses and a grille.
+   */
   const crew: Container = new PIXI.Container();
+  const crewShade: Graphics = new PIXI.Graphics();
   const crewBody: Graphics = new PIXI.Graphics();
   const crewArm: Graphics = new PIXI.Graphics();
   {
-    const c = hex(K.clay);
-    crewBody.ellipse(0, -26, 22, 30).fill(c); // kneeling body
-    crewBody.roundRect(-30, -12, 24, 14, 6).fill(hex(K.rubber)); // the knee
-    crewBody.circle(0, -70, 22).fill(c); // head
+    const suit = hex(K.rubber);      // the overalls: the dark half of the silhouette
+    const skin = hex(K.clay);        // his own head, the light half
+    const brass = hex(K.brass);
+    const rim = hex(K.ink);
+    const line = (a: number) => ({ width: 3, color: rim, alpha: a });
+    // he kneels on concrete, so there is a pool under him
+    crewShade.ellipse(0, 2, 34, 10).fill({ color: 0x6b6558, alpha: 0.34 });
+    crewBody.ellipse(0, -26, 22, 30).fill(suit);          // kneeling body
+    crewBody.ellipse(0, -26, 22, 30).stroke(line(0.45));
+    crewBody.roundRect(-30, -12, 24, 14, 6).fill(suit);   // the knee, down on the floor
+    crewBody.roundRect(-30, -12, 24, 14, 6).stroke(line(0.4));
+    crewBody.roundRect(-13, -44, 26, 9, 4).fill(brass);   // the tool belt, his one bright thing
+    crewBody.circle(0, -70, 22).fill(skin);               // head
+    crewBody.circle(0, -70, 22).stroke(line(0.5));
+    // a cap: a dome over the top third of the head and a brim out the front,
+    // which is the whole of "mechanic" at 55 px. A band straight across the
+    // middle read as a headband, so the dome has to sit ON the crown
+    crewBody.ellipse(0, -83, 21, 12).fill(brass);
+    crewBody.roundRect(7, -86, 26, 7, 3.5).fill(brass); // the brim: the same way the wrench points
+    crewBody.ellipse(0, -83, 21, 12).stroke(line(0.35));
     crewBody.circle(-8, -74, 6).fill(hex(K.glass));
     crewBody.circle(8, -74, 6).fill(hex(K.glass));
-    crewBody.circle(-7, -73, 2.5).fill(hex(K.rubber));
-    crewBody.circle(9, -73, 2.5).fill(hex(K.rubber));
-    crewBody.roundRect(-8, -60, 16, 5, 2).fill(hex(K.rubber)); // grille smile
-    crewArm.roundRect(-4, 0, 10, 36, 5).fill(c);
-    crewArm.roundRect(-3, 30, 8, 30, 3).fill(hex(K.brass)); // the wrench
-    crewArm.circle(1, 62, 8).fill(hex(K.brass));
-    crewArm.circle(1, 62, 3).fill(hex(K.rubber));
+    crewBody.circle(-7, -73, 2.5).fill(rim);
+    crewBody.circle(9, -73, 2.5).fill(rim);
+    crewBody.roundRect(-8, -60, 16, 5, 2).fill({ color: rim, alpha: 0.7 }); // grille smile
+    crewArm.roundRect(-4, 0, 10, 36, 5).fill(suit);
+    crewArm.roundRect(-4, 0, 10, 36, 5).stroke(line(0.4));
+    crewArm.roundRect(-3, 30, 8, 30, 3).fill(brass);      // the wrench
+    crewArm.circle(1, 62, 8).fill(brass);
+    crewArm.circle(1, 62, 8).stroke({ width: 2.5, color: rim, alpha: 0.4 });
+    crewArm.circle(1, 62, 3).fill(rim);
     crewArm.position.set(18, -40);
     crewArm.rotation = -1.2;
-    crew.addChild(crewBody, crewArm);
+    crew.addChild(crewShade, crewBody, crewArm);
   }
   crew.scale.set(crewScale);
   W.addChild(crew);

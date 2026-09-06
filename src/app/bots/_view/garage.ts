@@ -104,6 +104,12 @@ export interface GarageHandle {
   resize: (cssW: number, cssH: number, dpr: number) => void;
   setBotVisible: (bay: number, visible: boolean) => void;
   setTag: (bay: number, tag: BayTag | null) => void;
+  /**
+   * The day's paper, pinned to the corkboard: the masthead and the date the
+   * Morning Paper panel is already showing. Left uncalled, the board keeps
+   * the blank paper the art ships with, so this can never invent a day.
+   */
+  setNews: (masthead: string, date: string) => void;
   /** one figure per live strategy, at its authored spot */
   setCrew: (kinds: readonly StrategyKind[]) => void;
   /** a speech chip over a figure for 4 seconds of render time, plus a work beat */
@@ -116,6 +122,12 @@ export interface GarageHandle {
 }
 
 const hex = (h: string): number => parseInt(h.slice(1), 16);
+/** the widest a bay's name card may be: bays are 500 scene px apart, so half
+ *  of this plus a gap has to clear the next bay's robot (about 120 either
+ *  side of its centre) */
+const TAG_MAX_W = 300;
+/** the writing room inside that card, either side allowed for */
+const TAG_INNER_W = TAG_MAX_W - 44;
 const FRAME_MS = 1000 / 12;
 const SPEAK_MS = 4000;
 const CREW_KINDS: readonly StrategyKind[] = ["blsh", "position", "limit"];
@@ -294,6 +306,88 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     }
   }
 
+  /* ── THE DAY'S NEWS, ON THE CORKBOARD ───────────────────────────────────
+   *
+   * The corkboard art ships a pinned-up newspaper and a sticky note with
+   * NOTHING WRITTEN ON EITHER, which on the first look at the finished room
+   * read as two blank rectangles somebody forgot to fill (Mike, 2026-09-06:
+   * "the corkboard has blank paper on it, so put the day's news on it").
+   *
+   * The spread is about 95 css px across, so this paints a newspaper the way
+   * you see one across a room: the masthead and the date you can read, and
+   * ruled lines for the body you cannot. The words are the SAME two the
+   * Morning Paper panel under the diorama prints, handed in by the client
+   * (the tag rule: this file paints, it never decides what it says), so the
+   * board and the panel can never carry two different days.
+   *
+   * REGIONS are prop-local px on corkboard.png (874x667), measured off the
+   * file itself: the newspaper's flat area is x 97..510 y 109..532 with the
+   * spine at 305, the sticky is x 538..797 y 241..448, and both pins sit
+   * above y 180. The drawn fallback puts its two paper rectangles within a
+   * few px of those, so a missing art folder moves the texture and not the
+   * writing. */
+  const NEWS_ON: SetItem =
+    GARAGE_SET.find((i) => i.key === "corkboard") ?? { key: "corkboard", x: 340, y: 290, s: 0.52, anchor: "wall" };
+  /** prop-local px on corkboard.png to scene px */
+  const nx = (px: number) => NEWS_ON.x + (px - PROP_SIZE.corkboard[0] / 2) * NEWS_ON.s;
+  const ny = (py: number) => NEWS_ON.y + (py - PROP_SIZE.corkboard[1] / 2) * NEWS_ON.s;
+  const news: Container = new PIXI.Container();
+  const newsRules: Graphics = new PIXI.Graphics();
+  const newsHead: Text = new PIXI.Text({
+    text: "",
+    style: { fontFamily: opts.toyFont, fontSize: 40, fontWeight: "800", fill: 0x4a3f33 },
+  });
+  const newsDate: Text = new PIXI.Text({
+    text: "",
+    style: { fontFamily: opts.toyFont, fontSize: 30, fontWeight: "600", fill: 0x7d6f5e },
+  });
+  newsHead.anchor.set(0.5, 0.5);
+  newsDate.anchor.set(0.5, 0.5);
+  news.addChild(newsRules, newsHead, newsDate);
+  news.visible = false;
+  wallLayer.addChild(news);
+
+  /** fit a Text inside a scene-px width by scaling it, never by re-laying out */
+  const fitText = (tx: Text, maxW: number) => {
+    tx.scale.set(1);
+    if (tx.width > maxW && tx.width > 0) tx.scale.set(maxW / tx.width);
+  };
+
+  const drawNews = (masthead: string, date: string) => {
+    newsHead.text = masthead;
+    newsDate.text = date;
+    const midX = nx(305);
+    // the masthead stops short of both page edges: at this size a letter that
+    // touches the paper's curled edge reads as text running off the page
+    fitText(newsHead, nx(470) - nx(140));
+    fitText(newsDate, nx(452) - nx(158));
+    newsHead.position.set(midX, ny(210));
+    newsDate.position.set(midX, ny(272));
+
+    // the body: two columns of ruled lines, and three on the sticky. A rule
+    // is 3 scene px of soft ink at a third opacity, which at this size is
+    // exactly what a line of type looks like from across the room.
+    const rule = (x0: number, x1: number, y: number, alpha = 0.34) => {
+      newsRules.rect(nx(x0), ny(y), nx(x1) - nx(x0), 3 * NEWS_ON.s * 2).fill({ color: 0x6b5d4d, alpha });
+    };
+    newsRules.clear();
+    // the hairline under the masthead: a real paper has one, and it is what
+    // makes the two lines above it read as a masthead and not as a caption
+    rule(130, 480, 232, 0.5);
+    for (let i = 0; i < 7; i++) {
+      const y = 304 + i * 28;
+      rule(126, i === 6 ? 244 : 294, y);
+      rule(318, i === 6 ? 430 : 486, y);
+    }
+    // the sticky note, tilted the way the art tilts it
+    for (let i = 0; i < 3; i++) {
+      const y = 322 + i * 30;
+      const x1 = i === 2 ? 700 : 762;
+      newsRules.rect(nx(566), ny(y), nx(x1) - nx(566), 3 * NEWS_ON.s * 2).fill({ color: 0x8a7550, alpha: 0.42 });
+    }
+    news.visible = true;
+  };
+
   // ── the five bays: stand, rig, floor plate, tag ──────────────────────────
   const rigScale = BOT_HEIGHT / RIG_HEIGHT;
   const feetY = BAY_FLOOR_Y - STAND.feetAboveGround;
@@ -301,7 +395,7 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
   // the bulbs stay lit, because a light is not motion
   const reduced = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const rigs: Rig[] = [];
-  const tags: Array<{ root: Container; bg: Graphics; name: Text; status: Text; dot: Graphics; pulse: boolean; on: boolean }> = [];
+  const tags: Array<{ root: Container; bg: Graphics; name: Text; status: Text; dot: Graphics; pulse: boolean; on: boolean; x: number }> = [];
   const emptyRings: Graphics[] = [];
 
   for (let i = 0; i < BAY_COUNT; i++) {
@@ -352,7 +446,8 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     plate.zIndex = BAY_FLOOR_Y + 60;
     floorLayer.addChild(plate);
 
-    // the tag: cream, two lines, a dot, hung off the stand's post by a string
+    // the tag: cream, two lines, a dot, propped on the floor in front of the
+    // bay's own trolley
     const root: Container = new PIXI.Container();
     const bg: Graphics = new PIXI.Graphics();
     const name: Text = new PIXI.Text({
@@ -365,11 +460,31 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     });
     const dot: Graphics = new PIXI.Graphics();
     root.addChild(bg, name, status, dot);
-    root.position.set(x + 96, feetY - 150);
+    /**
+     * THE CARD IS PROPPED IN FRONT OF ITS OWN TROLLEY, centred on the bay.
+     *
+     * It used to hang at (x + 96, feetY - 150), which is beside the robot at
+     * the height of its shins, and the width grew with the name. Two things
+     * came of that on the 1440 shot (Mike, 2026-09-06): every card lay ACROSS
+     * its own robot's legs, and a long name ran the card out of its bay and
+     * into the NEXT robot, so the row read as five toys with labels stuck on
+     * them rather than five toys in five spots.
+     *
+     * Centred and dropped to the trolley line, the card sits where a name card
+     * in a real diorama sits: propped against the wheels, under the robot,
+     * over nothing but its own trolley. TAG_MAX_W then keeps it inside its own
+     * 500 wide bay whatever it is called, and drawTag shrinks the writing
+     * rather than letting the card grow.
+     *
+     * -70 IS THE BOTTOM OF THE BAND THE CANVAS IS KNOWN TO SHOW. The card is
+     * 92 tall, so it ends at BAY_FLOOR_Y + 22, four clear of the number plate
+     * under it, and both stay well inside the scene the frame actually paints.
+     */
+    root.position.set(x, BAY_FLOOR_Y - 70);
     root.zIndex = BAY_FLOOR_Y + 50;
     root.visible = false;
     floorLayer.addChild(root);
-    tags.push({ root, bg, name, status, dot, pulse: false, on: false });
+    tags.push({ root, bg, name, status, dot, pulse: false, on: false, x });
   }
 
   const drawTag = (i: number, tag: BayTag | null) => {
@@ -384,8 +499,23 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     t.pulse = !!tag.pulse;
     t.name.text = tag.name;
     t.status.text = tag.status;
-    const w = Math.max(200, Math.max(t.name.width, t.status.width + 30) + 40);
+    /**
+     * THE CARD NEVER LEAVES ITS OWN BAY. Bays are 500 apart, so a card wider
+     * than TAG_MAX_W centred on one bay reaches the next robot. The writing
+     * gives way instead of the card: measured at full size, then scaled down
+     * only as far as it has to go, so every normal name is untouched and only
+     * a very long one is set slightly smaller.
+     */
+    t.name.scale.set(1);
+    t.status.scale.set(1);
+    const nameFit = Math.min(1, TAG_INNER_W / Math.max(1, t.name.width));
+    const statusFit = Math.min(1, (TAG_INNER_W - 24) / Math.max(1, t.status.width));
+    t.name.scale.set(nameFit);
+    t.status.scale.set(statusFit);
+    const w = Math.min(TAG_MAX_W, Math.max(200, Math.max(t.name.width, t.status.width + 30) + 40));
     const h = 92;
+    // centred on the bay: the position is set once, the WIDTH is not
+    t.root.position.x = t.x - w / 2;
     t.bg.clear();
     // NO STRING. There used to be one here, `moveTo(-60, -150).lineTo(14, 0)`,
     // drawn "up to the cradle" back when every bay had a stand for the tag to
@@ -493,7 +623,18 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
       // staggered by bay so five bots never breathe in step
       rigs[i].update(now + i * 400);
     }
-    if (fan) fan.rotation = ((q / 6000) * Math.PI * 2) % (Math.PI * 2);
+    /**
+     * THE FAN HANGS STILL. It used to turn, and the turn was the bug: the
+     * baked fan carries a pull cord with a little teal weight on the end,
+     * and spinning the WHOLE sprite about the hub swung that weight round
+     * and round the fan like a ball on a string. Read at 1440 on 2026-09-06:
+     * a stray teal blob orbiting in clear space over the workshop, which is
+     * the first thing the eye finds on the page. The blades are cut by the
+     * top of the frame either way, so a still fan reads as a fan and the
+     * cord hangs down where a cord hangs. Spin it again only when the blades
+     * are their own node and the cord is left out of it.
+     */
+    if (fan) fan.rotation = 0;
 
     // tags: the battle dot pulses
     const pulse = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin((now / 900) * Math.PI * 2));
@@ -660,6 +801,9 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     },
     setTag(bay, tag) {
       drawTag(bay - 1, tag);
+    },
+    setNews(masthead, date) {
+      drawNews(masthead, date);
     },
     setCrew(kinds) {
       liveCrew = kinds;

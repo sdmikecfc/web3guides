@@ -204,7 +204,12 @@ export function middleware(request: NextRequest) {
   // ── DOMAIN KITCHEN: chef.web3guides.com serves the /chef surface ─────────
   // Same explicit-host pattern as seas/stars/beach (ADR-0047: web home =
   // chef.web3guides.com). Covers chef.localhost in dev too.
-  if (hostClean === "chef.web3guides.com" || hostClean.startsWith("chef.")) {
+  if (
+    hostClean === "chef.web3guides.com" ||
+    hostClean.startsWith("chef.") ||
+    hostClean === "domainkitchen.xyz" ||
+    hostClean === "www.domainkitchen.xyz"
+  ) {
     const chefUrl = request.nextUrl.clone();
     chefUrl.pathname = pathname.startsWith("/chef")
       ? pathname

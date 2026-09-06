@@ -522,6 +522,7 @@ export default function FightClient(p: FightClientProps) {
   const line = lineIdx >= 0 ? full.lines[lineIdx].text : "";
   const secs = Math.floor(totalFrames / 60);
   const winnerName = names[full.result.winner];
+  const loserName = names[full.result.winner === 0 ? 1 : 0];
 
   if (versionSkew) {
     return (
@@ -554,12 +555,25 @@ export default function FightClient(p: FightClientProps) {
         {/* THE hairline: the lit pit inside the dark frame */}
         <div ref={wrapRef} className={css.frame} data-hud={hudTick}>
           <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} aria-label="The ring" />
-          <div className={`${css.hud} ${css.hudLeft}`}>
-            <Hud armor={st?.sides[0].armor} armorMax={st?.sides[0].armorMax} id="a" mirror={false} />
+          <div className={css.hudBar}>
+            <LifeBar name={names[0]} armor={st?.sides[0].armor} armorMax={st?.sides[0].armorMax} right={false} />
+            <LifeBar name={names[1]} armor={st?.sides[1].armor} armorMax={st?.sides[1].armorMax} right />
           </div>
-          <div className={`${css.hud} ${css.hudRight}`}>
-            <Hud armor={st?.sides[1].armor} armorMax={st?.sides[1].armorMax} id="b" mirror />
-          </div>
+          {/* THE KNOCKOUT, said over the pit. The result card is a card: it
+              can only ever say what happened, and it says it under the ring
+              after the fact. This is the moment itself, on the picture, while
+              the bulbs are still blinking and the stands still have their
+              arms up. It comes up with the card and goes when the card goes. */}
+          {ended ? (
+            <div className={css.koTitle}>
+              <div style={{ fontFamily: FONT_DISPLAY }} className={css.koWord}>
+                {full.result.end === "ko" ? t.fight.koWord : t.fight.timeWord}
+              </div>
+              <div style={{ fontFamily: FONT_DISPLAY }} className={css.koWho}>
+                {fill(t.fight.winnerLine, { winner: winnerName })}
+              </div>
+            </div>
+          ) : null}
           {!ready ? (
             <div
               style={{
@@ -599,7 +613,7 @@ export default function FightClient(p: FightClientProps) {
           </button>
           <button
             type="button"
-            className={`${css.ctl} ${speed === 2 ? css.ctlOn : ""}`}
+            className={`${css.ctl} ${css.ctlWide} ${speed === 2 ? css.ctlOn : ""}`}
             onClick={() => setRate(speed === 2 ? 1 : 2)}
             disabled={reduced}
             aria-pressed={speed === 2}
@@ -683,14 +697,17 @@ export default function FightClient(p: FightClientProps) {
               {full.result.end === "ko" ? `Knockout after ${secs} seconds` : `Time ran out after ${secs} seconds`}
             </p>
             <p style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 8px", color: M.text }}>
-              {winnerName} wins.
+              {fill(t.fight.beatLine, { winner: winnerName, loser: loserName })}
             </p>
             <p style={{ fontSize: 15, color: M.lore, margin: "0 0 10px", lineHeight: 1.45 }}>{full.chainDetail}</p>
             {full.result.log.some((e) => e.t === "timeout" && e.why === TIMEOUT_WHY.CHALLENGED) ? (
               <p style={{ fontSize: 14, color: M.lore, margin: "0 0 10px", lineHeight: 1.45 }}>{t.fight.tieRule}</p>
             ) : null}
+            {/* no bullets and no indent: the browser's marker is hidden by the
+                page reset, so the indent only pushed two plain sentences out
+                of line with every other line on the card */}
             {p.rewardLines && p.rewardLines.length ? (
-              <ul style={{ margin: "0 0 10px", paddingLeft: 18, fontSize: 14, color: M.text, lineHeight: 1.5 }} data-testid="fight-rewards">
+              <ul style={{ margin: "0 0 10px", padding: 0, listStyle: "none", fontSize: 14, color: M.text, lineHeight: 1.5 }} data-testid="fight-rewards">
                 {p.rewardLines.map((l, i) => (
                   <li key={i}>{l}</li>
                 ))}
@@ -711,7 +728,7 @@ export default function FightClient(p: FightClientProps) {
               </Button>
               <Button onClick={share}>
                 <IconShare size={18} />
-                {full.result.end === "ko" ? t.fight.share : "Share this fight"}
+                {t.fight.share}
               </Button>
               <Link
                 href={p.watchAnotherHref}
@@ -764,6 +781,18 @@ export default function FightClient(p: FightClientProps) {
 
 function IdentityStrip({ id, build, right }: { id: FightIdentity; build: Build; right: boolean }) {
   const tier = botTier(buildTotal(build));
+  /**
+   * THE SAME TWO RULES THE KNOCKOUT CARD ALREADY KEEPS (card/ko/route.tsx).
+   * A game robot has no owner: the stored fight names its side "House", which
+   * printed where a player's name goes and left a reader guessing. The word
+   * for one of the nine everywhere else is "game robot". The literal is local
+   * on purpose: fights.ts, which exports it, pulls node:crypto and this is a
+   * client component.
+   * And a record of nothing is not a record, so 0 wins and 0 losses is left
+   * off rather than printed under a robot's first ever fight.
+   */
+  const owner = id.wallet === "House" ? t.fight.gameRobotOwner : id.wallet;
+  const hasRecord = id.wins + id.losses > 0;
   // layout lives in fight.module.css (.idName, .idMeta, .idText, .idRecord):
   // each row is one line, nowrap, and the name and the wallet name ellipsise
   // rather than wrap, so a 177 px column on a 390 phone still reads as two
@@ -777,26 +806,39 @@ function IdentityStrip({ id, build, right }: { id: FightIdentity; build: Build; 
       </div>
       <div className={css.idMeta}>
         <span className={css.idText} style={{ fontFamily: FONT_BODY, color: M.muted }}>
-          {id.wallet}
+          {owner}
         </span>
-        <span className={css.idRecord} style={{ color: M.muted }}>
-          {winLossWords(id.wins, id.losses)}
-        </span>
+        {hasRecord ? (
+          <span className={css.idRecord} style={{ color: M.muted }}>
+            {winLossWords(id.wins, id.losses)}
+          </span>
+        ) : null}
       </div>
     </div>
   );
 }
 
-/* ── the HUD silhouette: seven pieces filled to armor percent ───────────── */
+/* ── the life bar: who is winning, answered in one look ─────────────────── */
 
-const HUD_PIECES: { key: string; piece: number; x: number; y: number; w: number; h: number; r: number }[] = [
-  { key: "head", piece: PIECE.HEAD, x: 22, y: 2, w: 20, h: 20, r: 10 },
-  { key: "body", piece: PIECE.BODY, x: 20, y: 24, w: 24, h: 30, r: 5 },
-  { key: "armL", piece: PIECE.ARM_L, x: 8, y: 26, w: 9, h: 26, r: 4 },
-  { key: "armR", piece: PIECE.ARM_R, x: 47, y: 26, w: 9, h: 26, r: 4 },
-  { key: "legL", piece: PIECE.LEG_L, x: 21, y: 56, w: 10, h: 26, r: 4 },
-  { key: "legR", piece: PIECE.LEG_R, x: 33, y: 56, w: 10, h: 26, r: 4 },
-  { key: "weapon", piece: -1, x: 58, y: 8, w: 5, h: 36, r: 2 },
+/**
+ * THE BAR IS THE BODY. The engine ends a fight the moment a body reaches
+ * zero (resolve.ts: `if (piece === PIECE.BODY) st.done = 1`), so the body's
+ * armour is not one number among seven, it is THE number, and it is the only
+ * honest thing to put in a bar labelled with the word the commentary already
+ * uses: life.
+ *
+ * The six lamps under it are the other pieces, in the order a person reads a
+ * robot: head, body, the two arms, the two legs. A lamp drains with its own
+ * piece and goes to a hatched blank when that piece comes off, which is the
+ * same fact the pit shows when the part tumbles across the floor.
+ */
+const HUD_LAMPS: { key: string; piece: number; label: string }[] = [
+  { key: "head", piece: PIECE.HEAD, label: t.ui.socket.head },
+  { key: "body", piece: PIECE.BODY, label: t.ui.socket.torso },
+  { key: "armL", piece: PIECE.ARM_L, label: t.ui.socket.armL },
+  { key: "armR", piece: PIECE.ARM_R, label: t.ui.socket.armR },
+  { key: "legL", piece: PIECE.LEG_L, label: t.ui.socket.legL },
+  { key: "legR", piece: PIECE.LEG_R, label: t.ui.socket.legR },
 ];
 
 function hudColor(pct: number): string {
@@ -805,40 +847,52 @@ function hudColor(pct: number): string {
   return M.bad;
 }
 
-function Hud({ armor, armorMax, id, mirror }: { armor?: number[]; armorMax?: number[]; id: string; mirror: boolean }) {
+const pctOf = (armor: number[] | undefined, armorMax: number[] | undefined, piece: number): number => {
+  if (!armor || !armorMax) return 1;
+  const max = Math.max(1, armorMax[piece]);
+  return Math.max(0, Math.min(1, armor[piece] / max));
+};
+
+function LifeBar({
+  name,
+  armor,
+  armorMax,
+  right,
+}: {
+  name: string;
+  armor?: number[];
+  armorMax?: number[];
+  right: boolean;
+}) {
+  const life = pctOf(armor, armorMax, PIECE.BODY);
+  const shown = Math.round(life * 100);
   return (
-    <svg viewBox="0 0 64 84" width="100%" height="100%" aria-hidden style={{ display: "block", transform: mirror ? "scaleX(-1)" : undefined }}>
-      <defs>
-        {HUD_PIECES.map((pc) => {
-          const pct = pc.piece < 0 ? 1 : armor && armorMax ? armor[pc.piece] / Math.max(1, armorMax[pc.piece]) : 1;
+    <div className={`${css.hudSide} ${right ? css.hudRight : ""}`}>
+      <div className={css.hudTop}>
+        <span className={css.hudName}>{name}</span>
+        <span className={css.hudLife}>{t.ui.stat.health}</span>
+      </div>
+      <div
+        className={css.hudTrack}
+        role="img"
+        aria-label={`${name}: ${shown} of 100 life left`}
+      >
+        <div className={css.hudFill} style={{ width: `${shown}%`, background: hudColor(life) }} />
+      </div>
+      <div className={css.hudPips} aria-hidden>
+        {HUD_LAMPS.map((lamp) => {
+          const pct = pctOf(armor, armorMax, lamp.piece);
+          const gone = !!armor && armor[lamp.piece] <= 0;
           return (
-            <clipPath key={pc.key} id={`hud-${id}-${pc.key}`}>
-              <rect x={pc.x} y={pc.y + pc.h * (1 - pct)} width={pc.w} height={pc.h * pct} />
-            </clipPath>
+            <span key={lamp.key} className={`${css.hudPip} ${gone ? css.hudPipGone : ""}`} title={lamp.label}>
+              {gone ? null : (
+                <span className={css.hudPipFill} style={{ width: `${Math.round(pct * 100)}%`, background: hudColor(pct) }} />
+              )}
+            </span>
           );
         })}
-      </defs>
-      {HUD_PIECES.map((pc) => {
-        // the weapon goes with the near arm; it is never a target itself
-        const gone = armor ? (pc.piece < 0 ? armor[PIECE.ARM_R] <= 0 : armor[pc.piece] <= 0) : false;
-        const pct = pc.piece < 0 ? 1 : armor && armorMax ? armor[pc.piece] / Math.max(1, armorMax[pc.piece]) : 1;
-        return (
-          <g key={pc.key}>
-            <rect x={pc.x} y={pc.y} width={pc.w} height={pc.h} rx={pc.r} fill={gone ? M.muted : "rgba(0,0,0,0.35)"} fillOpacity={gone ? 0.35 : 1} stroke={gone ? M.muted : M.border} strokeWidth={1} />
-            {!gone ? (
-              <rect x={pc.x} y={pc.y} width={pc.w} height={pc.h} rx={pc.r} fill={hudColor(pct)} clipPath={`url(#hud-${id}-${pc.key})`} />
-            ) : (
-              <path
-                d={`M${pc.x + 2} ${pc.y + 2} L${pc.x + pc.w - 2} ${pc.y + pc.h - 2} M${pc.x + pc.w - 2} ${pc.y + 2} L${pc.x + 2} ${pc.y + pc.h - 2}`}
-                stroke={M.muted}
-                strokeWidth={2}
-                strokeLinecap="round"
-              />
-            )}
-          </g>
-        );
-      })}
-    </svg>
+      </div>
+    </div>
   );
 }
 

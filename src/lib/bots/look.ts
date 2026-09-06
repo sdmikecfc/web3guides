@@ -574,12 +574,22 @@ export const PAINT_HEX: Readonly<Record<PaintId, number>> = {
   sky: 0x7fb8ff,
   lilac: 0xb9a7ff,
   moss: 0x8fbf6a,
-  cream: 0xf3e9d2,
+  // kept in step with PAINTS in _ui/tokens.ts, and warmed for the same
+  // reason: a paint is applied by MULTIPLY, so the old near-white cream moved
+  // the clay by 43 against 90 to 287 for every other paint, and a cream robot
+  // read as an unpainted one everywhere it was drawn
+  cream: 0xecd9a8,
   ink: 0x2b2f3a,
 };
 
+/** BARE CLAY, which is not a paint. It is what a part with no colour of its
+ *  own wears: a weapon (ADR-0141), and any row that never recorded one. It
+ *  used to be spelled PAINT_HEX.cream, which is why cream could never be
+ *  warmed without turning every uncoloured part warm with it. */
+export const NO_PAINT_HEX = 0xf3e9d2;
+
 export const paintHex = (p: PaintId | null | undefined): number =>
-  (p && PAINT_HEX[p]) || PAINT_HEX.cream;
+  (p && PAINT_HEX[p]) || NO_PAINT_HEX;
 
 /** every paint id, for a gate that wants to walk them */
 export const LOOK_PAINT_IDS: readonly PaintId[] = PAINT_IDS;

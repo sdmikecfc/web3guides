@@ -95,7 +95,10 @@ export default function FightDemoPage({ searchParams }: { searchParams: Query })
       b={B.build}
       ids={ids}
       mode="spar"
-      modeLabel={`Spar . seed ${seed}`}
+      /* was "Spar . seed 7": the lone full stop used as a divider is banned
+         (strings.ts), and "spar" is not a word a new player knows. The one
+         word for a free fight is "practice". */
+      modeLabel={`Practice fight, number ${seed}`}
       orders={[order(searchParams, "A"), order(searchParams, "B")]}
       replayUrl={`/bots/fight/demo?seed=${seed}&a=${encodeURIComponent(aRaw)}&b=${encodeURIComponent(bRaw)}`}
       watchAnotherHref={`/bots/fight/demo?seed=${nextSeed}&a=${encodeURIComponent(aRaw)}&b=${encodeURIComponent(bRaw)}`}

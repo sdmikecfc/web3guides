@@ -41,7 +41,12 @@ export function buildStreet(canvas: HTMLCanvasElement, opts: StreetOpts): Street
   let cssW = 1;
   let cssH = 1;
   let centre = opts.mine;
-  const band = opts.small ? { top: 640, bottom: 850 } : { top: STREET.bandTop, bottom: STREET.bandBottom };
+  // ONE CROP, BOTH SIZES. The phone used to take a shorter band of its own
+  // (640..850), which was the desktop's cut-off-doors problem with less of the
+  // door still in it. A whole garage is a whole garage on any screen: the
+  // phone shows the same band through a narrower window, which is the rule the
+  // diorama next to it already follows.
+  const band = { top: STREET.bandTop, bottom: STREET.bandBottom };
   const bandH = band.bottom - band.top;
 
   // the plate, guarded: a missing file draws the flat street
@@ -89,11 +94,15 @@ export function buildStreet(canvas: HTMLCanvasElement, opts: StreetOpts): Street
         ctx.drawImage(img, 0, band.top * f, STREET.srcW * f, bandH * f, x0, 0, STREET.srcW * scale + 0.5, cssH);
       }
     } else {
-      // the flat street: stepped sky, a roof band, seven clay door fronts, the pavement
+      // the flat street: stepped sky, a roof band, seven clay door fronts, the
+      // pavement. The four lines are measured off the plate itself (roof top
+      // 520, brass plate 740, shutter 790, garage floor 1120 in source px), so
+      // the drawn street and the painted one crop to the same band and a
+      // missing file changes the texture, never the framing.
       const skyTop = band.top;
-      const roofY = STREET.plateY - 190;
-      const doorTop = STREET.plateY - 80;
-      const doorBottom = 850;
+      const roofY = 520;
+      const doorTop = 790;
+      const doorBottom = 1120;
       const skyBands = ["#3b4b7a", "#4c5f92", "#6a7cae"];
       for (let i = 0; i < 3; i++) {
         ctx.fillStyle = skyBands[i];

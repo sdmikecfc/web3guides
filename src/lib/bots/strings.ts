@@ -149,9 +149,28 @@ const en = {
     stakeLose: "If you lose, you do not get them back.",
   },
   fight: {
-    share: "Share this win",
+    /** IT NEVER SAYS "WIN". The viewer is as often the robot that lost, and
+     * a replay anybody can open belongs to neither of them, so the button
+     * said "Share this win" to a player watching their own knockout. */
+    share: "Share this fight",
+    /** WHERE A PLAYER'S NAME GOES, ON A ROBOT THAT HAS NO PLAYER. A stored
+     * fight names the game's own side "House", which the pit header printed
+     * straight out, so the robot the player was fighting looked like it
+     * belonged to somebody called House. One of the nine is a game robot
+     * everywhere else in the game, so it is a game robot here too. */
+    gameRobotOwner: "A game robot",
     making: "Making your picture",
     replay: "Watch it again",
+    /** THE MOMENT, said big over the ring the instant it happens, while the
+     * lights are still blinking. The card under the pit can only ever report
+     * it afterwards, and a fight that ends with a quiet line of text under a
+     * picture does not feel like a fight that was won. */
+    koWord: "Knockout!",
+    timeWord: "Time is up!",
+    winnerLine: "{winner} wins!",
+    /** the result card's headline: both names, so a person who scrolled past
+     * the knockout still learns who fought */
+    beatLine: "{winner} beat {loser}.",
     /** the WHY behind a drawn fight. It never says "challenged", "defender"
      * or "tie", none of which a seven year old has been taught. */
     tieRule: "Both robots ended the same. The robot that did not start the fight wins.",
@@ -411,6 +430,17 @@ const en = {
   shopUi: {
     yard: "PARTS TO BUY",
     title: "Today's parts",
+    /**
+     * THE ONE LINE THE SCREEN OWES A STRANGER. The band above it draws a
+     * truck tipping its load out into a fenced yard; this says what the
+     * picture means, in one sentence a seven year old reads without help.
+     * It is a RULE, not today's news: the line under it is the day's own
+     * flavour ("A crane put it down before the sun came up.") and changes,
+     * this one never does. So it must not name the truck either: one day in
+     * seven the flavour line is "A truck brought it very early." and the two
+     * lines read as a stutter.
+     */
+    yardLine: "A big pile of new parts arrives here every morning.",
     rowT1: "1 STAR, 8 PARTS",
     rowT2: "2 STARS, 4 PARTS",
     rowT3: "3 STARS, 2 PARTS",
