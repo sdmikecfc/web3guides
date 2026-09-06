@@ -39,10 +39,10 @@ export function deriveFighter(b: CombatBuild, o: Orders = NO_ORDERS): Fighter {
   const armor = legacyArmor(f);
   // Matching limbs keep the old armour. Mixed limbs put the sturdiness where
   // the player fitted it, so losing the left or right piece matters.
-  for (const [i,s] of (["armL","armR","legL","legR"] as const).entries()) {
+  (["armL","armR","legL","legR"] as const).forEach((s, i) => {
     const part = combatPart(b,s), average = s.startsWith("arm") ? b.arms : b.legs;
     armor[i+2] = Math.max(1, f.limbArmor + 2 * (part.s[1] - average.s[1]));
-  }
+  });
   return { ...f, pieceArmor: armor };
 }
 export const startingArmor = (f: Fighter) => f.pieceArmor.slice();

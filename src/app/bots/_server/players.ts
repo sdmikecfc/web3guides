@@ -25,13 +25,14 @@ import "server-only";
 import { nameText } from "@/lib/bots/fixtures";
 import { BOT_FIRST_WORDS, BOT_SECOND_WORDS, OWNER_FIRST_WORDS, OWNER_SECOND_WORDS } from "@/lib/bots/naming";
 import { STARTER_PARTS } from "../_engine/catalog";
-import { STARTER_PRICE, botTier, isPaintId, type Slot } from "../_engine/parts";
+import { STARTER_PRICE, botTier, isPaintId, type Slot, type Stats } from "../_engine/parts";
 import { weightClassOf } from "../_engine/rewards";
 import { starterColors } from "@/lib/bots/shipment";
 import type { PaintId } from "../_engine/parts";
 import { fnv1a } from "../_engine/rng";
 import { type BotsDb, nowIso } from "./db";
 import { grant } from "./grants";
+import type { PartRow, PartStatsJson } from "./bots";
 
 /** The `color` column lands with battle_bots_003_junkyard_shipments.sql.
  * The same test src/app/api/bots/shop/buy/route.ts makes before it retries
@@ -119,12 +120,20 @@ async function hasStarterParts(db: BotsDb, wallet: string): Promise<boolean> {
   return (count || 0) > 0;
 }
 
+/** Fields inserted before the database supplies the row ID and timestamps. */
+export type StarterPartInsert = Omit<PartRow, "id" | "created_at" | "recycled_at" | "stats" | "bot_id" | "source"> & {
+  stats: PartStatsJson & { equipmentVersion: 2; s: Stats; provenance: string };
+  bot_id: null;
+  source: "starter";
+  color: PaintId | null;
+};
+
 /** Seven starter instances; the two limbs retain the old pair's total price and resale. */
-export function starterPartRows(wallet: string, isTest: boolean, colors = starterColors(wallet)) {
+export function starterPartRows(wallet: string, isTest: boolean, colors = starterColors(wallet)): StarterPartInsert[] {
   return STARTER_PARTS.flatMap((c) => {
     const paint = c.slot === "weapon" ? null : colors[c.slot];
     if (c.slot !== "weapon" && !paint) throw new Error(`starter kit: no colour for the ${c.slot} card`);
-    const row = {
+    const row: StarterPartInsert = {
       wallet,
       part_key: c.id,
       slot_kind: c.slot,
@@ -187,7 +196,7 @@ interface MadePart {
  * card still carries its colour in stats.paint, which is what the engine and
  * partPaint() read. Same fallback the buy route makes.
  */
-async function insertStarterParts(db: BotsDb, rows: readonly Record<string, unknown>[]): Promise<MadePart[]> {
+async function insertStarterParts(db: BotsDb, rows: readonly StarterPartInsert[]): Promise<MadePart[]> {
   const { data, error } = await db.from("battle_bots_part_instances").insert(rows).select("id, slot_kind");
   if (error && isMissingColumn(error.message || "", "color")) {
     console.warn("[bots] battle_bots_part_instances.color is missing: run battle_bots_003_junkyard_shipments.sql");

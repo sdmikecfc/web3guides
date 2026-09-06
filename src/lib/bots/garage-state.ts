@@ -439,7 +439,7 @@ export function recycleRows(st: GarageState, bay: number): { rows: RecycleRow[];
   if (!build) return { rows: [], total: 0 };
   const rows: RecycleRow[] = [];
   let total = 0;
-  for (const uid of equippedIds(build)) {
+  for (const uid of Array.from(equippedIds(build))) {
     const p = partByUid(st, uid);
     if (!p) continue;
     const coins = recycleValue(p);

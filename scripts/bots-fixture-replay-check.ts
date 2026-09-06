@@ -13,8 +13,8 @@ const hashes: Record<string,string> = {};
 for (const [bay, rows] of Object.entries(FIGHTS)) for (const row of rows) {
   const sample = fixturePractice(row.id)!;
   assert.ok(sample, row.id);
-  assertModularBuild(sample.a);
-  assertModularBuild(sample.b);
+  assertModularBuild(sample.a, row.id + ": player");
+  assertModularBuild(sample.b, row.id + ": opponent");
   const original = engineBuild(FIXTURE_BUILDS[Number(bay)], OWNED_PARTS);
   for (const socket of EQUIPMENT_SOCKETS) {
     assert.deepEqual(combatPart(sample.a,socket), combatPart(original,socket), `${row.id}: actual ${socket}`);
