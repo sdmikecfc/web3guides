@@ -34,6 +34,8 @@ const ALLOWED_DOMAINS = new Set(
     "chef.web3guides.com", // DOMAIN KITCHEN subdomain (game session for saves)
     "domainkitchen.xyz", // DOMAIN KITCHEN's own domain (added WITH its middleware branch)
     "www.domainkitchen.xyz",
+    "domagaming.com", // DOMA GAMING: the studio home, and the robot game's own house
+    "www.domagaming.com",
     process.env.WALLET_LINK_DOMAIN_OVERRIDE || "",
   ].filter(Boolean),
 );

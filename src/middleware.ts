@@ -217,6 +217,24 @@ export function middleware(request: NextRequest) {
     return withRef(NextResponse.rewrite(chefUrl));
   }
 
+  // ── DOMA GAMING: domagaming.com is the studio front door AND the robot
+  // game's own house. Unlike every branch above, this apex does NOT rewrite
+  // its whole path into one tree: only "/" becomes the studio page, and
+  // everything else falls through untouched, so domagaming.com/bots serves
+  // the game on its own domain with no second copy of anything.
+  // Sign-in note: domagaming.com is in ALLOWED_DOMAINS in
+  // src/lib/stars/server.ts. Without that every SIWE on this host fails
+  // "Domain mismatch" and the session never opens, which is the bug S4, S5
+  // and S6 each shipped. The two must move together.
+  if (hostClean === "domagaming.com" || hostClean === "www.domagaming.com") {
+    if (pathname === "/") {
+      const studioUrl = request.nextUrl.clone();
+      studioUrl.pathname = "/studio";
+      return withRef(NextResponse.rewrite(studioUrl));
+    }
+    return withRef(NextResponse.next());
+  }
+
   // lockdown for direct web3guides.com/s4/* access (see S4_LOCKDOWN above)
   if (s4Locked(pathname)) {
     const teaserUrl = request.nextUrl.clone();
