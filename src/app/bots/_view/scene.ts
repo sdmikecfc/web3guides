@@ -23,10 +23,12 @@
  */
 "use client";
 
+import { combatPart } from "@/lib/bots/combat-model";
 import type { Container, Graphics, Sprite, Texture } from "pixi.js";
 import { createPixiStage, type Pixi, type PixiStage } from "@/app/s7/games/_shared/pixi";
 import { DRAW_ORDER, PART_SCALE, buildRig, handOffset, paintBrokenFace, RIG_HEIGHT, type BotMood, type PartArt, type Rig } from "./rig";
 import type { BotLook } from "./look";
+import { installOverLight, installUnderLight, lightHandle, type LightHandle } from "./light";
 import { bodyTintOf } from "./look-view";
 import { FIGURE, RIG, maskFile, partFile, type ArtSlot } from "./rig-points";
 import { K, M, TIER_COLOR } from "../_ui/tokens";
@@ -79,13 +81,13 @@ const SMALL_CROP_W = 1170;
  * them, and the fight was already decided.
  */
 export const BOT_X: readonly [number, number] = [600, 1000];
-export const FLOOR_Y = 600;
+export const FLOOR_Y = 676;
 /** the pit floor's front edge (the plate's cream floor measured: back edge
  * y 386, front edge y 614 at the centre, the rim spanning x 160 to 1440) */
-const PIT_FLOOR = { cx: SIM_W / 2, cy: 500, rx: 560, ry: 114 } as const;
+const PIT_FLOOR = { cx: SIM_W / 2, cy: 624, rx: 670, ry: 142 } as const;
 /** a bot stands about 320 sim px tall in the pit */
-const RIG_SCALE = 320 / RIG_HEIGHT;
-const HOP_PX = 120;
+const RIG_SCALE = 430 / RIG_HEIGHT;
+const HOP_PX = 140;
 const DEG = Math.PI / 180;
 
 /** engine piece index -> rig socket (the weapon is a socket with no armor) */
@@ -143,11 +145,10 @@ const WEAPON_REST = -0.62;
 /** the bulbs on the WebP plate's front rim, measured off the render (sim
  * px); the fallback pit draws its own string on the same arc */
 const BULBS: readonly (readonly [number, number])[] = [
-  [182, 576], [218, 597], [254, 617], [299, 632], [344, 646], [400, 658], [456, 669], [521, 683], [586, 697],
-  [656, 703], [727, 709], [800, 707], [874, 704], [943, 699], [1013, 695], [1081, 688], [1149, 680],
-  [1206, 668], [1263, 656], [1314, 638], [1365, 619], [1399, 605], [1433, 591], [1457, 558], [1482, 524],
+  [57,634],[85,685],[130,727],[199,766],[294,805],[403,823],[513,839],[636,844],
+  [764,844],[897,844],[1026,828],[1151,808],[1277,783],[1386,752],[1478,712],[1544,662],
 ];
-const PLATE_FILE = "/bots-art/plates/pit-side-on.webp";
+const PLATE_FILE = "/bots-art/plates/arena-evening.png";
 
 const hex = (h: string): number => parseInt(h.slice(1), 16);
 
@@ -327,6 +328,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
 
   // ── the backplate: WebP first, else the vector pit ───────────────────────
   let plate = false;
+  let plateSprite: Sprite | null = null;
   const back: Container = new PIXI.Container();
   cam.addChild(back);
   const crowd: { node: Container; arms: Graphics; phase: number; baseY: number }[] = [];
@@ -334,12 +336,22 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     const tex = (await PIXI.Assets.load(PLATE_FILE)) as Texture;
     const sp: Sprite = new PIXI.Sprite(tex);
     // 1600x904: two rows spill top and bottom, centred
-    sp.position.set(0, (SIM_H - tex.height) / 2);
+    sp.width=SIM_W; sp.height=SIM_H;
+    sp.position.set(0,0);
     back.addChild(sp);
+    plateSprite = sp;
     plate = true;
   } catch {
     drawVectorPit(back);
+    back.position.y=80;
   }
+
+  // ── THE LIGHT (light.ts) ─────────────────────────────────────────────────
+  // Depth of field on the crowd, the warm key bloom, the contact shadows and
+  // the bounce off the mat. Everything here is draw-only: the engine never
+  // reads _view, so no replay hash can move because of it.
+  const LIGHT = { simW: SIM_W, simH: SIM_H, floorY: FLOOR_Y, pit: PIT_FLOOR } as const;
+  const underLight = installUnderLight(PIXI, cam, back, LIGHT, plateSprite);
 
   function drawVectorPit(into: Container) {
     // the hall: a warm dark wall, lit from above (the DK derived-lighting rule)
@@ -503,6 +515,11 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
   const puffs: Graphics = new PIXI.Graphics();
   cam.addChild(cracks[0], cracks[1], puffs);
 
+  // the warm grade and the vignette go on top of everything, so they pull the
+  // whole frame into one exposure rather than tinting the bots alone
+  const overLight = installOverLight(PIXI, cam, LIGHT);
+  const light: LightHandle = lightHandle(underLight, overLight, LIGHT);
+
   // ── art loading with the drawn fallback ──────────────────────────────────
   const artCache = new Map<string, PartArt>();
 
@@ -549,7 +566,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     for (let i = 0; i < 2; i++) {
       for (const socket of DRAW_ORDER) {
         const slot = SLOT_OF_SOCKET[socket];
-        const part = builds[i][slot];
+        const part = combatPart(builds[i], socket);
         const { tier, design } = designOf(part, slot);
         const art = await loadArt(ART_OF_SOCKET[socket], tier, design);
         arts[i].set(socket, art);
@@ -947,6 +964,10 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     cam.position.set(SIM_W / 2 + sx, SIM_H / 2 + sy);
     cam.scale.set(punch);
 
+    if (fx.hitStop > 0) light.flash(0.45);
+    if (fx.ko >= 0 && fx.ko < KO_PUNCH_S) light.flash(0.8);
+    light.update(fx.time);
+
     const tMs = fx.time * 1000;
     for (let i = 0; i < 2; i++) {
       const side = i as Side;
@@ -965,6 +986,18 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
       if (airborne[side] && !up) rig.poke("land");
       airborne[side] = up;
       rig.root.position.set(BOT_X[side] + dir * p.x, FLOOR_Y + p.y + p.sink * RIG_SCALE);
+      // the contact shadow stays on the mat while the toy hops off it: it
+      // spreads and fades with height, which is what sells the weight
+      {
+        const lift = Math.max(0, -p.y);
+        light.setContact(
+          side as 0 | 1,
+          BOT_X[side] + dir * p.x,
+          FLOOR_Y + 6,
+          1 + lift / 190,
+          0.92 - lift / 260,
+        );
+      }
       rig.root.rotation = dir * p.rot;
       const s = fx.sides[side];
       const nm = nodes[side];
@@ -1134,7 +1167,8 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     },
     render,
     resize(cssW, cssH, dpr) {
-      if (opts.small) {
+      // Follow the current frame shape when a window or device changes size.
+      if (cssW / Math.max(1, cssH) < 1.5) {
         // pushed in: fit the 1170-wide crop, then slide the world so the
         // crop's left edge lands where the stage put the letterbox
         stage.resize(cssW, cssH, dpr, SMALL_CROP_W, SIM_H);

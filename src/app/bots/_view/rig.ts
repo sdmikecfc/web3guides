@@ -13,7 +13,7 @@
  * Paint: each part is two layers, the grey base and the white paint MASK
  * tinted with the chosen colour at multiply. Zero extra art per colour.
  *
- * ── THE JOIN. THERE IS NO JOINT (2026-09-04, the concept contract) ─────────
+ * â”€â”€ THE JOIN. THERE IS NO JOINT (2026-09-04, the concept contract) â”€â”€â”€â”€â”€â”€â”€â”€â”€
  *
  * Mike, on the assembled bot: "This looked so good but put together they look
  * so bad. Disproportionate, really cheap, I am wondering if there is a better
@@ -57,7 +57,7 @@
  * All of this is rendering. The fight sim never reads a rig point, a pivot, a
  * wash or a paint, and an art change that moves a replay hash is a defect.
  *
- * ── IS IT LOVEABLE? (2026-09-05) ──────────────────────────────────────────
+ * â”€â”€ IS IT LOVEABLE? (2026-09-05) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  *
  * Mike: "Are the new robots loveable? Can someone look at it and think 'aww
  * that's so cute, I want to upgrade this guy' and feel ownership over how cute
@@ -88,7 +88,7 @@
  * pure function of the quantized clock, so a still frame is the same still
  * frame on every machine.
  *
- * ── ASLEEP, NOT SWITCHED OFF (2026-09-05, the second pass) ────────────────
+ * â”€â”€ ASLEEP, NOT SWITCHED OFF (2026-09-05, the second pass) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  *
  * The first pass scored six of ten on cute, and the judge named the one change
  * worth making next: "a sleeping robot still looks half dead rather than
@@ -121,7 +121,7 @@
  * most of its parts; the pit never does. Render only, as before: nothing here
  * reaches the engine, and the harness rollup did not move.
  *
- * ── WAITING, NOT SWITCHED OFF (2026-09-05, the third pass) ────────────────
+ * â”€â”€ WAITING, NOT SWITCHED OFF (2026-09-05, the third pass) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  *
  * The judge's next note was the flat mood, the one a bot wears with parts
  * missing (the garage's "parts missing" dot, the build screen's half built
@@ -152,6 +152,7 @@
  */
 "use client";
 
+import { installToyLight } from "./workshop-light";
 import type { Container, Graphics, Renderer, Sprite, Texture } from "pixi.js";
 import type { Pixi } from "@/app/s7/games/_shared/pixi";
 import { FIGURE, JOIN, LIGHT, RIG, type ArtSlot } from "./rig-points";
@@ -170,7 +171,7 @@ export interface PartArt {
   mask: Texture | null;
 }
 
-// ── the contract, reduced to what the rig needs ────────────────────────────
+// â”€â”€ the contract, reduced to what the rig needs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Every number below is READ from FIGURE and RIG (emitted by the bake), never
 // retyped. The comment on each line is what it evaluates to today, so a bake
 // that moves a pivot shows up as a comment that has gone stale rather than as
@@ -380,7 +381,7 @@ export const RIG_HEIGHT =
   -NECK.y * PART_SCALE.torso.y +
   (RIG.head.neck[1] - FIGURE.headApexY) * PART_SCALE.head.y;
 
-// ── the wash, the shadow and the scar, all sized off the contract ──────────
+// â”€â”€ the wash, the shadow and the scar, all sized off the contract â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * THE OCCLUSION WASH. One soft dark wash on the limb at its own pivot, fading
@@ -521,7 +522,7 @@ function chipColor(paint: number, lighten: number, desat: number): number {
   return (f(r) << 16) | (f(g) << 8) | f(b);
 }
 
-// ── THE FACE ───────────────────────────────────────────────────────────
+// â”€â”€ THE FACE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * WHERE THE EYE IS, AND WHY THIS FILE ASKS RATHER THAN ASSUMES.
@@ -1030,7 +1031,8 @@ function hash01(n: number): number {
 }
 function blinkPlan(seed: number): { at: number[]; cycle: number } {
   const at: number[] = [];
-  let t = 0;
+  // Start the opening portrait awake; the first blink belongs after the bell.
+  let t = 1200 + hash01(seed * 419) * 1400;
   for (let i = 0; i < BLINK_N; i++) {
     at.push(t);
     const twice = hash01(seed * 613 + i * 89) < 0.22;
@@ -1255,6 +1257,7 @@ export function buildRig(PIXI: Pixi, renderer: Renderer | null = null): Rig {
   const root = new PIXI.Container();
   root.sortableChildren = true;
   const nodes = new Map<Socket, Node>();
+  const toyLight = installToyLight(PIXI, root);
   let paint = 0xffffff;
   /** the HEAD's paint, which setPaintFor can move on its own; the lid is the
    *  head at the eye's row, so it is this colour and not the body's */
@@ -1278,7 +1281,7 @@ export function buildRig(PIXI: Pixi, renderer: Renderer | null = null): Rig {
     return s;
   };
 
-  // ── the contact shadow, first in the pile so everything stands on it ──────
+  // â”€â”€ the contact shadow, first in the pile so everything stands on it â”€â”€â”€â”€â”€â”€
   // Three multiply Graphics, side by side at the bottom of the pile, so the
   // renderer batches them into one draw: the wide stance pool, and a small
   // deeper pool under each shoe that is what actually reads as contact.
@@ -1363,7 +1366,7 @@ export function buildRig(PIXI: Pixi, renderer: Renderer | null = null): Rig {
   const torso = nodes.get("torso")!;
   const head = nodes.get("head")!;
 
-  // ── the face: three Graphics inside the head node, so it turns with it ─
+  // â”€â”€ the face: three Graphics inside the head node, so it turns with it â”€
   // eyeDim   the bulb turned DOWN, a multiply, for asleep and for hurt
   // eyeGlow  the bulb turned UP, an add, for eager and for proud
   // lids     the eyelids, redrawn only when the closure or the paint steps
@@ -1500,7 +1503,7 @@ export function buildRig(PIXI: Pixi, renderer: Renderer | null = null): Rig {
   }
   let decalId: DecalId | null = null;
 
-  // ── THE LOOK ─────────────────────────────────────────────────────────────
+  // â”€â”€ THE LOOK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   //
   // Every drawn child below is a CHILD OF THE PART IT BELONGS TO: the chest
   // marks and the chest sticker are the torso's, the cheek sticker and the hat
@@ -1687,7 +1690,7 @@ export function buildRig(PIXI: Pixi, renderer: Renderer | null = null): Rig {
     afterPose();
   }
 
-  // ── THE LIFE'S OWN STATE ─────────────────────────────────────────────────
+  // â”€â”€ THE LIFE'S OWN STATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Six eased numbers (the mood), a gaze, a lean and two one-shot stamps. All
   // of it is presentation memory: nothing here is ever read back by an owner
   // and nothing here reaches the engine.
@@ -1953,7 +1956,7 @@ export function buildRig(PIXI: Pixi, renderer: Renderer | null = null): Rig {
         pokePending = null;
       }
 
-      // ── the mood, eased over about a third of a second ──────────────────
+      // â”€â”€ the mood, eased over about a third of a second â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const m = MOOD[moodTarget];
       if (stepped12) {
         const kM = seek ? 1 : 0.3; // four frames to arrive: a third of a second
@@ -1968,7 +1971,7 @@ export function buildRig(PIXI: Pixi, renderer: Renderer | null = null): Rig {
         noticed = seek ? noticeWant : toward(noticed, noticeWant, 0.34);
       }
 
-      // ── the one-shots ───────────────────────────────────────────────────
+      // â”€â”€ the one-shots â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       let bounce = 0;
       let landSquash = 0;
       let fitLook: Socket | null = null;
@@ -2000,7 +2003,7 @@ export function buildRig(PIXI: Pixi, renderer: Renderer | null = null): Rig {
       /** how asleep he is right now, 0..1, with the stir taken off */
       const sleepK = dial.sleep * (1 - stir);
 
-      // ── the breath ──────────────────────────────────────────────────────
+      // â”€â”€ the breath â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // Two waves, not one rate: a rate that eases would jump the phase every
       // time the mood moved, and a jumped phase is a twitch. A half speed wave
       // blended in by `slow` gives a sleeping bot a slower chest without ever
@@ -2025,7 +2028,7 @@ export function buildRig(PIXI: Pixi, renderer: Renderer | null = null): Rig {
       const swing = (calm ? 0 : 3 * DEG * amp * waveA) * (1 - (1 - HANG_SWING) * sleepK) + bounce * 0.05;
       const hang = HANG_OUT * sleepK;
 
-      // ── the look ────────────────────────────────────────────────────────
+      // â”€â”€ the look â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // A part that has just been fitted is the most interesting thing there
       // is, and it wins over the owner's own target for a second. It never
       // overwrites that target: the bot goes back to looking where it was told.
@@ -2044,7 +2047,7 @@ export function buildRig(PIXI: Pixi, renderer: Renderer | null = null): Rig {
         gazeY = toward(gazeY, want.y, kG);
       }
 
-      // ── the lean, and the zoom that carries it ──────────────────────────
+      // â”€â”€ the lean, and the zoom that carries it â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // A hover lean is the toy coming toward the camera, so it is a uniform
       // zoom about the FEET (y is measured up from them, so scaling y scales
       // about the floor line) and not a scale on one part.
@@ -2102,7 +2105,7 @@ export function buildRig(PIXI: Pixi, renderer: Renderer | null = null): Rig {
       points.torso.x = (DECAL.x + sway) * z;
       points.torso.y = (bodyY + DECAL.y * breath) * z;
 
-      // ── the face ────────────────────────────────────────────────────────
+      // â”€â”€ the face â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // The blink is a pure function of the clock: the loop of jittered gaps
       // is laid out once and the clock walks it, so a seek lands on the same
       // frame twice and a settled still frame is the same everywhere.
@@ -2123,7 +2126,7 @@ export function buildRig(PIXI: Pixi, renderer: Renderer | null = null): Rig {
       const rest = dial.lid * (1 - stir * dial.sleep) * (1 - peek * sleepK);
       const blinkShut = shut * (1 - sleepK);
       const lid = Math.max(0, Math.min(0.98, Math.max(blinkShut, rest + blinkShut * (1 - rest))));
-      // ── the chosen face, per lens ──────────────────────────────────────
+      // â”€â”€ the chosen face, per lens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // A face is a dial ON this lid and never a replacement for it: the mood
       // still owns the eye and the blink still runs, so a happy bot blinks and
       // a hurt one wearing a happy face still droops. A one lens head cannot
@@ -2171,7 +2174,7 @@ export function buildRig(PIXI: Pixi, renderer: Renderer | null = null): Rig {
       starEyes.alpha = open;
       spark.alpha = open;
 
-      // ── the snore ───────────────────────────────────────────────────────
+      // â”€â”€ the snore â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // only once the sleep has ARRIVED, never while the eyes are still
       // closing, and never for a player who asked for less motion. The frame
       // is a function of q, so it steps with everything else and the puff is
@@ -2207,6 +2210,7 @@ export function buildRig(PIXI: Pixi, renderer: Renderer | null = null): Rig {
       return eyes;
     },
     destroy() {
+      toyLight.destroy();
       root.destroy({ children: true });
     },
   };

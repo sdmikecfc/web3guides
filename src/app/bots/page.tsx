@@ -40,13 +40,15 @@ import { FONT_BODY, FONT_DISPLAY, FONT_MONO, M, R, TAP, type PaintId } from "./_
 import { buildFightScene, type FightSceneHandle } from "./_view/scene";
 import { rigLookFromBuild } from "./_view/look-view";
 import { SLOWMO_RATE, SLOWMO_S, TELL_F, mkFightFx, resetFightFx, tickFightFx } from "./_view/fightfx";
-import { CANON } from "./_engine/catalog";
-import { NO_ORDERS, isLegalBuild, isPaintId, type Build, type Mode, type Orders, type Side } from "./_engine/parts";
-import { createFight, stepFight, type Fight } from "./_engine/resolve";
+import { SHOWCASE } from "@/lib/bots/showcase";
+import { NO_ORDERS, isPaintId, type Mode, type Orders, type Side } from "./_engine/parts";
+import { createFight, stepFight, type Fight } from "@/lib/bots/combat";
+import { assertModularBuild, type CombatBuild as Build } from "@/lib/bots/combat-model";
 // type-only, as the file's own header allows for client components (erased at compile time)
 import type { BattlesView, FightView } from "./_server/types";
 import { STRINGS, fill } from "@/lib/bots/strings";
 import css from "./fight/fight.module.css";
+import home from "./landing.module.css";
 
 const t = STRINGS.en;
 const FIXED_DT = 1 / 60;
@@ -90,15 +92,15 @@ interface PitFight {
   recent: boolean;
 }
 
-/** the demo: the same fight /bots/fight/demo?seed=7&a=T2&b=T2 plays */
+/** the demo: the same fight /bots/fight/demo?seed=7&showcase=1 plays */
 const DEMO: PitFight = {
   seed: 7,
-  a: CANON.T2,
-  b: CANON.T2,
+  a: SHOWCASE.a,
+  b: SHOWCASE.b,
   mode: "spar",
   // two ROBOT names, not the two reference fighters. "Barrel A against
   // Barrel B" was the first line a visitor read, and a barrel is not a robot.
-  names: ["Speedy Otter", "Rusty Beetle"],
+  names: SHOWCASE.names,
   paints: ["mint", "coral"],
   recent: false,
 };
@@ -108,7 +110,8 @@ const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 
 function asBuild(v: unknown): Build | null {
   if (!isObj(v)) return null;
   try {
-    return isLegalBuild(v as unknown as Build) ? (v as unknown as Build) : null;
+    assertModularBuild(v as unknown as Build, "Landing fight");
+    return v as unknown as Build;
   } catch {
     return null;
   }
@@ -388,7 +391,7 @@ function LandingPit() {
           padding: "0 4px 8px",
           fontFamily: FONT_MONO,
           fontSize: 11,
-          letterSpacing: "0.18em",
+          letterSpacing: "0.06em",
           textTransform: "uppercase",
           color: M.muted,
           whiteSpace: "normal",
@@ -413,7 +416,7 @@ function LandingPit() {
               fontFamily: FONT_MONO,
               fontSize: 12,
               color: "#bfb5a6",
-              letterSpacing: "0.18em",
+              letterSpacing: "0.06em",
               textTransform: "uppercase",
             }}
           >
@@ -436,7 +439,7 @@ const door = (primary: boolean): React.CSSProperties => ({
   borderRadius: R.inner,
   border: `1px solid ${primary ? M.accent : M.border}`,
   background: primary ? M.accent : M.surface2,
-  color: primary ? "#ffffff" : M.text,
+  color: primary ? "#30271a" : M.text,
   fontFamily: FONT_BODY,
   fontWeight: 700,
   fontSize: 14,
@@ -558,50 +561,28 @@ function PlayDoor() {
 export default function BotsLanding() {
   return (
     <PageShell wide>
-      <div className={css.viewer}>
-        <p style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.32em", textTransform: "uppercase", color: M.muted, margin: "24px 0 10px" }}>
-          {t.nav.wordmark}
-        </p>
-        <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: "clamp(28px, 4.5vw, 44px)", lineHeight: 1.1, margin: "0 0 10px", color: M.text }}>
-          {t.landing.headline}
-        </h1>
-        <p style={{ fontSize: 16, color: M.lore, margin: "0 0 18px" }}>{t.landing.sub}</p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 8 }}>
-          <PlayDoor />
-          <Link href="/bots/fight/demo?seed=7&a=T2&b=T2" className={uiCss.press} style={door(false)}>
-            {t.landing.watch}
-          </Link>
-        </div>
-        {/* nobody has to open the Build screen to see a fight */}
-        <p style={{ fontSize: 13.5, color: M.muted, margin: "0 0 20px" }}>{t.landing.ready}</p>
+      <div className={home.main}>
+        <header className={home.hero}>
+          <div>
+            <span className={home.eyebrow}>Welcome to Sprocket Row</span>
+            <h1>Build a robot.<br /><span>Watch it fight.</span></h1>
+            <p>Your first little friend is ready. Make it yours, one part at a time.</p>
+          </div>
+          <div className={home.doors}>
+            <PlayDoor />
+            <Link href="/bots/fight/demo?seed=7&showcase=1" className={uiCss.press} style={door(false)}>{t.landing.watch}</Link>
+            <span>{t.landing.ready}</span>
+          </div>
+        </header>
 
-        {/* THE THREE STEPS, above the pit: a story nobody scrolls to is a
-            story nobody reads, and at 1440 the pit is tall enough to push
-            this under the fold. */}
-        <ol style={{ listStyle: "none", padding: 0, margin: "0 0 20px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-          {t.landingUi.how.map((line, i) => (
-            <li
-              key={line}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                minHeight: 52,
-                padding: "8px 14px",
-                borderRadius: R.card,
-                border: `1px solid ${M.border}`,
-                background: M.surface,
-                fontSize: 14,
-                color: M.text,
-              }}
-            >
-              <span style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.accent, flex: "0 0 auto" }}>{i + 1}</span>
-              <span>{line}</span>
-            </li>
-          ))}
+        <div className={home.ring}><LandingPit /></div>
+
+        <ol className={home.steps}>
+          <li><span>01</span><div><strong>Meet your robot</strong><p>Connect your wallet. Your first robot is free and ready.</p></div></li>
+          <li><span>02</span><div><strong>Make it yours</strong><p>Mix heads, arms, legs and more. Find your favourite odd little thing.</p></div></li>
+          <li><span>03</span><div><strong>Cheer it on</strong><p>Two fights a day. Watch every bonk and share the fight.</p></div></li>
         </ol>
-
-        <LandingPit />
+        <p className={home.coinNote}>{t.landing.sub}</p>
       </div>
     </PageShell>
   );

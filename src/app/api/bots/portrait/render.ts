@@ -25,6 +25,8 @@
  *
  * NOTHING HERE REACHES THE SIM.
  */
+import type { SocketPaints } from "@/lib/bots/look";
+import { combatPart } from "@/lib/bots/combat-model";
 import { deflateSync, inflateSync } from "node:zlib";
 import type { Build } from "@/app/bots/_engine/parts";
 import {
@@ -589,6 +591,8 @@ export interface PortraitInput {
   build: Build;
   look: BotLook;
   marks: LookMarks;
+  /** A recorded fight's colours; absent when painting a current bot. */
+  paints?: SocketPaints;
 }
 
 export type LoadArt = (path: string) => Promise<Uint8Array | null>;
@@ -627,12 +631,12 @@ export interface PortraitResult {
  */
 export async function renderPortrait(input: PortraitInput, size: number, load: LoadArt, cache?: ArtCache): Promise<PortraitResult> {
   const t0 = Date.now();
-  const paints = buildPaints(input.build);
+  const paints = input.paints ?? buildPaints(input.build);
   const arts: ArtCache = cache ?? new Map<string, PartArt | null>();
   // one decode per distinct file, so a robot in a matched set pays once
   const wanted = new Map<string, { base: string; mask: string }>();
   for (const piece of PIECES) {
-    const a = artFor(input.build[piece.part], piece.slot);
+    const a = artFor(combatPart(input.build, piece.name), piece.slot);
     const key = `${piece.slot}:${a.tier}:${a.design}`;
     if (!arts.has(key)) wanted.set(key, { base: a.base, mask: a.mask });
   }
@@ -668,7 +672,7 @@ export async function renderPortrait(input: PortraitInput, size: number, load: L
   let artParts = 0;
   const seen = new Set<string>();
   for (const piece of PIECES) {
-    const a = artFor(input.build[piece.part], piece.slot);
+    const a = artFor(combatPart(input.build, piece.name), piece.slot);
     const key = `${piece.slot}:${a.tier}:${a.design}`;
     const art = arts.get(key) ?? null;
     if (art && !seen.has(key)) {
@@ -706,7 +710,7 @@ export async function renderPortrait(input: PortraitInput, size: number, load: L
   const tints: number[] = [];
 
   for (const piece of PIECES) {
-    const a = artFor(input.build[piece.part], piece.slot);
+    const a = artFor(combatPart(input.build, piece.name), piece.slot);
     const art = arts.get(`${piece.slot}:${a.tier}:${a.design}`) ?? null;
     const tint = pieceTint(paints, piece);
     if (piece.name !== "weapon" && !tints.includes(tint)) tints.push(tint);

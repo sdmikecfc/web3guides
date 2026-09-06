@@ -1,0 +1,20 @@
+
+.main { max-width:1200px; margin:0 auto; }
+.hero { display:flex; align-items:center; justify-content:space-between; gap:40px; padding:12px 0 28px; }
+.eyebrow { color:#e5bd79; font-size:10px; font-weight:800; letter-spacing:.18em; text-transform:uppercase; }
+.hero h1 { font-family:var(--font-bots-toy),system-ui,sans-serif; font-size:clamp(38px,4.7vw,62px); font-weight:800; line-height:.99; letter-spacing:-.035em; color:#f7ebd0; margin:12px 0 16px; }
+.hero h1 span { color:#e5bd79; }
+.hero p { margin:0; color:#c7ccb6; font-size:15px; line-height:1.55; max-width:48ch; }
+.doors { display:flex; flex-direction:column; gap:10px; min-width:224px; flex:0 0 auto; }
+.doors button,.doors a { min-height:48px !important; border-radius:12px !important; }
+.doors > span { text-align:center; color:#b5bba4; font-size:11px; margin-top:3px; }
+.ring { padding:18px; border:1px solid #6d6a51; border-radius:24px; background:linear-gradient(150deg,#4a4938,#293126 60%); box-shadow:inset 0 1px #fff1,0 22px 44px #0003; }
+.steps { list-style:none; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:28px; padding:0 14px; margin:30px 0 24px; }
+.steps li { display:flex; gap:14px; min-width:0; }
+.steps li > span { display:grid; place-items:center; flex:0 0 34px; height:34px; color:#e5bd79; border:1px solid #747252; border-radius:50%; font-size:10px; font-weight:800; }
+.steps strong { font-family:var(--font-bots-toy),system-ui,sans-serif; font-size:21px; color:#f4ecd8; line-height:1.15; }
+.steps p { margin:6px 0 0; color:#bfc4ae; font-size:12px; line-height:1.6; }
+.coinNote { text-align:center; color:#a9b19b; font-size:12px; margin:0 0 8px; }
+@media(min-width:1400px) and (min-height:950px) { .hero { padding-top:24px; padding-bottom:32px; } }
+@media(max-width:899px) { .hero { gap:20px; } .hero h1 { font-size:44px; } .doors { min-width:196px; } .ring { padding:12px; border-radius:18px; } .steps { gap:16px; padding:0; } .steps li { gap:9px; } .steps strong { font-size:18px; } }
+@media(max-width:599px) { .hero { display:block; padding:10px 0 22px; } .hero h1 { font-size:43px; } .hero p { font-size:14px; } .doors { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); margin-top:22px; min-width:0; gap:8px; } .doors button,.doors a { font-size:12px !important; padding:10px !important; } .doors > span { grid-column:1 / -1; } .ring { margin:0 -6px; padding:10px 8px; } .steps { grid-template-columns:minmax(0,1fr); margin:24px 0; gap:20px; } .steps li { gap:14px; } .steps strong { font-size:21px; } .steps p { font-size:13px; margin-top:4px; } .coinNote { text-align:left; line-height:1.5; } }

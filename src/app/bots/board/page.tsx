@@ -39,7 +39,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Leaders | Battle Bots",
+  title: "Leaders | Clanker Cup",
   description: "Every player on Sprocket Row, best fight points first. Player names only.",
 };
 
@@ -84,7 +84,7 @@ async function loadPlayers(db: ReturnType<typeof botsDb>, test: boolean): Promis
   return test ? rows.filter((p) => p.is_operator === false) : rows.filter(isPlayable);
 }
 
-async function loadBoard(): Promise<{ rows: BoardRow[]; unavailable: boolean }> {
+async function loadBoard(): Promise<{ rows: BoardRow[]; unavailable: boolean; sample?: boolean }> {
   try {
     const db = botsDb();
     let players = await loadPlayers(db, false);
@@ -97,7 +97,7 @@ async function loadBoard(): Promise<{ rows: BoardRow[]; unavailable: boolean }> 
     // preview route draws. PRODUCTION NEVER DOES THIS: a real board with no
     // players keeps its honest empty state, so invented rows can never be
     // shown as if somebody had played.
-    if (players.length === 0 && !isProduction()) return { rows: SAMPLE_ROWS, unavailable: false };
+    if (players.length === 0 && !isProduction()) return { rows: SAMPLE_ROWS, unavailable: false, sample: true };
     if (players.length === 0) return { rows: [], unavailable: false };
 
     const wallets = players.map((p) => p.wallet);
@@ -155,15 +155,18 @@ async function loadBoard(): Promise<{ rows: BoardRow[]; unavailable: boolean }> 
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error("[bots board]", e instanceof Error ? e.message : e);
+    // The prelaunch presentation remains usable without a local database.
+    // Production keeps its honest unavailable state.
+    if (!isProduction()) return { rows: SAMPLE_ROWS, unavailable: false, sample: true };
     return { rows: [], unavailable: true };
   }
 }
 
 export default async function BoardPage() {
-  const { rows, unavailable } = await loadBoard();
+  const { rows, unavailable, sample } = await loadBoard();
   return (
     <PageShell>
-      <BoardTable rows={rows} unavailable={unavailable} />
+      <BoardTable rows={rows} unavailable={unavailable} sample={sample} />
     </PageShell>
   );
 }

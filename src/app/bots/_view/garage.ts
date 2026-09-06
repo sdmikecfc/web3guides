@@ -30,6 +30,7 @@
  */
 "use client";
 
+import { installWorkshop } from "./workshop-light";
 import type { Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import { createPixiStage, type PixiStage } from "@/app/s7/games/_shared/pixi";
 import { DRAW_ORDER, RIG_HEIGHT, buildRig, type PartArt, type Rig } from "./rig";
@@ -165,16 +166,17 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
   const PIXI = stage.pixi;
   const W = stage.world;
 
-  // ── the camera ───────────────────────────────────────────────────────────
+  // â”€â”€ the camera â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const cam: Container = new PIXI.Container();
   const camScale = opts.small ? simH / SCENE.h : 1;
   cam.scale.set(camScale);
   W.addChild(cam);
   let camX = 0;
   let camTarget = 0;
-  const camFor = (bay: number) => (opts.small ? simW / 2 - BAY_X[bay - 1] * camScale : 0);
+  const clampCam = (x: number) => Math.min(0, Math.max(Math.min(0, simW - SCENE.w * camScale), x));
+  const camFor = (bay: number) => (opts.small ? clampCam(simW / 2 - BAY_X[bay - 1] * camScale) : 0);
 
-  // ── the texture shelf (every load individually guarded: kit law) ────────
+  // â”€â”€ the texture shelf (every load individually guarded: kit law) â”€â”€â”€â”€â”€â”€â”€â”€
   const tex = new Map<PropKey, Texture>();
   const tryLoad = async (key: PropKey) => {
     try {
@@ -186,7 +188,7 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
   };
   await Promise.all((Object.keys(PROP_SIZE) as PropKey[]).map(tryLoad));
 
-  // ── the room ─────────────────────────────────────────────────────────────
+  // â”€â”€ the room â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const wall: Graphics = new PIXI.Graphics();
   const wallBase = hex(K.wall);
   for (let i = 0; i < 6; i++) {
@@ -201,13 +203,14 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
   // a pool of shadow under every stand, the only softness on the floor
   for (const x of BAY_X) floor.ellipse(x, BAY_FLOOR_Y - 4, 150, 22).fill({ color: 0x8a8898, alpha: 0.2 });
   cam.addChild(wall, floor);
+  try { await installWorkshop(PIXI, cam, SCENE.w, SCENE.h, SCENE.floorY); wall.visible=false; floor.visible=false; } catch { /* the drawn room is the offline fallback */ }
 
   const wallLayer: Container = new PIXI.Container();
   const floorLayer: Container = new PIXI.Container();
   floorLayer.sortableChildren = true;
   cam.addChild(wallLayer, floorLayer);
 
-  // ── props (painted, or drawn when the art is missing) ────────────────────
+  // â”€â”€ props (painted, or drawn when the art is missing) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const propBox = (key: PropKey, s: number) => ({ w: PROP_SIZE[key][0] * s, h: PROP_SIZE[key][1] * s });
 
   function fallbackProp(key: PropKey, s: number, anchor: "floor" | "wall"): Graphics {
@@ -306,7 +309,7 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     }
   }
 
-  /* ── THE DAY'S NEWS, ON THE CORKBOARD ───────────────────────────────────
+  /* â”€â”€ THE DAY'S NEWS, ON THE CORKBOARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    *
    * The corkboard art ships a pinned-up newspaper and a sticky note with
    * NOTHING WRITTEN ON EITHER, which on the first look at the finished room
@@ -388,7 +391,7 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     news.visible = true;
   };
 
-  // ── the five bays: stand, rig, floor plate, tag ──────────────────────────
+  // â”€â”€ the five bays: stand, rig, floor plate, tag â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const rigScale = BOT_HEIGHT / RIG_HEIGHT;
   const feetY = BAY_FLOOR_Y - STAND.feetAboveGround;
   // a player who has asked the system for less movement gets five still toys;
@@ -551,7 +554,7 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     rigs[i]?.setMood(tag.mood ?? MOOD_OF_DOT[tag.dot]);
   };
 
-  // ── the crew (one figure per live strategy) ──────────────────────────────
+  // â”€â”€ the crew (one figure per live strategy) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const crew = new Map<StrategyKind, { node: Container; chip: Container; chipText: Text; chipBg: Graphics; speakUntil: number; baseY: number; baseSX: number; baseSY: number; h: number }>();
   const wire: Graphics = new PIXI.Graphics();
   wire.zIndex = TRIP_WIRE.y - 1;
@@ -581,7 +584,7 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
   }
   let liveCrew: readonly StrategyKind[] = [];
 
-  // ── the vignette (stage space, over the camera) ──────────────────────────
+  // â”€â”€ the vignette (stage space, over the camera) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   {
     const cv = document.createElement("canvas");
     cv.width = 256;
@@ -601,7 +604,7 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     }
   }
 
-  // ── render ───────────────────────────────────────────────────────────────
+  // â”€â”€ render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let focused = 1;
   camTarget = camFor(focused);
   camX = camTarget;
@@ -666,7 +669,7 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     stage.renderFrame();
   }
 
-  // ── pointer: taps, hover, and the phone swipe ────────────────────────────
+  // â”€â”€ pointer: taps, hover, and the phone swipe â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let scale = 1;
   let offX = 0;
   let offY = 0;
@@ -730,7 +733,7 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
       if (!down.moved && Math.hypot(x - down.x, y - down.y) > 6) down.moved = true;
       if (down.moved && opts.small) {
         dragging = true;
-        camX = down.camX + (x - down.x) / scale;
+        camX = clampCam(down.camX + (x - down.x) / scale);
       }
       return;
     }

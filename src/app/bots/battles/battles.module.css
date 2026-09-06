@@ -63,7 +63,7 @@
 .stakeRange::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 999px;
-  background: #1c2236;
+  background: #495044;
 }
 .stakeRange::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -72,23 +72,23 @@
   height: 22px;
   margin-top: -8px;
   border-radius: 999px;
-  background: #7c6aff;
-  border: 2px solid #e4e8f5;
+  background: #e5bd79;
+  border: 2px solid #f4ecd8;
 }
 .stakeRange::-moz-range-track {
   height: 6px;
   border-radius: 999px;
-  background: #1c2236;
+  background: #495044;
 }
 .stakeRange::-moz-range-thumb {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  background: #7c6aff;
-  border: 2px solid #e4e8f5;
+  background: #e5bd79;
+  border: 2px solid #f4ecd8;
 }
 .stakeRange:focus-visible {
-  outline: 2px solid #7c6aff;
+  outline: 2px solid #e5bd79;
   outline-offset: 2px;
   border-radius: 999px;
 }
@@ -102,8 +102,8 @@
   min-height: 96px;
   padding: 10px 12px;
   border-radius: 14px;
-  border: 1px solid #1c2236;
-  background: #131826;
+  border: 1px solid #495044;
+  background: #30372e;
 }
 .ladderActions {
   display: flex;
@@ -122,8 +122,8 @@
   min-height: 64px;
   padding: 8px 12px;
   border-radius: 10px;
-  border: 1px solid #1c2236;
-  background: #131826;
+  border: 1px solid #495044;
+  background: #30372e;
 }
 .defActions {
   display: flex;
@@ -174,3 +174,27 @@
     animation: none;
   }
 }
+
+/* The warm ring lobby. */
+.pageHeading { display:flex; align-items:center; justify-content:space-between; gap:24px; }
+.balance { flex:0 0 auto; color:#b3b5a2; font-size:12px; text-align:right; }
+.balance strong { display:block; color:#e5bd79; font-size:17px; margin-top:5px; }
+.ringside { position:relative; isolation:isolate; overflow:hidden; min-height:220px; display:flex; align-items:center; margin:0 0 28px; padding:30px 36px; border:1px solid #807054; border-radius:22px; background:#302b22; box-shadow:0 15px 38px #0003, inset 0 1px #fff2; }
+.ringside::before { content:""; position:absolute; z-index:-2; inset:0; background:url('/bots-art/plates/arena-evening.png') center 47% / cover; }
+.ringside::after { content:""; position:absolute; z-index:-1; inset:0; background:linear-gradient(90deg,#20261cf5 4%,#20261cda 36%,#20261c30 75%); }
+.ticket { font-size:10px; font-weight:800; color:#e5bd79; text-transform:uppercase; letter-spacing:.16em; }
+.ringside h2 { font-family:var(--font-bots-toy),system-ui,sans-serif; font-size:36px; line-height:1.05; margin:8px 0; letter-spacing:-.025em; color:#fff0d4; }
+.ringside p { margin:0 0 18px; color:#e3d8c2; font-size:14px; line-height:1.5; }
+.cols { gap:32px; grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr); }
+.watch { padding:24px; border:1px solid #61624d; border-radius:20px; background:linear-gradient(150deg,#3b4132bb,#252b22aa); box-shadow:0 12px 30px #0002; }
+.sectionIntro { color:#c9cbbb; font-size:14px; line-height:1.5; margin:0 0 8px; }
+.rules { color:#bfc3ae; font-size:12px; line-height:1.6; margin:0 0 16px; }
+.rules summary { display:list-item; cursor:pointer; width:fit-content; padding:8px 0; color:#e5bd79; font-weight:650; }
+.rules summary:focus-visible { outline:2px solid #e5bd79; outline-offset:4px; }
+.rules p { max-width:64ch; margin:4px 0 10px; }
+.ladder { padding:16px; min-height:128px; border-color:#66694f; border-radius:16px; background:linear-gradient(115deg,#404835,#2d342a); box-shadow:inset 0 1px #ffffff08,0 5px 14px #0002; }
+.list { gap:10px; }
+.def { background:linear-gradient(120deg,#30392d,#272f26); }
+@media(max-width:1100px) { .cols { gap:20px; } .watch { padding:18px; } }
+@media(max-width:899px) { .cols { grid-template-columns:minmax(0,1fr); } .balance { display:none; } .ringside { min-height:200px; padding:24px; margin-bottom:22px; } .ringside h2 { font-size:32px; } .watch { padding:18px 12px; } }
+@media(max-width:599px) { .ringside::after { background:linear-gradient(90deg,#20261ced,#20261c85); } .liveCard { grid-template-columns:auto minmax(0,1fr) !important; } .liveCard > a { grid-column:1 / -1; } .recentRow { grid-template-columns:auto minmax(0,1fr) auto !important; } .recentRow > span:nth-child(3) { display:none; } .liveCard > div > div:first-child { flex-wrap:wrap; } }

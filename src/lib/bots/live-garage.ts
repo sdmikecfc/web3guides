@@ -31,6 +31,8 @@
  * NO CLOCK READS, NO STORE, NO RULES. Plain functions plus one small hook, in
  * the shape of ./earned-client.ts, which this file sits beside.
  */
+import { socketsOf, EQUIPMENT_SOCKETS } from "./equipment";
+import type { Socket } from "./fixtures";
 import { useCallback, useEffect, useState } from "react";
 import { readBotsSession } from "@/app/bots/battles/session";
 import type { BotView, MeView, PaperView, PartView } from "@/app/bots/_server/types";
@@ -200,6 +202,7 @@ export interface SaveBotBody {
   paint?: string;
   /** the owned instance in each socket, or null for an empty one */
   parts: Record<CardSlot, number | null>;
+  sockets?: Record<Socket, number | null>;
   listed?: boolean;
   look: BotLookRaw;
 }
@@ -251,6 +254,7 @@ export function ownedOf(v: PartView): OwnedPart {
     s: [v.s[0], v.s[1], v.s[2]],
     tier: v.tier,
     price: v.listPrice,
+    salvage: v.salvage,
     uid: String(v.id),
     provenance: v.provenance,
   };
@@ -269,7 +273,7 @@ export function buildOf(b: BotView): Build {
     const id = b.parts[slot];
     cards[slot] = id == null ? null : String(id);
   }
-  return { bay: b.bay, name: b.name, decal: b.decal, cards, look: b.look };
+  return { bay: b.bay, name: b.name, decal: b.decal, cards, look: b.look, ...(b.sockets ? { sockets: Object.fromEntries(EQUIPMENT_SOCKETS.map(s=>[s,b.sockets![s] == null ? null : String(b.sockets![s])])) as Record<Socket,string|null> } : {}) };
 }
 
 /**
@@ -294,6 +298,7 @@ export function stateFromMe(me: MeView): GarageState {
   }
   return {
     v: 1,
+    equipmentVersion: 2,
     coins: me.player.coins,
     level: me.player.level,
     parts: me.parts.map(ownedOf),
@@ -326,7 +331,7 @@ export function withBoughtPart(me: MeView, listingId: string, part: PartView, co
 /** What the save route just changed: the robot in that spot, and which cards
  *  are on it now. A card that left the robot is loose again. */
 export function withSavedBot(me: MeView, bot: BotView): MeView {
-  const on = new Set(CARD_SLOTS.map((s) => bot.parts[s]).filter((v): v is number => v != null));
+  const on = new Set(Object.values(bot.sockets ?? bot.parts).filter((v): v is number => v != null));
   return {
     ...me,
     bots: [...me.bots.filter((b) => b.bay !== bot.bay && b.id !== bot.id), bot].sort((a, b) => a.bay - b.bay),

@@ -12,11 +12,13 @@
  * bot may be saved (an engine on hooks) but never fights. A whole bot is
  * listed for challenges unless `listed: false` is sent.
  */
+import { EQUIPMENT_SOCKETS, EQUIPMENT_KIND, EQUIPMENT_LABEL, type EquipmentIds } from "@/lib/bots/equipment";
+import { equipmentStatsTotal, type CombatSocket } from "@/lib/bots/combat-model";
 import { NextResponse } from "next/server";
 import { DECAL_IDS, FIRST_WORDS, SECOND_WORDS, nameText, type DecalId } from "@/lib/bots/fixtures";
 import { LookRefused, parseLook, type BotLookRaw } from "@/lib/bots/look";
 import { STRINGS } from "@/lib/bots/strings";
-import { SLOTS, botTier, isPaintId, type PaintId, type Slot } from "@/app/bots/_engine/parts";
+import { SLOTS, botTier, isPaintId, type PaintId, type Slot, type Stats } from "@/app/bots/_engine/parts";
 import { weightClassOf } from "@/app/bots/_engine/rewards";
 import {
   BAY_MAX,
@@ -45,6 +47,7 @@ interface SaveBody {
   decal?: unknown;
   paint?: unknown;
   parts?: Partial<Record<Slot, unknown>>;
+  sockets?: Partial<Record<keyof EquipmentIds, unknown>>;
   listed?: unknown;
   /** the four things a player picks about the look. Nothing here is trusted:
    * every value is checked against the wallet's own rows below. */
@@ -97,13 +100,34 @@ export async function POST(req: Request) {
       const p = parts.find((x) => x.id === id);
       if (!p) return refuse(400, `You do not own that ${slot} part.`);
       if (p.slot_kind !== slot) return refuse(400, `That part is a ${p.slot_kind}, not ${slot}.`);
+      if (body.sockets == null && p.stats?.equipmentVersion === 2 && (slot === "arms" || slot === "legs")) {
+        return refuse(400, "Pick each arm and leg separately before saving.");
+      }
       if (p.bot_id != null && (!existing || p.bot_id !== existing.id)) return refuse(409, `That ${slot} part is on another bot.`);
       ids[slot] = id;
       const s = partStats(p);
       total += s[0] + s[1] + s[2];
       filled += 1;
     }
-    const complete = filled === SLOTS.length;
+    let sockets: EquipmentIds<number> | undefined;
+    if (body.sockets != null) {
+      if (typeof body.sockets !== "object" || Array.isArray(body.sockets)) return refuse(400, "Pick parts for your robot.");
+      sockets={} as EquipmentIds<number>; const used=new Set<number>(); const stats={} as Record<CombatSocket,Stats>;
+      filled=0; total=0;
+      for (const socket of EQUIPMENT_SOCKETS) {
+        const raw=body.sockets[socket];
+        if (raw == null) { sockets[socket]=null; stats[socket]=[0,0,0]; continue; }
+        const id=intIn(raw,1,Number.MAX_SAFE_INTEGER,EQUIPMENT_LABEL[socket]);
+        const p=parts.find(p=>p.id===id);
+        if (!p || p.slot_kind!==EQUIPMENT_KIND[socket]) return refuse(400, `Pick an owned part for ${EQUIPMENT_LABEL[socket].toLowerCase()}.`);
+        if (used.has(id)) return refuse(400,"One part fits one place. Pick a second arm or leg for the other side.");
+        if (p.bot_id != null && p.bot_id !== existing?.id) return refuse(409,"That part is on another robot.");
+        used.add(id); sockets[socket]=id; stats[socket]=partStats(p); filled++;
+      }
+      total = equipmentStatsTotal(stats);
+      Object.assign(ids,{head:sockets.head,torso:sockets.torso,arms:sockets.armL,legs:sockets.legL,weapon:sockets.weapon});
+    }
+    const complete = filled === (sockets ? EQUIPMENT_SOCKETS.length : SLOTS.length);
     const listed = complete && body.listed !== false;
 
     // ── THE LOOK, checked against the rows and nothing else ──────────────
@@ -128,6 +152,7 @@ export async function POST(req: Request) {
             level: existing?.level ?? 1,
             crown: !!existing && crowns.has(existing.id),
             partIds: ids,
+            socketIds: sockets,
             plateNumber: name.num,
           },
           parts,
@@ -139,7 +164,7 @@ export async function POST(req: Request) {
       throw e;
     }
 
-    const build: BuildJson = { parts: ids, name, decal, paint, look };
+    const build: BuildJson = { parts: ids, ...(sockets ? {sockets,equipmentVersion:2 as const} : {}), name, decal, paint, look };
     const row = {
       wallet: sess.wallet,
       slot: bay,
@@ -168,7 +193,7 @@ export async function POST(req: Request) {
     }
 
     // socket the parts: free the ones that left, bind the ones that arrived
-    const keep = new Set(Object.values(ids).filter((v): v is number => v != null));
+    const keep = new Set(Object.values(sockets ?? ids).filter((v): v is number => v != null));
     const leaving = parts.filter((p) => p.bot_id === botId && !keep.has(p.id)).map((p) => p.id);
     if (leaving.length) {
       const { error } = await db.from("battle_bots_part_instances").update({ bot_id: null }).in("id", leaving);

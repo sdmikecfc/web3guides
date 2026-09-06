@@ -34,8 +34,9 @@ import { SLOWMO_RATE, SLOWMO_S, TELL_F, mkFightFx, resetFightFx, tickFightFx } f
 import { koLineUp, scheduleCommentary } from "../_view/commentary-bar";
 import { createBotsSfx, type BotsSfx } from "../_view/sfx";
 import { NO_ORDERS, PIECE, TIMEOUT_WHY, botTier, buildTotal, type Build, type FightEvent, type Mode, type Orders, type Side } from "../_engine/parts";
-import { createFight, resultOf, runFight, stepFight, type Fight } from "../_engine/resolve";
-import { aggregates, type Aggregates } from "../_engine/derive";
+import { createFight, resultOf, runFight, stepFight, type Fight } from "@/lib/bots/combat";
+import { type Aggregates } from "../_engine/derive";
+import { aggregates } from "@/lib/bots/combat";
 import { chainDetail, chainSummary, narrate } from "../_engine/commentary";
 // type-only (erased at compile time): the stored fight's shape, never the server client
 import type { FightView, LookView } from "../_server/types";

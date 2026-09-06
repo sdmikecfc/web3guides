@@ -11,7 +11,7 @@ import { BotsTopNav } from "./_components/BotsTopNav";
 import { M } from "./_ui/tokens";
 
 export const metadata = {
-  title: "Battle Bots",
+  title: "Clanker Cup",
   description: "Build a robot. Watch it fight.",
 };
 

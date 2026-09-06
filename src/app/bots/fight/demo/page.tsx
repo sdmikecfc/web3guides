@@ -1,3 +1,4 @@
+import { SHOWCASE } from "@/lib/bots/showcase";
 /**
  * /bots/fight/demo?seed=7&a=T2&b=T2 (or a=shape:Kettle@35): the dev page
  * that plays a fight locally between two catalog builds, so the viewer can
@@ -7,6 +8,8 @@
  * or any string hashed with fnv1a. The hash the page prints must equal the
  * one the CLI prints for the same arguments.
  */
+import { readPracticeRobot, plainPracticeLook, demoReplayLink } from "@/lib/bots/demo-replay";
+import { buildTotal } from "@/app/bots/_engine/parts";
 import type { Metadata } from "next";
 import FightClient, { type FightIdentity } from "../FightClient";
 import { fnv1a } from "@/app/bots/_engine/rng";
@@ -16,7 +19,7 @@ import { PageShell } from "@/app/bots/_components/PageShell";
 import { FONT_MONO, M } from "@/app/bots/_ui/tokens";
 
 export const metadata: Metadata = {
-  title: "Fight demo | Battle Bots",
+  title: "Fight demo | Clanker Cup",
 };
 
 export const dynamic = "force-dynamic";
@@ -65,13 +68,16 @@ export default function FightDemoPage({ searchParams }: { searchParams: Query })
   const aRaw = one(searchParams, "a", "T2");
   const bRaw = one(searchParams, "b", "T2");
   const seed = parseSeed(seedRaw);
-  const A = parseFighter(aRaw);
-  const B = parseFighter(bRaw);
+  const robotRaw = one(searchParams, "robot", "");
+  const personal = robotRaw ? readPracticeRobot(robotRaw) : null;
+  const showcase = !robotRaw && one(searchParams, "showcase", "") === "1";
+  const A = personal ?? (robotRaw ? null : showcase ? { build: SHOWCASE.a, name: SHOWCASE.names[0] } : parseFighter(aRaw));
+  const B = personal ? {build:scaleShape(SHAPES.find(s=>s.name === "Kettle") ?? SHAPES[0],buildTotal(personal.build)),name:"Copper Biscuit"} : showcase ? { build: SHOWCASE.b, name: SHOWCASE.names[1] } : parseFighter(bRaw);
   if (!A || !B) {
     return (
       <PageShell wide>
         <p style={{ fontFamily: FONT_MONO, fontSize: 13, color: M.muted, marginTop: 24 }}>
-          Bad fighter. Use T1, T2, T3, T4 or shape:Kettle@35. Shapes: {SHAPES.map((s) => s.name).join(", ")}.
+          This practice link is missing a part. Return to the workbench and try again.
         </p>
       </PageShell>
     );
@@ -88,20 +94,23 @@ export default function FightDemoPage({ searchParams }: { searchParams: Query })
     { name: nameB, wallet: "Copper Hare 7", wins: 5, losses: 4, strategy: "Build a Position", paint: "coral" },
   ];
   const nextSeed = (seed + 1) >>> 0;
+  const orders: [Orders, Orders] = [order(searchParams,"A"),order(searchParams,"B")];
+  const link = (n:number) => demoReplayLink(n, personal ? {robot:robotRaw} : showcase ? {showcase:true} : {a:aRaw,b:bRaw}, orders);
   return (
     <FightClient
       seed={seed}
       a={A.build}
       b={B.build}
       ids={ids}
+      looks={personal ? [personal.look, plainPracticeLook(B.build)] : undefined}
       mode="spar"
       /* was "Spar . seed 7": the lone full stop used as a divider is banned
          (strings.ts), and "spar" is not a word a new player knows. The one
          word for a free fight is "practice". */
       modeLabel={`Practice fight, number ${seed}`}
-      orders={[order(searchParams, "A"), order(searchParams, "B")]}
-      replayUrl={`/bots/fight/demo?seed=${seed}&a=${encodeURIComponent(aRaw)}&b=${encodeURIComponent(bRaw)}`}
-      watchAnotherHref={`/bots/fight/demo?seed=${nextSeed}&a=${encodeURIComponent(aRaw)}&b=${encodeURIComponent(bRaw)}`}
+      orders={orders}
+      replayUrl={link(seed)}
+      watchAnotherHref={link(nextSeed)}
     />
   );
 }

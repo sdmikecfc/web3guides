@@ -12,7 +12,7 @@ import type { Metadata } from "next";
 import StrategyClient from "./StrategyClient";
 
 export const metadata: Metadata = {
-  title: "Auto trading | Battle Bots",
+  title: "Auto trading | Clanker Cup",
 };
 
 export default function StrategyPage() {

@@ -8,7 +8,7 @@ import { Suspense } from "react";
 import BattlesClient from "./BattlesClient";
 
 export const metadata: Metadata = {
-  title: "Fights | Battle Bots",
+  title: "Fights | Clanker Cup",
   description: "Pick your robot, fight a game robot or another player, and watch every fight again.",
 };
 

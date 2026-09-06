@@ -26,14 +26,16 @@
  * strings.ts paintName), so a reader who cannot name a colour still sees it.
  */
 
-import { BODY_SLOTS, type CardSlot } from "@/lib/bots/fixtures";
+import { BODY_SLOTS, type CardSlot, type Socket } from "@/lib/bots/fixtures";
 import { STRINGS, fill } from "@/lib/bots/strings";
 import { M, PAINTS, R, type PaintId } from "../_ui/tokens";
 
+import { EQUIPMENT_LABEL } from "@/lib/bots/equipment";
 const t = STRINGS.en;
+const slotLabel = (s: CardSlot | Socket) => EQUIPMENT_LABEL[s as Socket] ?? t.ui.card[s as CardSlot];
 
 export interface SlotColour {
-  slot: CardSlot;
+  slot: CardSlot | Socket;
   color: PaintId | null;
 }
 
@@ -63,8 +65,8 @@ export function ColourPips({
   line?: boolean;
 }) {
   const lead = leadColour(colors);
-  const odd = lead.count === BODY_SLOTS.length - 1 ? colors.find((c) => c.color !== lead.color) ?? null : null;
-  const all = lead.count === BODY_SLOTS.length && lead.color !== null;
+  const odd = lead.count === colors.length - 1 ? colors.find((c) => c.color !== lead.color) ?? null : null;
+  const all = lead.count === colors.length && lead.color !== null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -75,7 +77,7 @@ export function ColourPips({
             <span
               key={c.slot}
               title={fill(t.set.slotColor, {
-                slot: t.ui.card[c.slot],
+                slot: slotLabel(c.slot),
                 color: c.color ? t.paintName[c.color] : t.set.empty,
               })}
               style={{
@@ -98,7 +100,7 @@ export function ColourPips({
             ? fill(t.set.allMatch, { color: t.paintName[lead.color] })
             : fill(t.set.oneToGo, {
                 color: t.paintName[lead.color],
-                slot: t.ui.card[(odd as SlotColour).slot].toLowerCase(),
+                slot: slotLabel((odd as SlotColour).slot).toLowerCase(),
               })}
         </div>
       ) : null}

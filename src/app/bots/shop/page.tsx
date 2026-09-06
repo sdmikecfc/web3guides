@@ -9,7 +9,7 @@ import { Suspense } from "react";
 import ShopClient from "./ShopClient";
 
 export const metadata = {
-  title: "Parts | Battle Bots",
+  title: "Parts | Clanker Cup",
 };
 
 export default function ShopPage() {

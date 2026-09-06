@@ -31,6 +31,7 @@
  *    a rule changes.
  */
 
+import { splitLegacyEquipment, socketsOf, socketUid, equippedIds, fitPart, equipmentPaints, EQUIPMENT_SOCKETS, EQUIPMENT_KIND } from "./equipment";
 import { useEffect, useSyncExternalStore } from "react";
 import {
   BAY_COUNT,
@@ -51,6 +52,7 @@ import {
   type OwnedPart,
 } from "./fixtures";
 import {
+  bodyPaints,
   dedupeHats,
   findsOf,
   normalizeLook,
@@ -74,6 +76,7 @@ export interface BayState {
 
 export interface GarageState {
   v: 1;
+  equipmentVersion?: 2;
   coins: number;
   level: number;
   parts: OwnedPart[];
@@ -113,7 +116,7 @@ function bayState(bay: number, nowMs: number): BayState {
 export function seedState(nowMs: number): GarageState {
   const bays: Record<number, BayState> = {};
   for (let b = 1; b <= BAY_COUNT; b++) bays[b] = bayState(b, nowMs);
-  return {
+  return splitLegacyEquipment<GarageState>({
     v: 1,
     coins: ME.coins,
     level: ME.level,
@@ -123,7 +126,7 @@ export function seedState(nowMs: number): GarageState {
     bought: {},
     nextUid: OWNED_PARTS.length + 1,
     crew: CREW.map((c) => ({ ...c })),
-  };
+  });
 }
 
 /** The one server snapshot: stable identity, no clock. */
@@ -161,13 +164,14 @@ export function earnedOfBuild(
     const uid = build?.cards[slot];
     return uid ? parts.find((p) => p.uid === uid) : undefined;
   };
-  const worn = CARD_SLOTS.map(on).filter((p): p is OwnedPart => !!p);
+  const worn = EQUIPMENT_SOCKETS.map(s => parts.find(p => p.uid === (build ? socketUid(build,s) : null))).filter((p): p is OwnedPart => !!p);
   return findsOf({
     wins: bay?.wins ?? 0,
     losses: bay?.losses ?? 0,
     level,
     champion: false,
-    bodyPaints: BODY_SLOTS.map((s) => on(s)?.paint).filter((c): c is NonNullable<typeof c> => !!c),
+    bodyCount: build?.sockets ? 6 : 4,
+    bodyPaints: build?.sockets ? Object.entries(equipmentPaints(build,parts)).filter(([s])=>s!=="weapon").map(([,p])=>p).filter((p): p is NonNullable<typeof p>=>!!p) : bodyPaints(slot => on(slot)?.paint),
     partStars: worn.map((p) => p.tier),
     // THE ONE HAT THE ROBOT IS ALREADY WEARING, and never any other.
     //
@@ -229,7 +233,7 @@ function load(): GarageState | null {
       .filter((p) => p && CARD_BY_ID[p.id])
       .map((p) => {
         const card = CARD_BY_ID[p.id];
-        return { ...card, uid: p.uid, provenance: p.provenance, paint: card.slot === "weapon" ? undefined : p.paint ?? card.color };
+        return { ...card, price: st.equipmentVersion === 2 ? p.price : card.price, salvage: Number.isInteger(p.salvage) && p.salvage! >= 0 ? p.salvage : undefined, uid: p.uid, provenance: p.provenance, paint: card.slot === "weapon" ? undefined : p.paint ?? card.color };
       });
     const have = new Set(parts.map((p) => p.uid));
     const builds: Record<number, Build> = {};
@@ -242,7 +246,11 @@ function load(): GarageState | null {
         const p = uid ? parts.find((x) => x.uid === uid) : null;
         cards[slot] = p && p.slot === slot && have.has(p.uid) ? p.uid : null;
       }
-      builds[bay] = { bay, name: b.name, decal: b.decal ?? null, cards, look: null };
+      const sockets = b.sockets ? Object.fromEntries(EQUIPMENT_SOCKETS.map(s => {
+        const p = parts.find(p => p.uid === b.sockets?.[s]);
+        return [s, p && p.slot === EQUIPMENT_KIND[s] ? p.uid : null];
+      })) as NonNullable<Build["sockets"]> : undefined;
+      builds[bay] = { bay, name: b.name, decal: b.decal ?? null, cards, sockets, look: null };
     }
     const bays: Record<number, BayState> = {};
     for (let b = 1; b <= BAY_COUNT; b++) {
@@ -259,8 +267,9 @@ function load(): GarageState | null {
       const stored = (st.builds?.[bay] as { look?: BotLookRaw } | undefined)?.look;
       builds[bay] = withLook(builds[bay], normalizeLook(stored, earnedOfBuild(builds[bay], parts, bays[bay], level)));
     }
-    return {
+    return splitLegacyEquipment<GarageState>({
       v: 1,
+      equipmentVersion: st.equipmentVersion,
       coins: Math.max(0, Math.floor(st.coins)),
       level,
       parts,
@@ -269,7 +278,7 @@ function load(): GarageState | null {
       bought: st.bought ?? {},
       nextUid: typeof st.nextUid === "number" ? st.nextUid : parts.length + 1,
       crew: Array.isArray(st.crew) ? st.crew : CREW.map((c) => ({ ...c })),
-    };
+    });
   } catch {
     return null; // storage blocked or garbage: the seed stands
   }
@@ -379,13 +388,13 @@ export function partsOnBuild(st: GarageState, build: Build): Partial<Record<Card
 /** Parts on no bot: what hangs on the tool board. */
 export function spareParts(st: GarageState): OwnedPart[] {
   const used = new Set<string>();
-  for (const b of Object.values(st.builds)) for (const uid of Object.values(b.cards)) if (uid) used.add(uid);
+  for (const b of Object.values(st.builds)) for (const uid of Object.values(socketsOf(b))) if (uid) used.add(uid);
   return st.parts.filter((p) => !used.has(p.uid));
 }
 
 /** Which bay a part is on, or null. */
 export function bayOfPart(st: GarageState, uid: string): number | null {
-  for (const b of Object.values(st.builds)) for (const v of Object.values(b.cards)) if (v === uid) return b.bay;
+  for (const b of Object.values(st.builds)) for (const v of Object.values(socketsOf(b))) if (v === uid) return b.bay;
   return null;
 }
 
@@ -430,11 +439,11 @@ export function recycleRows(st: GarageState, bay: number): { rows: RecycleRow[];
   if (!build) return { rows: [], total: 0 };
   const rows: RecycleRow[] = [];
   let total = 0;
-  for (const slot of CARD_SLOTS) {
-    const p = partByUid(st, build.cards[slot]);
+  for (const uid of equippedIds(build)) {
+    const p = partByUid(st, uid);
     if (!p) continue;
     const coins = recycleValue(p);
-    rows.push({ part: p, count: slot === "arms" || slot === "legs" ? 2 : 1, coins });
+    rows.push({ part: p, count: 1, coins });
     total += coins;
   }
   return { rows, total };
@@ -504,7 +513,7 @@ export function buyListing(listing: Listing, day: string, provenance: string): B
   const price = listing.price;
   if (price > state.coins) return { ok: false, reason: "coins", need: price - state.coins };
   const uid = `p_${String(state.nextUid).padStart(3, "0")}`;
-  const part: OwnedPart = { ...listing.card, uid, provenance, paint: listing.color ?? undefined };
+  const part: OwnedPart = { ...listing.card, price: listing.price, uid, provenance, paint: listing.color ?? undefined };
   setState({
     ...state,
     coins: state.coins - price,
@@ -542,7 +551,7 @@ export function putOnBay(uid: string, bay: number): boolean {
   if (!p) return false;
   const build = state.builds[bay];
   if (!build) return false;
-  setState({ ...state, builds: { ...state.builds, [bay]: { ...build, cards: { ...build.cards, [p.slot]: uid } } } });
+  setState({ ...state, builds: { ...state.builds, [bay]: fitPart(build, p, EQUIPMENT_SOCKETS.find(s => EQUIPMENT_KIND[s] === p.slot && !socketUid(build,s)) ?? EQUIPMENT_SOCKETS.find(s => EQUIPMENT_KIND[s] === p.slot)!) } });
   return true;
 }
 

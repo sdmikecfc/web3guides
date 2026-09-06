@@ -25,6 +25,7 @@
  * not a type, and _engine imports nothing from _view. The colours it hands out
  * are tints on a sprite; the sim never sees one.
  */
+import { combatPaints, type CombatBuild } from "@/lib/bots/combat-model";
 import type { Socket } from "@/lib/bots/fixtures";
 import { SOCKETS } from "@/lib/bots/fixtures";
 import type { LookMarks, SocketPaints } from "@/lib/bots/look";
@@ -128,7 +129,7 @@ export function rigLookOf(v: LookView, fallback: PaintId): BotLook {
  * the gate proves the two land on the same picture.
  */
 export function rigLookFromBuild(build: Build, fallback: PaintId): BotLook {
-  const paints = socketPaints((slot) => build?.[slot]?.paint);
+  const paints = (build as CombatBuild | undefined)?.limbs ? combatPaints(build) : socketPaints((slot) => build?.[slot]?.paint);
   return { paint: tintsOf(paints, fallback), face: "calm", sticker: null, plate: null, hat: null, earned: undefined };
 }
 

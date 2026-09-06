@@ -7,7 +7,7 @@ import { Suspense } from "react";
 import GarageClient from "./GarageClient";
 
 export const metadata = {
-  title: "Garage | Battle Bots",
+  title: "Garage | Clanker Cup",
 };
 
 export default function GaragePage() {

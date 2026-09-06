@@ -41,7 +41,8 @@ import { HOUSE_ROSTER, PARTS, SHAPE_INDEX, houseBuild, houseTarget, type Difficu
 import { chainSummary } from "../_engine/commentary";
 import { NO_ORDERS, PIECE, PIECE_NAMES, botTier, buildTotal, type Build, type FightEvent, type Orders, type Shape, type Tier } from "../_engine/parts";
 import { fnv1a, rngFork } from "../_engine/rng";
-import { resolveFight } from "../_engine/resolve";
+import { resolveFight } from "@/lib/bots/combat";
+import { singlePrice } from "@/lib/bots/equipment";
 import {
   DIFFICULTIES,
   REPAIR_MS,
@@ -483,7 +484,7 @@ export async function startFight(db: BotsDb, sess: BotsSession, input: StartFigh
       defender ? await lookViewOf(db, defender, await loadPartsOfBot(db, defender.id)) : houseLookView(shape ? shape.id : ""),
     ];
     const stored: ResultJson = {
-      v: ENGINE_VERSION,
+      v: result.engineVersion,
       seed,
       mode,
       difficulty,
@@ -590,10 +591,10 @@ export async function startFight(db: BotsDb, sess: BotsSession, input: StartFigh
           part_key: card.id,
           slot_kind: card.slot,
           tier: card.tier,
-          stats: { s: [card.s[0], card.s[1], card.s[2]], provenance: `Won from ${defenderName}`, fightId },
+          stats: { equipmentVersion: 2, s: [card.s[0], card.s[1], card.s[2]], provenance: `Won from ${defenderName}`, fightId },
           bot_id: null,
           source: "drop",
-          list_price: card.price,
+          list_price: singlePrice(card.slot, card.price),
           is_test: isTest,
         });
       }
@@ -619,7 +620,7 @@ export async function startFight(db: BotsDb, sess: BotsSession, input: StartFigh
         beatWallet: idB.wallet,
         at: createdAt,
         hash: hex(result.hash),
-        engineVersion: ENGINE_VERSION,
+        engineVersion: result.engineVersion,
       };
       await mintFirstWinCard(db, wallet, payload, isTest);
     }

@@ -48,6 +48,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { STRINGS } from "../src/lib/bots/strings";
+import { ART_PART_LORE } from "../src/lib/bots/art-copy";
 import { SCREEN_WORDS } from "../src/lib/bots/naming-screens";
 import { playerCopy, modelWord, HOUSE_TIERS, BRANDS, STAT_MEANING, SET_LINES, SHELF_WORDS, TEACH } from "../src/lib/bots/naming";
 import { TEMPLATES, VARIANTS, EFFECT_LINES } from "../src/app/bots/_engine/commentary";
@@ -304,6 +305,7 @@ function walk(file: string, prefix: string, node: unknown): void {
 function collect(): void {
   // 1. the string table
   walk("src/lib/bots/strings.ts", "", STRINGS.en);
+  walk("src/lib/bots/art-copy.ts", "part.lore", ART_PART_LORE);
 
   // 2. the screen words
   walk("src/lib/bots/naming-screens.ts", "", SCREEN_WORDS);
@@ -532,8 +534,8 @@ const BANNED: readonly string[] = [
 /** Strings that may keep a banned word, and the reason. Anything not on this
  * list fails, so an exception has to be argued once and written down. */
 const BANNED_ALLOW: readonly { text: string; why: string }[] = [
-  { text: "BATTLE BOTS", why: "the game's own name; a brand is not vocabulary" },
-  { text: "Sign in to play Battle Bots. This only proves it is you. It moves no money and costs nothing.", why: "the wallet popup; 'Battle Bots' is the product name" },
+  { text: "CLANKER CUP", why: "the game's own name; a brand is not vocabulary" },
+  { text: "Sign in to play Clanker Cup. This only proves it is you. It moves no money and costs nothing.", why: "the wallet popup; 'Clanker Cup' is the product name" },
   { text: "Fight code {h}", why: "the one engineering token a player may see, and it is labelled" },
 ];
 
@@ -610,7 +612,7 @@ const GLOSSARY: readonly { word: string; sentence: string }[] = [
   { word: "coins", sentence: "Coins are the money inside the game. You buy parts with them." },
   { word: "stars", sentence: "Stars show how good a part is. 1 star is the worst. 4 stars is the best. The number in the part's name is its stars." },
   { word: "size", sentence: "Size is a robot's numbers added up. A bigger robot is a stronger robot." },
-  { word: "matching", sentence: "Four body parts with the same name make your robot stronger. Four in the same colour do too." },
+  { word: "matching", sentence: "All six body parts with the same name make your robot stronger. All six in the same colour do too." },
   { word: "fight points", sentence: "Fight points are your score for the week. The best scores win the prizes." },
   { word: "a saved copy", sentence: "You fight a saved copy of their robot. That player is not here, and their robot cannot break." },
   { word: "being fixed", sentence: "A robot that loses a real fight is being fixed for one day. It cannot fight until it is ready." },
@@ -674,7 +676,10 @@ function gateOneWord(): void {
   for (const s of SYNONYMS) {
     const hits = new Map<string, Entry[]>();
     for (const e of corpus) {
-      const words = codeless(e.text);
+      // Named placeholders are replaced before a player sees this sentence.
+      // Keep the displayed words intact; ignore only the same {name} syntax
+      // handled by render() above (for example {total} in matching counts).
+      const words = codeless(e.text).replace(/\{\w+\}/g, "x");
       for (const v of s.variants) {
         if (wordRe(v).test(words)) {
           const list = hits.get(v) ?? [];

@@ -1,3 +1,4 @@
+import { ART_VERSION } from "./art-version";
 /**
  * HOW A ROBOT IS PUT TOGETHER. The one place.
  *
@@ -31,6 +32,7 @@
  * foot and toeing out on the other. Mirroring the leg also moves it, because
  * the leg's hip pivot is not the middle of its canvas.
  */
+import { combatPaints, type CombatBuild } from "@/lib/bots/combat-model";
 import { CARD_BY_ID, type CardSlot, type Socket } from "@/lib/bots/fixtures";
 import { partTier, partTotal, type Build, type PaintId, type Part, type Slot } from "@/app/bots/_engine/parts";
 import { FIGURE, RIG, maskFile, partFile, type ArtSlot } from "./rig-points";
@@ -207,7 +209,7 @@ export function slotPaint(build: Build, slot: CardSlot): PaintId | null {
 
 /** the seven sockets' colours for one engine Build */
 export function buildPaints(build: Build): SocketPaints {
-  return socketPaints((slot) => slotPaint(build, slot));
+  return (build as CombatBuild).limbs ? combatPaints(build) : socketPaints((slot) => slotPaint(build, slot));
 }
 
 export function pieceTint(paints: SocketPaints, piece: Piece): number {
@@ -498,7 +500,7 @@ export interface PortraitRef {
 export const PORTRAIT_PATH = "/api/bots/portrait";
 
 export function portraitUrl(ref: PortraitRef, origin = ""): string {
-  const q = new URLSearchParams();
+  const q = new URLSearchParams({ art: ART_VERSION });
   if (ref.bot !== undefined) q.set("b", String(ref.bot));
   if (ref.fight !== undefined) {
     q.set("f", String(ref.fight));

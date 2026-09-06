@@ -14,9 +14,12 @@
  * it is handed down as a value.
  */
 "use client";
+import { ART_PART_LORE } from "@/lib/bots/art-copy";
 
+import { socketUid, equipmentPaints, socketsOf } from "@/lib/bots/equipment";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { WorkshopHeading } from "../_components/WorkshopHeading";
 import { PageShell } from "../_components/PageShell";
 import { GarageCoach } from "../_components/Coach";
 import { ColourPips, type SlotColour } from "../_components/ColourPips";
@@ -61,6 +64,7 @@ import {
   putOnBay,
   recycleBay,
   recyclePart,
+  lookOfBay,
   recycleRows,
   resetGarage,
   saveBuild,
@@ -71,7 +75,7 @@ import {
 } from "@/lib/bots/garage-state";
 import { STRINGS, fill, spareWord, starWord, winLossWords } from "@/lib/bots/strings";
 import { shelfNothing, shelfRows, shelfSummary } from "@/lib/bots/shelf";
-import { BODY_CARD_ORDER, CROWN_CARD_KIND, hatPaint, ownColours, socketPaints, twinWords } from "@/lib/bots/look";
+import { CROWN_CARD_KIND, hatPaint, ownColours, socketPaints, twinWords } from "@/lib/bots/look";
 import type { BotLook as RigLook } from "../_view/look";
 import { readBotsSession } from "../battles/session";
 import {
@@ -598,7 +602,7 @@ export default function GarageClient() {
           if (!build) return null;
           const arts: Loaded[] = await Promise.all(
             SOCKETS.map(async (socket) => {
-              const part = partByUid(st, build.cards[CARD_OF_SOCKET[socket]]);
+              const part = partByUid(st, socketUid(build, socket));
               // a missing file must never empty the bay: the socket stays bare
               const art = part ? await loadArt(g, part).catch(() => null) : null;
               return { socket, part, art };
@@ -663,14 +667,14 @@ export default function GarageClient() {
       // one robot per spot: when the server knows this one, its colours are
       // the ones the marks were earned in, so the drawn robot, the colour
       // pips and the earned list all describe the same creature
-      const sp = row?.paints ?? socketPaints((slot) => partByUid(st, build.cards[slot])?.paint ?? null);
+      const sp = row?.paints ?? equipmentPaints(build, st.parts);
       const paint: Partial<Record<Socket, number>> = {};
       for (const socket of SOCKETS) {
         const id = sp[socket];
         if (id) paint[socket] = hexNum(PAINTS[id]);
       }
-      const own = ownColours(BODY_CARD_ORDER.map((slot) => sp[SOCKETS_OF[slot][0]] ?? null));
-      const look = row?.look ?? null;
+      const own = ownColours(SOCKETS.filter(socket => socket !== "weapon").map(socket => sp[socket] ?? null));
+      const look = row?.look ?? lookOfBay(st, bay);
 
       const stickerId = look?.stickerPaint && own.includes(look.stickerPaint) ? look.stickerPaint : sp.torso ?? own[0] ?? null;
       // A HAT WEARS THE COLOUR IT TURNED UP IN. look.ts hatPaint is the one
@@ -988,10 +992,10 @@ export default function GarageClient() {
    */
   const coloursOf = (build: Build | undefined, bay?: number): SlotColour[] => {
     const row = bay != null ? earnedOfBay(bay) : null;
-    if (row) return BODY_SLOTS.map((s) => ({ slot: s, color: (row.paints[SOCKETS_OF[s][0]] ?? null) as SlotColour["color"] }));
+    if (row) return (["head","torso","armL","armR","legL","legR"] as const).map((s) => ({ slot: s, color: (row.paints[s] ?? null) as SlotColour["color"] }));
     return build
-      ? BODY_SLOTS.map((s) => {
-          const uid = build.cards[s];
+      ? (["head","torso","armL","armR","legL","legR"] as const).map((s) => {
+          const uid = socketUid(build,s);
           const p = uid ? partByUid(st, uid) : null;
           return { slot: s, color: (p?.paint ?? null) as SlotColour["color"] };
         })
@@ -1098,6 +1102,7 @@ export default function GarageClient() {
 
   return (
     <PageShell wide>
+      <WorkshopHeading eyebrow="YOUR GARAGE" title="A little place to call home." description="Build something odd. Look after it. Come back for more." />
       {/* ── MEET YOUR ROBOT ───────────────────────────────────────────────
           The first thing on the first visit, and never again after that.
           A player arrives owning a robot; this is the moment it wakes up,
@@ -1117,7 +1122,7 @@ export default function GarageClient() {
         <button className={uiCss.press} onClick={() => walk(-1)} aria-label={t.garageUi.walkLeft} title={t.garageUi.walkLeft} style={{ width: TAP, height: TAP, display: "grid", placeItems: "center", borderRadius: R.pill, border: `1px solid ${M.border}`, background: M.surface, color: M.muted, cursor: "pointer", transform: "scaleX(-1)" }}>
           <IconChevron size={18} />
         </button>
-        <span style={{ flex: 1, textAlign: "center", fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.32em", textTransform: "uppercase", color: M.muted }}>
+        <span style={{ flex: 1, textAlign: "center", fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: M.muted }}>
           {t.garageUi.street}, {fill(t.garage.title, { n: String(centre).padStart(4, "0") })}
           {centre === ME.garageNo ? `, ${t.garageUi.yourDoor}` : ""}
         </span>
@@ -1131,7 +1136,7 @@ export default function GarageClient() {
           shows exactly one tile: no seam, and the art's own composition. At
           80 and 170 the same band could only have shown roofs and half a
           door, which is what it did. */}
-      <div ref={streetWrapRef} style={{ ...canvasFrame, height: small ? 190 : 350 }}>
+      <div ref={streetWrapRef} style={{ ...canvasFrame, height: small ? 130 : 190 }}>
         <canvas ref={streetRef} style={{ display: "block", width: "100%", height: "100%" }} />
       </div>
       <GarageCoach state={st} />
@@ -1145,10 +1150,10 @@ export default function GarageClient() {
         <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
         {small ? (
           <>
-            <span style={{ position: "absolute", top: 8, left: 8 }}>
+            <span style={{ position: "absolute", top: 8, left: 8, background: M.ground, borderRadius: R.pill, boxShadow: "0 2px 8px #0004" }}>
               <ChipTab onClick={() => setSheet({ kind: "paper" })}>{t.garageUi.paperChip}</ChipTab>
             </span>
-            <span style={{ position: "absolute", top: 8, right: 8 }}>
+            <span style={{ position: "absolute", top: 8, right: 8, background: M.ground, borderRadius: R.pill, boxShadow: "0 2px 8px #0004" }}>
               <ChipTab onClick={() => setSheet({ kind: "tools" })}>{t.garageUi.partsChip}</ChipTab>
             </span>
           </>
@@ -1193,7 +1198,7 @@ export default function GarageClient() {
       {/* ── the five bay rows (phone) ─────────────────────────────────────── */}
       <div className={uiCss.mobileOnly} style={{ marginTop: 12 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <span style={{ fontFamily: FONT_DISPLAY, fontSize: 12, fontWeight: 700, letterSpacing: "0.32em", color: M.muted }}>{t.garageUi.bays}</span>
+          <span style={{ fontFamily: FONT_DISPLAY, fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", color: M.muted }}>{t.garageUi.bays}</span>
           <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <CoinChip coins={st.coins} ariaLabel={t.nav.coinsAria} />
             <Button onClick={newBot} style={{ minHeight: TAP, padding: "6px 12px", fontSize: 12.5 }}>{t.garageUi.newBot}</Button>
@@ -1294,7 +1299,7 @@ export default function GarageClient() {
               onWatch={(id) => router.push(`/bots/fight/${id}`)}
             />
             <div style={{ borderTop: `1px solid ${M.border}` }} />
-            <div style={{ fontFamily: FONT_DISPLAY, fontSize: 11, letterSpacing: "0.32em", color: M.muted }}>{t.garageUi.lastFights}</div>
+            <div style={{ fontFamily: FONT_DISPLAY, fontSize: 11, letterSpacing: "0.12em", color: M.muted }}>{t.garageUi.lastFights}</div>
             {fightsOf(sheet.bay).length ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {fightsOf(sheet.bay).map((f) => (
@@ -1495,7 +1500,7 @@ function EarnedBlock({
   return (
     <>
       <div style={{ borderTop: `1px solid ${M.border}` }} />
-      <div style={{ fontFamily: FONT_DISPLAY, fontSize: 11, letterSpacing: "0.32em", color: M.muted }}>{t.earned.title}</div>
+      <div style={{ fontFamily: FONT_DISPLAY, fontSize: 11, letterSpacing: "0.12em", color: M.muted }}>{t.earned.title}</div>
       {row && summary ? (
         <div style={{ fontFamily: FONT_TOY, fontSize: 16, fontWeight: 800, lineHeight: 1.35, color: M.text }}>{summary}</div>
       ) : null}
@@ -1530,7 +1535,7 @@ function EarnedBlock({
           checks each signature before it hands one over. */}
       {row ? (
         <>
-          <div style={{ fontFamily: FONT_DISPLAY, fontSize: 11, letterSpacing: "0.32em", color: M.muted, marginTop: 4 }}>{t.earned.cards}</div>
+          <div style={{ fontFamily: FONT_DISPLAY, fontSize: 11, letterSpacing: "0.12em", color: M.muted, marginTop: 4 }}>{t.earned.cards}</div>
           {row.cards.length ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {row.cards.map((c) => (
@@ -1649,7 +1654,7 @@ function SpareLore({
         <p style={{ margin: 0, fontSize: 12, color: M.muted, lineHeight: 1.45 }}>{SCRAP_NOTE}</p>
       )}
       <div style={{ borderTop: `1px solid ${M.border}` }} />
-      <p style={{ margin: 0, fontSize: 12.5, color: M.lore, lineHeight: 1.5 }}>{part.lore}</p>
+      <p style={{ margin: 0, fontSize: 12.5, color: M.lore, lineHeight: 1.5 }}>{ART_PART_LORE[part.id] ?? part.lore}</p>
       <div style={{ borderTop: `1px solid ${M.border}` }} />
       <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: M.muted }}>{part.provenance}</div>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

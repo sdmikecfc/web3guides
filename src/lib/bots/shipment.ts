@@ -32,6 +32,7 @@
  * listing colour lands, and the fixtures).
  */
 
+import { singlePrice } from "./equipment";
 import { FAMILIES, PARTS } from "@/app/bots/_engine/catalog";
 import { PAINT_IDS, PRICE_BY_TIER, type PaintId, type Tier } from "@/app/bots/_engine/parts";
 import { fnv1a, mulberry32, type Rng } from "@/app/bots/_engine/rng";
@@ -349,7 +350,7 @@ function listing(row: RowKey, n: number, tier: Tier, slot: CardSlot, partKey: st
     slot,
     tier,
     color,
-    price: PRICE_BY_TIER[tier],
+    price: singlePrice(slot, PRICE_BY_TIER[tier]),
     dayColor,
     needsLevel: LEVEL_FOR_TIER[tier],
     card: cardOf(partKey),

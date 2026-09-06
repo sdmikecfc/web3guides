@@ -19,8 +19,11 @@
  *  - THE ENGINE BUILD is built from the OWNED ROWS, never from a request
  *    (the server resolves from the database; house law).
  */
+import { EQUIPMENT_SOCKETS, EQUIPMENT_KIND, type EquipmentIds } from "@/lib/bots/equipment";
+import { modularBuild, equipmentStatsTotal, type CombatBuild, type CombatSocket } from "@/lib/bots/combat-model";
+import { buildTotal } from "../_engine/parts";
 import "server-only";
-import { CARD_BY_ID, DECAL_IDS, FIRST_WORDS, SECOND_WORDS, nameText, type DecalId } from "@/lib/bots/fixtures";
+import { CARD_BY_ID, DECAL_IDS, FIRST_WORDS, SECOND_WORDS, nameText, recycleValue, type DecalId } from "@/lib/bots/fixtures";
 import {
   CROWN_CARD_KIND,
   bodyPaints,
@@ -42,6 +45,8 @@ import type { BotName, BotView, PartView } from "./types";
 
 export interface BuildJson {
   parts?: Partial<Record<Slot, number | null>>;
+  sockets?: EquipmentIds<number>;
+  equipmentVersion?: 2;
   name?: BotName;
   decal?: DecalId | null;
   paint?: PaintId;
@@ -84,6 +89,11 @@ export interface PartStatsJson {
   paint?: string;
   provenance?: string;
   fightId?: string;
+  equipmentVersion?: 2;
+  /** Whole-coin resale retained when a legacy pair becomes two owned limbs. */
+  salvage?: number;
+  pairOriginId?: number;
+  equipmentSide?: "left" | "right";
 }
 
 export interface PartRow {
@@ -187,6 +197,12 @@ export function partPaint(p: PartRow): PaintId | undefined {
   return undefined;
 }
 
+export function partRecycleValue(p: Pick<PartRow, "list_price" | "stats">): number {
+  const value = p.stats?.salvage;
+  const salvage = typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : undefined;
+  return recycleValue({ price: p.list_price, salvage });
+}
+
 export function partView(p: PartRow): PartView {
   const card = CARD_BY_ID[p.part_key];
   const s = partStats(p);
@@ -201,7 +217,8 @@ export function partView(p: PartRow): PartView {
     source: p.source,
     provenance: p.stats?.provenance ?? "",
     listPrice: p.list_price,
-    name: card?.name ?? p.part_key,
+    salvage: partRecycleValue(p),
+    name: (card?.name ?? p.part_key).replace(/Arms$/, "Arm").replace(/Legs$/, "Leg"),
     familyName: card?.familyName ?? null,
     design: card?.design ?? 1,
     lore: card?.lore ?? "",
@@ -228,6 +245,12 @@ export function partIdsOf(b: BotRow): Record<Slot, number | null> {
     out[slot] = typeof v === "number" && Number.isInteger(v) ? v : null;
   }
   return out;
+}
+
+export function socketIdsOf(b: BotRow): EquipmentIds<number> {
+  const modern=buildJsonOf(b).sockets;
+  if (modern) return Object.fromEntries(EQUIPMENT_SOCKETS.map(s=>[s, Number.isInteger(modern[s]) ? modern[s] : null])) as EquipmentIds<number>;
+  const c=partIdsOf(b); return {head:c.head,torso:c.torso,armL:c.arms,armR:c.arms,legL:c.legs,legR:c.legs,weapon:c.weapon};
 }
 
 export function nameOf(b: BotRow): BotName {
@@ -266,14 +289,26 @@ export function partsOf(b: BotRow, parts: readonly PartRow[]): Partial<Record<Sl
 }
 
 export function isComplete(b: BotRow, parts: readonly PartRow[]): boolean {
-  const on = partsOf(b, parts);
-  return SLOTS.every((slot) => !!on[slot]);
+  const ids=socketIdsOf(b);
+  if (buildJsonOf(b).sockets && new Set(Object.values(ids).filter(id => id != null)).size !== EQUIPMENT_SOCKETS.length) return false;
+  return EQUIPMENT_SOCKETS.every(s=>parts.some(p=>p.id===ids[s] && p.slot_kind===EQUIPMENT_KIND[s] && !p.recycled_at));
 }
 
 /** The engine's Build from the OWNED rows: id, stats and the painted
  * colour per part (src/lib/bots/fixtures.ts engineBuild did this for the
  * local store). null when a slot is empty: an incomplete bot never fights. */
 export function engineBuildOf(b: BotRow, parts: readonly PartRow[]): Build | null {
+  if (buildJsonOf(b).sockets) {
+    if (!isComplete(b, parts)) return null;
+    const ids=socketIdsOf(b);
+    const get=(s: keyof EquipmentIds): Part | null => {
+      const p=parts.find(p=>p.id===ids[s] && p.slot_kind===EQUIPMENT_KIND[s] && !p.recycled_at);
+      if (!p) return null; const paint=partPaint(p);
+      return {id:p.part_key,s:partStats(p),...(paint ? {paint} : {})};
+    };
+    const [head,torso,armL,armR,legL,legR,weapon]=EQUIPMENT_SOCKETS.map(get);
+    return head && torso && armL && armR && legL && legR && weapon ? modularBuild(head,torso,armL,armR,legL,legR,weapon) : null;
+  }
   const on = partsOf(b, parts);
   const part = (slot: Slot): Part | null => {
     const p = on[slot];
@@ -293,6 +328,14 @@ export function engineBuildOf(b: BotRow, parts: readonly PartRow[]): Build | nul
 }
 
 export function totalOf(b: BotRow, parts: readonly PartRow[]): number {
+  if (buildJsonOf(b).sockets) {
+    const ids = socketIdsOf(b), values = {} as Record<CombatSocket, Stats>;
+    for (const s of EQUIPMENT_SOCKETS) {
+      const p = parts.find(p => p.id === ids[s] && p.slot_kind === EQUIPMENT_KIND[s] && !p.recycled_at);
+      values[s] = p ? partStats(p) : [0, 0, 0];
+    }
+    return equipmentStatsTotal(values);
+  }
   const on = partsOf(b, parts);
   let total = 0;
   for (const slot of SLOTS) {
@@ -337,6 +380,11 @@ export function partStarsOf(p: PartRow): Tier {
 /** The colour on each of the seven sockets: the card's own colour, spread
  * over the sockets it fills, with the weapon riding the arm. */
 export function socketPaintsOf(b: BotRow, parts: readonly PartRow[]): SocketPaints {
+  if (buildJsonOf(b).sockets) {
+    const ids=socketIdsOf(b);
+    const paints=Object.fromEntries(EQUIPMENT_SOCKETS.map(s=>{ const p=parts.find(p=>p.id===ids[s]); return [s,p ? partPaint(p) ?? null : null]; })) as SocketPaints;
+    paints.weapon=paints.armR; return paints;
+  }
   const on = partsOf(b, parts);
   return socketPaints((slot) => {
     const p = on[slot];
@@ -361,6 +409,7 @@ export interface EarnedInput {
   level: number;
   crown: boolean;
   partIds: Record<Slot, number | null>;
+  socketIds?: EquipmentIds<number>;
   plateNumber: number | null;
 }
 
@@ -372,13 +421,14 @@ export function earnedFor(o: EarnedInput, parts: readonly PartRow[], hats: reado
     const p = parts.find((x) => x.id === id && x.slot_kind === slot && !x.recycled_at);
     if (p) on[slot] = p;
   }
-  const worn = SLOTS.map((slot) => on[slot]).filter((p): p is PartRow => !!p);
+  const worn = o.socketIds ? EQUIPMENT_SOCKETS.map(s=>parts.find(p=>p.id===o.socketIds![s] && p.slot_kind===EQUIPMENT_KIND[s] && !p.recycled_at)).filter((p): p is PartRow=>!!p) : SLOTS.map((slot) => on[slot]).filter((p): p is PartRow => !!p);
   return findsOf({
     wins: o.wins,
     losses: o.losses,
     level: o.level,
     champion: o.crown,
-    bodyPaints: bodyPaints((slot) => {
+    bodyCount: o.socketIds ? 6 : 4,
+    bodyPaints: o.socketIds ? worn.filter(p=>p.slot_kind!=="weapon").map(partPaint).filter((p): p is PaintId=>!!p) : bodyPaints((slot) => {
       const p = on[slot];
       return p ? partPaint(p) : undefined;
     }),
@@ -391,7 +441,7 @@ export function earnedFor(o: EarnedInput, parts: readonly PartRow[], hats: reado
 /** The same, for a robot that is already a row. */
 export function earnedOf(b: BotRow, parts: readonly PartRow[], hats: readonly HatWon[] = [], crown = false): LookEarned {
   return earnedFor(
-    { wins: b.wins, losses: b.losses, level: b.level, crown, partIds: partIdsOf(b), plateNumber: nameOf(b).num },
+    { wins: b.wins, losses: b.losses, level: b.level, crown, partIds: partIdsOf(b), socketIds: buildJsonOf(b).sockets, plateNumber: nameOf(b).num },
     parts,
     hats,
   );
@@ -545,6 +595,7 @@ export function botView(b: BotRow, parts: readonly PartRow[], day: string, nowMs
     paints: socketPaintsOf(b, parts),
     marks: marksOf(b.wins, b.losses, b.level, !!extras?.crowns?.has(b.id)),
     parts: partIdsOf(b),
+    ...(buildJsonOf(b).sockets ? {sockets:socketIdsOf(b)} : {}),
     total,
     tier: botTier(total),
     weightClass: weightClassOf(total),

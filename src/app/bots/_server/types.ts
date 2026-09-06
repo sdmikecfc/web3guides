@@ -6,7 +6,7 @@
  */
 import type { Build, Mode, Orders, PaintId, Slot, Stats, Tier } from "../_engine/parts";
 import type { Difficulty, WeightClass } from "../_engine/rewards";
-import type { DecalId } from "@/lib/bots/fixtures";
+import type { DecalId, Socket } from "@/lib/bots/fixtures";
 import type { BotLook, HatWon, LookEarned, LookMarks, SocketPaints } from "@/lib/bots/look";
 
 /**
@@ -51,6 +51,7 @@ export interface PartView {
   source: string;
   provenance: string;
   listPrice: number;
+  salvage?: number;
   name: string;
   familyName: string | null;
   color?: PaintId;
@@ -76,6 +77,7 @@ export interface BotView {
   paints: SocketPaints;
   marks: LookMarks;
   parts: Record<Slot, number | null>;
+  sockets?: Record<Socket, number | null>;
   total: number;
   tier: Tier;
   weightClass: WeightClass;

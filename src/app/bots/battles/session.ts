@@ -130,7 +130,7 @@ export function buildEnlistMessage(address: string, nonce: string, issuedAt: str
   return (
     `${domain} wants you to sign in with your Ethereum account:\n` +
     `${address}\n\n` +
-    `Sign in to play Battle Bots. This only proves it is you. It moves no money and costs nothing.\n\n` +
+    `Sign in to play Clanker Cup. This only proves it is you. It moves no money and costs nothing.\n\n` +
     `URI: ${uri}\n` +
     `Version: 1\n` +
     `Chain ID: 1\n` +

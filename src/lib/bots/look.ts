@@ -668,8 +668,8 @@ export function colourCount(paints: readonly (PaintId | null | undefined)[]): nu
  * The same thing the game already calls a matched set on the shelf and in
  * the pit, so a player meets one idea and not two.
  */
-export function colourMatched(bodyColours: readonly PaintId[]): boolean {
-  return bodyColours.length === BODY_CARD_ORDER.length && ownColours(bodyColours).length === 1;
+export function colourMatched(bodyColours: readonly PaintId[], bodyCount: 4 | 6 = 4): boolean {
+  return bodyColours.length === bodyCount && ownColours(bodyColours).length === 1;
 }
 
 /** The star count that counts as a four star part. */
@@ -701,6 +701,8 @@ export interface LookRows {
   champion: boolean;
   /** the colour of each BODY part on this robot, head, torso, arms, legs */
   bodyPaints: readonly PaintId[];
+  /** Legacy pair builds require four cards; independent limbs require six pieces. */
+  bodyCount?: 4 | 6;
   /** the star count of every part this robot is wearing */
   partStars: readonly number[];
   /** every hat this wallet has won, kind and colour */
@@ -728,7 +730,7 @@ export function findsOf(rows: LookRows): LookEarned {
     level: Math.max(1, Math.floor(Number(rows.level) || 1)),
     repairs: Math.max(0, Math.floor(Number(rows.losses) || 0)),
     champion: !!rows.champion,
-    colourMatch: colourMatched(rows.bodyPaints.filter(isPaintId)),
+    colourMatch: colourMatched(rows.bodyPaints.filter(isPaintId), rows.bodyCount ?? 4),
     fourStar: rows.partStars.some((t) => Number(t) >= FOUR_STAR),
     hats: dedupeHats(rows.hats),
     paints: rows.bodyPaints.filter(isPaintId),
@@ -754,7 +756,7 @@ export interface FaceRow {
 export const FACES: readonly FaceRow[] = [
   { id: "calm", name: "Calm", earn: "Any robot can wear this one." },
   { id: "happy", name: "Happy", earn: "Any robot can wear this one." },
-  { id: "wink", name: "Wink", earn: "Wear four parts in the same colour." },
+  { id: "wink", name: "Wink", earn: "Wear every body part in the same colour." },
   { id: "stars", name: "Stars", earn: "Wear a four star part." },
 ];
 

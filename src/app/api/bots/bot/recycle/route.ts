@@ -9,8 +9,7 @@
  * A bot in the shop can be recycled (Mike: "recycle them for a fraction").
  */
 import { NextResponse } from "next/server";
-import { RECYCLE_PERCENT } from "@/lib/bots/fixtures";
-import { loadBot, loadPartsOfBot, nameTextOf } from "@/app/bots/_server/bots";
+import { loadBot, loadPartsOfBot, nameTextOf, partRecycleValue } from "@/app/bots/_server/bots";
 import { botsDb, failResponse, intIn, readJson, refuse } from "@/app/bots/_server/db";
 import { grant } from "@/app/bots/_server/grants";
 import { displayName, loadPlayer } from "@/app/bots/_server/players";
@@ -32,14 +31,14 @@ export async function POST(req: Request) {
 
     const parts = await loadPartsOfBot(db, bot.id);
     let coins = 0;
-    for (const p of parts) coins += Math.floor((p.list_price * RECYCLE_PERCENT) / 100);
+    for (const p of parts) coins += partRecycleValue(p);
     const name = nameTextOf(bot);
     const g = await grant(db, {
       wallet: sess.wallet,
       walletName: displayName(player),
       coins,
       reason: `recycle:${bot.id}`,
-      meta: { bot: name, bay: bot.slot, parts: parts.map((p) => p.id), each: parts.map((p) => Math.floor((p.list_price * RECYCLE_PERCENT) / 100)) },
+      meta: { bot: name, bay: bot.slot, parts: parts.map((p) => p.id), each: parts.map((p) => partRecycleValue(p)) },
       isTest: !!player.is_test,
     });
     if (!g.ok) throw new Error("recycle grant refused");

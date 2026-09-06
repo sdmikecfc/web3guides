@@ -20,6 +20,7 @@
  *    modules/battlebots/enlist.js) snapshots the bankroll at enlist; the
  *    column keeps its schema default (the 50 floor) until that job runs.
  */
+import { EQUIPMENT_SOCKETS, EQUIPMENT_KIND, splitPairValue } from "@/lib/bots/equipment";
 import "server-only";
 import { nameText } from "@/lib/bots/fixtures";
 import { BOT_FIRST_WORDS, BOT_SECOND_WORDS, OWNER_FIRST_WORDS, OWNER_SECOND_WORDS } from "@/lib/bots/naming";
@@ -118,6 +119,29 @@ async function hasStarterParts(db: BotsDb, wallet: string): Promise<boolean> {
   return (count || 0) > 0;
 }
 
+/** Seven starter instances; the two limbs retain the old pair's total price and resale. */
+export function starterPartRows(wallet: string, isTest: boolean, colors = starterColors(wallet)) {
+  return STARTER_PARTS.flatMap((c) => {
+    const paint = c.slot === "weapon" ? null : colors[c.slot];
+    if (c.slot !== "weapon" && !paint) throw new Error(`starter kit: no colour for the ${c.slot} card`);
+    const row = {
+      wallet,
+      part_key: c.id,
+      slot_kind: c.slot,
+      tier: c.tier,
+      stats: { equipmentVersion: 2, s: [c.s[0], c.s[1], c.s[2]], provenance: STARTER_PROVENANCE, ...(paint ? { paint } : {}) },
+      bot_id: null,
+      source: "starter",
+      list_price: STARTER_PRICE,
+      is_test: isTest,
+      color: paint,
+    };
+    return c.slot === "arms" || c.slot === "legs"
+      ? splitPairValue(STARTER_PRICE).map(value => ({ ...row, list_price: value.price, stats: { ...row.stats, salvage: value.salvage } }))
+      : [row];
+  });
+}
+
 /** The starter coins and the starter kit, every step idempotent. */
 async function ensureStarter(db: BotsDb, player: PlayerRow): Promise<void> {
   const wallet = player.wallet;
@@ -141,22 +165,7 @@ async function ensureStarter(db: BotsDb, player: PlayerRow): Promise<void> {
   // drift apart; a colourless body card would be a card no colour set can
   // ever count and no rig can tint.
   const colors = starterColors(wallet);
-  const rows = STARTER_PARTS.map((c) => {
-    const paint = c.slot === "weapon" ? null : colors[c.slot];
-    if (c.slot !== "weapon" && !paint) throw new Error(`starter kit: no colour for the ${c.slot} card`);
-    return {
-      wallet,
-      part_key: c.id,
-      slot_kind: c.slot,
-      tier: c.tier,
-      stats: { s: [c.s[0], c.s[1], c.s[2]], provenance: STARTER_PROVENANCE, ...(paint ? { paint } : {}) },
-      bot_id: null,
-      source: "starter",
-      list_price: STARTER_PRICE,
-      is_test: player.is_test,
-      color: paint,
-    };
-  });
+  const rows = starterPartRows(wallet, player.is_test, colors);
   const made = await insertStarterParts(db, rows);
   // THE ROBOT IS ALREADY BUILT (Mike, 2026-09-04: three steps, and the third
   // one is play). Assembling five cards is a lovely thing to do on purpose
@@ -230,6 +239,12 @@ async function createStarterBot(
     if (!p) throw new Error(`starter bot: no ${slot} card came back`);
     parts[slot] = p.id;
   }
+  const remaining=[...made];
+  const sockets=Object.fromEntries(EQUIPMENT_SOCKETS.map(socket=>{
+    const index=remaining.findIndex(p=>p.slot_kind===EQUIPMENT_KIND[socket]);
+    if(index<0) throw new Error(`Starter kit missing ${socket}`);
+    return [socket,remaining.splice(index,1)[0].id];
+  }));
   const total = STARTER_PARTS.reduce((n, c) => n + c.s[0] + c.s[1] + c.s[2], 0);
   const torsoPaint = colors.torso;
   const name = starterBotName(player.wallet);
@@ -239,7 +254,7 @@ async function createStarterBot(
       wallet: player.wallet,
       slot: STARTER_BAY,
       name: nameText(name),
-      build: { parts, name, decal: null, ...(isPaintId(torsoPaint) ? { paint: torsoPaint } : {}) },
+      build: { parts, sockets, equipmentVersion:2, name, decal: null, ...(isPaintId(torsoPaint) ? { paint: torsoPaint } : {}) },
       total,
       tier: botTier(total),
       weight_class: weightClassOf(total),
@@ -256,7 +271,7 @@ async function createStarterBot(
   const { error: wear } = await db
     .from("battle_bots_part_instances")
     .update({ bot_id: botId })
-    .in("id", Object.values(parts));
+    .in("id", Object.values(sockets));
   if (wear) throw new Error(`starter bot: the cards did not go on (${wear.message})`);
 }
 

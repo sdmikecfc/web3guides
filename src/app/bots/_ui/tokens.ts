@@ -38,7 +38,7 @@
  */
 export const FONT_TOY =
   'var(--font-bots-toy, ui-rounded), "Segoe UI", system-ui, sans-serif';
-export const FONT_DISPLAY = '"Syne", "DM Sans", system-ui, sans-serif';
+export const FONT_DISPLAY = FONT_TOY;
 export const FONT_BODY = '"DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
 export const FONT_MONO = '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 
@@ -48,31 +48,31 @@ export const FONT_MONO = '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
  */
 export const M = {
   /** the page behind everything */
-  ground: "#080b14",
+  ground: "#1b211d",
   /** panels, sheets, cards */
-  surface: "#0d1120",
+  surface: "#252c25",
   /** inset wells, hover rows, the active chip fill */
-  surface2: "#131826",
+  surface2: "#30372e",
   /** hairline borders, and THE hairline around every canvas */
-  border: "#1c2236",
+  border: "#495044",
   /** primary text */
-  text: "#e4e8f5",
+  text: "#f4ecd8",
   /** secondary text, labels, disabled */
-  muted: "#6272a0",
+  muted: "#b3b5a2",
   /** lore lines: one step lighter than muted so it reads as a whisper */
-  lore: "#a9b1c9",
+  lore: "#c9cbbb",
   /** THE accent. Active state and links only. */
-  accent: "#7c6aff",
+  accent: "#e5bd79",
 
   /** semantic, shared with the clay layer so a status dot and an HP bar agree */
-  good: "#6fe3a0",
+  good: "#b4d497",
   warn: "#ffd166",
   bad: "#ff8a7a",
 
   /** the scrim behind an open sheet */
-  overlay: "rgba(4,6,12,0.62)",
+  overlay: "rgba(15,19,15,0.76)",
   /** a chip that sits over a canvas: translucent surface */
-  panel: "rgba(13,17,32,0.92)",
+  panel: "rgba(37,44,37,0.96)",
   /** the one hairline's inner top highlight */
   highlight: "rgba(255,255,255,0.04)",
   /** "you get coins back" affordances (the DK sell tone) */
@@ -176,7 +176,7 @@ export const T = {
 export const SHADOW = {
   card: "0 10px 28px rgba(2,4,10,0.5), inset 0 1px 0 rgba(255,255,255,0.04)",
   /** the glow under a primary button */
-  primary: "0 1px 6px rgba(124,106,255,0.3)",
+  primary: "0 3px 0 #9c7846, 0 7px 18px rgba(0,0,0,.22)",
 } as const;
 
 /** Minimum touch target. 44 is the Apple/Android floor and the phone matters. */

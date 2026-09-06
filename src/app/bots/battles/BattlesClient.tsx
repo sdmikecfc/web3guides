@@ -29,6 +29,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { BotPortrait, PORTRAIT_ON } from "../_components/BotPortrait";
 import { PageShell } from "../_components/PageShell";
+import { WorkshopHeading } from "../_components/WorkshopHeading";
 import { IconPlay } from "../_ui/icons";
 import { Button, Dot, Panel, uiCss } from "../_ui/primitives";
 import { FONT_BODY, FONT_DISPLAY, FONT_MONO, M, R, TAP, TIER_COLOR } from "../_ui/tokens";
@@ -111,10 +112,9 @@ const pointWords = fightPointWord;
 
 const label = (): CSSProperties => ({
   fontFamily: FONT_DISPLAY,
-  fontSize: 12,
+  fontSize: 22,
   fontWeight: 700,
-  letterSpacing: "0.32em",
-  textTransform: "uppercase",
+  letterSpacing: "-0.02em",
   color: M.muted,
   margin: "0 0 10px",
 });
@@ -171,7 +171,7 @@ const door = (primary: boolean): CSSProperties => ({
   borderRadius: R.inner,
   border: `1px solid ${primary ? M.accent : M.border}`,
   background: primary ? M.accent : M.surface2,
-  color: primary ? "#ffffff" : M.text,
+  color: primary ? "#30271a" : M.text,
   fontFamily: FONT_BODY,
   fontWeight: 700,
   fontSize: 14,
@@ -391,7 +391,7 @@ export default function BattlesClient() {
   const bot = bots.find((b) => b.id === selected) ?? null;
   const canSpar = !!bot && bot.complete;
   const canFight = !!bot && bot.complete && !bot.inShop && bot.attacksLeft > 0;
-  const blocked = !bot ? (bots.length ? t.battles.pickBot : null) : !bot.complete ? `${bot.nameText} needs more parts. Put on all five.` : bot.inShop ? `${bot.nameText} is being fixed, ${backIn(bot.repairUntil, nowMs)}.` : bot.attacksLeft <= 0 ? `${bot.nameText} has no fights left today.` : null;
+  const blocked = !bot ? (bots.length ? t.battles.pickBot : null) : !bot.complete ? `${bot.nameText} needs more parts. Put a part in every space.` : bot.inShop ? `${bot.nameText} is being fixed, ${backIn(bot.repairUntil, nowMs)}.` : bot.attacksLeft <= 0 ? `${bot.nameText} has no fights left today.` : null;
   const coins = me?.coins ?? 0;
 
   const defenders = (view?.defenders ?? []).filter((d) => {
@@ -403,16 +403,18 @@ export default function BattlesClient() {
 
   return (
     <PageShell wide>
-      <p style={{ ...mono(11), letterSpacing: "0.32em", textTransform: "uppercase", margin: "24px 0 6px" }}>{t.nav.wordmark}</p>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", margin: "0 0 14px" }}>
-        <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 28, margin: 0, color: M.text }}>{t.nav.battles}</h1>
-        {me ? (
-          <span style={mono(12)}>
-            {me.walletName}, {coins} coins
-          </span>
-        ) : (
-          <span style={{ fontSize: 13, color: M.muted }}>{t.landingUi.watchFree}</span>
-        )}
+      <div className={css.pageHeading}>
+        <WorkshopHeading eyebrow="The ring" title="Small robots. Big cheers." description="Choose your robot, pick a rival, and let the little things fly." />
+        {me ? <span className={css.balance}>{me.walletName}<strong>{coins.toLocaleString()} coins</strong></span> : null}
+      </div>
+
+      <div className={css.ringside}>
+        <div>
+          <span className={css.ticket}>A seat for everyone</span>
+          <h2>The lights are on.</h2>
+          <p>Watch a fight. Pick a favourite. No wallet needed.</p>
+          <Link href="/bots/fight/demo?seed=7&showcase=1" className={uiCss.press} style={door(true)}><IconPlay size={16} />&nbsp; Watch the ring</Link>
+        </div>
       </div>
 
       {/* the phone tabs */}
@@ -439,7 +441,7 @@ export default function BattlesClient() {
             <Panel style={{ marginBottom: 16 }}>
               <p style={{ fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 700, margin: "0 0 6px" }}>Fight with your own robots.</p>
               <p style={{ fontSize: 14, color: M.lore, margin: "0 0 14px", lineHeight: 1.45 }}>
-                Press Play and sign once in your wallet. It moves no money and costs nothing.
+                Connect your wallet and your first robot is ready. Then pick a rival below.
               </p>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                 <SignInDoor sess={sess} />
@@ -480,13 +482,13 @@ export default function BattlesClient() {
           ) : null}
 
           {/* THE GAME ROBOT LADDER */}
-          <p style={label()}>Game robots</p>
-          <p style={{ fontSize: 12.5, color: M.lore, margin: "0 0 10px", lineHeight: 1.45 }}>
-            {t.teach.points} {t.battles.twoADay} {t.battles.gapHint}
-          </p>
-          <p style={{ fontSize: 12.5, color: M.lore, margin: "0 0 10px", lineHeight: 1.45 }}>
-            {t.teach.beingFixed} {SCREEN_WORDS.sparNote}
-          </p>
+          <p style={label()}>Meet the house robots</p>
+          <p className={css.sectionIntro}>Two fights each day. A practice fight is always free.</p>
+          <details className={css.rules}>
+            <summary>How fights work</summary>
+            <p>{t.teach.points} {t.battles.twoADay} {t.battles.gapHint}</p>
+            <p>{t.teach.beingFixed} {SCREEN_WORDS.sparNote}</p>
+          </details>
           <div className={css.list} style={{ marginBottom: 18 }}>
             {(view?.pve ?? []).map((row) => (
               <LadderCard
@@ -522,10 +524,10 @@ export default function BattlesClient() {
               </Chip>
             </div>
           </div>
-          <p style={{ fontSize: 12.5, color: M.lore, margin: "0 0 10px", lineHeight: 1.45 }}>
-            You put in 25 to 500 coins. If you win you get your coins back and the same again. Beat a bigger robot and you get extra coins too.{" "}
-            {t.teach.savedCopy}
-          </p>
+          <details className={css.rules}>
+            <summary>How a challenge works</summary>
+            <p>You put in 25 to 500 coins. If you win you get your coins back and the same again. Beat a bigger robot and you get extra coins too. {t.teach.savedCopy}</p>
+          </details>
           <div className={css.list}>
             {defenders.length ? (
               defenders.map((d) => (
@@ -661,7 +663,7 @@ function LadderCard({
         <div style={{ ...mono(10), letterSpacing: "0.22em", textTransform: "uppercase", color: M.muted }}>
           {size ? size.label : row.title}
         </div>
-        <div style={{ fontFamily: FONT_DISPLAY, fontSize: 15, fontWeight: 700, color: M.text, margin: "1px 0 2px" }}>
+        <div style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, color: M.text, margin: "1px 0 2px" }}>
           {houseName}
         </div>
         <div style={{ fontSize: 12.5, color: M.lore, lineHeight: 1.4 }}>{row.feel}</div>
@@ -850,6 +852,7 @@ function Versus({ s, size }: { s: FightSummary; size: number }) {
 function LiveCard({ s, nowMs }: { s: FightSummary; nowMs: number }) {
   return (
     <div
+      className={css.liveCard}
       style={{
         display: "grid",
         gridTemplateColumns: "auto minmax(0, 1fr) auto",
@@ -922,6 +925,7 @@ function FeaturedRow({ tag, s }: { tag: string; s: FightSummary }) {
 function RecentRow({ s, nowMs }: { s: FightSummary; nowMs: number }) {
   return (
     <div
+      className={css.recentRow}
       style={{
         display: "grid",
         gridTemplateColumns: "auto minmax(0, 1fr) auto auto",

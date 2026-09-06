@@ -1,3 +1,4 @@
+import { ART_VERSION } from "@/app/bots/_view/art-version";
 /**
  * BATTLE BOTS PORTRAIT: one square picture of one robot, painted.
  *
@@ -32,8 +33,8 @@
  * got.
  */
 import { NextResponse } from "next/server";
-import { STARTER_KIT } from "@/lib/bots/fixtures";
-import { NO_LOOK, NO_MARKS, earnedMarks, type BotLook, type LookMarks } from "@/lib/bots/look";
+import { STARTER_KIT, SOCKETS } from "@/lib/bots/fixtures";
+import { NO_LOOK, NO_MARKS, earnedMarks, type BotLook, type LookMarks, type SocketPaints } from "@/lib/bots/look";
 import type { Build, Part, Slot } from "@/app/bots/_engine/parts";
 import { houseBuild } from "@/app/bots/_engine/catalog";
 import { nearestPortraitSize } from "@/app/bots/_view/pieces";
@@ -47,7 +48,7 @@ import {
   loadPartsOfBot,
   lookOf,
 } from "@/app/bots/_server/bots";
-import { canonicalBuild, loadBattle } from "@/app/bots/_server/fight-read";
+import { canonicalBuild, loadBattle, looksOf } from "@/app/bots/_server/fight-read";
 import { HOUSE_MARKS, houseBotLook, houseShapeIdOfBuild, paintedHouseBuild } from "@/lib/bots/house-look";
 import { fnv1a } from "@/app/bots/_engine/rng";
 import { renderPortrait, type ArtCache, type LoadArt } from "./render";
@@ -107,7 +108,7 @@ function loaderFor(origin: string): LoadArt {
     if (hit !== undefined) return hit;
     let out: Uint8Array | null = null;
     try {
-      const r = await fetch(origin + path, { cache: "force-cache" });
+      const r = await fetch(`${origin}${path}?art=${ART_VERSION}`, { cache: "force-cache" });
       if (r.ok) out = new Uint8Array(await r.arrayBuffer());
     } catch {
       out = null;
@@ -134,6 +135,8 @@ interface Subject {
   build: Build;
   look: BotLook;
   marks: LookMarks;
+  /** Historical snapshot colours, including the replay's legacy fallbacks. */
+  paints?: SocketPaints;
   /** what makes the picture different, for the ETag */
   key: string;
 }
@@ -208,58 +211,25 @@ function subjectOfHouse(shapeId: string, total: number): Subject | null {
   };
 }
 
-/**
- * One side of a finished fight. The BUILD is the one the fight was resolved
- * with, because a card of a fight must show the robot that fought it and not
- * the robot its owner has rebuilt since. The LOOK is the robot's today, and
- * best effort: a robot that has been recycled since still gets its parts
- * drawn, just with no face on it.
- */
+/** The historical picture uses the exact same stored look/fallback as the
+ * replay. A later makeover or recycled bot cannot change a finished card. */
 async function subjectOfFight(id: string, side: 0 | 1): Promise<Subject | null> {
   const db = botsDb();
   const row = await loadBattle(db, id);
-  // a practice bout is private: it gets the plain robot, like an unknown id
+  // A practice bout remains private and falls back to the plain robot.
   if (!row || row.status !== "resolved" || !row.result || row.mode === "spar") return null;
   const build = canonicalBuild(side === 0 ? row.result.buildA : row.result.buildB);
-  const botId = side === 0 ? row.challenger_bot_id : row.defender_bot_id;
-  /**
-   * A GAME ROBOT ON ONE SIDE OF A FINISHED FIGHT. It has no row, so there is
-   * no bot id to read a look off, and this side used to fall through to a
-   * grey clay dummy: most of the fights list is a player beating one of the
-   * nine, so most of the list was grey. Which of the nine it was is written
-   * on the build itself (the engine names a house part house.<shape>.<slot>),
-   * so a row saved weeks before any of this existed still draws the right
-   * character.
-   */
+  const appearance = looksOf(row.result)[side];
+  const fallback = row.result.ids?.[side]?.paint ?? null;
+  const paints = Object.fromEntries(SOCKETS.map(socket => [socket, appearance.paints?.[socket] ?? fallback])) as SocketPaints;
   const houseShape = houseShapeIdOfBuild(build);
-  if (houseShape) {
-    return {
-      build: paintedHouseBuild(build, houseShape),
-      look: houseBotLook(houseShape),
-      marks: HOUSE_MARKS,
-      key: `f${row.id}:${side}:${houseShape}`,
-    };
-  }
-  let look = NO_LOOK;
-  let marks = NO_MARKS;
-  if (botId) {
-    try {
-      const bot = await loadBot(db, botId);
-      if (bot) {
-        const parts = await loadPartsOfBot(db, bot.id);
-        const [hats, crowns] = await Promise.all([
-          loadHats(db, bot.wallet).catch(() => []),
-          loadCrownBotIds(db, bot.wallet).catch(() => new Set<number>()),
-        ]);
-        const crown = crowns.has(bot.id);
-        look = lookOf(bot, parts, hats, crown);
-        marks = earnedMarks(earnedOf(bot, parts, hats, crown));
-      }
-    } catch {
-      /* the parts are the picture; a look is a bonus */
-    }
-  }
-  return { build, look, marks, key: `f${row.id}:${side}:${row.resolved_at ?? row.created_at}` };
+  return {
+    build: houseShape ? paintedHouseBuild(build, houseShape) : build,
+    look: appearance.look ?? NO_LOOK,
+    marks: appearance.marks ?? NO_MARKS,
+    paints,
+    key: `f${row.id}:${side}:${row.resolved_at ?? row.created_at}`,
+  };
 }
 
 export async function GET(req: Request) {
@@ -284,7 +254,7 @@ export async function GET(req: Request) {
   const known = !!subject;
   const s = subject ?? FALLBACK();
 
-  const etag = `"bb-portrait-${size}-${s.key}"`;
+  const etag = `"bb-portrait-${ART_VERSION}-${size}-${s.key}"`;
   if (req.headers.get("if-none-match") === etag) {
     return new NextResponse(null, { status: 304, headers: { ETag: etag } });
   }
@@ -311,14 +281,14 @@ export async function GET(req: Request) {
 
   // what the compositor is about to be handed, and nothing else: two rows
   // that would draw the same robot share one drawing
-  const drawKey = `${size}:${fnv1a(JSON.stringify([s.build, s.look, s.marks])).toString(36)}`;
+  const drawKey = `${ART_VERSION}:${size}:${fnv1a(JSON.stringify([s.build, s.look, s.marks, s.paints])).toString(36)}`;
   const hit = cachedPng(drawKey);
   if (hit) return answer(hit);
 
   let png: Uint8Array;
   try {
     const out = await renderPortrait(
-      { build: s.build, look: s.look, marks: s.marks },
+      { build: s.build, look: s.look, marks: s.marks, paints: s.paints },
       size,
       loaderFor(url.origin),
       ART,

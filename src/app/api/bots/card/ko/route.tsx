@@ -41,19 +41,19 @@ export const runtime = "edge";
 
 const W = 1200;
 const H = 630;
-const TEXT = "#e4e8f5";
-const MUTED = "#6272a0";
-const LORE = "#a9b1c9";
+const TEXT = "#f4ecd8";
+const MUTED = "#b3b5a2";
+const LORE = "#c9cbbb";
 const CREAM = "#f3e9d2";
-const ACCENT = "#7c6aff";
+const ACCENT = "#e5bd79";
 const CORAL = "#ff8a7a";
 const GOLD = "#f0b340";
-const WORDMARK = "BATTLE BOTS";
-const BACKGROUND = "linear-gradient(145deg, #131826 0%, #0d1120 45%, #080b14 100%)";
+const WORDMARK = "CLANKER CUP";
+const BACKGROUND = "linear-gradient(135deg, #414735 0%, #222a22 52%, #141b17 100%)";
 
 const FONT_BODY = "Aktiv, sans-serif";
 const FONT_TOY = '"Baloo 2", Aktiv, sans-serif';
-const FONT_DISPLAY = "Syne, Aktiv, sans-serif";
+const FONT_DISPLAY = FONT_TOY;
 
 // ── fonts ───────────────────────────────────────────────────────────────────
 
@@ -210,7 +210,7 @@ function wordmark(host: string, path: string) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 12, height: 12, background: ACCENT, borderRadius: 3, display: "flex" }} />
-        <div style={{ display: "flex", fontSize: 22, fontWeight: 700, letterSpacing: 8, color: LORE, fontFamily: FONT_DISPLAY }}>{WORDMARK}</div>
+        <div style={{ display: "flex", fontSize: 22, fontWeight: 700, letterSpacing: 2, color: LORE, fontFamily: FONT_DISPLAY }}>{WORDMARK}</div>
       </div>
       <div style={{ fontSize: 20, color: MUTED, display: "flex", fontFamily: FONT_BODY }}>
         {host}

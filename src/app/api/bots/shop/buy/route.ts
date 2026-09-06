@@ -117,6 +117,7 @@ export async function POST(req: Request) {
       slot_kind: card.slot,
       tier: card.tier,
       stats: {
+        equipmentVersion: 2,
         s: [card.s[0], card.s[1], card.s[2]],
         provenance: shopProvenance(shop),
         ...(listing.color ? { paint: listing.color } : {}),

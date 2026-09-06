@@ -170,7 +170,8 @@ export function Panel({
   return (
     <div
       style={{
-        background: M.surface,
+        background: `linear-gradient(140deg, #333b30, ${M.surface})`,
+        boxShadow: "inset 0 1px 0 #f9e9bd0d, 0 8px 24px #0000001a",
         border: `1px solid ${M.border}`,
         borderRadius: R.card,
         padding: "18px 20px",
@@ -191,9 +192,9 @@ export function Panel({
           <span
             style={{
               fontFamily: FONT_DISPLAY,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: 700,
-              letterSpacing: "0.32em",
+              letterSpacing: "0.12em",
               textTransform: "uppercase",
               color: M.muted,
             }}
@@ -259,7 +260,7 @@ export function Button({
           : primary
             ? M.accent
             : M.surface2,
-        color: disabled ? M.muted : primary ? "#ffffff" : sell ? M.sell : M.text,
+        color: disabled ? M.muted : primary ? "#292719" : sell ? M.sell : M.text,
         boxShadow: primary && !disabled ? SHADOW.primary : undefined,
         ...style,
       }}

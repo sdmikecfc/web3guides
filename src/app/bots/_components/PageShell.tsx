@@ -36,7 +36,7 @@ export function PageShell({
       id="bots-content"
       className={css.shell}
       style={{
-        background: `radial-gradient(1000px 500px at 50% -10%, ${M.surface2} 0%, ${M.ground} 60%)`,
+        background: `radial-gradient(ellipse at 15% 0%, #4a432d 0%, transparent 44%), radial-gradient(ellipse at 90% 70%, #273e32 0%, transparent 55%), ${M.ground}`,
         color: M.text,
         fontFamily: FONT_BODY,
       }}

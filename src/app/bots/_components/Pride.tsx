@@ -40,12 +40,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  BODY_SLOTS,
   FIGHTS,
   nameText,
   type OwnedPart,
 } from "@/lib/bots/fixtures";
-import { earnedOfBuild, isHydratedState, type GarageState } from "@/lib/bots/garage-state";
+import { earnedOfBuild, bayOfPart, isHydratedState, type GarageState } from "@/lib/bots/garage-state";
 import { faceAllowed } from "@/lib/bots/look";
 import { STRINGS, fill } from "@/lib/bots/strings";
 import { uiCss } from "../_ui/primitives";
@@ -94,12 +93,9 @@ function firstWonFight(st: GarageState): { bay: number; id: string } | null {
 function matchedBay(st: GarageState): { bay: number; color: string } | null {
   for (const bay of Object.keys(st.builds).map(Number).sort((a, b) => a - b)) {
     const build = st.builds[bay];
-    const colors = BODY_SLOTS.map((s) => {
-      const uid = build.cards[s];
-      return uid ? st.parts.find((p) => p.uid === uid)?.paint ?? null : null;
-    });
-    const first = colors[0];
-    if (first && colors.every((c) => c === first)) return { bay, color: t.paintName[first] };
+    const earned = earnedOfBuild(build, st.parts, st.bays[bay], st.level);
+    const first = earned.paints[0];
+    if (earned.colourMatch && first) return { bay, color: t.paintName[first] };
   }
   return null;
 }
@@ -161,9 +157,7 @@ function momentsOf(st: GarageState, demo: boolean): Moment[] {
 
   const best = bestPart(st);
   if (best) {
-    const bay = Object.keys(st.builds)
-      .map(Number)
-      .find((b) => Object.values(st.builds[b].cards).includes(best.uid));
+    const bay = bayOfPart(st, best.uid);
     const name = bay ? nameOfBay(st, bay) : null;
     if (name && bay) {
       out.push({

@@ -172,6 +172,8 @@ const OUT_MODE = (() => {
   }
   return raw;
 })();
+// --shipped-only lets an art pass refresh one slot without rewriting rulers.
+const SHIPPED_ONLY = process.argv.includes("--shipped-only");
 const V2 = OUT_MODE === "v2";
 const V3 = OUT_MODE === "v3";
 const V2_ROOT = join(ROOT, "_raw", "parts", "placeholders-v2");
@@ -462,6 +464,7 @@ const cband = (cx, cy, R, r, a0, a1, n = 40) => {
   return { k: "poly", pts, bbox: [bx, by, Math.max(...xs) - bx, Math.max(...ys) - by] };
 };
 function shapeSvg(s, attrs) {
+  if (s.k === "path") return `<path d="${s.d}" ${attrs}/>`;
   if (s.k === "rect") {
     return `<rect x="${f(s.x)}" y="${f(s.y)}" width="${f(s.w)}" height="${f(s.h)}" rx="${f(s.r)}" ${attrs}/>`;
   }
@@ -533,6 +536,9 @@ function spec(cx, top, w, span) {
  * contract says it is always the brightest thing on the bot and always lit.
  */
 function render(w, h, all, slot, specCx = null) {
+  if (all[0]?.toyLeg || all[0]?.toyArm) return renderToyLimb(w,h,all);
+  if (all[0]?.toyCharacter) return renderToyCharacter(w,h,all);
+  if (all[0]?.toyWeapon) return renderToyWeapon(w, h, all);
   const [top, bot] = RAMP[slot] ?? [1.0, 0.48];
   // The part's ink extent comes from the SILHOUETTE shapes only: a flat-filled
   // wash lies inside a shape that is already there, so letting it widen the
@@ -586,6 +592,9 @@ function render(w, h, all, slot, specCx = null) {
  * multiply never darkens a lens, the grille, the key or the grip.
  */
 function renderMask(w, h, all) {
+  if (all[0]?.toyLeg || all[0]?.toyArm) return renderToyLimb(w,h,all,true);
+  if (all[0]?.toyCharacter) return renderToyCharacter(w,h,all,true);
+  if (all[0]?.toyWeapon) return renderToyWeapon(w, h, all, true);
   // washes and cuffs lie INSIDE a silhouette shape, so they add nothing to
   // the mask and would spill past their clip if they were included
   const elements = all.filter((e) => !e.flatFill && !e.forceFill);
@@ -610,99 +619,202 @@ function renderMask(w, h, all) {
 // not a bigger head, it is a better appointed one at the same size, because a
 // tier that changes the silhouette breaks every mixed bot.
 
-/**
- * THE HEAD. Half the figure, wider than it is tall, and its underside is a
- * DOME: every collage failure in the whole-bot study had a head cut at its
- * widest row, which left a straight bar lying across the chest. The dome is
- * bought by drawing the head ellipse from the apex all the way to seat+SKIRT
- * and letting the torso cover the bottom SKIRT rows.
- *
- * The EAR LUGS are structural, not decoration. Each is a disc centred on the
- * head's core edge with radius (fullW - coreW)/2, so its outer edge lands
- * exactly on the full width and its lower edge on the crease. That is what
- * covers the shoulder cap, and removing it is what exposes it.
- */
-function headParts(tier, design) {
-  const tk = (tier - 1) / 3;
-  const [sx, sy] = RIG.head.neck;
-  const coreW = tgt("headCoreW");
-  const fullW = tgt("headFullW");
-  const hh = tgt("headH");
-  const top = sy - hh;
-  const er = (fullW - coreW) / 2;
-  const out = [];
+/** A modular toy shelf needs different masses, not eight decorations on one
+ * dome. Every head seats at (228,315); every body covers its neck and both
+ * hips. Neutral ceramic form shading leaves scene light to the renderer. */
+function toyCharacter() {
+  const out=[];
+  const shape=(d,bbox)=>({k:"path",d,bbox});
+  const put=(mat,s,surface=mat)=>out.push({mat,shape:s,surface,toyCharacter:true});
+  const shell=(s,surface="ceramic")=>put("clay",s,surface);
+  const metal=(s)=>put("brass",s,"quietBrass");
+  const dark=(s)=>put("grille",s,"dark");
+  const line=(d,bbox,tone="#727f7d",width=2)=>out.push({mat:"clay",shape:shape(d,bbox),toyCharacter:true,detail:true,tone,width});
+  const bolt=(x,y,r=5)=>{metal(circ(x,y,r));line(`M${x-r*.35} ${y}h${r*.7}`,[x-r*.35,y,r*.7,1],"#7d7258",1.3);};
+  const key=(x,base)=>{
+    metal(rr(x-10,base-17,20,25,5));
+    metal(rr(x-12,base-37,24,11,5));
+    for(const side of [-1,1]){
+      const cx=x+side*25,cy=base-32,r=21,ri=11;
+      metal(shape(`M${cx+r} ${cy}A${r} ${r} 0 1 1 ${cx-r} ${cy}A${r} ${r} 0 1 1 ${cx+r} ${cy}Z M${cx+ri} ${cy}A${ri} ${ri} 0 1 0 ${cx-ri} ${cy}A${ri} ${ri} 0 1 0 ${cx+ri} ${cy}Z`,[cx-r,cy-r,2*r,2*r]));
+    }
+    metal(ell(x,base+6,22,8));
+  };
+  const eyes=(y,dx,r)=>{
+    for(const side of [-1,1]){
+      const x=228+side*dx;
+      shell(circ(x,y,r+9),"bezel");
+      metal(circ(x,y,r+3));
+      put("lens",circ(x,y,r),"bulb");
+      dark(ell(x+2,y+4,r*.25,r*.31));
+      put("lens",circ(x-r*.2,y-r*.29,r*.10),"catch");
+    }
+  };
+  const smile=(x,y,w=43,h=18)=>dark(shape(`M${x-w/2} ${y}Q${x} ${y+7} ${x+w/2} ${y}Q${x+w*.4} ${y+h} ${x} ${y+h}Q${x-w*.4} ${y+h} ${x-w/2} ${y}Z`,[x-w/2,y,w,h]));
+  return {out,shape,put,shell,metal,dark,line,bolt,key,eyes,smile};
+}
 
-  // the low side lugs, first, so the dome overlaps their inner edge
-  for (const s of [-1, 1]) out.push(el("clay", circ(sx + s * (coreW / 2), sy - er * 0.55, er)));
-  // the dome: apex to seat + skirt, so the underside curves in under the body
-  out.push(el("clay", ell(sx, (top + sy + SKIRT) / 2, coreW / 2, (hh + SKIRT) / 2)));
-
-  if (design === 1) {
-    // Round ear caps on the upper sides, as the concept has them. They are
-    // placed so their own top never rises above the dome apex and their outer
-    // edge never passes the full width: the apex IS the top of H, and a cap
-    // that broke either line would silently retune the whole figure.
-    const cr = coreW * (0.13 + tk * 0.015);
-    for (const s of [-1, 1]) out.push(el("clay", circ(sx + s * coreW * 0.40, top + hh * 0.13 + cr, cr)));
-    const eR = coreW * (0.145 + tk * 0.012);
-    const ey = top + hh * 0.46;
-    for (const s of [-1, 1]) out.push(el("lens", circ(sx + s * coreW * 0.215, ey, eR)));
-    for (const s of [-1, 1]) out.push(el("grille", circ(sx + s * coreW * 0.215, ey + eR * 0.06, eR * 0.30)));
-    out.push(el("clay", circ(sx, ey + eR * 1.15, coreW * 0.035))); // the nose nub
-    out.push(el("grille", rr(sx - coreW * 0.185, top + hh * 0.70, coreW * 0.37, hh * 0.115, hh * 0.05)));
-    if (tier >= 3) out.push(el("clay", rr(sx - coreW * 0.13, top + hh * 0.045, coreW * 0.26, hh * 0.075, hh * 0.035)));
+function headParts(tier,design) {
+  const c=toyCharacter(),{out,shape,shell,metal,dark,line,bolt,key,eyes,smile}=c;
+  const id=`${tier}-${design}`;
+  // This small seat is common to every silhouette; its centre is the rig pivot.
+  metal(rr(194,300,68,38,12));
+  if(id==="1-1") {
+    // Small cap: low and wide, with a soft projecting brim.
+    key(228,143);
+    shell(rr(96,141,264,181,61));
+    shell(rr(80,270,296,49,22),"bezel");
+    shell(rr(90,151,276,46,22));
+    eyes(229,58,31);
+    smile(228,283,35,13);
+  } else if(id==="1-2") {
+    // Bell: tall crown, pinched cheeks, and a flared hem.
+    key(228,83);
+    shell(shape("M228 82C292 82 323 122 325 179C327 223 334 263 367 300Q374 312 357 319Q326 334 301 319Q278 337 253 323Q228 340 203 323Q178 337 155 319Q130 334 99 319Q82 312 89 300C122 263 129 223 131 179C133 122 164 82 228 82Z",[85,82,286,249]));
+    eyes(204,51,35);
+    smile(228,273,45,19);
+    line("M113 298Q140 315 159 301Q183 319 205 307Q228 323 251 307Q273 319 297 301Q316 315 343 298",[113,298,230,25],"#a6b0a9",2.1);
+  } else if(id==="2-1") {
+    // Kettle: one deliberately round member of the line, with big ear handles.
+    key(228,73);
+    for(const side of [-1,1]){
+      shell(ell(228+side*164,222,38,65),"bezel");
+      metal(ell(228+side*183,222,13,39));
+    }
+    shell(ell(228,205,161,125));
+    shell(rr(154,74,148,24,12),"bezel");
+    eyes(193,64,42);
+    shell(circ(228,242,10),"bezel");
+    smile(228,270,51,20);
+  } else if(id==="2-2") {
+    // Lantern: a narrow upright cabinet with a rounded shoulder at its crown.
+    key(228,76);
+    shell(rr(103,73,250,255,45));
+    shell(rr(111,91,234,35,16),"bezel");
+    shell(rr(113,297,230,28,13),"bezel");
+    for(const side of [-1,1]){
+      metal(rr(228+side*119-7,149,14,100,7));
+    }
+    eyes(193,53,35);
+    smile(228,269,44,19);
+  } else if(id==="3-1") {
+    // Wedge: small at the top, broad at the chin, a curious little doorstop.
+    key(228,99);
+    shell(shape("M193 97L263 97Q279 97 290 116L359 285Q371 318 339 329L117 329Q85 318 97 285L166 116Q177 97 193 97Z",[92,97,272,232]));
+    shell(shape("M113 285L343 285Q354 306 337 316L119 316Q102 306 113 285Z",[107,285,243,31]),"bezel");
+    eyes(210,48,31);
+    smile(228,270,40,15);
+  } else if(id==="3-2") {
+    // Visor: a very wide rounded pill with a raised central brow.
+    key(228,153);
+    shell(rr(38,148,380,182,87));
+    shell(rr(66,173,324,114,49),"insetCeramic");
+    eyes(222,83,35);
+    smile(228,295,42,14);
+    for(const side of [-1,1]) metal(ell(228+side*178,240,10,32));
+  } else if(id==="4-1") {
+    // Shovel helmet: broad brow, pointed shoulders, tucked-in lower jaw.
+    key(228,92);
+    shell(shape("M100 119Q128 84 172 89L284 89Q328 84 356 119L403 220Q410 240 388 251L346 252L317 316Q310 331 291 331L165 331Q146 331 139 316L110 252L68 251Q46 240 53 220Z",[49,88,358,243]));
+    shell(shape("M84 157Q228 129 372 157L385 192Q228 168 71 192Z",[71,146,314,46]),"bezel");
+    eyes(223,70,36);
+    smile(228,283,50,21);
+    line("M164 316Q228 329 292 316",[164,316,128,13],"#8e9b98",2);
   } else {
-    // a softened box head: still wider than tall, still domed underneath
-    const bw = coreW * 0.96;
-    out.push(el("clay", rr(sx - bw / 2, top, bw, hh + SKIRT, bw * 0.30)));
-    const eR = coreW * (0.19 + tk * 0.015);
-    const ey = top + hh * 0.45;
-    out.push(el("lens", circ(sx, ey, eR)));
-    out.push(el("grille", circ(sx + eR * 0.12, ey + eR * 0.06, eR * 0.30)));
-    out.push(el("grille", rr(sx - coreW * 0.21, top + hh * 0.71, coreW * 0.42, hh * 0.10, hh * 0.045)));
-    // the aerial nub stays below the dome apex, for the reason above
-    if (tier >= 2) out.push(el("clay", rr(sx - coreW * 0.05, top + hh * 0.07, coreW * 0.10, hh * 0.10, coreW * 0.04)));
-    if (tier === 4) out.push(el("clay", circ(sx, top + hh * 0.09, coreW * 0.05)));
+    // Brick: the broad soft square, almost all cheerful face.
+    key(228,81);
+    shell(rr(52,78,352,251,44));
+    shell(rr(79,123,298,150,34),"insetCeramic");
+    eyes(195,74,40);
+    smile(228,286,47,20);
+    for(const side of [-1,1]) metal(rr(228+side*178-7,175,14,75,7));
+    bolt(89,293,6);bolt(367,293,6);
   }
   return out;
 }
 
-/**
- * THE TORSO. A small wide barrel, not a slab: body width over body height is
- * 1.57, which is the number that reads as a wind-up toy rather than a figure.
- * It carries the buried skirt above its neck so no head can open a gap, and
- * the ONE brass piece the whole bot is allowed: the wind-up key.
- *
- * There is no neck cup, no shoulder cup and no hip cup, because the concept
- * has none. The limbs go BEHIND this shape and the head covers what is left.
- */
-function torsoParts(tier, design) {
-  const tk = (tier - 1) / 3;
-  const [nx, ny] = RIG.torso.neck;
-  const bw = tgt("bodyW");
-  const bh = tgt("bodyH");
-  const out = [];
-  // the body: SKIRT rows above the neck are buried under the head
-  out.push(el("clay", rr(nx - bw / 2, ny - SKIRT, bw, bh + SKIRT, bw * 0.28)));
-
-  if (design === 1) {
-    // a soft chest panel and a seam, in clay: shape, not hardware
-    out.push(el("clay", rr(nx - bw * 0.30, ny + bh * 0.16, bw * 0.34, bh * 0.44, bw * 0.06)));
-    if (tier >= 3) out.push(el("clay", rr(nx - bw * 0.40, ny + bh * 0.74, bw * 0.80, bh * 0.10, bh * 0.05)));
-  } else {
-    out.push(el("clay", rr(nx - bw * 0.36, ny + bh * 0.20, bw * 0.72, bh * 0.34, bw * 0.10)));
-    if (tier >= 2) out.push(el("lens", circ(nx - bw * 0.20, ny + bh * 0.37, bw * 0.075 + tk * 6)));
+function torsoParts(tier,design) {
+  const {out,shape,shell,metal,line,bolt}=toyCharacter();
+  const id=`${tier}-${design}`;
+  // Universal hip and shoulder fittings let narrow bodies sit with wide arms.
+  // They stay behind the main shell; they are visible only where it narrows.
+  for(const x of [94,194]) metal(ell(x,219,25,24));
+  shell(rr(26,73,236,22,10),"bezel");
+  for(const x of [29,259]){
+    shell(ell(x,84,20,30),"bezel");
+    metal(ell(x,84,12,23));
   }
-  // THE WIND-UP KEY. The only metal on the figure. Brass budget: under 4
-  // percent of visible surface, against 18.9 to 21.5 percent before this bake.
-  const kx = nx + bw * 0.24;
-  const ky = ny + bh * 0.42;
-  const kr = bw * 0.052 + tk * 3;
-  out.push(el("brass", rr(kx - kr * 0.28, ky - kr * 0.2, kr * 0.56, kr * 2.3, kr * 0.28)));
-  out.push(el("brass", circ(kx - kr * 0.85, ky - kr * 0.55, kr * 0.72)));
-  out.push(el("brass", circ(kx + kr * 0.85, ky - kr * 0.55, kr * 0.72)));
+  metal(rr(115,37,58,37,11));
+  if(id==="1-1") {
+    // Barrel: straight sides with a round rolled belly.
+    shell(shape("M51 49Q144 26 237 49Q255 55 255 76L255 181Q255 235 194 240L94 240Q33 235 33 181L33 76Q33 55 51 49Z",[33,37,222,203]));
+    shell(rr(39,58,210,22,10),"bezel");
+    line("M45 188Q144 216 243 188",[45,188,198,28],"#94a19c",2);
+    shell(rr(97,111,94,80,19),"insetCeramic");
+  } else if(id==="1-2") {
+    // Pear: a little top and a generous soft bottom.
+    shell(shape("M99 46Q144 34 189 46Q216 60 224 104C231 135 270 150 271 185Q274 237 212 250L76 250Q14 237 17 185C18 150 57 135 64 104Q72 60 99 46Z",[16,40,256,210]));
+    shell(ell(144,166,60,54),"insetCeramic");
+  } else if(id==="2-1") {
+    // Spool: wide top and bottom, a noticeably pinched middle.
+    shell(shape("M38 56Q30 40 55 36L233 36Q258 40 250 56C222 93 208 112 208 140C208 172 233 199 258 214Q270 225 254 237L34 237Q18 225 30 214C55 199 80 172 80 140C80 112 66 93 38 56Z",[25,36,238,201]));
+    shell(rr(30,39,228,28,13),"bezel");
+    shell(rr(29,214,230,27,13),"bezel");
+    shell(ell(144,143,43,44),"insetCeramic");
+  } else if(id==="2-2") {
+    // Cabinet: tall and narrow, with short arms on its upper side walls.
+    shell(rr(63,24,162,221,37));
+    shell(rr(77,81,134,128,18),"insetCeramic");
+    shell(rr(72,223,144,22,9),"bezel");
+    bolt(90,99,5);bolt(198,99,5);
+    line("M98 196h92",[98,196,92,1],"#929f99",2);
+  } else if(id==="3-1") {
+    // Funnel: all shoulders, with a small tucked-in waist.
+    shell(shape("M36 42L252 42Q272 42 269 65L220 216Q212 241 192 241L96 241Q76 241 68 216L19 65Q16 42 36 42Z",[19,42,250,199]));
+    shell(rr(34,47,220,29,13),"bezel");
+    shell(shape("M100 109L188 109L180 182L108 182Z",[100,109,88,73]),"insetCeramic");
+  } else if(id==="3-2") {
+    // Drum: the round member, broad in the middle with softly rolled rims.
+    shell(ell(144,142,129,108));
+    shell(rr(64,39,160,23,11),"bezel");
+    shell(ell(144,147,70,62),"insetCeramic");
+    line("M41 198Q144 251 247 198",[41,198,206,53],"#909f98",2);
+  } else if(id==="4-1") {
+    // Wide brick: a low toy chest above a short pair of hip sockets.
+    shell(rr(71,173,146,69,22),"bezel");
+    shell(rr(10,53,268,154,29));
+    shell(rr(37,83,214,98,19),"insetCeramic");
+    bolt(54,101,6);bolt(234,101,6);
+  } else {
+    // Shield: broad high sides and a rounded taper around the hips.
+    shell(shape("M69 34L219 34Q232 35 242 50L272 102Q279 116 270 137L226 214Q211 244 185 249L103 249Q77 244 62 214L18 137Q9 116 16 102L46 50Q56 35 69 34Z",[13,34,262,215]));
+    shell(shape("M88 73L200 73Q213 74 219 91L230 136Q232 154 219 169L181 207L107 207L69 169Q56 154 58 136L69 91Q75 74 88 73Z",[58,73,172,134]),"insetCeramic");
+    bolt(89,88,5);bolt(199,88,5);
+  }
+  // A quiet common medallion leaves the rig's chest decal spot readable.
+  metal(circ(144,148,15));
+  shell(circ(144,148,10),"bezel");
   return out;
 }
+
+function renderToyCharacter(w,h,all,maskOnly=false) {
+  if(maskOnly) {
+    const shapes=all.filter(e=>!e.detail).map(e=>shapeSvg(e.shape,`fill="${e.mat==="clay"?"white":"black"}" stroke="${e.mat==="clay"?"white":"black"}" stroke-width="1.4" stroke-linejoin="round"`)).join("");
+    return svg(w,h,`<defs><mask id="paint" maskUnits="userSpaceOnUse" x="0" y="0" width="${w}" height="${h}">${shapes}</mask></defs><rect width="${w}" height="${h}" fill="white" mask="url(#paint)"/>`);
+  }
+  // Quiet brass has R-G below 22. Only the bulbs satisfy measureEyes' warm
+  // pixel rule; a key or a screw must never become an accidental third eye.
+  const defs=`<radialGradient id="ceramic" cx="50%" cy="43%" r="68%"><stop stop-color="#e4e7df"/><stop offset=".48" stop-color="#ced6cf"/><stop offset=".8" stop-color="#adbab4"/><stop offset="1" stop-color="#8c9c98"/></radialGradient>
+  <radialGradient id="bezel" cx="50%" cy="45%" r="65%"><stop stop-color="#e8eae0"/><stop offset=".58" stop-color="#ced5c9"/><stop offset=".87" stop-color="#a4b1a8"/><stop offset="1" stop-color="#83978e"/></radialGradient>
+  <radialGradient id="insetCeramic" cx="50%" cy="46%" r="72%"><stop stop-color="#d1d8ce"/><stop offset=".66" stop-color="#b6c3b7"/><stop offset="1" stop-color="#8d9f93"/></radialGradient>
+  <linearGradient id="quietBrass" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#aa9b70"/><stop offset=".45" stop-color="#decd94"/><stop offset=".75" stop-color="#c2b27b"/><stop offset="1" stop-color="#918362"/></linearGradient>
+  <radialGradient id="bulb" cx="50%" cy="48%" r="62%"><stop stop-color="#ffe4a0"/><stop offset=".35" stop-color="#f8d580"/><stop offset=".72" stop-color="#ebbd65"/><stop offset="1" stop-color="#c48f47"/></radialGradient>
+  <linearGradient id="dark"><stop stop-color="#3f463d"/><stop offset="1" stop-color="#323b32"/></linearGradient>
+  <linearGradient id="catch"><stop stop-color="#fff4ce"/><stop offset="1" stop-color="#fff4ce"/></linearGradient>`;
+  const body=all.map(e=>e.detail?shapeSvg(e.shape,`fill="none" stroke="${e.tone}" stroke-width="${e.width}" stroke-linecap="round" opacity=".6"`):shapeSvg(e.shape,`fill="url(#${e.surface})" stroke="${e.mat==="clay"?"#82948d":e.mat==="brass"?"#8f835f":e.mat==="lens"?"#d8b064":"#3b4639"}" stroke-width="1.4" stroke-linejoin="round"`)).join("");
+  return svg(w,h,`<defs>${defs}</defs>${body}`);
+}
+
 
 /**
  * THE LIMB CAP AND ITS OCCLUSION. A plain rounded cap in the limb's own
@@ -740,27 +852,104 @@ function occlusion(cx, top, w, len, limb) {
  * shipped. It is one capsule plus a mitt, its cap half buried, and it is
  * laterally symmetric so the rig's mirror does not flip its light.
  */
-function armParts(tier, design, plate) {
-  const tk = (tier - 1) / 3;
-  const [sx, sy] = RIG.arm.shoulder;
-  const aw = dim("armW", plate);
-  const al = dim("armL", plate);
-  const top = sy - aw / 2; // the own-width pivot: 0.5 x this arm's own width
-  const out = [];
-  const shaft = rr(sx - aw / 2, top, aw, aw / 2 + al, aw / 2);
-  out.push(el("clay", shaft));
-  // the mitt: a little fatter than the shaft, centred on the hand pivot
-  const mr = aw * (0.56 + tk * 0.02);
-  out.push(el("clay", circ(sx, top + aw / 2 + al - mr * 0.45, mr)));
-  out.push(...occlusion(sx, top, aw, al, shaft));
-  if (design === 1) {
-    // a moulded elbow ring, clay, symmetric
-    out.push({ mat: "clay", shape: rr(sx - aw / 2, top + aw / 2 + al * 0.42, aw, al * 0.10, aw * 0.1), forceFill: mulHex(CLAY, 0.80) });
-  } else if (tier >= 2) {
-    out.push({ mat: "clay", shape: circ(sx, top + aw / 2 + al * 0.46, aw * 0.42), forceFill: mulHex(CLAY, 0.84) });
+/** Eight individual arms on the frozen 128x280 canvas. Each rounded upper
+ * attachment covers shoulder [64,63]; every palm covers hand [64,184].
+ * Render through the neutral limb material helper used by the leg library.
+ * One source drawing works on either side of a mixed robot. */
+function armParts(tier,design,plate) {
+  const [sx,sy]=RIG.arm.shoulder;
+  const out=[];
+  const path=(d,bbox)=>({k:"path",d,bbox});
+  const put=(mat,shape,surface=mat,extra={})=>out.push({mat,shape,surface,toyArm:true,...extra});
+  const shell=(shape,surface="ceramic")=>put("clay",shape,surface);
+  const brass=shape=>put("brass",shape,"quietBrass");
+  const dark=shape=>put("rubber",shape,"dark");
+  const line=(d,bbox,tone="#7f9389",width=1.7)=>put("clay",path(d,bbox),"ceramic",{detail:true,tone,width});
+  const tube=(d,bbox,width=10)=>put("brass",path(d,bbox),"quietBrass",{strokeOnly:true,width});
+  const bolt=(x,y,r=7)=>{brass(circ(x,y,r));line(`M${x-r*.4} ${y}h${r*.8}`,[x-r*.4,y,r*.8,1],"#857654",1.3);};
+  const variant=(tier-1)*2+design;
+
+  shell(circ(sx,sy,30));
+  dark(rr(sx-16,sy+11,32,29,10));
+  brass(rr(sx-24,sy+17,48,13,6));
+
+  if(variant===1) {
+    // A friendly round mitten, with one thumb and a curved forearm.
+    shell(path("M48 86 Q68 76 81 91 L90 133 Q90 150 78 156 L45 151 Q33 139 38 120Z",[36,81,55,76]));
+    shell(rr(40,140,50,18,8),"bezel");
+    shell(ell(68,181,37,35));
+    shell(ell(36,183,15,22),"bezel");
+    line("M48 177 Q43 189 49 201",[43,177,6,24]);
+    line("M62 160 Q78 155 89 169",[62,158,27,11]);
+  } else if(variant===2) {
+    // A crescent clamp. The clear bite opens outward; its thick inner palm
+    // still holds the weapon at the exact universal grip point.
+    shell(rr(46,89,36,40,15));
+    bolt(64,114,13);
+    shell(rr(43,123,43,25,11),"bezel");
+    shell(path("M108 140 C84 119 48 126 31 151 C14 178 25 207 52 219 C77 232 100 215 113 195 Q96 207 79 195 Q72 187 72 173 Q74 153 92 151 Q103 152 109 158 Q118 153 108 140Z",[21,127,96,97]));
+    line("M38 159 Q27 185 48 203",[29,159,19,44]);
+    bolt(47,157,6);
+  } else if(variant===3) {
+    // A soft rectangular fist: the block family’s big, simple punch.
+    shell(rr(43,91,42,50,16));
+    brass(rr(38,129,52,12,5));
+    shell(rr(19,141,93,75,20));
+    shell(rr(17,168,26,33,11),"bezel");
+    line("M49 150v15",[49,150,1,15]);
+    line("M73 150v15",[73,150,1,15]);
+    line("M93 153v12",[93,153,1,12]);
+    line("M44 179v22",[44,179,1,22]);
+  } else if(variant===4) {
+    // A slim telescopic arm, with a small gripping hand below the piston.
+    shell(rr(44,91,40,29,12),"bezel");
+    dark(rr(56,109,16,49,6));
+    brass(rr(60,111,8,47,4));
+    shell(rr(46,147,36,22,9),"bezel");
+    shell(ell(66,184,24,26));
+    shell(ell(45,187,11,16),"bezel");
+    line("M55 178 Q50 190 56 199",[50,178,6,21]);
+  } else if(variant===5) {
+    // Two curved fingers. They close around a solid palm at the hand pivot;
+    // the large notch below them stays empty in both the art and its mask.
+    shell(path("M47 88 Q69 80 81 97 L89 127 Q90 144 77 149 L45 145 Q36 134 40 117Z",[39,86,51,63]));
+    brass(rr(43,140,43,11,5));
+    shell(circ(64,166,25));
+    shell(path("M48 158 Q20 172 28 199 Q32 214 49 216 Q59 214 56 205 L53 195 Q39 191 48 181 L62 176Z",[25,158,37,58]),"bezel");
+    shell(path("M78 158 Q111 174 103 200 Q97 216 80 217 Q68 215 72 205 L75 195 Q92 191 81 180 L66 176Z",[66,158,40,59]),"bezel");
+    line("M58 158 Q65 154 73 159",[58,155,15,4]);
+  } else if(variant===6) {
+    // A spring forearm and a narrow paddle-shaped mitten.
+    dark(rr(59,92,10,70,4));
+    tube("M64 94 C101 95 102 111 64 113 C26 115 27 132 65 134 C101 136 100 151 64 153",[32,88,66,71],11);
+    shell(rr(40,91,48,14,6),"bezel");
+    shell(rr(44,151,40,17,7),"bezel");
+    shell(ell(67,184,27,36));
+    shell(ell(43,190,11,21),"bezel");
+    line("M54 181 Q50 198 57 208",[50,181,7,27]);
+  } else if(variant===7) {
+    // A broad shield forearm, with a little palm moulded into its lower end.
+    shell(rr(44,89,40,36,13));
+    brass(rr(39,115,50,11,5));
+    shell(path("M43 123 Q63 110 84 124 L110 150 Q117 159 110 173 L86 211 Q78 224 61 220 L34 213 Q22 208 20 194 L15 159 Q14 150 24 143Z",[14,117,100,105]));
+    shell(path("M47 139 Q64 128 78 140 L96 158 L79 189 L46 185 L31 158Z",[31,133,65,56]),"bezel");
+    shell(ell(65,187,19,25));
+    line("M56 183 Q50 194 57 203",[50,183,7,20]);
+    bolt(64,149,6);
+  } else {
+    // A forked forearm with a wide spool-shaped fist. The opening through
+    // the support is real negative space, not a dark painted mark.
+    shell(rr(41,90,46,21,9),"bezel");
+    shell(path("M39 101 Q64 92 89 101 L103 158 L85 166 L74 120 L54 120 L44 165 L25 158Z",[25,97,78,69]));
+    shell(ell(65,185,46,31));
+    shell(ell(65,181,34,19),"bezel");
+    line("M40 178 Q65 164 90 178",[40,168,50,10]);
+    line("M44 191 Q65 202 87 191",[44,191,43,7]);
+    bolt(64,105,6);
   }
   return out;
 }
+
 
 /**
  * THE LEG. Mostly foot: 0.210 H of leg against 0.174 H of foot leaves a
@@ -769,58 +958,265 @@ function armParts(tier, design, plate) {
  * toe points outboard and the rig mirrors the sprite for the other side. The
  * light stays symmetric either way, because the ramp is purely vertical.
  */
+/** Eight individual toy legs. The upper cap covers hip [70,63] and every
+ * contact surface covers foot [70,181] on the frozen 192x280 canvas.
+ * Character comes from the load-bearing silhouette; the same neutral
+ * ceramic, quiet brass and coral rubber make unlike pieces belong together.
+ * The scene supplies directional light and contact shadows. */
 function legParts(tier, design, plate) {
-  const tk = (tier - 1) / 3;
   const [hx, hy] = RIG.leg.hip;
-  const lw = Math.round(dim("armW", plate) * 1.02);
-  const lh = dim("legH", plate);
-  const fw = dim("footW", plate);
-  const fh = dim("footH", plate);
-  const top = hy - lw / 2;
-  const floor = hy + lh;
   const out = [];
-  const shaft = rr(hx - lw / 2, top, lw, lw / 2 + lh - fh * 0.55, lw / 2);
-  out.push(el("clay", shaft));
-  // the shoe: wide, rounded, the toe forward of the shaft by the solved offset
-  const fx0 = hx + fw * FOOT_OFF_F - fw / 2;
-  out.push(el("clay", rr(fx0, floor - fh, fw, fh, fh * 0.46)));
-  if (design === 1) {
-    out.push({ mat: "clay", shape: rr(fx0 + fw * 0.06, floor - fh * 0.34, fw * 0.88, fh * 0.22, fh * 0.11), forceFill: mulHex(CLAY, 0.82) });
+  const path = (d,bbox) => ({ k:"path", d, bbox });
+  const put = (mat,shape,surface=mat,extra={}) => out.push({mat,shape,surface,toyLeg:true,...extra});
+  const shell = (shape,surface="ceramic") => put("clay",shape,surface);
+  const brass = shape => put("brass",shape,"quietBrass");
+  const coral = shape => put("coral",shape,"coral");
+  const dark = shape => put("rubber",shape,"dark");
+  const line = (d,bbox,tone="#7f9389",width=1.7) => put("clay",path(d,bbox),"ceramic",{detail:true,tone,width});
+  const tube = (d,bbox,width=10,surface="quietBrass") => put(surface==="ceramic"?"clay":"brass",path(d,bbox),surface,{strokeOnly:true,width});
+  const bolt = (x,y,r=7) => { brass(circ(x,y,r)); line(`M${x-r*.4} ${y}h${r*.8}`,[x-r*.4,y,r*.8,1],"#857654",1.3); };
+  const variant = (tier-1)*2 + design;
+
+  // One rounded attachment, deliberately visible when this is a loose part.
+  // It replaces the old crop-flat ankle pillar and remains buried in a body.
+  shell(circ(hx,hy,22));
+  dark(rr(hx-13,hy+8,26,23,8));
+  brass(rr(hx-21,hy+11,42,11,5));
+
+  if (variant===1) {
+    // A low, forward-reaching work boot with a little ankle above its heel.
+    shell(rr(48,82,46,57,18));
+    shell(path("M37 145 Q34 117 49 110 Q65 103 89 115 L120 125 Q158 126 170 146 Q179 159 172 172 L35 172 Q30 159 37 145Z",[30,105,147,67]));
+    coral(path("M34 166 Q83 171 174 166 L174 173 Q173 183 158 184 L48 184 Q30 184 30 174Z",[30,166,144,18]));
+    shell(rr(44,105,45,15,7),"bezel");
+    line("M102 141 Q132 136 155 151",[102,138,53,13]);
+    bolt(64,111,6);
+  } else if (variant===2) {
+    // One wheel, with a real tyre silhouette and a paintable crescent fender.
+    shell(rr(53,82,34,36,10),"bezel");
+    coral(circ(76,136,47));
+    dark(circ(76,136,36));
+    shell(circ(76,136,28));
+    for(let i=0;i<6;i++) {
+      const a=i*Math.PI/3;
+      line(`M${76+Math.cos(a)*11} ${136+Math.sin(a)*11}L${76+Math.cos(a)*22} ${136+Math.sin(a)*22}`,[48,108,56,56],"#7d9388",2.8);
+    }
+    bolt(76,136,11);
+    shell(path("M25 129 C25 65 125 64 128 129 L115 130 C110 88 43 86 38 129Z",[25,79,103,51]),"bezel");
+    for(const a of [-150,-120,-90,-60,-30,0,30,60,90,120,150,180]) {
+      const rad=a*Math.PI/180;
+      line(`M${76+Math.cos(rad)*41} ${136+Math.sin(rad)*41}L${76+Math.cos(rad)*46} ${136+Math.sin(rad)*46}`,[29,89,94,94],"#925a4a",1.9);
+    }
+  } else if (variant===3) {
+    // A short, stout spring. Gaps remain transparent at fighting scale.
+    dark(rr(65,85,10,66,4));
+    tube("M70 85 C106 85 105 100 69 102 C34 103 35 117 71 119 C105 120 106 134 69 138",[40,80,63,63],11);
+    shell(rr(48,80,44,14,6),"bezel");
+    shell(rr(46,137,48,20,9),"bezel");
+    shell(path("M37 170 Q37 142 59 144 L87 147 Q127 137 146 165 L147 172 L35 172Z",[35,142,112,30]));
+    coral(rr(32,168,119,16,8));
+    line("M98 155 Q119 151 133 164",[98,153,35,11]);
+  } else if (variant===4) {
+    // A slender piston above a long, flat skate-like shoe.
+    shell(rr(50,82,40,38,15),"bezel");
+    dark(rr(59,106,22,40,8));
+    brass(rr(64,107,12,41,5));
+    shell(rr(49,132,43,28,9));
+    shell(path("M41 164 Q44 149 65 148 L91 153 L154 157 Q172 159 174 174 L39 174Z",[39,148,135,26]));
+    coral(rr(36,171,142,13,6));
+    shell(rr(46,84,48,13,6),"bezel");
+    line("M100 163 L151 166",[100,163,51,3]);
+  } else if (variant===5) {
+    // A curved shin: one thick ceramic C with visible air inside it.
+    shell(bar(69,80,93,88,21),"bezel");
+    shell(cband(78,111,44,25,121,302,42));
+    shell(bar(58,141,76,160,24),"bezel");
+    shell(path("M37 168 Q38 150 60 149 L92 157 Q130 148 155 166 L156 174 L34 174Z",[34,149,122,25]));
+    coral(rr(31,170,129,14,7));
+    bolt(48,111,7);
+  } else if (variant===6) {
+    // A tiny caterpillar track: low, broad, and clearly different from a shoe.
+    shell(rr(49,82,42,41,15));
+    coral(rr(25,127,151,57,28));
+    dark(rr(34,135,133,40,20));
+    shell(circ(58,155,15),"bezel");
+    shell(circ(144,155,15),"bezel");
+    shell(circ(101,155,12),"bezel");
+    bolt(58,155,5); bolt(144,155,5);
+    shell(path("M27 137 Q28 113 49 112 L139 112 Q163 113 175 137 L159 137 Q149 127 136 128 L50 128 Q39 129 38 137Z",[27,112,148,25]));
+    for(const x of [43,63,83,103,123,143,160]) line(`M${x} 176v6`,[x,176,1,6],"#935d4a",2);
+    for(const x of [51,74,97,120,143]) line(`M${x} 128v6`,[x,128,1,6],"#a0634e",2);
+  } else if (variant===7) {
+    // A forked support with one attachment and a chunky chisel toe.
+    shell(rr(48,82,45,27,11),"bezel");
+    shell(path("M47 101 Q70 92 97 104 L111 155 L91 158 L80 119 L66 119 L59 158 L39 155Z",[39,98,72,60]));
+    shell(path("M34 159 Q39 146 62 147 L108 148 L158 163 L158 174 L33 174Z",[33,146,125,28]),"bezel");
+    coral(path("M30 170 L162 170 L162 181 Q94 186 30 181Z",[30,170,132,14]));
+    bolt(71,105,7);
+    line("M114 159 L143 168",[114,159,29,9]);
   } else {
-    out.push({ mat: "clay", shape: circ(fx0 + fw * 0.72, floor - fh * 0.58, fh * (0.20 + tk * 0.02)), forceFill: mulHex(CLAY, 0.86) });
+    // A flared bell boot: narrow above, broad below, with three soft pads.
+    shell(rr(50,81,40,36,17));
+    shell(path("M48 111 Q48 96 68 97 Q89 96 93 114 L102 140 Q107 151 127 158 Q143 163 146 177 L29 177 Q27 164 38 154 Q46 147 45 132Z",[28,96,119,81]));
+    coral(rr(27,169,38,15,7));
+    coral(rr(60,173,47,11,5));
+    coral(rr(102,167,46,17,8));
+    shell(rr(47,102,47,13,6),"bezel");
+    line("M54 131 Q54 150 42 159",[42,131,12,28]);
+    line("M87 129 Q90 151 122 164",[87,129,35,35]);
+    bolt(70,108,6);
   }
-  out.push(...occlusion(hx, top, lw, lh, shaft));
   return out;
 }
+
+function renderToyLimb(w,h,all,maskOnly=false) {
+  const draw=(e,fill,stroke) => shapeSvg(e.shape, e.strokeOnly
+    ? `fill="none" stroke="${stroke}" stroke-width="${e.width}" stroke-linecap="round" stroke-linejoin="round"`
+    : `fill="${fill}" stroke="${stroke}" stroke-width="1.4" stroke-linejoin="round"`);
+  if(maskOnly) {
+    const shapes=all.filter(e=>!e.detail).map(e=>draw(e,e.mat==="clay"?"white":"black",e.mat==="clay"?"white":"black")).join("");
+    return svg(w,h,`<defs><mask id="legPaint" maskUnits="userSpaceOnUse" x="0" y="0" width="${w}" height="${h}">${shapes}</mask></defs><rect width="${w}" height="${h}" fill="white" mask="url(#legPaint)"/>`);
+  }
+  const defs=`<radialGradient id="ceramic" cx="50%" cy="47%" r="67%"><stop stop-color="#e4e7df"/><stop offset=".48" stop-color="#ced6cf"/><stop offset=".8" stop-color="#adbab4"/><stop offset="1" stop-color="#8c9c98"/></radialGradient>
+  <radialGradient id="bezel" cx="50%" cy="48%" r="65%"><stop stop-color="#e8eae0"/><stop offset=".58" stop-color="#ced5c9"/><stop offset=".87" stop-color="#a4b1a8"/><stop offset="1" stop-color="#83978e"/></radialGradient>
+  <linearGradient id="quietBrass" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#aa9b70"/><stop offset=".45" stop-color="#decd94"/><stop offset=".75" stop-color="#c2b27b"/><stop offset="1" stop-color="#918362"/></linearGradient>
+  <radialGradient id="coral" cx="50%" cy="45%" r="77%"><stop stop-color="#d8987d"/><stop offset=".55" stop-color="#cd846b"/><stop offset="1" stop-color="#aa6652"/></radialGradient>
+  <radialGradient id="dark"><stop stop-color="#495149"/><stop offset="1" stop-color="#343e36"/></radialGradient>`;
+  const body=all.map(e=>e.detail
+    ? shapeSvg(e.shape,`fill="none" stroke="${e.tone}" stroke-width="${e.width}" stroke-linecap="round" opacity=".7"`)
+    : draw(e,`url(#${e.surface})`,e.strokeOnly?`url(#${e.surface})`:e.mat==="clay"?"#82948d":e.mat==="brass"?"#8f835f":e.mat==="coral"?"#a26754":"#364139")
+  ).join("");
+  return svg(w,h,`<defs>${defs}</defs>${body}`);
+}
+
 
 /**
  * THE WEAPON. Clay and one rubber grip: a mallet is a tool, not a fitting,
  * and the brass budget is spent on the torso's key. Inset by MARGIN like
  * every other canvas.
  */
+/** Eight toy tools. All share the frozen grip (38,68), but each has a
+ * different silhouette. These are finished SVG forms, not generation rulers.
+ * Broad centre-to-edge shading describes the material without baking a scene
+ * key, rim or cast shadow. The assembled robot receives those at runtime. */
 function weaponParts(tier, design) {
-  const tk = (tier - 1) / 3;
-  const M = MARGIN;
   const out = [];
-  if (design === 1) {
-    out.push(el("clay", rr(M + 56, M + 52, 100, 16, 8)));
-    const hh = 64 + tk * 16;
-    out.push(el("clay", rr(M + 150, M + 60 - hh / 2, 62, hh, 14)));
-    out.push(el("rubber", rr(M + 6, M + 48, 56, 24, 12)));
-    out.push(el("clay", rr(M + 144, M + 46, 12, 28, 4)));
-  } else {
-    out.push(el("clay", rr(M + 56, M + 52, 96, 16, 8)));
-    const dr = 34 + tk * 8;
-    out.push(el("clay", circ(M + 170, M + 60, dr)));
-    out.push(el("rubber", rr(M + 6, M + 48, 56, 24, 12)));
-    const teeth = [0, 4, 6, 8][tier - 1];
-    for (let i = 0; i < teeth; i++) {
-      const a = (i / teeth) * Math.PI * 2;
-      out.push(el("clay", circ(M + 170 + Math.cos(a) * (dr - 6), M + 60 + Math.sin(a) * (dr - 6), 5)));
+  const put = (mat, shape, surface = mat, extra = {}) => out.push({ mat, shape, surface, toyWeapon: true, ...extra });
+  const path = (d, bbox) => ({ k: "path", d, bbox });
+  const metal = (shape, surface = "metal") => put("clay", shape, surface);
+  const brass = (shape) => put("brass", shape, "brass");
+  const rubber = (shape) => put("rubber", shape, "rubber");
+  const groove = (d, bbox, tone = "#536065", width = 1.6) =>
+    out.push({ mat: "clay", shape: path(d, bbox), toyWeapon: true, detail: true, tone, width });
+  const bolt = (x, y, r = 5) => {
+    brass(circ(x, y, r));
+    groove(`M${x-r*.38} ${y}h${r*.76}`, [x-r*.38,y,r*.76,1], "#71613f", 1.5);
+  };
+  // A short dark grip has enough ink for the hand in every rotation. The
+  // shaft reaches behind the head of each tool; no floating components.
+  metal(rr(46, 59, 129, 18, 9), "shaft");
+  rubber(rr(14, 54, 52, 28, 13));
+  for (const x of [24, 33, 42, 51]) groove(`M${x} 57v22`, [x,57,1,22], "#606463", 1.4);
+  brass(rr(61, 55, 10, 26, 4));
+  const id = `${tier}-${design}`;
+  if (id === "1-1") {
+    // Open wrench: the transparent mouth matters more than surface detail.
+    metal(path("M140 47C149 26 173 14 194 23L215 35Q221 39 216 44L192 42L180 56L183 79L202 88L222 82Q228 80 225 88C216 111 185 122 162 107C147 98 141 86 137 80L116 79L116 56Z", [116,19,112,100]), "round");
+    metal(path("M154 50C165 34 177 30 190 34L202 40L188 40L176 55L179 82L196 91L211 88C196 106 177 104 164 94C155 86 151 72 154 50Z", [151,30,60,77]), "inset");
+    bolt(146, 67, 5.3);
+  } else if (id === "1-2") {
+    // A long softly tapered baton: one unbroken friendly capsule.
+    metal(path("M100 54C120 47 175 37 204 44Q225 48 225 68Q225 88 204 92C177 100 122 87 100 82Q90 79 90 68Q90 57 100 54Z", [90,39,136,58]), "shaft");
+    brass(rr(99, 51, 11, 34, 4));
+    metal(ell(211,68,11,22), "round");
+    groove("M122 57C146 52 167 50 190 50", [122,50,68,7], "#eef0eb", 1.8);
+    bolt(115, 68, 4);
+  } else if (id === "2-1") {
+    // Axe: a narrow poll and a broad crescent cutting pad, all blunt toy edges.
+    metal(path("M145 49L181 44Q195 30 222 19Q211 68 223 116Q197 108 181 92L145 87Q135 84 135 68Q135 52 145 49Z", [135,19,89,97]), "round");
+    metal(path("M206 29Q199 68 208 108L222 116Q211 68 222 19Z", [199,19,25,97]), "edge");
+    metal(rr(142,44,25,48,8), "shaft");
+    bolt(154,68,7);
+    groove("M187 50Q196 68 187 87", [187,50,9,37], "#5e686c", 1.5);
+  } else if (id === "2-2") {
+    // Drill: a small round motor, three broad screw flutes, and a stubby tip.
+    rubber(rr(103, 42, 16, 52, 7));
+    metal(rr(109, 37, 65, 62, 22), "round");
+    metal(rr(159, 45, 18, 46, 7), "shaft");
+    brass(path("M176 49L218 61Q229 68 218 75L176 87Z", [176,49,53,38]));
+    for (const [x, h] of [[181,32],[191,25],[201,18],[211,10]])
+      groove(`M${x} ${68-h/2}l8 ${h}`, [x,68-h/2,8,h], "#76684f", 3.5);
+    for (const y of [53,61,69]) groove(`M118 ${y}h17`, [118,y,17,1], "#6b777a", 2.5);
+    bolt(148,68,7);
+    metal(rr(125, 31, 21, 10, 4), "shaft");
+  } else if (id === "3-1") {
+    // Saw: twelve big rounded teeth remain visible at fight size.
+    const teeth = [];
+    for (let i = 0; i < 48; i++) {
+      const a = (i / 48) * Math.PI * 2;
+      const r = [47,52,52,44][i % 4];
+      teeth.push([174 + Math.cos(a)*r, 68 + Math.sin(a)*r]);
     }
+    metal({ k:"poly", pts:teeth, bbox:[122,16,104,104] }, "edge");
+    metal(circ(174,68,39), "round");
+    metal(circ(174,68,29), "inset");
+    for (const a of [0,Math.PI*2/3,Math.PI*4/3]) {
+      const x=174+Math.cos(a)*21,y=68+Math.sin(a)*21;
+      rubber(circ(x,y,4.5));
+    }
+    brass(circ(174,68,12));
+    metal(circ(174,68,6), "round");
+  } else if (id === "3-2") {
+    // Spike: a very long padded cone, with a little spring behind its guard.
+    rubber(rr(83,58,37,20,8));
+    for (const x of [86,94,102,110]) metal(rr(x,53,6,30,3), "shaft");
+    brass(rr(119,39,12,58,5));
+    metal(path("M132 46Q170 46 224 64Q232 68 224 72Q170 90 132 90Q124 68 132 46Z", [124,46,108,44]), "shaft");
+    metal(path("M145 56L221 66Q225 68 221 70L145 80Q137 68 145 56Z", [137,56,89,24]), "edge");
+    bolt(126,68,4);
+  } else if (id === "4-1") {
+    // Hammer: the heaviest vertical silhouette, two large rubber striking pads.
+    metal(rr(135, 44, 18, 48, 7), "shaft");
+    brass(rr(144,47,12,42,4));
+    metal(rr(157,22,61,92,16), "round");
+    rubber(rr(154,16,67,21,8));
+    metal(rr(159,17,57,10,4), "shaft");
+    rubber(rr(154,99,67,21,8));
+    metal(rr(159,104,57,11,4), "shaft");
+    metal(rr(165,41,45,54,10), "inset");
+    bolt(187,68,10);
+    for (const y of [47,89]) bolt(172,y,3.4);
+  } else {
+    // Blade: a wide swooping paddle, with a lifted blunt tip and open heel.
+    brass(rr(102,46,12,44,4));
+    metal(path("M118 49Q157 58 194 30Q207 21 223 16Q230 68 198 91Q174 108 125 94L113 85L124 76L114 62Z", [113,16,117,82]), "round");
+    metal(path("M130 84Q184 97 211 57Q223 40 223 16Q230 68 198 91Q174 108 125 94Z", [125,16,105,82]), "edge");
+    metal(path("M132 57Q168 63 204 35Q199 58 182 69Q160 79 132 74Z", [132,35,72,44]), "inset");
+    bolt(129,67,5);
   }
   return out;
 }
+
+function renderToyWeapon(w, h, all, maskOnly = false) {
+  const gradients = `<linearGradient id="shaft" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#778287"/><stop offset=".24" stop-color="#c8cfd0"/><stop offset=".48" stop-color="#e0e3e1"/><stop offset=".75" stop-color="#b3bec0"/><stop offset="1" stop-color="#747f84"/></linearGradient>
+  <radialGradient id="round" cx="50%" cy="46%" r="68%"><stop stop-color="#e0e3df"/><stop offset=".5" stop-color="#c4cdcd"/><stop offset=".84" stop-color="#929fa2"/><stop offset="1" stop-color="#6d7b81"/></radialGradient>
+  <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#98a5a8"/><stop offset=".4" stop-color="#dae0dd"/><stop offset=".64" stop-color="#c2cccb"/><stop offset="1" stop-color="#879499"/></linearGradient>
+  <linearGradient id="edge" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b7c0bf"/><stop offset=".45" stop-color="#e7e8e0"/><stop offset="1" stop-color="#9ba8aa"/></linearGradient>
+  <radialGradient id="inset"><stop stop-color="#b8c3c3"/><stop offset=".8" stop-color="#a1aeaf"/><stop offset="1" stop-color="#859498"/></radialGradient>
+  <linearGradient id="rubber" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#303936"/><stop offset=".45" stop-color="#535c55"/><stop offset="1" stop-color="#252e2b"/></linearGradient>
+  <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#a28c61"/><stop offset=".42" stop-color="#ddc28b"/><stop offset=".68" stop-color="#c4a773"/><stop offset="1" stop-color="#92784d"/></linearGradient>`;
+  if (maskOnly) {
+    // Preserve drawing order: a paintable face can cover a fixed-metal shaft.
+    const shapes = all.filter(e => !e.detail).map(e => shapeSvg(e.shape,
+      `fill="${e.mat === "clay" ? "#fff" : "#000"}" stroke="${e.mat === "clay" ? "#fff" : "#000"}" stroke-width="1.6" stroke-linejoin="round"`)).join("");
+    return svg(w,h,`<defs><mask id="paint" maskUnits="userSpaceOnUse" x="0" y="0" width="${w}" height="${h}">${shapes}</mask></defs><rect width="${w}" height="${h}" fill="white" mask="url(#paint)"/>`);
+  }
+  const body = all.map(e => e.detail
+    ? shapeSvg(e.shape, `fill="none" stroke="${e.tone}" stroke-width="${e.width}" stroke-linecap="round" stroke-linejoin="round" opacity=".62"`)
+    : shapeSvg(e.shape, `fill="url(#${e.surface})" stroke="${e.mat === "rubber" ? "#28322e" : e.mat === "brass" ? "#7b694a" : "#6b7a7e"}" stroke-width="1.6" stroke-linejoin="round"`)).join("");
+  return svg(w,h,`<defs>${gradients}</defs>${body}`);
+}
+
 
 // ── V2 RULERS: THE FEATURED LIMBS, WEAPONS AND TORSO ───────────────────────
 // Used ONLY under --out v2. Same canvases, same pivots, same materials, same
@@ -2031,7 +2427,7 @@ for (const slot of Object.keys(PARTS)) {
       //    the contract.
       const plate = PRE_SLOTS.has(slot) ? split(PARTS[slot](tier, design, true)) : shipped;
       const ruler = plate === shipped ? base : render(w, h, plate, slot, cx);
-      write(`_raw/parts/placeholders/${RAW_NAME[slot]}-t${tier}-${design}.png`, ruler);
+      if (!SHIPPED_ONLY) write(`_raw/parts/placeholders/${RAW_NAME[slot]}-t${tier}-${design}.png`, ruler);
     }
   }
 }
@@ -3259,7 +3655,7 @@ export function rigPoints(slot: ArtSlot): Pt[] {
   return rigPointsNamed(slot).map((p) => p.at);
 }
 `;
-if (!ONLY && !V2 && !V3) {
+if (!ONLY && !V2 && !V3 && !SHIPPED_ONLY) {
   mkdirSync(join(RIG_TS, ".."), { recursive: true });
   writeFileSync(RIG_TS, ts);
 }

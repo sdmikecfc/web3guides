@@ -23,6 +23,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { PageShell } from "../_components/PageShell";
+import { WorkshopHeading } from "../_components/WorkshopHeading";
+import { IconCoin, IconWrench, IconSpeed } from "../_ui/icons";
+import css from "./strategy.module.css";
 import { Dot, Panel, uiCss } from "../_ui/primitives";
 import { FONT_BODY, FONT_DISPLAY, FONT_MONO, M, R, TAP } from "../_ui/tokens";
 import { STRATEGY_LINKS, STRINGS, fill } from "@/lib/bots/strings";
@@ -144,15 +147,21 @@ export default function StrategyClient() {
 
   return (
     <PageShell>
-      <p style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.32em", textTransform: "uppercase", color: M.muted, margin: "24px 0 10px" }}>
-        {t.nav.wordmark}
-      </p>
-      <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 32, lineHeight: 1.1, margin: "0 0 10px", color: M.text }}>{t.strategy.title}</h1>
-      <p style={{ fontSize: 15, lineHeight: 1.5, color: M.lore, margin: "0 0 20px", maxWidth: 640 }}>{t.strategyUi.lead}</p>
+      <WorkshopHeading eyebrow="Auto trading" title="Keep the parts coming." description="Doma auto trading earns coins for your garage. Turn those coins into parts that make your robot yours." />
+
+      <div className={css.bench}>
+        <div className={css.cycle}>
+          <div><IconSpeed size={27} /><strong>Doma trades</strong><span>Your setup gets to work.</span></div>
+          <span className={css.arrow} aria-hidden>→</span>
+          <div><IconCoin size={27} /><strong>Coins arrive</strong><span>They go to your garage.</span></div>
+          <span className={css.arrow} aria-hidden>→</span>
+          <div><IconWrench size={27} /><strong>New parts</strong><span>A little more personality.</span></div>
+        </div>
+      </div>
 
       {/* the two cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, alignItems: "start" }}>
-        <Panel title={t.strategyUi.domaTitle}>
+      <div className={css.setup}>
+        <Panel title="Let your setup get to work">
           <p style={{ margin: "0 0 14px", fontSize: 14, lineHeight: 1.5, color: M.lore }}>{t.strategyUi.domaBody}</p>
           {/* plain <a>, not next/link: this leaves the game tree (the PageShell footer law) */}
           <a
@@ -169,7 +178,7 @@ export default function StrategyClient() {
               borderRadius: R.inner,
               border: `1px solid ${M.accent}`,
               background: M.accent,
-              color: "#ffffff",
+              color: "#30271a",
               fontFamily: FONT_BODY,
               fontSize: 14,
               fontWeight: 700,
@@ -181,8 +190,8 @@ export default function StrategyClient() {
           <p style={{ margin: "10px 0 0", fontFamily: FONT_MONO, fontSize: 11, color: M.muted }}>{t.strategyUi.newTab}</p>
         </Panel>
 
-        <Panel title={t.strategyUi.mcpTitle}>
-          <p style={{ margin: "0 0 14px", fontSize: 14, lineHeight: 1.5, color: M.lore }}>{t.strategyUi.mcpBody}</p>
+        <Panel title="Already use an AI app?">
+          <p style={{ margin: "0 0 14px", fontSize: 14, lineHeight: 1.5, color: M.lore }}>You can set up Doma through an app that supports MCP. Open the instructions to copy the address and prompt.</p>
           <button
             type="button"
             className={uiCss.press}
@@ -203,7 +212,7 @@ export default function StrategyClient() {
               cursor: "pointer",
             }}
           >
-            {t.strategy.mcp}
+            {mcpOpen ? "Close instructions" : "Show app instructions"}
           </button>
           {mcpOpen ? (
             <div className={uiCss.popover} style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>
@@ -215,7 +224,7 @@ export default function StrategyClient() {
       </div>
 
       {/* the status dot */}
-      <Panel title={t.strategyUi.status} style={{ marginTop: 16 }}>
+      <Panel title="Your connection" style={{ marginTop: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 28 }}>
           <Dot color={dotColor} size={9} pulse={status.kind === "seen"} />
           <span style={{ fontSize: 14.5, fontWeight: 600 }} role="status" aria-live="polite">
@@ -262,7 +271,7 @@ export default function StrategyClient() {
 function CopyRow({ label, text, onCopy, mono }: { label: string; text: string; onCopy: (text: string) => void; mono?: boolean }) {
   return (
     <div>
-      <div style={{ fontFamily: FONT_DISPLAY, fontSize: 11, letterSpacing: "0.32em", textTransform: "uppercase", color: M.muted, marginBottom: 6 }}>{label}</div>
+      <div style={{ fontFamily: FONT_DISPLAY, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: M.muted, marginBottom: 6 }}>{label}</div>
       <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
         <pre
           style={{

@@ -24,10 +24,14 @@
  * every stored replay hash exactly as before.
  */
 "use client";
+import { ART_PART_LORE } from "@/lib/bots/art-copy";
 
+import { socketsOf, socketUid, equippedIds, fitPart, equipmentTarget, equipmentPaints, EQUIPMENT_SOCKETS, EQUIPMENT_KIND, EQUIPMENT_LABEL } from "@/lib/bots/equipment";
 import Link from "next/link";
+import { practiceLink } from "@/lib/bots/demo-replay";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { WorkshopHeading } from "../../_components/WorkshopHeading";
 import { PageShell } from "../../_components/PageShell";
 import { ColourPips } from "../../_components/ColourPips";
 import { LevelBlock } from "../../_components/Level";
@@ -465,7 +469,7 @@ function PartCard({
         gridTemplateColumns: "3px 64px 1fr",
         gap: 10,
         alignItems: "center",
-        width: full ? "100%" : 264,
+        width: "100%",
         height: 88,
         padding: "0 10px 0 0",
         borderRadius: R.inner,
@@ -602,7 +606,7 @@ function LoreBody({ part, onEquip }: { part: OwnedPart; onEquip: () => void }) {
         <p style={{ margin: 0, fontSize: 12, color: M.muted, lineHeight: 1.45 }}>{SCRAP_NOTE}</p>
       )}
       <div style={{ borderTop: `1px solid ${M.border}` }} />
-      <p style={{ margin: 0, fontSize: 12.5, color: M.lore, lineHeight: 1.5 }}>{part.lore}</p>
+      <p style={{ margin: 0, fontSize: 12.5, color: M.lore, lineHeight: 1.5 }}>{ART_PART_LORE[part.id] ?? part.lore}</p>
       <div style={{ borderTop: `1px solid ${M.border}` }} />
       <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: M.muted }}>{part.provenance}</div>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -713,7 +717,7 @@ export default function BuildClient() {
   const rings = useMemo<Record<Socket, RingState>>(() => {
     const out = {} as Record<Socket, RingState>;
     for (const s of SOCKETS) {
-      const p = partOf(build.cards[CARD_OF_SOCKET[s]]);
+      const p = partOf(socketUid(build, s));
       out[s] = { filled: !!p, tier: p ? p.tier : null };
     }
     return out;
@@ -831,7 +835,7 @@ export default function BuildClient() {
    *  lift and a fight draw one robot through one translation (look-view.ts) */
   const lookView = useMemo<LookView>(
     () => ({
-      paints: socketPaints((slot) => partOf(build.cards[slot])?.paint),
+      paints: equipmentPaints(build, st.parts),
       look,
       marks: earnedMarks(lookEarned),
       wins: lookEarned.wins,
@@ -950,7 +954,7 @@ export default function BuildClient() {
     setArtDone(false);
     (async () => {
       for (const socket of SOCKETS) {
-        const part = partOf(build.cards[CARD_OF_SOCKET[socket]]);
+        const part = partOf(socketUid(build, socket));
         const art = part ? await loadArt(bay, part) : null;
         if (cancelled) return;
         bay.rig.setArt(socket, art);
@@ -990,18 +994,15 @@ export default function BuildClient() {
       for (const s of SOCKETS) bay.rig.setGhost(s, null);
       const part = partOf(selected);
       if (!part || drag) return;
-      const target = SOCKETS_OF[part.slot].find((s) => !build.cards[CARD_OF_SOCKET[s]]) ?? SOCKETS_OF[part.slot][0];
+      const target = equipmentTarget(build, part.slot, sheet?.kind === "parts" && sheet.slot === part.slot ? sheet.socket : undefined);
       const art = await loadArt(bay, part);
       if (cancelled) return;
-      // a pair card ghosts both sockets
-      for (const s of SOCKETS_OF[part.slot]) {
-        if (s === target || !build.cards[CARD_OF_SOCKET[s]]) bay.rig.setGhost(s, art);
-      }
+      bay.rig.setGhost(target, art);
     })();
     return () => {
       cancelled = true;
     };
-  }, [armingSlot, selected, drag, build, ready, partOf, loadArt]);
+  }, [armingSlot, selected, drag, build, ready, partOf, loadArt, sheet]);
 
   // the tier ratchet
   const prevTier = useRef<Tier | null>(tier);
@@ -1016,25 +1017,26 @@ export default function BuildClient() {
 
   // ── actions ─────────────────────────────────────────────────────────────
   const equip = useCallback(
-    (uid: string) => {
+    (uid: string, socket?: Socket) => {
       const part = partOf(uid);
       if (!part) return;
-      setBuild((b) => ({ ...b, cards: { ...b.cards, [part.slot]: uid } }));
-      pendingFlash.current = [...SOCKETS_OF[part.slot]];
+      const target = equipmentTarget(build, part.slot, socket ?? (sheet?.kind === "parts" && sheet.slot === part.slot ? sheet.socket : undefined));
+      setBuild(b => fitPart(b, part, target));
+      pendingFlash.current = [target];
       sfx.play("clunk");
       setSelected(null);
       setSheet(null);
       setLoreSheet(null);
       setLore(null);
     },
-    [partOf, sfx],
+    [partOf, sfx, sheet, build],
   );
 
   tapRef.current = (socket: Socket) => {
     const slot = CARD_OF_SOCKET[socket];
     const sel = partOf(selected);
     if (sel && sel.slot === slot) {
-      equip(sel.uid);
+      equip(sel.uid, socket);
       return;
     }
     // a phone, or a desktop tap on a ring with nothing selected: the sheet
@@ -1064,7 +1066,7 @@ export default function BuildClient() {
    */
   const [saving, setSaving] = useState(false);
   const save = useCallback(async () => {
-    if (saving) return;
+    if (saving) return false;
     // a token in this browser, or a garage that came off a row: either one
     // means this robot lives in a row and the save belongs there. A session
     // that ran out while the screen was open is told so on the next press,
@@ -1072,7 +1074,7 @@ export default function BuildClient() {
     if (!readBotsSession() && !live.me) {
       saveBuild({ ...build, bay: bayNo });
       say(fill(t.ui.saved, { n: bayNo }));
-      return;
+      return true;
     }
     // A TOKEN BUT NO ANSWER IS NOT ENOUGH TO WRITE WITH. The garage read did
     // not come back, so this screen does not know what is in this spot, what
@@ -1083,7 +1085,7 @@ export default function BuildClient() {
     if (!me) {
       say(t.ui.tryAgain);
       void live.refresh();
-      return;
+      return false;
     }
     const ids = {} as Record<CardSlot, number | null>;
     for (const slot of CARD_SLOTS) {
@@ -1095,7 +1097,7 @@ export default function BuildClient() {
       const n = Number(uid);
       if (!Number.isInteger(n) || n <= 0) {
         say(t.ui.tryAgain);
-        return;
+        return false;
       }
       ids[slot] = n;
     }
@@ -1109,6 +1111,7 @@ export default function BuildClient() {
       // handed straight back; leaving them out would reset both on every save
       ...(liveBot ? { paint: liveBot.paint, listed: liveBot.listed } : {}),
       parts: ids,
+      sockets: Object.fromEntries(EQUIPMENT_SOCKETS.map(s => [s, socketUid(build,s) == null ? null : Number(socketUid(build,s))])) as Record<Socket,number|null>,
       look: {
         face: look.face,
         sticker: look.sticker,
@@ -1121,10 +1124,16 @@ export default function BuildClient() {
     if (r.ok) {
       live.put(withSavedBot(me, r.value));
       say(fill(t.ui.saved, { n: bayNo }));
-      return;
+      return true;
     }
     say(r.message ?? t.enlist.signedOut);
   }, [saving, build, bayNo, say, look, liveBot, live]);
+
+  const takeToFight = async () => {
+    const ok = await save();
+    if (!ok) return;
+    router.push(!live.me && !readBotsSession() ? practiceLink(build,st.parts) : "/bots/battles");
+  };
 
   /**
    * PUT A LOOK ON, THROUGH THE GATE, AND KEEP IT.
@@ -1243,8 +1252,8 @@ export default function BuildClient() {
   // in (ADR-0141), so this reads the parts and never writes them.
   const bodyColors = useMemo(
     () =>
-      BODY_SLOTS.map((s) => {
-        const uid = build.cards[s];
+      (["head","torso","armL","armR","legL","legR"] as const).map((s) => {
+        const uid = socketUid(build,s);
         const p = uid ? parts.find((x) => x.uid === uid) : undefined;
         return { slot: s, color: (p?.paint ?? null) as PaintId | null };
       }),
@@ -1257,8 +1266,8 @@ export default function BuildClient() {
    * the maker's one line of character back to them. */
   const bodyBrand = useMemo<BrandId | null>(() => {
     const tally = new Map<BrandId, number>();
-    for (const s of BODY_SLOTS) {
-      const uid = build.cards[s];
+    for (const s of (["head","torso","armL","armR","legL","legR"] as const)) {
+      const uid = socketUid(build,s);
       const p = uid ? parts.find((x) => x.uid === uid) : undefined;
       const b = p ? brandOfPart(p) : null;
       if (b) tally.set(b, (tally.get(b) ?? 0) + 1);
@@ -1314,7 +1323,7 @@ export default function BuildClient() {
         const r = canvas.getBoundingClientRect();
         const hit = bay.hitSocket(e.clientX - r.left, e.clientY - r.top, part.slot, SNAP_CSS);
         if (hit) {
-          equip(st0.uid);
+          equip(st0.uid, hit);
           setDrag(null);
           return;
         }
@@ -1355,7 +1364,7 @@ export default function BuildClient() {
   }, [ready, artDone, build, total, tier, empties, sets, st.coins, applyLook, look, lookEarned, ownPaints]);
 
   // ── tray ────────────────────────────────────────────────────────────────
-  const onBotUids = useMemo(() => new Set(Object.values(build.cards).filter(Boolean) as string[]), [build]);
+  const onBotUids = useMemo(() => equippedIds(build), [build]);
   const trayParts = useMemo(
     () => parts.filter((p) => filter === "all" || p.slot === filter),
     [parts, filter],
@@ -1396,7 +1405,7 @@ export default function BuildClient() {
           alignItems: "center",
           justifyContent: "center",
           gap: 8,
-          width: full ? "100%" : 264,
+          width: "100%",
           minHeight: TAP,
           borderRadius: R.inner,
           border: `1px dashed ${M.border}`,
@@ -1453,7 +1462,7 @@ export default function BuildClient() {
       {bodyColors.map(({ slot, color }) => (
         <span
           key={slot}
-          title={fill(t.set.slotColor, { slot: t.ui.card[slot], color: color ? t.paintName[color] : t.set.empty })}
+          title={fill(t.set.slotColor, { slot: EQUIPMENT_LABEL[slot], color: color ? t.paintName[color] : t.set.empty })}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -1481,7 +1490,7 @@ export default function BuildClient() {
               flex: "0 0 auto",
             }}
           />
-          {fill(t.set.slotColor, { slot: t.ui.card[slot], color: color ? t.paintName[color] : t.set.empty })}
+          {fill(t.set.slotColor, { slot: EQUIPMENT_LABEL[slot], color: color ? t.paintName[color] : t.set.empty })}
         </span>
       ))}
     </>
@@ -1519,15 +1528,15 @@ export default function BuildClient() {
           The family display name IS the maker's name plus the star count now,
           so this line reads straight off the four titles above it. */}
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-        <span>{sets.family ? fill(t.set.family, { family: sets.family, n: sets.familyCount }) : t.set.noFamily}</span>
-        <span style={{ color: sets.familyCount === 4 ? M.good : M.muted }}>{sets.familyCount === 4 ? "+2" : ""}</span>
+        <span>{sets.family ? fill(t.set.family, { family: sets.family, n: sets.familyCount, total: build.sockets ? 6 : 4 }) : fill(t.set.noFamily,{total: build.sockets ? 6 : 4})}</span>
+        <span style={{ color: sets.familyCount === (build.sockets ? 6 : 4) ? M.good : M.muted }}>{sets.familyCount === (build.sockets ? 6 : 4) ? "+2" : ""}</span>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           {sets.color ? <span aria-hidden style={{ width: 9, height: 9, borderRadius: R.pill, background: PAINTS[sets.color], display: "inline-block" }} /> : null}
-          {fill(t.set.color, { n: sets.colorCount })}
+          {fill(t.set.color, { n: sets.colorCount, total: build.sockets ? 6 : 4 })}
         </span>
-        <span style={{ color: sets.colorCount === 4 ? M.good : M.muted }}>{sets.colorCount === 4 ? "+1" : ""}</span>
+        <span style={{ color: sets.colorCount === (build.sockets ? 6 : 4) ? M.good : M.muted }}>{sets.colorCount === (build.sockets ? 6 : 4) ? "+1" : ""}</span>
       </div>
       {/* THE COLOURS AS A THING, not as a number: four swatches in body-part
           order with the odd one out named, so "what do I buy next" is
@@ -1565,6 +1574,12 @@ export default function BuildClient() {
 
   return (
     <PageShell wide>
+      <WorkshopHeading eyebrow="THE WORKBENCH" title="Make it your kind of odd." description="Try a part. Find a favourite. Every piece makes it yours." />
+      <div className={uiCss.socketRail} aria-label="Choose a robot part">
+        {EQUIPMENT_SOCKETS.map(socket => { const p=partOf(socketUid(build,socket)); return <button key={socket} onClick={() => { setFilter(EQUIPMENT_KIND[socket]); setSheet({kind:"parts",slot:EQUIPMENT_KIND[socket],socket}); }} aria-label={`Choose ${EQUIPMENT_LABEL[socket].toLowerCase()}`}>
+          <span>{EQUIPMENT_LABEL[socket]}</span><strong>{p ? p.name.replace(/Arms$/, "Arm").replace(/Legs$/, "Leg") : "Pick a part"}</strong><i style={{background:p?.paint ? PAINTS[p.paint] : "transparent"}} />
+        </button>; })}
+      </div>
       <div className={uiCss.buildGrid}>
         {/* ── LEFT: the parts tray ─────────────────────────────────────── */}
         <div className={uiCss.desktopOnly}>
@@ -1589,7 +1604,7 @@ export default function BuildClient() {
               // _view/bay.ts). The two MUST agree or the stage letterboxes,
               // and the desktop pair moved together on 2026-09-06 to get the
               // look picker above the fold on a 900 px tall screen
-              aspectRatio: small ? "390 / 420" : "760 / 612",
+              aspectRatio: small ? "390 / 420" : "760 / 530",
               borderRadius: R.frame,
               border: `1px solid ${M.border}`,
               boxShadow: `inset 0 1px 0 ${M.highlight}`,
@@ -1605,8 +1620,8 @@ export default function BuildClient() {
               {fill(t.build.save, { n: bayNo })}
             </Button>
             <span style={{ fontSize: 12, color: M.muted }}>{t.build.costsNothing}</span>
-            <span className={uiCss.desktopOnly}>
-              <Button disabled={!complete} onClick={() => router.push("/bots/battles")} style={{ minWidth: 180 }}>
+            <span>
+              <Button disabled={!complete || saving} onClick={() => void takeToFight()} style={{ minWidth: 180 }}>
                 {t.build.toBattle}
               </Button>
             </span>

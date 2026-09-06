@@ -12,6 +12,7 @@
  * build carries its fonts and wasm as bundled assets and renders on every
  * box. fights.ts re-exports everything here, so its callers are unchanged.
  */
+import { combatPaints, type CombatBuild } from "@/lib/bots/combat-model";
 import "server-only";
 import { NO_LOOK, NO_MARKS, socketPaints } from "@/lib/bots/look";
 import { HOUSE_MARKS, houseBotLook, houseShapeIdOfBuild, houseSocketPaints } from "@/lib/bots/house-look";
@@ -100,7 +101,10 @@ function canonicalPart(p: Part): Part {
 }
 
 export function canonicalBuild(b: Build): Build {
-  return { legs: canonicalPart(b.legs), arms: canonicalPart(b.arms), torso: canonicalPart(b.torso), head: canonicalPart(b.head), weapon: canonicalPart(b.weapon) };
+  const out: CombatBuild={ legs: canonicalPart(b.legs), arms: canonicalPart(b.arms), torso: canonicalPart(b.torso), head: canonicalPart(b.head), weapon: canonicalPart(b.weapon) };
+  const limbs=(b as CombatBuild).limbs;
+  if(limbs) out.limbs={armL:canonicalPart(limbs.armL),armR:canonicalPart(limbs.armR),legL:canonicalPart(limbs.legL),legR:canonicalPart(limbs.legR)};
+  return out;
 }
 
 export function canonicalOrders(o: Orders | undefined | null): Orders {
@@ -135,7 +139,7 @@ function plateFromName(name: string | undefined): number | null {
  * would otherwise turn from butter to plain cream the day this shipped.
  */
 export function looksFromBuild(build: Build, id: FightIdentityView | undefined): LookView {
-  const paints = socketPaints((slot) => build?.[slot]?.paint ?? id?.paint);
+  const paints = (build as CombatBuild).limbs ? combatPaints(build) : socketPaints((slot) => build?.[slot]?.paint ?? id?.paint);
   return {
     paints,
     look: { ...NO_LOOK, plateNumber: plateFromName(id?.name) },

@@ -78,7 +78,7 @@ function enlistMessage(address: string, nonce: string): string {
   return (
     `web3guides.com wants you to sign in with your Ethereum account:\n` +
     `${address}\n\n` +
-    `Open a Battle Bots play session. Signature only, no transaction, no gas, no approvals.\n\n` +
+    `Open a Clanker Cup play session. Signature only, no transaction, no gas, no approvals.\n\n` +
     `URI: https://web3guides.com/bots\n` +
     `Version: 1\n` +
     `Chain ID: 1\n` +

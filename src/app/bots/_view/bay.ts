@@ -23,6 +23,7 @@
  */
 "use client";
 
+import { installWorkshop } from "./workshop-light";
 import type { Container, Graphics, Sprite, Text } from "pixi.js";
 import { createPixiStage, type PixiStage } from "@/app/s7/games/_shared/pixi";
 import { buildRig, RIG_HEIGHT, type PartArt, type Rig } from "./rig";
@@ -110,7 +111,7 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
    * the wrencher's own shadow inside the frame with 12 sim px to spare.
    */
   const simW = opts.small ? 780 : 1520;
-  const simH = opts.small ? 840 : 1224;
+  const simH = opts.small ? 840 : 1060;
   const stage = await createPixiStage(canvas, { background: hex(K.vignette) });
   const PIXI = stage.pixi;
   const W = stage.world;
@@ -120,11 +121,11 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
   const liftTop = Math.round(simH * (opts.small ? 0.86 : 0.8));
   const liftRise = 80; // 40 css px
   const cx = simW / 2;
-  const rigScale = opts.small ? 600 / RIG_HEIGHT : 830 / RIG_HEIGHT;
+  const rigScale = opts.small ? 600 / RIG_HEIGHT : 720 / RIG_HEIGHT;
   const liftScale = opts.small ? 0.72 : 1;
   const crewScale = opts.small ? 0.8 : 1.25;
 
-  // ── the room ─────────────────────────────────────────────────────────────
+  // â”€â”€ the room â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const wall: Graphics = new PIXI.Graphics();
   const wallBase = hex(K.wall);
   for (let i = 0; i < 6; i++) {
@@ -139,8 +140,9 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
   // a soft pool of shadow under the lift, the only softness on the floor
   floor.ellipse(cx, liftTop + 120 * liftScale, LIFT.platformW * 0.62 * liftScale, 28 * liftScale).fill({ color: 0x8a8898, alpha: 0.22 });
   W.addChild(wall, floor);
+  try { await installWorkshop(PIXI, W, simW, simH, floorY); wall.visible=false; floor.visible=false; } catch { /* keep the drawn room */ }
 
-  // ── the lift (two baked states, crossfaded while it rises) ───────────────
+  // â”€â”€ the lift (two baked states, crossfaded while it rises) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const liftDown: Sprite = new PIXI.Sprite(PIXI.Texture.EMPTY);
   const liftRaised: Sprite = new PIXI.Sprite(PIXI.Texture.EMPTY);
   for (const s of [liftDown, liftRaised]) {
@@ -157,7 +159,7 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
     // then reads as the shadow pool and the bot still stands on the line
   }
 
-  // ── the bot ──────────────────────────────────────────────────────────────
+  // â”€â”€ the bot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // the renderer goes in so the rig can read the head texture back and put
   // the blink on the lenses the art actually has (rig.ts measureEyes)
   const rig = buildRig(PIXI, stage.app.renderer);
@@ -168,7 +170,7 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
   rig.setCalm(typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches);
 
   /**
-   * ── THE WRENCHER ────────────────────────────────────────────────────────
+   * â”€â”€ THE WRENCHER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    *
    * A vector mechanic until the crew sheet lands, and until 2026-09-06 a
    * PALE one: clay (#c7cdd6) on a floor of #cfc6b8, with no outline and no
@@ -233,7 +235,7 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
   };
   placeCrew();
 
-  // ── the name plate on the rail ───────────────────────────────────────────
+  // â”€â”€ the name plate on the rail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const plate: Container = new PIXI.Container();
   const plateBg: Graphics = new PIXI.Graphics();
   const plateText: Text = new PIXI.Text({
@@ -266,7 +268,7 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
   };
   drawPlate("");
 
-  // ── the vignette: a radial fade to K.vignette at the frame edge ──────────
+  // â”€â”€ the vignette: a radial fade to K.vignette at the frame edge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   {
     const cv = document.createElement("canvas");
     cv.width = 256;
@@ -286,7 +288,7 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
     }
   }
 
-  // ── hotspot rings ────────────────────────────────────────────────────────
+  // â”€â”€ hotspot rings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const rings = new Map<Socket, Graphics>();
   const ringState: Record<Socket, RingState> = {
     head: { filled: false, tier: null }, torso: { filled: false, tier: null },
@@ -321,7 +323,7 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
     }
   };
 
-  // ── the lift's rise ──────────────────────────────────────────────────────
+  // â”€â”€ the lift's rise â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let openAt = -1;
   let riseK = 0;
   let landed = true;
@@ -382,7 +384,7 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
     stage.renderFrame();
   }
 
-  // ── pointer: hover and tap on the rings ──────────────────────────────────
+  // â”€â”€ pointer: hover and tap on the rings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let scale = 1;
   let offX = 0;
   let offY = 0;

@@ -1,3 +1,4 @@
+import { ART_VERSION } from "@/app/bots/_view/art-version";
 /**
  * /bots/fight/[id]: the replay page, which is the share page (engine doc 7:
  * the replay URL is the share URL).
@@ -24,7 +25,8 @@ import { botTier, buildTotal, type Build, type Mode, type PaintId } from "@/app/
 import { CANON, SHAPE_INDEX, houseBuild, houseTarget, type Difficulty } from "@/app/bots/_engine/catalog";
 import { HOUSE_NAME, HOUSE_TIER_INDEX } from "@/lib/bots/naming";
 import { marksOf, socketPaints } from "@/lib/bots/look";
-import { resolveFight } from "@/app/bots/_engine/resolve";
+import { resolveFight } from "@/lib/bots/combat";
+import { fixturePractice } from "@/lib/bots/fixture-replay";
 import { botsDb } from "@/app/bots/_server/db";
 import { fightSummary, loadBattle, looksFromBuild } from "@/app/bots/_server/fights";
 import type { FightIdentityView, LookView } from "@/app/bots/_server/types";
@@ -32,17 +34,18 @@ import type { FightIdentityView, LookView } from "@/app/bots/_server/types";
 /** A replay is a stored row read per request, never a prerender. */
 export const dynamic = "force-dynamic";
 
-const TITLE = "Fight | Battle Bots";
+const TITLE = "Fight | Clanker Cup";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const id = String(params.id || "");
   if (!id || id.startsWith("demo-")) return { title: TITLE };
-  const image = `/api/bots/card/ko?f=${encodeURIComponent(id)}`;
+  if (fixturePractice(id)) return { title: "Demo practice | Clanker Cup", description: "A sample fight using the display robots." };
+  const image = `/api/bots/card/ko?f=${encodeURIComponent(id)}&art=${ART_VERSION}`;
   try {
     const row = await loadBattle(botsDb(), id);
     const s = row && row.mode !== "spar" ? fightSummary(row) : null;
     if (s) {
-      const title = `${s.winnerName} beat ${s.loserName} | Battle Bots`;
+      const title = `${s.winnerName} beat ${s.loserName} | Clanker Cup`;
       return {
         title,
         description: s.chain,
@@ -205,6 +208,11 @@ function mockFor(id: string): MockFight | null {
 
 export default function FightPage({ params }: { params: { id: string } }) {
   const id = String(params.id || "");
+  const sample = fixturePractice(id);
+  if (sample) {
+    const result = resolveFight(sample.seed, sample.a, sample.b, undefined, undefined, sample.mode);
+    return <FightClient {...sample} expectedHash={result.hash} />;
+  }
   if (!id.startsWith("demo-")) return <ServerFight id={id} />;
   const mock = mockFor(id);
   if (!mock) return <ServerFight id={id} />;

@@ -27,6 +27,9 @@
  * that garage-state resolves at hydrate).
  */
 
+import { socketsOf, socketUid } from "./equipment";
+import { ART_PART_LORE } from "./art-copy";
+import { modularBuild, modularSet, combatPart } from "./combat-model";
 import type { BotLook } from "./look";
 import { CARD_INDEX, FAMILY_INDEX, PARTS, STARTER_PARTS } from "@/app/bots/_engine/catalog";
 import {
@@ -145,6 +148,8 @@ export interface PartCard extends EnginePartCard {
 export interface OwnedPart extends PartCard {
   /** the instance id (a card can be owned twice) */
   uid: string;
+  /** Preserves whole-coin resale when an older pair is split. */
+  salvage?: number;
   /** written once at purchase, drop or recycle, never changes */
   provenance: string;
   /** the colour this card came in, set ONCE when it arrived (the shipment
@@ -174,7 +179,7 @@ function adaptCatalog(cards: readonly EnginePartCard[]): PartCard[] {
     const key = `${c.slot}:${c.tier}`;
     const n = (seen.get(key) ?? 0) + 1;
     seen.set(key, n);
-    return { ...c, familyName: familyNameOf(c), design: n === 1 ? 1 : 2 };
+    return { ...c, lore: ART_PART_LORE[c.id] ?? c.lore, name: c.name.replace(/Arms$/, "Arm").replace(/Legs$/, "Leg"), familyName: familyNameOf(c), design: n === 1 ? 1 : 2 };
   });
 }
 
@@ -205,8 +210,8 @@ export const botTier = engineBotTier;
 
 /** Recycle returns 40 percent of the list price, whole coins (the guide). */
 export const RECYCLE_PERCENT = 40;
-export function recycleValue(p: { price: number }): number {
-  return Math.floor((p.price * RECYCLE_PERCENT) / 100);
+export function recycleValue(p: { price: number; salvage?: number }): number {
+  return p.salvage ?? Math.floor((p.price * RECYCLE_PERCENT) / 100);
 }
 
 /* ── the fixture wallet ──────────────────────────────────────────────────── */
@@ -310,6 +315,7 @@ export interface Build {
   decal: DecalId | null;
   /** owned part uid per card slot; null = an empty socket pair */
   cards: Record<CardSlot, string | null>;
+  sockets?: Record<Socket, string | null>;
   /**
    * WHAT THE PLAYER CHOSE ABOUT HOW IT LOOKS: the face, the sticker, its
    * place and its colour, the won hat, and the number off the name. Nothing
@@ -386,32 +392,16 @@ export function emptyStats(): Record<StatKey, number> {
 
 /** The nine readout stats: the sum over the five cards (a pair counts once). */
 export function botStats(build: Build, parts: readonly OwnedPart[]): Record<StatKey, number> {
-  const out = emptyStats();
-  for (const slot of CARD_SLOTS) {
-    const uid = build.cards[slot];
-    if (!uid) continue;
-    const p = parts.find((x) => x.uid === uid);
-    if (!p) continue;
-    const keys = SLOT_STATS[slot];
-    for (let i = 0; i < 3; i++) out[keys[i]] += p.s[i];
-  }
+  const out = emptyStats(), b = engineBuild(build, parts);
+  for (const slot of CARD_SLOTS) { const keys=SLOT_STATS[slot]; for (let i=0;i<3;i++) out[keys[i]] += b[slot].s[i]; }
   return out;
 }
-
-/** Bot total = the five part totals (5 to 100 when complete). */
 export function botTotal(build: Build, parts: readonly OwnedPart[]): number {
-  let total = 0;
-  for (const slot of CARD_SLOTS) {
-    const uid = build.cards[slot];
-    const p = uid ? parts.find((x) => x.uid === uid) : undefined;
-    if (p) total += partTotal(p);
-  }
-  return total;
+  return Object.values(botStats(build, parts)).reduce((a,b)=>a+b,0);
 }
 
-/** Empty SOCKETS (the seven the player sees), so a missing pair counts as 2. */
 export function emptySockets(build: Build): Socket[] {
-  return SOCKETS.filter((s) => build.cards[CARD_OF_SOCKET[s]] == null);
+  return SOCKETS.filter((s) => socketUid(build, s) == null);
 }
 
 /**
@@ -424,11 +414,18 @@ export function engineBuild(build: Build, parts: readonly OwnedPart[]): EngineBu
   const part = (slot: CardSlot): EnginePart => {
     const uid = build.cards[slot];
     const p = uid ? parts.find((x) => x.uid === uid) : undefined;
-    if (!p) return { id: `empty.${slot}`, s: [1, 0, 0] };
+    if (!p) return { id: `empty.${slot}`, s: [0, 0, 0] };
     const e: EnginePart = { id: p.id, s: [p.s[0], p.s[1], p.s[2]] };
     if (p.paint && p.slot !== "weapon") e.paint = p.paint;
     return e;
   };
+  if (build.sockets) {
+    const at = (socket: Socket): EnginePart => {
+      const p=parts.find(p=>p.uid===socketUid(build,socket));
+      return p ? { id:p.id, s:[...p.s], ...(p.paint ? {paint:p.paint} : {}) } : {id:`empty.${socket}`,s:[0,0,0]};
+    };
+    return modularBuild(at("head"),at("torso"),at("armL"),at("armR"),at("legL"),at("legR"),at("weapon"));
+  }
   return { legs: part("legs"), arms: part("arms"), torso: part("torso"), head: part("head"), weapon: part("weapon") };
 }
 
@@ -454,10 +451,11 @@ export function setProgress(build: Build, parts: readonly OwnedPart[]): SetProgr
   const b = engineBuild(build, parts);
   const famCount = new Map<string, number>();
   const colCount = new Map<PaintId, number>();
-  for (const slot of BODY_SLOTS) {
-    const f = partFamily(b[slot], CARD_INDEX);
+  for (const slot of (build.sockets ? SOCKETS.filter(s => s !== "weapon") : BODY_SLOTS)) {
+    const p = slot === "arms" || slot === "legs" ? b[slot] : combatPart(b, slot as Socket);
+    const f = partFamily(p, CARD_INDEX);
     if (f) famCount.set(f, (famCount.get(f) ?? 0) + 1);
-    const c = partColor(b[slot], CARD_INDEX);
+    const c = partColor(p, CARD_INDEX);
     if (c) colCount.set(c, (colCount.get(c) ?? 0) + 1);
   }
   const lead = <K,>(m: Map<K, number>): [K | null, number] => {
@@ -478,7 +476,7 @@ export function setProgress(build: Build, parts: readonly OwnedPart[]): SetProgr
     familyCount,
     color,
     colorCount,
-    bonus: setBonus(b, CARD_INDEX).perStat,
+    bonus: build.sockets ? modularSet(b).perStat : setBonus(b, CARD_INDEX).perStat,
   };
 }
 

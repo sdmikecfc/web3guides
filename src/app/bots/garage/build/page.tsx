@@ -7,7 +7,7 @@ import { Suspense } from "react";
 import BuildClient from "./BuildClient";
 
 export const metadata = {
-  title: "Build | Battle Bots",
+  title: "Build | Clanker Cup",
 };
 
 export default function BuildPage() {

@@ -26,7 +26,7 @@ export default function BoardPreviewPage() {
   if (isProduction()) notFound();
   return (
     <PageShell>
-      <BoardTable rows={SAMPLE_ROWS} />
+      <BoardTable rows={SAMPLE_ROWS} sample />
     </PageShell>
   );
 }

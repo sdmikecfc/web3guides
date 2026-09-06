@@ -247,7 +247,7 @@ const en = {
     coins: "Coins are the money inside the game. You buy parts with them.",
     stars: "Stars show how good a part is. 1 star is the worst. 4 stars is the best. The number in the part's name is its stars.",
     size: "Size is a robot's numbers added up. A bigger robot is a stronger robot.",
-    matching: "Four body parts with the same name make your robot stronger. Four in the same colour do too.",
+    matching: "All six body parts with the same name make your robot stronger. All six in the same colour do too.",
     points: "Fight points are your score for the week. The best scores win the prizes.",
     savedCopy: "You fight a saved copy of their robot. That player is not here, and their robot cannot break.",
     beingFixed: "A robot that loses a real fight is being fixed for one day. It cannot fight until it is ready.",
@@ -274,7 +274,7 @@ const en = {
 
   /* ── week-1 additions (the Build screen chrome; not in the starter pack) ─ */
   nav: {
-    wordmark: "BATTLE BOTS",
+    wordmark: "CLANKER CUP",
     garage: "Garage",
     build: "Build",
     shop: "Parts",
@@ -363,12 +363,12 @@ const en = {
   /** the MATCHING PANEL under the readout (the guide, "Matched sets") */
   set: {
     title: "MATCHING",
-    family: "{family}: {n} of 4",
-    noFamily: "Same name: 0 of 4",
-    color: "Same colour: {n} of 4",
+    family: "{family}: {n} of {total}",
+    noFamily: "Same name: 0 of {total}",
+    color: "Same colour: {n} of {total}",
     bonus: "Match reward: every number goes up by {n} in a fight",
     none: "No match yet.",
-    weapon: "The weapon never counts. Only the four body parts do.",
+    weapon: "The weapon never counts. Only the six body parts do.",
     /** "Spark 3, light green" on every card (maker and number, then colour) */
     line: "{family}, {color}",
     /** a weapon carries no maker set and no colour */
@@ -376,15 +376,15 @@ const en = {
     /** the key name is week-2's; the words are the ADR-0141 ones */
     noPaint: "no colour",
     /** the read-only colour line on the Build screen (ADR-0141) */
-    allSame: "All four the same colour: {yes}",
+    allSame: "All parts the same colour: {yes}",
     yes: "yes",
     no: "no",
     /** THE COLOURS AS PROGRESS, not as a number. Four swatches, one per body
      * part, read left to right, with the odd one out called by its own name
      * so a player knows which card to go and buy. */
     pipsAria: "The colour of each body part",
-    oneToGo: "One part is not {color}: the {slot}. Change it and all four match.",
-    allMatch: "All four body parts are {color}. They match.",
+    oneToGo: "One part is not {color}: the {slot}. Change it and all parts match.",
+    allMatch: "All body parts are {color}. They match.",
     /** "Head, light green". "{slot} is {color}" read "Arms is light green"
      * on two of the four rows; the comma is the same shape the card line
      * already uses, and it survives a plural. */
@@ -521,7 +521,7 @@ const en = {
     coins: "{n} coins",
     added: "{name} is with your parts.",
     keepsColor: "A part keeps the colour it came in. You cannot paint it.",
-    wantSet: "Want the match reward? Buy four body parts in one colour.",
+    wantSet: "Want the match reward? Collect all six body parts in one colour.",
     emptyRow: "No parts in this row today.",
     /** when the player's OWN colour filter emptied the row, which the empty
      * line above used to blame on the day */

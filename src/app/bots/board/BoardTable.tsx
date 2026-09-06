@@ -30,7 +30,8 @@
  * the ledger holds.
  */
 import type { CSSProperties } from "react";
-import { BotPortraitRow, PORTRAIT_ROW_SHOWN } from "../_components/BotPortrait";
+import { WorkshopHeading } from "../_components/WorkshopHeading";
+import { BotPortrait, BotPortraitRow, PORTRAIT_ROW_SHOWN } from "../_components/BotPortrait";
 import { FONT_BODY, FONT_DISPLAY, FONT_MONO, M, R } from "../_ui/tokens";
 import type { Tier } from "../_engine/parts";
 import { starWord, winLossWords } from "@/lib/bots/strings";
@@ -43,9 +44,9 @@ import css from "./board.module.css";
  */
 const COPY = {
   eyebrow: "LEADERS",
-  title: "Every player on Sprocket Row",
-  sub: "Best fight points first. Player names only.",
-  later: "Trade points and trading results are coming soon. Fight points are working now.",
+  title: "Big cheers for little robots.",
+  sub: "Meet the garages climbing Sprocket Row. Every fight counts.",
+  later: "More fight points put you closer to first place. Equal points share a place.",
   empty: "Nobody is on the list yet.",
   emptyHint: "Win one fight and you are on it.",
   unavailable: "The list is not working right now. Try again in a minute.",
@@ -88,22 +89,28 @@ const HEAD: CSSProperties = { fontFamily: FONT_DISPLAY, color: M.muted };
 const CELL: CSSProperties = { color: M.text, borderTop: `1px solid ${M.border}` };
 const NUM: CSSProperties = { ...CELL, fontFamily: FONT_MONO };
 
-export function BoardTable({ rows, unavailable }: { rows: readonly BoardRow[]; unavailable?: boolean }) {
+export function BoardTable({ rows, unavailable, sample }: { rows: readonly BoardRow[]; unavailable?: boolean; sample?: boolean }) {
   return (
-    <section style={{ fontFamily: FONT_BODY, paddingTop: 28 }}>
-      <div style={{ fontFamily: FONT_DISPLAY, fontSize: 12, letterSpacing: "0.32em", color: M.muted }}>{COPY.eyebrow}</div>
-      <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: 28, margin: "6px 0 4px", color: M.text, fontWeight: 700 }}>{COPY.title}</h1>
-      <p style={{ margin: 0, fontSize: 13, color: M.muted }}>{COPY.sub}</p>
+    <section style={{ fontFamily: FONT_BODY }}>
+      <WorkshopHeading eyebrow={COPY.eyebrow} title={COPY.title} description={COPY.sub} />
 
-      <div
-        style={{
-          marginTop: 20,
-          background: M.surface,
-          border: `1px solid ${M.border}`,
-          borderRadius: R.card,
-          padding: "18px 6px 10px",
-        }}
-      >
+      {!unavailable && rows.length > 0 ? (
+        <div className={css.podium} aria-label="Leading garages">
+          {rows.filter((r) => r.rank <= 3).slice(0, 3).map((r) => (
+            <div key={`${r.rank}:${r.name}`} className={css.leader} data-rank={r.rank}>
+              <span className={css.place}>No. {r.rank}</span>
+              <div className={css.leaderBot}>
+                {r.bots[0] ? <BotPortrait of={{ bot: r.bots[0].id }} size={128} tier={Math.min(4, Math.max(1, r.bots[0].tier)) as Tier} /> : <span aria-hidden>✦</span>}
+              </div>
+              <h2>{r.name}</h2>
+              <p><strong>{pointsText(r.battlePoints)}</strong> fight points</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className={css.board}>
+        <div className={css.boardTop}><span>{sample ? "Demo garages" : "Sprocket Row"}</span><span>{rows.length} {rows.length === 1 ? "garage" : "garages"}</span></div>
         {unavailable ? (
           <p style={{ margin: 0, padding: "24px 14px", fontSize: 14, color: M.muted }}>{COPY.unavailable}</p>
         ) : rows.length === 0 ? (
@@ -138,7 +145,7 @@ export function BoardTable({ rows, unavailable }: { rows: readonly BoardRow[]; u
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={`${r.rank}:${r.name}`}>
+                    <tr key={`${r.rank}:${r.name}`} data-rank={r.rank}>
                       {/* THE FIRST THREE PLACES ARE THE ONES A READER IS
                           LOOKING FOR, so they are the only bright numbers in
                           the column and everything under them stays quiet.
@@ -159,17 +166,18 @@ export function BoardTable({ rows, unavailable }: { rows: readonly BoardRow[]; u
                         {r.bots.length === 0 ? (
                           <span style={{ color: M.muted, fontSize: 12.5 }}>{COPY.noBots}</span>
                         ) : (
-                          <BotPortraitRow
-                            bots={r.bots.map((b) => {
-                              const stars = Math.min(4, Math.max(1, b.tier)) as Tier;
-                              return { id: b.id, tier: stars, label: `${starWord(stars)} robot` };
-                            })}
-                            moreWord={
-                              r.bots.length > PORTRAIT_ROW_SHOWN
-                                ? COPY.andMore.replace("{n}", String(r.bots.length - PORTRAIT_ROW_SHOWN))
-                                : null
-                            }
-                          />
+                          <>
+                            <span className={css.desktopBots}>
+                              <BotPortraitRow
+                                bots={r.bots.map((b) => ({ id: b.id, tier: Math.min(4, Math.max(1, b.tier)) as Tier, label: `${starWord(b.tier)} robot` }))}
+                                moreWord={r.bots.length > PORTRAIT_ROW_SHOWN ? COPY.andMore.replace("{n}", String(r.bots.length - PORTRAIT_ROW_SHOWN)) : null}
+                              />
+                            </span>
+                            <span className={css.mobileBots} aria-label={`${r.bots.length} ${r.bots.length === 1 ? "robot" : "robots"}`}>
+                              <BotPortrait of={{ bot: r.bots[0].id }} size={30} tier={Math.min(4, Math.max(1, r.bots[0].tier)) as Tier} />
+                              {r.bots.length > 1 ? <span>+{r.bots.length - 1}</span> : null}
+                            </span>
+                          </>
                         )}
                       </td>
                       {/* the column the whole table is sorted by, so it is

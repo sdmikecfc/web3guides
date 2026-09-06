@@ -512,7 +512,7 @@ export const TEACH = {
   /** the shop header, first visit */
   shop: "Read a part left to right: who made it, its stars, then the body part. Spark 3 Legs is a pair of legs with 3 stars, made by Spark.",
   /** the build screen, first visit */
-  build: "Spark parts hit hard. Anvil parts are hard to break. More stars is a better part. Four body parts with the same name and stars make your robot stronger.",
+  build: "Spark parts hit hard. Anvil parts are hard to break. More stars is a better part. All six body parts with the same name and stars make your robot stronger.",
   /** the battles screen, first visit */
   battles: "The word above an opponent's name tells you how hard the fight is. Easy is the smallest robot. Hardest is the biggest, and it pays the most.",
   /** one line for a share card or the morning post */
