@@ -13,6 +13,7 @@
  * looks back seven days.
  */
 import "server-only";
+import { DEFENDER_GHOST_WIN_COINS } from "../_engine/rewards";
 import { STRINGS, fill } from "@/lib/bots/strings";
 import { marksOf, sameHat, type HatWon } from "@/lib/bots/look";
 import { hatName, markNews } from "@/lib/bots/shelf";
@@ -70,9 +71,18 @@ export async function paperView(db: BotsDb, sess: BotsSession): Promise<PaperVie
     if (!res) continue;
     const mine = botName.get(r.defender_bot_id ?? -1) ?? res.names[1];
     const them = `${res.names[0]} (${res.walletNames[0]})`;
+    // WHAT A WINNING DEFENCE ACTUALLY PAYS. This line used to promise "3
+    // fight points for winning" and a defence pays NONE: _engine/rewards.ts
+    // fightRewards hands the defender { coins, points: 0, xp: 0 }, and the
+    // fight route grants exactly that. What it does pay is the challenger's
+    // coins plus the three the house adds, and both halves are read off the
+    // engine's own numbers rather than typed here, so the sentence cannot
+    // drift away from the grant. The reward is right; the sentence was wrong,
+    // so the sentence moved.
+    const won = (Number(r.stake) || 0) + DEFENDER_GHOST_WIN_COINS;
     const text =
       res.winner === 1
-        ? `${mine} beat ${them}. You got ${r.stake} coins, and 3 fight points for winning.`
+        ? `${mine} beat ${them}. You got ${won} coins for winning.`
         : `${mine} lost to ${them}. ${capital(res.finisher)}. Your robot is fine. It was only a saved copy that fought.`;
     lines.push({ text, link: { kind: "watch", id: String(r.id) } });
   }

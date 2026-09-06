@@ -120,10 +120,18 @@ function faceOpen(st: GarageState, bay: number, face: "wink" | "stars"): boolean
   return faceAllowed(face, earnedOfBuild(build, st.parts, st.bays[bay], st.level));
 }
 
-function momentsOf(st: GarageState): Moment[] {
+/**
+ * `demo` says whether these builds came out of the demo garage. It gates ONE
+ * thing: the "watch it" button on the first win. The fight rows behind that
+ * button are fixtures, and a signed in player's wins are real rows whose
+ * fight codes are nothing like them, so on the real garage the proud line is
+ * still said (the win is the server's) and the button that would have opened
+ * somebody else's made up fight is left off.
+ */
+function momentsOf(st: GarageState, demo: boolean): Moment[] {
   const out: Moment[] = [];
 
-  const won = firstWonFight(st);
+  const won = demo ? firstWonFight(st) : null;
   const wins = Object.values(st.bays).reduce((n, b) => n + b.wins, 0);
   if (wins > 0) {
     const bay = won?.bay ?? Number(Object.keys(st.bays).find((b) => st.bays[Number(b)].wins > 0) ?? 1);
@@ -173,16 +181,16 @@ function momentsOf(st: GarageState): Moment[] {
 }
 
 /** One warm line in the garage: the first proud moment this browser has not seen. */
-export function PrideNote({ state }: { state: GarageState }) {
+export function PrideNote({ state, demo = true }: { state: GarageState; demo?: boolean }) {
   const [seen, setSeen] = useState<Record<string, boolean> | null>(null);
-  const moments = isHydratedState(state) ? momentsOf(state) : [];
+  const moments = isHydratedState(state) ? momentsOf(state, demo) : [];
 
   useEffect(() => {
     const next: Record<string, boolean> = {};
-    for (const m of momentsOf(state)) next[m.key] = readSeen(m.key);
+    for (const m of momentsOf(state, demo)) next[m.key] = readSeen(m.key);
     setSeen(next);
     // the moment list is derived, so the effect keys on the state it derives from
-  }, [state]);
+  }, [state, demo]);
 
   if (seen === null) return null;
   const moment = moments.find((m) => !seen[m.key]);

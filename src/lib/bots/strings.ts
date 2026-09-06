@@ -129,6 +129,38 @@ const en = {
     confirm: "Sell for {coins} coins",
     keep: "Keep it",
   },
+  /**
+   * WHAT LEVEL A ROBOT IS ON (src/lib/bots/levels.ts).
+   *
+   * A robot's level and the fights behind it were both stored and neither
+   * was ever drawn, while the whole part ladder hangs off them: the parts
+   * screen refuses a 3 star part until one of your robots is level 5, and a
+   * 4 star part until one is level 10. A player could read "You need level
+   * 5" on a card in the shop and have nowhere in the game to find out what
+   * level they were, or how a level goes up.
+   *
+   * NOTHING HERE COUNTS DOWN AND NOTHING SITS FULL. Level 10 is the last
+   * one, so at the top the bar is gone and a sentence takes its place,
+   * rather than a full bar standing there for ever pretending there is more
+   * to come.
+   *
+   * The two numbers in the part lines are FILLED from the shipped table
+   * (fixtures.ts LEVEL_FOR_TIER), never typed in here, so the day a gate
+   * moves these sentences move with it.
+   */
+  level: {
+    title: "LEVEL",
+    now: "Level {n}",
+    next: "Next is level {n}.",
+    going: "Every fight takes you closer to the next level. Winning takes you further.",
+    /** said when there is a level but nothing to measure the bar with */
+    unknown: "Win fights to go up a level.",
+    top: "Level {n} is the top. There is no higher level.",
+    topOpen: "This robot can use every part in the game. Its wins still count.",
+    need3: "When one of your robots reaches level {n}, you can buy 3 star parts.",
+    need4: "When one of your robots reaches level {n}, you can buy 4 star parts.",
+    barAria: "Level {n}, part of the way to the next one",
+  },
   battles: {
     pickBot: "Pick your robot",
     fight: "Fight",
@@ -233,6 +265,11 @@ const en = {
     nonceUsed: "That sign in was already used. Press Play again.",
     nonceWrongWallet: "That sign in was for a different wallet. Press Play again.",
     tooManyTries: "Too many tries. Wait a few minutes and try again.",
+    /** The sign in ran out while a screen was still open, so buying a part or
+     * saving a robot came back with nothing done. Every route that changes
+     * something answers the same way, and this is the one sentence a player
+     * reads for all of them: what happened, and the one button to press. */
+    signedOut: "Your sign in ran out. Press Play again.",
   },
 
   /* ── week-1 additions (the Build screen chrome; not in the starter pack) ─ */
@@ -276,6 +313,10 @@ const en = {
     secondWord: "SECOND WORD",
     done: "Done",
     saved: "Saved to spot {n}.",
+    /** The wire went away in the middle of a tap. Nothing was bought, nothing
+     * was lost and nobody did anything wrong, so the sentence says the one
+     * useful thing and blames nobody. */
+    tryAgain: "That did not work. Try it again.",
     bayLabel: "Spot {n}",
     lore: "Story",
     closeLore: "Close",
@@ -386,6 +427,7 @@ const en = {
     bays: "SPOTS",
     toolBoard: "YOUR PARTS",
     spares: "{n} spare parts",
+    sparesOne: "1 spare part",
     noSpares: "No spare parts. There are more to buy.",
     newBot: "New robot",
     record: "{w} wins, {l} losses",
@@ -414,6 +456,20 @@ const en = {
     },
     putOn: "Put it on spot {n}",
     putOnAny: "Put it on a robot",
+    /**
+     * THE TWO LINES A REAL GARAGE NEEDS AND THE DEMO DOES NOT.
+     *
+     * A loose part is put on and taken off in the browser in the demo, and a
+     * signed in player's parts live in rows. There is one route that puts a
+     * card on a robot and it saves the whole robot with it (the build
+     * screen), and there is no route at all that turns ONE loose card back
+     * into coins: the only thing that pays coins back is selling a whole
+     * robot. So the real garage sends the player to the screen that can do
+     * it, and says plainly that the other thing is not there yet, rather
+     * than moving a card in a browser and losing it on the next reload.
+     */
+    buildOn: "Open spot {n} to put it on",
+    sellNote: "One part on its own cannot be sold yet. To get coins back, sell a whole robot from its own page.",
     pickBay: "Which robot?",
     noBotForSlot: "No robot needs a {slot} right now.",
     swapped: "{name} is on the robot in spot {n}.",
@@ -793,6 +849,12 @@ export function winLossWords(wins: number, losses: number): string {
 /** "5 fight points", and "1 fight point" when the number is 1. */
 export function fightPointWord(points: number): string {
   return points === 1 ? en.battles.rewardOne : fill(en.battles.reward, { n: points });
+}
+
+/** "3 spare parts", and "1 spare part" when the number is 1. The garage
+ *  printed "1 spare parts" in two places before this helper. */
+export function spareWord(n: number): string {
+  return n === 1 ? en.garageUi.sparesOne : fill(en.garageUi.spares, { n });
 }
 
 /** Replace {name} placeholders. A template may omit a placeholder. */

@@ -30,6 +30,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageShell } from "../../_components/PageShell";
 import { ColourPips } from "../../_components/ColourPips";
+import { LevelBlock } from "../../_components/Level";
 import { NamePicker } from "../../_components/NamePicker";
 import { IconCoin, IconPegboard, IconPencil, SLOT_ICON, STAT_ICON } from "../../_ui/icons";
 import { Button, ChipTab, CoinChip, Dot, Panel, Sheet, uiCss, useCountUp } from "../../_ui/primitives";
@@ -92,6 +93,8 @@ import {
 } from "@/lib/bots/fixtures";
 import { bayOfPart, earnedOfBuild, isHydratedState, saveBuild, saveLook, useGarage } from "@/lib/bots/garage-state";
 import { loadEarnedBots, saveLookToServer } from "@/lib/bots/earned-client";
+import { saveBotOnServer, stateFromMe, useLiveGarage, withSavedBot } from "@/lib/bots/live-garage";
+import { readBotsSession } from "../../battles/session";
 import { LookPicker, type LookChange } from "../../_components/LookPicker";
 import {
   FACE_IDS,
@@ -102,6 +105,7 @@ import {
   faceAllowed,
   normalizeLook,
   ownColours,
+  parseLook,
   socketPaints,
   suggestLook,
   type BotLookRaw,
@@ -635,7 +639,31 @@ export default function BuildClient() {
   // the store: owned parts, coins and the saved builds (the one clock read is at mount)
   const mountNow = useRef(0);
   if (mountNow.current === 0 && typeof window !== "undefined") mountNow.current = Date.now();
-  const st = useGarage(mountNow.current);
+
+  /**
+   * WHOSE PARTS ARE IN THE TRAY. A signed in player builds with the cards
+   * their wallet actually owns, read through GET /api/bots/me, and the uid on
+   * every one of them IS its row id, so saving can name them. A visitor with
+   * no wallet keeps the demo garage exactly as it was, and can still take a
+   * robot apart and put it back together to see how the screen works.
+   */
+  const demo = useGarage(mountNow.current);
+  const live = useLiveGarage();
+  const st = useMemo(() => (live.me ? stateFromMe(live.me) : demo), [live.me, demo]);
+  /** the robot the server has in this spot, when there is one */
+  const liveBot = useMemo(() => live.me?.bots.find((b) => b.bay === bayNo) ?? null, [live.me, bayNo]);
+  /**
+   * THE LEVEL THIS SCREEN DRAWS, and the fight total behind it.
+   *
+   * A level belongs to a ROBOT, so it comes off this spot's own row when
+   * there is one. The demo garage keeps one level for the whole place and no
+   * total to measure, so it draws the level and no bar, which is the honest
+   * picture of a garage with nothing behind it. A brand new spot with no
+   * robot in it yet has no level of its own either, and falls back the same
+   * way: the part gates are about the wallet's best robot, and that line is
+   * true whichever spot is open.
+   */
+  const botLevel = liveBot ? { level: liveBot.level, xp: liveBot.xp as number | null } : { level: st.level, xp: null };
   // the tray shows every owned part that is not on ANOTHER saved bot
   const parts = useMemo(
     () =>
@@ -723,10 +751,28 @@ export default function BuildClient() {
   // like this can do. With no wallet connected the local rows are the only
   // rows there are, and they are read through look.ts's own findsOf, so the
   // rule is the same rule either way.
-  const lookEarned = useMemo(
-    () => serverRow?.earned ?? earnedOfBuild(build, st.parts, st.bays[bayNo], st.level),
-    [serverRow, build, st.parts, st.bays, st.level, bayNo],
-  );
+  // THE ROBOT BEING BUILT, NOT THE ROW AS IT STOOD A MOMENT AGO. Reading
+  // serverRow.earned whole was one step behind the screen: fit a black head
+  // and the colour list still offered the colours of the head you had just
+  // taken off, so Save refused with "Pick a colour your robot is wearing."
+  // and the colour it wanted was never on the list. The save route decides
+  // the same question off the robot in the request, and says so in its own
+  // comment, so this has to agree with it or the screen offers what the
+  // route refuses. What the browser genuinely cannot know stays the row's:
+  // the crown and the hats a wallet has won are server truth.
+  const lookEarned = useMemo(() => {
+    const built = earnedOfBuild(build, st.parts, st.bays[bayNo], st.level);
+    if (!serverRow) return built;
+    return {
+      ...built,
+      wins: serverRow.earned.wins,
+      repairs: serverRow.earned.repairs,
+      level: serverRow.earned.level,
+      champion: serverRow.earned.champion,
+      hats: serverRow.earned.hats,
+      plateNumber: serverRow.earned.plateNumber,
+    };
+  }, [serverRow, build, st.parts, st.bays, st.level, bayNo]);
   const look = useMemo(() => normalizeLook(build.look, lookEarned), [build.look, lookEarned]);
 
   // THE SERVER'S LOOK WINS, ONCE, when it arrives. A player who put a face on
@@ -802,13 +848,19 @@ export default function BuildClient() {
         : null;
 
   // ── the saved build, once the store has hydrated ────────────────────────
+  // IT WAITS FOR THE SERVER'S ANSWER FIRST. This runs once per spot, so
+  // seeding it off the demo garage while the wallet's real robot was still on
+  // its way would leave a signed in player editing somebody else's robot for
+  // the rest of the visit, and saving it over their own. `live.ready` turns
+  // true the moment we know there is nobody to ask, so a visitor waits for
+  // nothing.
   const loadedBay = useRef<number | null>(null);
   useEffect(() => {
-    if (!isHydratedState(st) || loadedBay.current === bayNo) return;
+    if (!live.ready || !isHydratedState(st) || loadedBay.current === bayNo) return;
     loadedBay.current = bayNo;
     const saved = st.builds[bayNo];
     setBuild(saved ? { ...saved, cards: { ...saved.cards } } : starterBuild(bayNo));
-  }, [st, bayNo]);
+  }, [st, bayNo, live.ready]);
 
   // ── the bay ─────────────────────────────────────────────────────────────
   const tapRef = useRef<(s: Socket) => void>(() => {});
@@ -990,10 +1042,89 @@ export default function BuildClient() {
     setSheet({ kind: "parts", slot, socket });
   };
 
-  const save = () => {
-    saveBuild({ ...build, bay: bayNo });
-    say(fill(t.ui.saved, { n: bayNo }));
-  };
+  /**
+   * SAVE THE ROBOT.
+   *
+   * SIGNED IN, THE ROW IS THE SAVE. POST /api/bots/bot/save takes the five
+   * sockets as owned instance ids, the two word name plus its optional
+   * number, the sticker, the plate colour and the chosen look, and it checks
+   * every one of them against this wallet's own rows: a part it does not own,
+   * a part of the wrong kind, a part already on another robot, a sixth robot,
+   * or a look nobody earned all come back as the sentence the player reads.
+   * Nothing here re-checks any of that. The screen sends what the player
+   * built and prints what the route answers.
+   *
+   * IT REFUSES RATHER THAN SAVES HALF A ROBOT. Every socket on the live path
+   * holds a row id; a uid that is not one means this screen was seeded from
+   * the demo garage, and dropping that part quietly would save a robot with a
+   * hole in it and tell the player it worked.
+   *
+   * SIGNED OUT, NOTHING CHANGES: the demo garage, exactly as before, so a
+   * visitor can build one and see what the screen does.
+   */
+  const [saving, setSaving] = useState(false);
+  const save = useCallback(async () => {
+    if (saving) return;
+    // a token in this browser, or a garage that came off a row: either one
+    // means this robot lives in a row and the save belongs there. A session
+    // that ran out while the screen was open is told so on the next press,
+    // never quietly written into the demo garage instead.
+    if (!readBotsSession() && !live.me) {
+      saveBuild({ ...build, bay: bayNo });
+      say(fill(t.ui.saved, { n: bayNo }));
+      return;
+    }
+    // A TOKEN BUT NO ANSWER IS NOT ENOUGH TO WRITE WITH. The garage read did
+    // not come back, so this screen does not know what is in this spot, what
+    // colour the plate is, or whether the robot is open to challenges. Saving
+    // anyway would post an empty robot over a real one and reset both of those
+    // to their defaults. It refuses and says so instead.
+    const me = live.me;
+    if (!me) {
+      say(t.ui.tryAgain);
+      void live.refresh();
+      return;
+    }
+    const ids = {} as Record<CardSlot, number | null>;
+    for (const slot of CARD_SLOTS) {
+      const uid = build.cards[slot];
+      if (uid == null) {
+        ids[slot] = null;
+        continue;
+      }
+      const n = Number(uid);
+      if (!Number.isInteger(n) || n <= 0) {
+        say(t.ui.tryAgain);
+        return;
+      }
+      ids[slot] = n;
+    }
+    setSaving(true);
+    const r = await saveBotOnServer({
+      bay: bayNo,
+      name: build.name,
+      decal: build.decal,
+      // the plate colour and whether other players may challenge it are the
+      // row's own and this screen has no control for either, so they are
+      // handed straight back; leaving them out would reset both on every save
+      ...(liveBot ? { paint: liveBot.paint, listed: liveBot.listed } : {}),
+      parts: ids,
+      look: {
+        face: look.face,
+        sticker: look.sticker,
+        spot: look.spot,
+        stickerPaint: look.stickerPaint,
+        hat: look.hat,
+      },
+    });
+    setSaving(false);
+    if (r.ok) {
+      live.put(withSavedBot(me, r.value));
+      say(fill(t.ui.saved, { n: bayNo }));
+      return;
+    }
+    say(r.message ?? t.enlist.signedOut);
+  }, [saving, build, bayNo, say, look, liveBot, live]);
 
   /**
    * PUT A LOOK ON, THROUGH THE GATE, AND KEEP IT.
@@ -1023,9 +1154,20 @@ export default function BuildClient() {
         hat: change.hat !== undefined ? change.hat : look.hat,
       };
       const before = look;
+      // THE SAME GATE, WRITTEN TO THE RIGHT PLACE. A visitor's robot lives in
+      // the demo garage, so saveLook checks the claim and stores it there. A
+      // signed in player's robot lives in a row, so the claim is checked with
+      // the route's own parseLook against what the SERVER says this robot has
+      // earned, and the store below is the one that keeps it. Writing a real
+      // player's look into the demo garage would check it against demo parts
+      // this wallet does not own, and refuse a face they had really earned.
+      const gate = (raw: BotLookRaw) =>
+        readBotsSession() || live.me
+          ? parseLook(raw, lookEarned)
+          : saveLook(bayNo, raw, { ...build, bay: bayNo });
       let stored;
       try {
-        stored = saveLook(bayNo, next, { ...build, bay: bayNo });
+        stored = gate(next);
       } catch (e) {
         if (e instanceof LookRefused) {
           say(e.message);
@@ -1057,7 +1199,7 @@ export default function BuildClient() {
         if (r.message === null) return;
         put(before);
         try {
-          saveLook(bayNo, before, { ...build, bay: bayNo });
+          gate(before);
         } catch {
           /* the browser refused its own old look: it will be normalised on the
              next read, and the sentence below is still the true answer */
@@ -1065,7 +1207,7 @@ export default function BuildClient() {
         say(r.message);
       });
     },
-    [build, bayNo, look, say],
+    [build, bayNo, look, lookEarned, live.me, say],
   );
 
   /** Pick for me: the same look for the same robot every time, so a player who
@@ -1459,7 +1601,7 @@ export default function BuildClient() {
           </div>
 
           <div className={uiCss.actionBar}>
-            <Button variant="primary" onClick={save} style={{ minWidth: 220 }}>
+            <Button variant="primary" onClick={() => void save()} disabled={saving} style={{ minWidth: 220 }}>
               {fill(t.build.save, { n: bayNo })}
             </Button>
             <span style={{ fontSize: 12, color: M.muted }}>{t.build.costsNothing}</span>
@@ -1532,6 +1674,12 @@ export default function BuildClient() {
               <p style={{ margin: "8px 0 0", fontSize: 11.5, color: M.muted, lineHeight: 1.45 }}>{t.teach.matching}</p>
               <p style={{ margin: "4px 0 0", fontSize: 11, color: M.muted, lineHeight: 1.45 }}>{SET_LINES.weapon}</p>
             </div>
+            {/* the same block the desktop rail carries, in the phone's own
+                stack: a level a player cannot see is a ladder they cannot
+                climb on purpose, and the phone is where most of them are */}
+            <div style={{ marginTop: 8 }}>
+              <LevelBlock level={botLevel.level} xp={botLevel.xp} boxed />
+            </div>
             {/* THE ONE DOOR TO THE LOOK PANEL GOES FIRST. This row scrolls
                 sideways, and the chip used to sit behind the coins and four
                 colour chips, which is off the right edge of a 390 phone: the
@@ -1593,6 +1741,15 @@ export default function BuildClient() {
               <span style={{ fontVariantNumeric: "tabular-nums" }}>{total}</span>
             </div>
             <p style={{ margin: "8px 0 0", fontSize: 11.5, color: M.muted, lineHeight: 1.45 }}>{t.teach.size}</p>
+            {/* WHAT LEVEL THIS ROBOT IS ON. It goes under the size readout,
+                beside the rest of the robot's own numbers: size says what it
+                can do today, the level says what it can be given next. The
+                parts screen has always refused a 3 star part until one of
+                your robots is level 5 and this is the only place that says
+                what level yours are. */}
+            <div style={{ borderTop: `1px solid ${M.border}`, marginTop: 12, paddingTop: 12 }}>
+              <LevelBlock level={botLevel.level} xp={botLevel.xp} />
+            </div>
           </Panel>
           <Panel title={t.set.title}>
             {setLines(false)}

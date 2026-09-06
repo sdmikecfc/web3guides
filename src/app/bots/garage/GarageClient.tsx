@@ -21,6 +21,7 @@ import { PageShell } from "../_components/PageShell";
 import { GarageCoach } from "../_components/Coach";
 import { ColourPips, type SlotColour } from "../_components/ColourPips";
 import { FirstMeeting, hasMet } from "../_components/FirstMeeting";
+import { LevelBlock } from "../_components/Level";
 import { PrideNote } from "../_components/Pride";
 import { IconChevron, IconLock, IconPin, IconPlay, IconRecycle, IconStar, STAT_ICON } from "../_ui/icons";
 import { Button, ChipTab, CoinChip, Dot, Panel, Sheet, uiCss } from "../_ui/primitives";
@@ -48,6 +49,7 @@ import {
   partTotal,
   recycleValue,
   type Build,
+  type FightRow,
   type OwnedPart,
   type StrategyKind,
 } from "@/lib/bots/fixtures";
@@ -67,12 +69,19 @@ import {
   type BayStatus,
   type GarageState,
 } from "@/lib/bots/garage-state";
-import { STRINGS, fill, starWord, winLossWords } from "@/lib/bots/strings";
+import { STRINGS, fill, spareWord, starWord, winLossWords } from "@/lib/bots/strings";
 import { shelfNothing, shelfRows, shelfSummary } from "@/lib/bots/shelf";
 import { BODY_CARD_ORDER, CROWN_CARD_KIND, hatPaint, ownColours, socketPaints, twinWords } from "@/lib/bots/look";
 import type { BotLook as RigLook } from "../_view/look";
 import { readBotsSession } from "../battles/session";
-import type { EarnedBotView, EarnedView } from "../_server/types";
+import {
+  loadPaper,
+  recycleBotOnServer,
+  saveBotOnServer,
+  stateFromMe,
+  useLiveGarage,
+} from "@/lib/bots/live-garage";
+import type { BotName, EarnedBotView, EarnedView, PaperLineView, PaperView } from "../_server/types";
 import {
   BRAND_INDEX,
   BRAND_OF_FAMILY,
@@ -147,6 +156,12 @@ function chipOf(s: BayStatus): Chip {
 
 const DOT_COLOR: Record<Exclude<TagDot, "dashed">, string> = { good: M.good, warn: M.warn, bad: M.bad, muted: M.muted };
 
+/** one frozen empty list, so a screen that has no fight rows does not hand a
+ *  fresh array to a memo on every render */
+const NO_FIGHTS: readonly FightRow[] = [];
+/** the same, for a paper with nothing in it yet */
+const NO_PAPER: readonly PaperLineView[] = [];
+
 /**
  * HOW THIS ROBOT IS DOING TODAY, in one warm sentence that names it.
  *
@@ -158,9 +173,11 @@ const DOT_COLOR: Record<Exclude<TagDot, "dashed">, string> = { good: M.good, war
  *
  * It is derived, never stored: the status the screen already computed, plus
  * the most recent row of that spot's own fight list, so it cannot claim a
- * win the garage did not have.
+ * win the garage did not have. `last` is handed IN rather than read here,
+ * because the only fight list this screen has is a fixture and a signed in
+ * player must not be told about a fight that never happened.
  */
-function moodLine(name: string, bay: number, s: BayStatus, fought: number): string {
+function moodLine(name: string, bay: number, s: BayStatus, fought: number, last: FightRow | null): string {
   switch (s.kind) {
     case "battle":
       return fill(t.mood.fighting, { name });
@@ -171,8 +188,6 @@ function moodLine(name: string, bay: number, s: BayStatus, fought: number): stri
     case "empty":
       return fill(t.mood.empty, { n: bay });
     default: {
-      // FIGHTS rows are newest first (fixtures.ts), so [0] is the last one
-      const last = (FIGHTS[bay] ?? [])[0];
       if (last) return fill(last.result === "win" ? t.mood.won : t.mood.lost, { name });
       return fill(fought > 0 ? t.mood.ready : t.mood.first, { name });
     }
@@ -262,7 +277,42 @@ export default function GarageClient() {
   // the one clock read on this screen: once at mount for the store, then once a second
   const mountNow = useRef(0);
   if (mountNow.current === 0 && typeof window !== "undefined") mountNow.current = Date.now();
-  const st = useGarage(mountNow.current);
+  /**
+   * WHOSE GARAGE IS ON SCREEN (the same rule the parts screen already
+   * follows). A signed in player reads their own rows through GET
+   * /api/bots/me; a visitor with no wallet reads the demo garage they have
+   * always had and can still walk around the whole place. The two never mix:
+   * one object goes down to every panel, every sheet and every rig below.
+   *
+   * WHY THE WHOLE SCREEN AND NOT JUST A NUMBER. Selling a robot writes a row
+   * and frees a spot on the server, so a screen still drawing the demo would
+   * have shown the sold robot still standing there. The state has to be the
+   * one the button changes.
+   */
+  const demo = useGarage(mountNow.current);
+  const live = useLiveGarage();
+  const st = useMemo(() => (live.me ? stateFromMe(live.me) : demo), [live.me, demo]);
+  /**
+   * THIS BROWSER BELONGS TO A SIGNED IN PLAYER.
+   *
+   * It turns true the moment a token is FOUND, not when the answer lands,
+   * and the two are deliberately different: between them the screen is still
+   * drawing the demo garage, and in that window nothing may offer an action
+   * that would write into a browser a real player is never going to read
+   * again. Every button below asks this, and the ones that spend or delete
+   * ask the token again at the moment of the press.
+   */
+  const isLive = live.signedIn || !!live.me;
+  /**
+   * THE GARAGE ON SCREEN IS THE ONE THIS BROWSER SHOULD BE LOOKING AT.
+   *
+   * False for exactly one moment: a signed in player whose own answer has
+   * not arrived, who is looking at the demo garage until it does. The two
+   * cards that NAME a robot and link somewhere are held back until this is
+   * true, because meeting somebody else's fixture robot, or being offered a
+   * fight that does not exist, is worse than a card arriving a moment late.
+   */
+  const known = !!live.me || !live.signedIn;
   const [now, setNow] = useState(0);
   useEffect(() => {
     setNow(Date.now());
@@ -308,6 +358,39 @@ export default function GarageClient() {
   useEffect(() => {
     setPaperDate(todaysDate(new Date()));
   }, []);
+  /**
+   * LAST NIGHT, AS IT REALLY WENT (GET /api/bots/paper).
+   *
+   * The five lines under the masthead were fixtures, two of them invented
+   * trades, and they said the same five things every morning to everybody.
+   * The route builds the real digest off rows: who challenged the saved copy
+   * of each robot and how it went, the stars and patches that appeared while
+   * the player was away, a hat one of the fights handed over, robots that
+   * came back from being fixed, and how many parts are for sale today. It
+   * also drops the mark that says today has been read, which is a zero coin
+   * row: nothing moves, and reading twice costs nothing.
+   *
+   * NULL KEEPS THE DEMO. Nobody signed in, a session that ran out, or a
+   * route that could not answer all land the same way, and the visitor's
+   * paper is the one that has always been there.
+   */
+  const [paperView, setPaperView] = useState<PaperView | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const v = await loadPaper();
+      if (alive) setPaperView(v);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+  // A SIGNED IN PLAYER NEVER READS THE FIXTURE PAPER, not even for the
+  // moment before their own arrives: those five lines carry a Watch button
+  // that opens a fight nobody ever fought. The masthead stands with nothing
+  // under it until the route answers, and stays empty if it never does.
+  const paperLines: readonly PaperLineView[] = paperView ? paperView.lines : isLive ? NO_PAPER : PAPER.lines;
+  const paperDay = paperView?.date ?? paperDate;
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -324,6 +407,18 @@ export default function GarageClient() {
   }, []);
 
   // ── derived ─────────────────────────────────────────────────────────────
+  /**
+   * ONE ROBOT'S LAST FIGHTS, WHICH ONLY THE DEMO HAS.
+   *
+   * These five rows are fixtures, and no route hands back the fights of one
+   * robot, so a signed in player gets an empty list and the screen says "No
+   * fights yet" rather than five fights with somebody else's names on them
+   * and Watch buttons that open nothing.
+   */
+  const fightsOf = useCallback(
+    (bay: number): readonly FightRow[] => (isLive ? NO_FIGHTS : FIGHTS[bay] ?? NO_FIGHTS),
+    [isLive],
+  );
   const bays = useMemo(() => Array.from({ length: BAY_COUNT }, (_, i) => i + 1), []);
   const statuses = useMemo(() => bays.map((b) => bayStatus(st, b, now)), [st, bays, now]);
   const spares = useMemo(() => spareParts(st), [st]);
@@ -643,8 +738,8 @@ export default function GarageClient() {
   // panel can never be showing two different days.
   useEffect(() => {
     if (!ready) return;
-    garageRef.current?.setNews(t.garage.paper, paperDate);
-  }, [ready, paperDate]);
+    garageRef.current?.setNews(t.garage.paper, paperDay);
+  }, [ready, paperDay]);
 
   // the crew: one figure per live strategy, and the last fill's chip once
   useEffect(() => {
@@ -711,6 +806,44 @@ export default function GarageClient() {
   );
   openBayRef.current = openBay;
 
+  /**
+   * THE FIRST NAME A PLAYER TYPES.
+   *
+   * The meeting card is the moment the robot turns out to be theirs, and the
+   * name went into the browser: a signed in player typed a name, watched it
+   * appear, and lost it on the next reload. It goes to POST
+   * /api/bots/bot/save now, which is the one route that names a robot, and
+   * everything else about the robot is handed straight back off its own row
+   * so a rename changes the name and nothing else. A save that is refused
+   * says so rather than pretending.
+   */
+  const rename = async (bay: number, name: BotName) => {
+    const build = st.builds[bay];
+    if (!build) return;
+    if (!isLive && !readBotsSession()) {
+      saveBuild({ ...build, name });
+      return;
+    }
+    const me = live.me;
+    const bot = me?.bots.find((b) => b.bay === bay) ?? null;
+    if (!me || !bot) {
+      say(t.ui.tryAgain);
+      void live.refresh();
+      return;
+    }
+    const r = await saveBotOnServer({
+      bay,
+      name,
+      decal: bot.decal,
+      paint: bot.paint,
+      listed: bot.listed,
+      parts: bot.parts,
+      look: bot.look,
+    });
+    if (r.ok) void live.refresh();
+    else say(r.message ?? t.enlist.signedOut);
+  };
+
   const newBot = () => {
     const b = firstEmptyBay(st);
     if (b == null) {
@@ -720,12 +853,56 @@ export default function GarageClient() {
     router.push(`/bots/garage/build?bay=${b}`);
   };
 
-  const doRecycle = (b: number) => {
+  /**
+   * SELL A WHOLE ROBOT.
+   *
+   * SIGNED IN, THE SERVER DOES IT. POST /api/bots/bot/recycle prices every
+   * card on the robot off its own stored price, pays the lot back through ONE
+   * grant keyed to that robot (so a second press cannot pay twice), deletes
+   * the cards and the row, and frees the spot. Nothing here re-prices
+   * anything: the coins in the toast are the coins the route paid, and the
+   * screen is re-read from /me afterwards so the empty stand, the coin chip
+   * and the level all come back together.
+   *
+   * SIGNED OUT, NOTHING CHANGES. The demo garage sells into the browser, the
+   * way a visitor with no wallet has always been able to try it.
+   */
+  const selling = useRef(false);
+  const doRecycle = async (b: number) => {
     const build = st.builds[b];
+    if (!build || selling.current) return;
+    const name = nameText(build.name);
+    // decided at the moment of the press, never at render: a session that ran
+    // out while this sheet sat open is told so, not quietly moved into the
+    // demo garage where it would sell a robot nobody can see
+    if (isLive || readBotsSession()) {
+      const bot = live.me?.bots.find((x) => x.bay === b) ?? null;
+      // a token but no answer: this screen does not know which row that robot
+      // is, and guessing an id is not a thing to do with a delete
+      if (!bot) {
+        say(t.ui.tryAgain);
+        void live.refresh();
+        return;
+      }
+      selling.current = true;
+      setSheet(null);
+      try {
+        const r = await recycleBotOnServer(bot.id);
+        await live.refresh();
+        if (!r.ok) {
+          say(r.message ?? t.enlist.signedOut);
+          return;
+        }
+        say(fill(t.garageUi.recycledBot, { bot: name, coins: r.value.coins, n: b }));
+      } finally {
+        selling.current = false;
+      }
+      return;
+    }
     const r = recycleBay(b);
-    if (!r || !build) return;
+    if (!r) return;
     setSheet(null);
-    say(fill(t.garageUi.recycledBot, { bot: nameText(build.name), coins: r.coins, n: b }));
+    say(fill(t.garageUi.recycledBot, { bot: name, coins: r.coins, n: b }));
   };
 
   const walk = (dir: -1 | 1) => setCentre((c) => Math.max(1, c + dir * 10));
@@ -766,7 +943,7 @@ export default function GarageClient() {
   }, [ready, artDone, st.coins, statuses, spares.length, earned, earnedAsked]);
 
   // ── pieces ──────────────────────────────────────────────────────────────
-  const paperLine = (line: (typeof PAPER.lines)[number], i: number) => (
+  const paperLine = (line: PaperLineView, i: number) => (
     <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 32 }}>
       <span style={{ flex: 1, fontSize: 14, lineHeight: 1.4 }}>{line.text}</span>
       {line.link?.kind === "watch" ? (
@@ -791,11 +968,11 @@ export default function GarageClient() {
             <IconPin size={22} />
           </span>
           <div style={{ fontFamily: FONT_TOY, fontSize: 22, fontWeight: 800, textAlign: "center", letterSpacing: 0.4, marginTop: 6 }}>{t.garageUi.masthead}</div>
-          <div style={{ fontFamily: FONT_BODY, fontSize: 12, color: "#8a7a63", textAlign: "center", marginBottom: 10 }}>{paperDate}</div>
+          <div style={{ fontFamily: FONT_BODY, fontSize: 12, color: "#8a7a63", textAlign: "center", marginBottom: 10 }}>{paperDay}</div>
           <div style={{ borderTop: "1px solid #cdbf9f", marginBottom: 6 }} />
         </>
       ) : null}
-      {(full ? PAPER.lines : PAPER.lines.slice(0, 2)).map(paperLine)}
+      {(full ? paperLines : paperLines.slice(0, 2)).map(paperLine)}
     </div>
   );
 
@@ -899,6 +1076,22 @@ export default function GarageClient() {
         : { wins: st.bays[sheet.bay]?.wins ?? 0, losses: st.bays[sheet.bay]?.losses ?? 0 }
       : { wins: 0, losses: 0 };
   const bayStatusNow = sheet?.kind === "bay" ? statuses[sheet.bay - 1] : null;
+  /**
+   * THE LEVEL ON THE OPEN SHEET, and the fight total behind it.
+   *
+   * The robot's own row when there is one: a level belongs to a robot, not
+   * to a garage, and two robots in one garage are almost never on the same
+   * one. The demo has a single garage level and no total, so it draws the
+   * level and no bar, which is the honest picture of a garage that has
+   * nothing to measure.
+   */
+  const bayLevel =
+    sheet?.kind === "bay" || sheet?.kind === "recycle"
+      ? (() => {
+          const row = live.me?.bots.find((b) => b.bay === sheet.bay) ?? null;
+          return row ? { level: row.level, xp: row.xp as number | null } : { level: st.level, xp: null };
+        })()
+      : { level: st.level, xp: null };
   const recycle = sheet?.kind === "recycle" ? recycleRows(st, sheet.bay) : null;
   const sparePart = sheet?.kind === "part" || sheet?.kind === "pickBay" ? partByUid(st, sheet.uid) : null;
   const crewCard = sheet?.kind === "crew" ? st.crew.find((c) => c.kind === sheet.who) ?? null : null;
@@ -909,12 +1102,12 @@ export default function GarageClient() {
           The first thing on the first visit, and never again after that.
           A player arrives owning a robot; this is the moment it wakes up,
           turns out to have a name, and turns out to be theirs. */}
-      {met === false && meetBay != null && st.builds[meetBay] ? (
+      {known && met === false && meetBay != null && st.builds[meetBay] ? (
         <FirstMeeting
           name={st.builds[meetBay].name}
           spot={meetBay}
           picture={meetImg}
-          onRename={(name) => saveBuild({ ...st.builds[meetBay], name })}
+          onRename={(name) => void rename(meetBay, name)}
           onDone={() => setMet(true)}
         />
       ) : null}
@@ -945,7 +1138,7 @@ export default function GarageClient() {
       {/* the proud moments: one warm line for the first win, the first time
           all four colours matched, and the first 4 star part. Said once, and
           never in the same breath as meeting the robot for the first time. */}
-      {met ? <PrideNote state={st} /> : null}
+      {known && met ? <PrideNote state={st} demo={!isLive} /> : null}
 
       {/* ── THE GARAGE ────────────────────────────────────────────────────── */}
       <div ref={wrapRef} style={{ ...canvasFrame, marginTop: 16, aspectRatio: small ? "390 / 300" : "1400 / 520" }}>
@@ -974,7 +1167,7 @@ export default function GarageClient() {
       {/* ── the three panels (desktop) ────────────────────────────────────── */}
       <div className={uiCss.desktopOnly} style={{ marginTop: 16 }}>
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 440fr) minmax(0, 500fr) minmax(0, 420fr)", gap: 20, alignItems: "start" }}>
-          <Panel title={t.garage.paper} aside={<span style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted }}>{paperDate}</span>}>
+          <Panel title={t.garage.paper} aside={<span style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted }}>{paperDay}</span>}>
             {paper(false)}
             <div style={{ marginTop: 10 }}>
               <Button onClick={() => setSheet({ kind: "paper" })}>{t.garageUi.readAll}</Button>
@@ -983,7 +1176,7 @@ export default function GarageClient() {
           <Panel title={t.garageUi.bays} aside={<Button onClick={newBot} style={{ minHeight: 34, padding: "6px 12px", fontSize: 12.5 }}>{t.garageUi.newBot}</Button>}>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{bays.map((b, i) => bayRow(b, i, false))}</div>
           </Panel>
-          <Panel title={t.garageUi.toolBoard} aside={<span style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted }}>{fill(t.garageUi.spares, { n: spares.length })}</span>}>
+          <Panel title={t.garageUi.toolBoard} aside={<span style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted }}>{spareWord(spares.length)}</span>}>
             {spares.length ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 260, overflowY: "auto", scrollbarWidth: "thin" }}>
                 {spares.map((p) => (
@@ -1082,8 +1275,18 @@ export default function GarageClient() {
                 sheet.bay,
                 bayStatusNow,
                 bayRecord.wins + bayRecord.losses,
+                // FIGHTS rows are newest first (fixtures.ts), so [0] is the
+                // last one; a signed in player has none of them
+                fightsOf(sheet.bay)[0] ?? null,
               )}
             </div>
+            {/* WHAT LEVEL THIS ROBOT IS ON, and what going up opens. It sits
+                between how the robot is doing and what it has earned, which
+                is where the rest of its own numbers already are. The level is
+                the row's; the fight total beside it is the row's too, and
+                with no row there is a level and no bar, which is exactly what
+                the demo garage knows about itself. */}
+            <LevelBlock level={bayLevel.level} xp={bayLevel.xp} />
             <EarnedBlock
               name={nameText(bayBuild.name)}
               row={bayEarned}
@@ -1092,9 +1295,9 @@ export default function GarageClient() {
             />
             <div style={{ borderTop: `1px solid ${M.border}` }} />
             <div style={{ fontFamily: FONT_DISPLAY, fontSize: 11, letterSpacing: "0.32em", color: M.muted }}>{t.garageUi.lastFights}</div>
-            {(FIGHTS[sheet.bay] ?? []).length ? (
+            {fightsOf(sheet.bay).length ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {(FIGHTS[sheet.bay] ?? []).map((f) => (
+                {fightsOf(sheet.bay).map((f) => (
                   <div key={f.id} style={{ display: "grid", gridTemplateColumns: "10px 1fr auto auto", gap: 10, alignItems: "center", minHeight: 52 }}>
                     <Dot color={f.result === "win" ? M.good : M.bad} />
                     <span style={{ minWidth: 0 }}>
@@ -1172,7 +1375,7 @@ export default function GarageClient() {
             <p style={{ margin: "0 0 12px", fontSize: 12.5, color: M.warn }}>{t.recycle.marks}</p>
           ) : null}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Button variant="sell" onClick={() => doRecycle(sheet.bay)}>
+            <Button variant="sell" onClick={() => void doRecycle(sheet.bay)}>
               {fill(t.recycle.confirm, { coins: recycle.total })}
             </Button>
             <Button onClick={() => setSheet({ kind: "bay", bay: sheet.bay })}>{t.recycle.keep}</Button>
@@ -1181,7 +1384,7 @@ export default function GarageClient() {
       ) : null}
 
       {sheet?.kind === "tools" ? (
-        <Sheet title={t.garageUi.toolBoard} onClose={() => setSheet(null)} action={<span style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted }}>{fill(t.garageUi.spares, { n: spares.length })}</span>}>
+        <Sheet title={t.garageUi.toolBoard} onClose={() => setSheet(null)} action={<span style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted }}>{spareWord(spares.length)}</span>}>
           {spares.length ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {spares.map((p) => (
@@ -1198,6 +1401,7 @@ export default function GarageClient() {
         <Sheet title={sparePart.name} onClose={() => setSheet(null)}>
           <SpareLore
             part={sparePart}
+            live={isLive}
             onPutOn={() => setSheet({ kind: "pickBay", uid: sparePart.uid })}
             onRecycle={() => {
               const r = recyclePart(sparePart.uid);
@@ -1218,13 +1422,22 @@ export default function GarageClient() {
                   key={b}
                   full
                   onClick={() => {
+                    // A ROBOT IS SAVED WHOLE OR NOT AT ALL. There is one
+                    // route that puts a card on a robot and it saves the
+                    // whole robot with it, which is the build screen's job,
+                    // so a real garage opens that spot instead of moving a
+                    // card in a browser and losing it on the next reload.
+                    if (isLive) {
+                      router.push(`/bots/garage/build?bay=${b}`);
+                      return;
+                    }
                     if (putOnBay(sparePart.uid, b)) {
                       setSheet(null);
                       say(fill(t.garageUi.swapped, { name: sparePart.name, n: b }));
                     }
                   }}
                 >
-                  {fill(t.garageUi.putOn, { n: b })}, {nameText(st.builds[b].name)}
+                  {fill(isLive ? t.garageUi.buildOn : t.garageUi.putOn, { n: b })}, {nameText(st.builds[b].name)}
                 </Button>
               ))}
           </div>
@@ -1350,8 +1563,31 @@ function EarnedBlock({
   );
 }
 
-/** The lore card for a spare part (screens doc 5.1) with the tool board's two buttons. */
-function SpareLore({ part, onPutOn, onRecycle }: { part: OwnedPart; onPutOn: () => void; onRecycle: () => void }) {
+/**
+ * The lore card for a spare part (screens doc 5.1) with the tool board's two
+ * buttons.
+ *
+ * `live` means this part is a row, not a browser entry, and it turns the sell
+ * button into a sentence. THERE IS NO ROUTE THAT SELLS ONE LOOSE CARD: the
+ * only thing that pays coins back is selling a whole robot
+ * (/api/bots/bot/recycle), which prices every card on it and deletes the row.
+ * A button that took a card out of a browser and paid coins nobody banked
+ * would be a lie that survives until the next reload, so the action is not
+ * offered and the sheet says why in one line. Whoever picks this up next:
+ * this is the place a "sell one card" route would land, and until there is
+ * one there is nothing here to call.
+ */
+function SpareLore({
+  part,
+  live = false,
+  onPutOn,
+  onRecycle,
+}: {
+  part: OwnedPart;
+  live?: boolean;
+  onPutOn: () => void;
+  onRecycle: () => void;
+}) {
   const color = TIER_COLOR[part.tier];
   const keys = SLOT_STATS[part.slot];
   const lead = leadStat(part.slot, [part.s[0], part.s[1], part.s[2]]);
@@ -1420,10 +1656,15 @@ function SpareLore({ part, onPutOn, onRecycle }: { part: OwnedPart; onPutOn: () 
         <Button variant="primary" onClick={onPutOn}>
           {t.garageUi.putOnAny}
         </Button>
-        <Button variant="sell" onClick={onRecycle}>
-          {fill(t.part.recycleFor, { coins: recycleValue(part) })}
-        </Button>
+        {live ? null : (
+          <Button variant="sell" onClick={onRecycle}>
+            {fill(t.part.recycleFor, { coins: recycleValue(part) })}
+          </Button>
+        )}
       </div>
+      {live ? (
+        <p style={{ margin: 0, fontSize: 12.5, color: M.muted, lineHeight: 1.45 }}>{t.garageUi.sellNote}</p>
+      ) : null}
     </div>
   );
 }
