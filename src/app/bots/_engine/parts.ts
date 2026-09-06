@@ -348,8 +348,22 @@ export const SET_PER_STAT = { color: 1, family: 2 } as const;
  * family and, unless painted, no color. */
 export type CardLookup = Readonly<Record<string, PartCard>>;
 
-export function partColor(p: Part, cards: CardLookup): PaintId | undefined {
-  return p.paint ?? cards[p.id]?.color;
+/**
+ * The colour a part OWNS, which is the instance's and only the instance's
+ * (ADR-0141 decision 3: "the catalog's factory color is art only").
+ *
+ * This used to fall back to the catalogue colour, and that fallback decided
+ * matched sets: four cards from four different families, none of which had
+ * ever been given a colour, all reported their factory colour, and if two
+ * families happen to be painted the same the bot collected a colour set worth
+ * plus one to every stat in the fight. A card with no colour matches nothing
+ * now, which is what "no colour" means.
+ *
+ * The lookup stays in the signature (partFamily beside it still needs one and
+ * every caller passes both) and is deliberately unread.
+ */
+export function partColor(p: Part, _cards: CardLookup): PaintId | undefined {
+  return p.paint;
 }
 
 export function partFamily(p: Part, cards: CardLookup): string {
@@ -382,11 +396,17 @@ export function validateCatalog(t: CatalogTables): void {
   const noDash = (where: string, text: string): void => {
     if (/[\u2013\u2014]/.test(text)) fail(`${where}: em-dash or en-dash in copy`);
   };
+  /** A name is ONE entry from the slot's `first` table followed by ONE word
+   * from its `second` table. The first entry may itself be two words
+   * ("Spark 3"), because ADR-0140's naming pass put the brand and the model
+   * number in front of the part word; the LAST word is always the plain
+   * word for the socket ("Legs", "Body", "Hammer"). Still no free text: both
+   * halves have to be in the catalog's tables. */
   const nameOk = (card: PartCard): boolean => {
     const words = card.name.split(" ");
-    if (words.length !== 2) return false;
+    if (words.length < 2) return false;
     const table = t.nameWords[card.slot];
-    return table.first.includes(words[0]) && table.second.includes(words[1]);
+    return table.first.includes(words.slice(0, -1).join(" ")) && table.second.includes(words[words.length - 1]);
   };
   const checkCard = (card: PartCard, expectPrice: (tier: Tier) => number, where: string): void => {
     if (!card.id) fail(`${where}: empty id`);
@@ -437,7 +457,9 @@ export function validateCatalog(t: CatalogTables): void {
     if (!fam) fail(`body part ${card.id}: family "${String(card.family)}" is not in the family table`);
     else {
       if (fam.tier !== card.tier) fail(`body part ${card.id}: T${card.tier} but family ${fam.id} is T${fam.tier}`);
-      if (card.name.split(" ")[0] !== fam.name) fail(`body part ${card.id}: name "${card.name}" does not start with its family ${fam.name}`);
+      // startsWith, not split(" ")[0]: a family name is now a brand plus a
+      // model number ("Spark 3"), so the card's title begins with two words
+      if (!card.name.startsWith(`${fam.name} `)) fail(`body part ${card.id}: name "${card.name}" does not start with its family ${fam.name}`);
       const list = perFamily.get(fam.id) ?? [];
       list.push(card);
       perFamily.set(fam.id, list);

@@ -12,10 +12,26 @@
  * the card carries an explicit `design` field, which wins. Family motifs come
  * from FAMILY_MOTIFS below (one line per family, authored, plain words); a
  * family without a motif falls back to its name.
+ *
+ * EVERY ROW ALSO CARRIES ITS CANVAS AND ITS PIVOTS, read out of the shipped
+ * contract (src/app/bots/_view/rig-points.ts) rather than restated, so the
+ * generation wave can never build a prompt against a canvas the bake did not
+ * draw. That is not hypothetical: the canvases changed on 2026-09-04 from
+ * head 160x160 / torso 200x240 / limb 90x200 to the concept contract, and a
+ * wave that kept the old numbers would put every joint in the wrong place.
+ *
+ * Two art files exist per part and they are NOT the same picture:
+ *   placeholder  public/bots-art/parts/<folder>/...   drawn ON TARGET, shipped
+ *   plate        _raw/parts/placeholders/<slot>-...   PRE-COMPENSATED for the
+ *                model's measured bias (it re-draws a limb 16 percent
+ *                narrower and 18 percent longer than the plate asks). Show
+ *                the model the PLATE. Showing it the placeholder gives back a
+ *                limb that is wrong by exactly the bias.
  */
 import fs from "node:fs";
 import path from "node:path";
 import { CATALOG } from "../src/app/bots/_engine/catalog";
+import { RIG, rigPointsNamed, type ArtSlot } from "../src/app/bots/_view/rig-points";
 
 type Card = {
   id: string; slot: string; tier: number; name: string; family?: string; color?: string; design?: number; lore?: string;
@@ -68,13 +84,19 @@ groups.forEach((list: Card[], _key: string) => {
     const design = p.design ?? i + 1;
     if (design > 2) { skipped.push(`${p.id} (${p.name}: starter card, reuses design 1 art)`); return; }
     const fam = (p.family || "").toLowerCase();
+    const folder = folderFor(p.slot) as ArtSlot;
+    const r = RIG[folder];
     manifest.push({
       id: `${p.slot}-t${p.tier}-${design}`,
       catalogId: p.id,
       slot: p.slot,
-      folder: folderFor(p.slot),
+      folder,
       tier: p.tier,
       design,
+      canvas: r ? { w: r.w, h: r.h } : null,
+      pivots: r ? Object.fromEntries(rigPointsNamed(folder).map((q) => [q.name, q.at])) : null,
+      placeholder: `public/bots-art/parts/${folder}/t${p.tier}-${design}.png`,
+      plate: `public/bots-art/_raw/parts/placeholders/${p.slot}-t${p.tier}-${design}.png`,
       name: p.name,
       family: p.family || null,
       motif: fam ? FAMILY_MOTIFS[fam] || p.family : null,

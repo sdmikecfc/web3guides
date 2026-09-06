@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:'AktivCd';font-weight:900;src:url('fonts/AktivGroteskCd_Blk.ttf') format('truetype');font-display:swap;}
+@font-face{font-family:'AktivCd';font-weight:800;src:url('fonts/AktivGroteskCd_XBd.ttf') format('truetype');font-display:swap;}
+@font-face{font-family:'Aktiv';font-weight:400;src:url('fonts/AktivGrotesk_Rg.ttf') format('truetype');font-display:swap;}
+@font-face{font-family:'Aktiv';font-weight:500;src:url('fonts/AktivGrotesk_Md.ttf') format('truetype');font-display:swap;}
+@font-face{font-family:'Aktiv';font-weight:700;src:url('fonts/AktivGrotesk_Bd.ttf') format('truetype');font-display:swap;}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:#07080c;}
+a{color:#4dd8e6;text-decoration:none;}
+a:hover{color:#7fe8f2;}
+@keyframes lw-rain{to{background-position:0 620px,0 900px;}}
+@keyframes lw-blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+@keyframes lw-sweep{0%{transform:translateX(-60%);}100%{transform:translateX(160%);}}
+</style>
+</helmet>
+
+<div style="position:relative;min-height:100vh;width:100%;overflow:hidden;background:#07080c;font-family:'Aktiv',system-ui,sans-serif;color:#f4f6fb;padding:clamp(20px,4vw,44px) clamp(16px,4vw,56px) clamp(40px,6vw,72px);">
+
+  <!-- ================= ATMOSPHERE (bg layers) ================= -->
+  <div style="position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(120% 80% at 50% -10%, #10121b 0%, #0a0b11 45%, #07080c 100%);"></div>
+
+  <!-- night skyline -->
+  <div style="position:absolute;left:0;right:0;bottom:0;height:46%;z-index:0;display:flex;align-items:flex-end;gap:2px;opacity:.55;pointer-events:none;">
+    <div style="flex:1.2;height:38%;background:linear-gradient(#0d1019,#070810);background-image:repeating-linear-gradient(0deg,transparent 0 14px,rgba(240,179,64,.05) 14px 17px);border-top:1px solid rgba(244,246,251,.04);"></div>
+    <div style="flex:.8;height:62%;background:linear-gradient(#0e1119,#070810);background-image:repeating-linear-gradient(0deg,transparent 0 12px,rgba(77,216,230,.045) 12px 14px);"></div>
+    <div style="flex:1;height:48%;background:linear-gradient(#0d1019,#070810);background-image:repeating-linear-gradient(0deg,transparent 0 16px,rgba(240,179,64,.04) 16px 19px);"></div>
+    <div style="flex:.7;height:78%;background:linear-gradient(#0f1220,#070810);background-image:repeating-linear-gradient(0deg,transparent 0 12px,rgba(77,216,230,.055) 12px 14px);"></div>
+    <div style="flex:1.1;height:34%;background:linear-gradient(#0d1019,#070810);background-image:repeating-linear-gradient(0deg,transparent 0 14px,rgba(240,179,64,.045) 14px 17px);"></div>
+    <div style="flex:.9;height:90%;background:linear-gradient(#101426,#070810);background-image:repeating-linear-gradient(0deg,transparent 0 13px,rgba(77,216,230,.06) 13px 15px);"></div>
+    <div style="flex:1;height:52%;background:linear-gradient(#0d1019,#070810);background-image:repeating-linear-gradient(0deg,transparent 0 15px,rgba(240,179,64,.04) 15px 18px);"></div>
+    <div style="flex:.75;height:70%;background:linear-gradient(#0e1119,#070810);background-image:repeating-linear-gradient(0deg,transparent 0 12px,rgba(77,216,230,.05) 12px 14px);"></div>
+    <div style="flex:1.3;height:40%;background:linear-gradient(#0d1019,#070810);background-image:repeating-linear-gradient(0deg,transparent 0 14px,rgba(240,179,64,.045) 14px 17px);"></div>
+    <div style="flex:.65;height:84%;background:linear-gradient(#0f1324,#070810);background-image:repeating-linear-gradient(0deg,transparent 0 13px,rgba(77,216,230,.055) 13px 15px);"></div>
+    <div style="flex:1;height:44%;background:linear-gradient(#0d1019,#070810);background-image:repeating-linear-gradient(0deg,transparent 0 15px,rgba(240,179,64,.04) 15px 18px);"></div>
+    <div style="flex:.85;height:66%;background:linear-gradient(#0e1220,#070810);background-image:repeating-linear-gradient(0deg,transparent 0 12px,rgba(77,216,230,.05) 12px 14px);"></div>
+    <div style="flex:1.15;height:36%;background:linear-gradient(#0d1019,#070810);background-image:repeating-linear-gradient(0deg,transparent 0 14px,rgba(240,179,64,.045) 14px 17px);"></div>
+    <div style="flex:.7;height:74%;background:linear-gradient(#0f1220,#070810);background-image:repeating-linear-gradient(0deg,transparent 0 13px,rgba(77,216,230,.055) 13px 15px);"></div>
+  </div>
+
+  <!-- crimson cinematic wash -->
+  <div style="position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(60% 45% at 50% 30%, rgba(227,61,78,.16) 0%, rgba(227,61,78,0) 70%), radial-gradient(50% 40% at 12% 60%, rgba(240,179,64,.08) 0%, transparent 70%), radial-gradient(50% 40% at 88% 62%, rgba(77,216,230,.09) 0%, transparent 70%);"></div>
+
+  <!-- rain on glass -->
+  <sc-if value="{{ showRain }}" hint-placeholder-val="{{ true }}">
+  <div style="position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.6;background-image:repeating-linear-gradient(101deg, transparent 0 3px, rgba(210,230,255,.05) 3px 4px, transparent 4px 11px), repeating-linear-gradient(99deg, transparent 0 7px, rgba(210,230,255,.03) 7px 8px, transparent 8px 22px);background-size:auto 620px, auto 900px;animation:lw-rain 5.5s linear infinite;"></div>
+  </sc-if>
+  <!-- top + bottom vignette -->
+  <div style="position:absolute;inset:0;z-index:0;pointer-events:none;background:linear-gradient(#07080c 0%, transparent 14%, transparent 82%, #07080c 100%);"></div>
+
+  <!-- ================= CONTENT ================= -->
+  <div style="position:relative;z-index:1;max-width:1200px;margin:0 auto;">
+
+    <!-- (1) CLASSIFIED FILE HEADER STRIP -->
+    <div style="position:relative;margin-top:14px;">
+      <!-- folder tabs -->
+      <div style="display:flex;gap:6px;padding-left:6px;">
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.16em;color:#0a0b11;background:#f0b340;padding:5px 12px 6px;border-radius:6px 6px 0 0;font-weight:700;">CASE FILE</div>
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.16em;color:rgba(244,246,251,.6);background:rgba(244,246,251,.05);border:1px solid rgba(244,246,251,.08);border-bottom:none;padding:5px 12px 6px;border-radius:6px 6px 0 0;">TARGETS</div>
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.16em;color:rgba(244,246,251,.6);background:rgba(244,246,251,.05);border:1px solid rgba(244,246,251,.08);border-bottom:none;padding:5px 12px 6px;border-radius:6px 6px 0 0;">PAYOUTS</div>
+      </div>
+      <!-- strip bar -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:12px 16px;border:1px solid rgba(244,246,251,.1);border-radius:0 10px 10px 10px;background:rgba(10,12,18,.72);backdrop-filter:blur(4px);">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <span style="display:inline-flex;align-items:center;gap:7px;font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.14em;color:#f4f6fb;">
+            <span style="width:8px;height:8px;border-radius:50%;background:#e33d4e;box-shadow:0 0 10px #e33d4e;animation:lw-blink 1.6s ease-in-out infinite;"></span>
+            LAUNCH WARS <span style="color:rgba(244,246,251,.4);">//</span> SEASON 4
+          </span>
+          <span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;color:rgba(244,246,251,.4);">FILE №: LW-S4-0041</span>
+          <span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;color:rgba(244,246,251,.4);">CLEARANCE: EYES ONLY</span>
+        </div>
+        <div style="font-family:'AktivCd',sans-serif;font-weight:800;font-size:13px;letter-spacing:.26em;color:#e33d4e;border:2px solid rgba(227,61,78,.8);border-radius:4px;padding:4px 12px 3px;transform:rotate(-4deg);box-shadow:0 0 18px rgba(227,61,78,.25);text-shadow:0 0 12px rgba(227,61,78,.4);">CLASSIFIED</div>
+      </div>
+    </div>
+
+    <!-- (2) TITLE + string board -->
+    <div style="position:relative;margin-top:clamp(36px,6vw,72px);">
+      <!-- string & pins board -->
+      <sc-if value="{{ showBoard }}" hint-placeholder-val="{{ true }}">
+      <div style="position:absolute;inset:-30px -10px -20px;z-index:0;pointer-events:none;">
+        <!-- red string lines -->
+        <div style="position:absolute;top:20%;left:12%;width:34%;height:1px;background:linear-gradient(90deg,rgba(227,61,78,.35),rgba(227,61,78,.12));transform:rotate(9deg);"></div>
+        <div style="position:absolute;top:58%;left:24%;width:44%;height:1px;background:linear-gradient(90deg,rgba(227,61,78,.1),rgba(227,61,78,.32));transform:rotate(-6deg);"></div>
+        <div style="position:absolute;top:34%;left:58%;width:30%;height:1px;background:rgba(227,61,78,.22);transform:rotate(16deg);"></div>
+        <div style="position:absolute;top:70%;left:8%;width:26%;height:1px;background:rgba(227,61,78,.18);transform:rotate(-14deg);"></div>
+        <!-- faint dossier photos -->
+        <div style="position:absolute;top:8%;left:9%;width:74px;height:92px;background:rgba(244,246,251,.035);border:1px solid rgba(244,246,251,.07);transform:rotate(-7deg);"></div>
+        <div style="position:absolute;top:2%;left:44%;width:66px;height:82px;background:rgba(244,246,251,.04);border:1px solid rgba(244,246,251,.08);transform:rotate(5deg);"></div>
+        <div style="position:absolute;top:12%;right:11%;width:70px;height:88px;background:rgba(244,246,251,.035);border:1px solid rgba(244,246,251,.07);transform:rotate(8deg);"></div>
+        <div style="position:absolute;bottom:2%;left:26%;width:64px;height:80px;background:rgba(244,246,251,.03);border:1px solid rgba(244,246,251,.06);transform:rotate(-4deg);"></div>
+        <div style="position:absolute;bottom:6%;right:24%;width:68px;height:84px;background:rgba(244,246,251,.035);border:1px solid rgba(244,246,251,.07);transform:rotate(6deg);"></div>
+        <!-- pins -->
+        <div style="position:absolute;top:8%;left:9%;width:9px;height:9px;border-radius:50%;background:#e33d4e;box-shadow:0 0 8px rgba(227,61,78,.6);"></div>
+        <div style="position:absolute;top:2%;left:44%;width:9px;height:9px;border-radius:50%;background:#e33d4e;box-shadow:0 0 8px rgba(227,61,78,.6);"></div>
+        <div style="position:absolute;top:12%;right:11%;width:9px;height:9px;border-radius:50%;background:#e33d4e;box-shadow:0 0 8px rgba(227,61,78,.6);"></div>
+      </div>
+      </sc-if>
+
+      <div style="position:relative;z-index:1;text-align:center;">
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:clamp(10px,1.4vw,13px);letter-spacing:.4em;color:#4dd8e6;margin-bottom:clamp(10px,1.5vw,18px);">THE  HIT  LIST  —  S4  DOSSIER</div>
+        <h1 style="margin:0;font-family:'AktivCd',sans-serif;font-weight:900;font-size:clamp(72px,15vw,210px);line-height:.86;letter-spacing:-.01em;text-transform:uppercase;color:#f7f9fc;text-shadow:0 8px 40px rgba(0,0,0,.6);">THE&nbsp;HIT&nbsp;<span style="position:relative;">LIST</span></h1>
+        <!-- red slash underline -->
+        <div style="display:flex;justify-content:center;margin-top:clamp(6px,1vw,14px);">
+          <div style="width:min(70%,760px);height:clamp(8px,1vw,14px);background:linear-gradient(90deg,rgba(227,61,78,0),#e33d4e 18%,#ff5a6a 60%,#e33d4e 90%,rgba(227,61,78,0));transform:skewX(-24deg);box-shadow:0 0 24px rgba(227,61,78,.5);"></div>
+        </div>
+        <!-- barcode under final word (right) -->
+        <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+          <div style="text-align:right;width:min(46%,340px);">
+            <div style="height:34px;background-image:repeating-linear-gradient(90deg,#f4f6fb 0 2px,transparent 2px 4px,#f4f6fb 4px 5px,transparent 5px 9px,#f4f6fb 9px 12px,transparent 12px 14px);opacity:.82;"></div>
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.24em;color:rgba(244,246,251,.5);margin-top:5px;">LW-S4 · 0041 · 77 · HIT</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- (3) TAGLINE -->
+      <p style="position:relative;z-index:1;text-align:center;margin:clamp(24px,4vw,40px) auto 0;max-width:680px;font-size:clamp(16px,2.1vw,22px);font-weight:500;line-height:1.4;color:rgba(244,246,251,.82);">Three teams. Five contracts. <span style="color:#f0b340;">Every closed contract pays.</span></p>
+    </div>
+
+    <!-- (4) THREE FANNED DOSSIER PANELS -->
+    <div style="display:flex;justify-content:center;align-items:center;gap:0;overflow-x:auto;padding:clamp(40px,6vw,72px) 8px clamp(20px,3vw,32px);scroll-snap-type:x proximity;">
+
+      <!-- LEFT — gold, bounty huntress -->
+      <div style="position:relative;flex:0 0 auto;width:clamp(200px,23vw,296px);aspect-ratio:3/4.35;border-radius:14px;overflow:hidden;background:#0c0e14;border:1.5px solid rgba(240,179,64,.6);box-shadow:0 24px 60px rgba(0,0,0,.7),0 0 34px rgba(240,179,64,.18);transform:rotate(-7deg) translateY(26px);margin-right:-26px;z-index:1;scroll-snap-align:center;">
+        <x-import component-from-global-scope="image-slot" from="./image-slot.js" id="hit-huntress" shape="rect" fit="cover" placeholder="Wild-West bounty huntress" style="position:absolute;inset:0;width:100%;height:100%;" hint-size="100%,100%"></x-import>
+        <div style="position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:9px 11px;font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:.16em;color:#f0b340;background:linear-gradient(#000a,transparent);pointer-events:none;"><span>TEAM 01</span><span>◆ BOUNTY</span></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:26px 13px 15px;background:linear-gradient(transparent,rgba(4,5,8,.92));pointer-events:none;">
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:.2em;color:#f0b340;">DOSSIER · 01</div>
+          <div style="font-family:'AktivCd',sans-serif;font-weight:900;font-size:26px;letter-spacing:.01em;line-height:1;margin-top:3px;color:#fff;">CALICO</div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:.12em;color:rgba(244,246,251,.55);margin-top:4px;">THE HUNTRESS · WILD WEST</div>
+        </div>
+      </div>
+
+      <!-- CENTER — crimson, spy femme -->
+      <div style="position:relative;flex:0 0 auto;width:clamp(210px,24vw,312px);aspect-ratio:3/4.35;border-radius:14px;overflow:hidden;background:#0c0e14;border:1.5px solid rgba(227,61,78,.7);box-shadow:0 30px 70px rgba(0,0,0,.75),0 0 44px rgba(227,61,78,.28);transform:translateY(-10px);z-index:3;scroll-snap-align:center;">
+        <x-import component-from-global-scope="image-slot" from="./image-slot.js" id="hit-spy" shape="rect" fit="cover" placeholder="1960s spy femme fatale" style="position:absolute;inset:0;width:100%;height:100%;" hint-size="100%,100%"></x-import>
+        <div style="position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:9px 11px;font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:.16em;color:#e33d4e;background:linear-gradient(#000a,transparent);pointer-events:none;"><span>TEAM 02</span><span>◆ INTEL</span></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:26px 13px 15px;background:linear-gradient(transparent,rgba(4,5,8,.92));pointer-events:none;">
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:.2em;color:#e33d4e;">DOSSIER · 02</div>
+          <div style="font-family:'AktivCd',sans-serif;font-weight:900;font-size:28px;letter-spacing:.01em;line-height:1;margin-top:3px;color:#fff;">MIRAGE</div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:.12em;color:rgba(244,246,251,.55);margin-top:4px;">THE SPY · '63 DEEP COVER</div>
+        </div>
+      </div>
+
+      <!-- RIGHT — ice, hitwoman -->
+      <div style="position:relative;flex:0 0 auto;width:clamp(200px,23vw,296px);aspect-ratio:3/4.35;border-radius:14px;overflow:hidden;background:#0c0e14;border:1.5px solid rgba(77,216,230,.6);box-shadow:0 24px 60px rgba(0,0,0,.7),0 0 34px rgba(77,216,230,.18);transform:rotate(7deg) translateY(26px);margin-left:-26px;z-index:1;scroll-snap-align:center;">
+        <x-import component-from-global-scope="image-slot" from="./image-slot.js" id="hit-cleaner" shape="rect" fit="cover" placeholder="Suited hitwoman, nape barcode" style="position:absolute;inset:0;width:100%;height:100%;" hint-size="100%,100%"></x-import>
+        <div style="position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:9px 11px;font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:.16em;color:#4dd8e6;background:linear-gradient(#000a,transparent);pointer-events:none;"><span>TEAM 03</span><span>◆ CLEANUP</span></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:26px 13px 15px;background:linear-gradient(transparent,rgba(4,5,8,.92));pointer-events:none;">
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:.2em;color:#4dd8e6;">DOSSIER · 03</div>
+          <div style="font-family:'AktivCd',sans-serif;font-weight:900;font-size:26px;letter-spacing:.01em;line-height:1;margin-top:3px;color:#fff;">GLASS</div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:.12em;color:rgba(244,246,251,.55);margin-top:4px;">THE CLEANER · UNIT 77</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- (5) BOUNTY LEDGER STRIP -->
+    <div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:clamp(20px,3vw,36px);">
+
+      <!-- prize pool -->
+      <div style="flex:1 1 260px;max-width:380px;position:relative;padding:16px 18px;border-radius:16px;border:1px solid rgba(244,246,251,.1);background:linear-gradient(180deg,rgba(244,246,251,.04),rgba(244,246,251,.015));">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff6373,#b81f30 70%);border:1px solid rgba(255,120,132,.5);box-shadow:0 0 12px rgba(227,61,78,.5);display:grid;place-items:center;"><span style="font-family:'AktivCd',sans-serif;font-weight:900;font-size:11px;color:#3a0810;">$</span></div>
+          <span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.18em;color:rgba(244,246,251,.55);">PRIZE POOL UNLOCKED</span>
+        </div>
+        <div style="margin-top:10px;font-family:'AktivCd',sans-serif;font-weight:900;font-size:30px;line-height:1;color:#fff;">{{ unlockedLabel }}<span style="font-size:16px;color:rgba(244,246,251,.45);"> of {{ totalLabel }}</span></div>
+        <div style="margin-top:11px;height:7px;border-radius:99px;background:rgba(244,246,251,.08);overflow:hidden;"><div style="height:100%;border-radius:99px;background:linear-gradient(90deg,#e33d4e,#f0b340);box-shadow:0 0 10px rgba(227,61,78,.6);width:{{ pctWidth }};"></div></div>
+      </div>
+
+      <!-- contracts -->
+      <div style="flex:1 1 220px;max-width:320px;position:relative;padding:16px 18px;border-radius:16px;border:1px solid rgba(244,246,251,.1);background:linear-gradient(180deg,rgba(244,246,251,.04),rgba(244,246,251,.015));">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff6373,#b81f30 70%);border:1px solid rgba(255,120,132,.5);box-shadow:0 0 12px rgba(227,61,78,.5);display:grid;place-items:center;"><span style="font-family:'AktivCd',sans-serif;font-weight:900;font-size:12px;color:#3a0810;">✕</span></div>
+          <span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.18em;color:rgba(244,246,251,.55);">CONTRACTS</span>
+        </div>
+        <div style="margin-top:10px;font-family:'AktivCd',sans-serif;font-weight:900;font-size:30px;line-height:1;color:#fff;">{{ closed }} of 5 <span style="font-size:15px;letter-spacing:.14em;color:#e33d4e;">CLOSED</span></div>
+        <div style="margin-top:12px;display:flex;gap:9px;">
+          <sc-for list="{{ pips }}" as="pip" hint-placeholder-count="5">
+            <div style="width:16px;height:16px;border-radius:50%;border:1px solid rgba(227,61,78,.55);display:grid;place-items:center;">
+              <sc-if value="{{ pip.on }}" hint-placeholder-val="{{ true }}">
+                <div style="width:9px;height:9px;border-radius:50%;background:#e33d4e;box-shadow:0 0 8px #e33d4e;"></div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- countdown -->
+      <div style="flex:1 1 220px;max-width:320px;position:relative;padding:16px 18px;border-radius:16px;border:1px solid rgba(244,246,251,.1);background:linear-gradient(180deg,rgba(244,246,251,.04),rgba(244,246,251,.015));">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff6373,#b81f30 70%);border:1px solid rgba(255,120,132,.5);box-shadow:0 0 12px rgba(227,61,78,.5);display:grid;place-items:center;"><span style="font-family:'AktivCd',sans-serif;font-weight:900;font-size:12px;color:#3a0810;">◷</span></div>
+          <span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.18em;color:rgba(244,246,251,.55);">SEASON ENDS IN</span>
+        </div>
+        <div style="margin-top:10px;font-family:'AktivCd',sans-serif;font-weight:900;font-size:30px;line-height:1;color:#fff;font-variant-numeric:tabular-nums;">{{ cd }}</div>
+        <div style="margin-top:11px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;color:rgba(77,216,230,.75);">CONTRACTS LOCK AT ZERO</div>
+      </div>
+    </div>
+
+    <!-- (6) CTAs -->
+    <div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:clamp(28px,4vw,44px);">
+      <a href="#" style="display:inline-flex;align-items:center;gap:10px;font-family:'AktivCd',sans-serif;font-weight:900;font-size:16px;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:#e33d4e;padding:15px 30px;border-radius:10px;box-shadow:0 10px 30px rgba(227,61,78,.4),inset 0 1px 0 rgba(255,255,255,.2);transition:transform .18s ease,box-shadow .18s ease;" style-hover="transform:translateY(-2px);box-shadow:0 16px 40px rgba(227,61,78,.55),inset 0 1px 0 rgba(255,255,255,.25);">JOIN THE BRIEFING <span style="font-size:15px;">→</span></a>
+      <a href="#" style="display:inline-flex;align-items:center;gap:10px;font-family:'AktivCd',sans-serif;font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase;color:#f4f6fb;background:transparent;padding:15px 28px;border-radius:10px;border:1.5px solid rgba(244,246,251,.3);transition:border-color .18s ease,background .18s ease;" style-hover="border-color:#4dd8e6;background:rgba(77,216,230,.08);">VIEW THE HIT LIST</a>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;unlocked&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:640,&quot;min&quot;:0,&quot;max&quot;:1000,&quot;unit&quot;:&quot;$&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Bounty ledger&quot;},&quot;total&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:1000,&quot;min&quot;:100,&quot;max&quot;:5000,&quot;unit&quot;:&quot;$&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Bounty ledger&quot;},&quot;contractsClosed&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:3,&quot;min&quot;:0,&quot;max&quot;:5,&quot;step&quot;:1,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Bounty ledger&quot;},&quot;countdownDays&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:12,&quot;min&quot;:1,&quot;max&quot;:90,&quot;unit&quot;:&quot;d&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Bounty ledger&quot;},&quot;showRain&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Atmosphere&quot;},&quot;showStringBoard&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Atmosphere&quot;}}">
+class Component extends DCLogic {
+  state = { now: Date.now() };
+  componentDidMount(){ this._t = setInterval(() => this.setState({ now: Date.now() }), 1000); }
+  componentWillUnmount(){ clearInterval(this._t); }
+  renderVals(){
+    const unlocked = this.props.unlocked ?? 640;
+    const total = this.props.total ?? 1000;
+    const closed = Math.max(0, Math.min(5, this.props.contractsClosed ?? 3));
+    const days = this.props.countdownDays ?? 12;
+    if (!this._end) this._end = Date.now() + days * 86400000;
+    let ms = Math.max(0, this._end - this.state.now);
+    const d = Math.floor(ms/86400000); ms -= d*86400000;
+    const h = Math.floor(ms/3600000); ms -= h*3600000;
+    const m = Math.floor(ms/60000); ms -= m*60000;
+    const s = Math.floor(ms/1000);
+    const pad = n => String(n).padStart(2,'0');
+    return {
+      showRain: this.props.showRain ?? true,
+      showBoard: this.props.showStringBoard ?? true,
+      unlockedLabel: '$' + unlocked.toLocaleString(),
+      totalLabel: '$' + total.toLocaleString(),
+      pctWidth: Math.round(unlocked/total*100) + '%',
+      closed,
+      cd: d + 'd ' + pad(h) + 'h ' + pad(m) + 'm ' + pad(s) + 's',
+      pips: Array.from({length:5}, (_,i) => ({ on: i < closed }))
+    };
+  }
+}
+</script>
+</body>
+</html>

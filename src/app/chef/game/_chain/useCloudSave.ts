@@ -32,6 +32,8 @@ export interface CloudSave {
   load: () => Promise<DkSave | null>;
   /** store a save; returns false if the server refused */
   store: (save: DkSave) => Promise<boolean>;
+  /** cheers this kitchen received today, filled by the last load (M8c) */
+  cheersRef: { current: number };
 }
 
 function readToken(): { token: string; wallet: string } | null {
@@ -50,6 +52,8 @@ export function useCloudSave(): CloudSave {
   const [wallet, setWallet] = useState<string | null>(null);
   const [error, setError] = useState("");
   const tokenRef = useRef<string | null>(null);
+  /** cheers this kitchen received today, filled by the last load (M8c) */
+  const cheersRef = useRef(0);
 
   // an existing token counts, but only for the wallet that is connected now
   useEffect(() => {
@@ -121,7 +125,14 @@ export function useCloudSave(): CloudSave {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ t }),
       });
-      const j = (await res.json()) as { ok?: boolean; save?: DkSave | null };
+      const j = (await res.json()) as {
+        ok?: boolean;
+        save?: DkSave | null;
+        cheersToday?: number;
+      };
+      // the load response also carries today's cheer count (M8c); parked on a
+      // ref rather than returned, so the load signature stays "a save or null"
+      cheersRef.current = Math.max(0, Math.floor(j.cheersToday ?? 0));
       return j.ok ? j.save ?? null : null;
     } catch {
       return null;
@@ -152,5 +163,5 @@ export function useCloudSave(): CloudSave {
     }
   }, []);
 
-  return { status, wallet, error, signIn, signOut, load, store };
+  return { status, wallet, error, signIn, signOut, load, store, cheersRef };
 }

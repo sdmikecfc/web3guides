@@ -22,16 +22,19 @@ import { courseById } from "./academy";
 import {
   COMMONS,
   DAILY_DELIVERY,
+  DAILY_SPECIALS,
   dishQualityBonus,
   MAX_DISH_LEVEL,
   nextRecipe,
   RARE_DROP_CAP,
   RARES,
   RECIPES,
+  SPECIAL_TIP,
   VOLUME_DROP_CAP,
   volumeDropInterval,
 } from "./pantry";
-import { GROWTH_SLOTS, SECOND_STOVE, SHELL, STARTER_LAYOUT } from "./rooms";
+import { MAX_BANKED_DAYS } from "./wallclock";
+import { GROWTH_SLOTS, SECOND_STOVE, SHELL, SHELL_SIZES, STARTER_LAYOUT } from "./rooms";
 
 export const WORLD_FIXED_DT = 1 / 60;
 /** 30 real seconds per game hour = a 12 minute game day. */
@@ -113,6 +116,8 @@ export interface Entity {
   seatIdx: number;
   /** guests only: the bench they are waiting on, -1 otherwise (ADR-0107) */
   benchIdx: number;
+  /** guests only: index into world.regulars, or -1 for a stranger (M8b) */
+  regularIdx: number;
   taskSeat: number;
   taskTable: number;
   /** staff chores (ADR-0106): a litter id, or a restroom uid, or -1 */
@@ -225,10 +230,105 @@ export interface PantryState {
 }
 export const SPECIAL_MASTERY = 15;
 
+/**
+ * Today's special (M8). `idx` points into DAILY_SPECIALS and is rolled fresh
+ * on every real day; `prepped` is whether the player spent the commons for it.
+ *
+ * Not to be confused with menu.specialUnlocked, which is the permanent fourth
+ * dish from ADR-0090. This one is a board that wipes at midnight.
+ */
+export interface DailyState {
+  idx: number;
+  prepped: boolean;
+  served: number;
+  /**
+   * The daily beats' once-a-day ledger (the inversion): has today's
+   * FIRST_SERVE_BONUS gone out, and has the SPECIAL_POT been paid. Reset only
+   * by the newDay action, serialized so a reload cannot pay a beat twice --
+   * and, just as important, so it cannot swallow one already earned.
+   */
+  firstServePaid: boolean;
+  potPaid: boolean;
+  /**
+   * DAILY GOALS (CUTE+VIRAL): three kind targets that give a short session a
+   * finish line. Plates counts EVERY serve (unlike `served`, which counts
+   * only the prepped special); greeted arms the hello goal. Paid flags follow
+   * the beats law: serialized, reset only by newDay, so a reload can neither
+   * double-pay nor swallow a goal already earned. Missing a goal shows and
+   * costs NOTHING (kindness laws).
+   */
+  plates: number;
+  greeted: boolean;
+  goalPlatesPaid: boolean;
+  goalSpecialPaid: boolean;
+  goalGreetPaid: boolean;
+}
+
+/**
+ * REGULARS (M8b) — the people who come back because you were good to them.
+ *
+ * The room already had a crowd. What it did not have was anyone in it you
+ * recognised, and a restaurant where nobody remembers you is a vending machine
+ * with chairs. Every so many hearts, one of the strangers becomes a regular:
+ * a name, a face that stays the same, and a dish they order because they like
+ * it, not because the kitchen rolled it.
+ *
+ * Names come from a FIXED table, never player text. That is the same reasoning
+ * that keeps the chef's name off /chef/board: free text on a surface other
+ * people see is a moderation problem, and this game has no moderation.
+ *
+ * Regulars never lapse, never decay and never notice you were gone. Being
+ * away changes nothing about who your regulars are.
+ */
+export interface Regular {
+  /** index into REGULAR_NAMES */
+  n: number;
+  /** guest look, so the same person looks the same every visit */
+  look: number;
+  /** the dish they come for */
+  fav: string;
+  /** how many times you have served them the thing they came for */
+  served: number;
+}
+
+/**
+ * How many guest VARIANTS the sim rolls. Not the same as the view's 16 sprite
+ * sheets: the view doubles this with a `(variant*2 + id%2) % 16` map so it can
+ * show more faces without touching the sim (ADR-0112). A regular stores a
+ * variant, so anything validating one must bound it by THIS.
+ */
+export const GUEST_VARIANTS = 8;
+
+export const REGULAR_NAMES = [
+  "Marta", "Sam", "Ines", "Otto", "Priya", "Bruno",
+  "Ada", "Nils", "Rosa", "Kwame", "Yuki", "Dot",
+];
+/** hearts between one regular deciding to keep coming back and the next */
+export const HEARTS_PER_REGULAR = 6;
+export const MAX_REGULARS = 6;
+
 export interface Moment {
   day: number;
   hrs: number;
-  kind: "visit" | "gus" | "special" | "mastered" | "busy" | "dish" | "delivery" | "course";
+  kind:
+    | "visit"
+    | "gus"
+    | "special"
+    | "mastered"
+    | "busy"
+    | "dish"
+    | "delivery"
+    | "course"
+    /** today's special went on the board (M8) */
+    | "daily"
+    /** the player worked the room (M8) */
+    | "greet"
+    /** somebody decided to keep coming back (M8b) */
+    | "regular"
+    /** a regular got the dish they came for (M8b) */
+    | "favourite"
+    /** the restaurant took the room next door (M8b) */
+    | "expand";
   emote: string;
 }
 
@@ -250,7 +350,21 @@ export type Action =
   | { type: "move"; uid: number; gx: number; gy: number; facing?: Facing }
   | { type: "rotate"; uid: number }
   | { type: "store"; uid: number }
-  | { type: "edit"; on: boolean };
+  | { type: "edit"; on: boolean }
+  /**
+   * A real day has turned over (M8). Computed OUTSIDE the sim in wallclock.ts
+   * and injected here, so stepWorld never reads a clock and a replay stays
+   * reproducible. `banked` is how many days of goods the crew held for you.
+   */
+  | { type: "newDay"; utcDay: number; banked: number; tenure: number }
+  /** Cook today's special. Spends the commons it needs; refused if short. */
+  | { type: "prepSpecial" }
+  /** Take the room next door. Buys FLOOR, and nothing else (M8b). */
+  | { type: "expand" }
+  /** Say hello to a guest. Hearts, not haste (M8). */
+  | { type: "greet"; entityId: number }
+  /** Your chef calls the room to attention: everyone picks up the pace. */
+  | { type: "pep" };
 
 /** Why a placement was refused — player-facing, kind, no jargon. */
 export type PlaceError =
@@ -268,6 +382,13 @@ export interface WorldState {
   timeSec: number;
   clockHrs: number;
   day: number;
+  /**
+   * The real UTC day this world last saw (M8). Set only by the `newDay`
+   * action, never by stepWorld, so the sim still holds no clock of its own.
+   * The in-game `day` above stays what it always was: 12 minutes of play,
+   * driving the light and the wall clock and nothing else now.
+   */
+  utcDay: number;
   dials: Dials;
   /** which market the position sits at (ADR-0039 markets, minimal) */
   market: string;
@@ -300,6 +421,38 @@ export interface WorldState {
   passAnchor: { x: number; y: number };
   waiterAnchors: { x: number; y: number }[];
   stovePos: { gx: number; gy: number }[];
+  /** today's special and whether it has been prepped (M8) */
+  daily: DailyState;
+  /**
+   * How many other players cheered this kitchen today (M8c), bounded.
+   *
+   * Set once at boot from the server and never by the sim, so it behaves like
+   * the dials: an input from outside, not something the world generates. A
+   * COUNT and nothing else -- the game never learns who, which is what keeps
+   * the first social verb free of a moderation surface.
+   */
+  cheers: number;
+  /** the people who come back (M8b) */
+  regulars: Regular[];
+  /** which of them are due in today, as indices into `regulars` */
+  dueToday: number[];
+  /** seconds until the next due regular walks in, or -1 */
+  regularDueIn: number;
+  /**
+   * Seconds until Gus turns up this session, or -1 when he is not due (M8).
+   * Set by the newDay action so he lands inside the first session of a real
+   * day, whatever time of day the player happens to sit down.
+   */
+  gusDueIn: number;
+  /** seconds until the room can be rallied again (M8) */
+  pepIn: number;
+  /**
+   * Which shell the restaurant occupies (M8b), an index into SHELL_SIZES.
+   * The room itself is still passed in as a RoomDef, but the world has to
+   * REMEMBER which one it grew into or a reload would drop the player back
+   * into the corner spot with furniture standing outside the walls.
+   */
+  shellIdx: number;
   gusSeatIdx: number;
   // ────────────────────────────────────────────────────────────────────────
   gusVisitDay: number;
@@ -320,10 +473,22 @@ export interface WorldState {
     busedAuto: number;
     busedByPlayer: number;
     hustles: number;
+    greets: number;
     gusVisits: number;
+    regularVisits: number;
     hearts: number;
     purchases: number;
-    coinsFromPosition: number;
+    /**
+     * The inversion's ledger, split three ways so the harness can prove where
+     * money actually comes from now. Serve payouts land in coinsFromServes,
+     * daily beats in coinsFromBeats (both in full, multiplier included), and
+     * coinsFromMultiplier holds only the wallet's on-top share of every
+     * payout (paid minus what a x1 room would have got) -- so walletless play
+     * must show exactly zero here, which is the firewall stated as a number.
+     */
+    coinsFromServes: number;
+    coinsFromBeats: number;
+    coinsFromMultiplier: number;
     placements: number;
     /** ADR-0107: waiting area. All private diagnostics, never public. */
     waited: number;
@@ -365,6 +530,11 @@ export const TIERS: Tier[] = [
   { name: "Bistro", seats: 6 },
   { name: "House", seats: 8 },
   { name: "Flagship", seats: 10 },
+  // M8b: the 10x8 shell physically capped seats around 10, so Flagship was
+  // the last name anyone ever saw. A room that can be bought bigger needs a
+  // ladder that goes somewhere.
+  { name: "Institution", seats: 16 },
+  { name: "The Landmark", seats: 24 },
 ];
 export function tierFor(seatsOwned: number): Tier {
   let t = TIERS[0];
@@ -372,13 +542,68 @@ export function tierFor(seatsOwned: number): Tier {
   return t;
 }
 
-/** coins per GAME HOUR from the position — the 0043 log curves as income */
-export function incomePerHour(dials: Dials): { lp: number; vol: number } {
-  return {
-    lp: 10 * Math.log1p(Math.max(0, dials.parkedUsd) / 10),
-    vol: 14 * Math.log1p(Math.max(0, dials.weeklyVolumeUsd) / 40),
-  };
+/**
+ * THE INVERSION: play EARNS, the wallet MULTIPLIES.
+ *
+ * incomePerHour printed coins for merely holding a position, so the strongest
+ * strategy was "park money, leave the tab open" -- the opposite of a game
+ * about running a room, and a straight bribe under the ADR-0043 firewall's
+ * spirit even though it never touched quality. Now every coin starts as a
+ * serve or a daily beat, and the position scales what the work was worth. A
+ * walletless kitchen earns real money at x1 (the ADR-0102 kindness law:
+ * absence of a wallet is never a penalty state); a funded one reaches the
+ * same goals sooner, and never more than MULT_CAP times sooner. The same log
+ * curves as before, so the second dollar still matters more than the five
+ * hundredth.
+ */
+export const MULT_CAP = 2.5;
+
+export function earningsMultiplier(dials: Dials): {
+  lp: number;
+  vol: number;
+  total: number;
+  capped: boolean;
+} {
+  const lp = 0.25 * Math.log1p(Math.max(0, dials.parkedUsd) / 10);
+  const vol = 0.18 * Math.log1p(Math.max(0, dials.weeklyVolumeUsd) / 40);
+  const uncapped = 1 + lp + vol;
+  return { lp, vol, total: Math.min(MULT_CAP, uncapped), capped: uncapped > MULT_CAP };
 }
+
+/** what every plate is worth before quality, levels and company add to it */
+export const SERVE_BASE = 4;
+
+// ── daily beats (DEMO CONFIG): three once-a-REAL-day payments, all paid
+// through the multiplier and reset only by the newDay action. They exist so a
+// short daily session has a shape -- come back, serve someone, cook the board,
+// see Gus -- rather than a grind rate. Paid/armed state lives in w.daily.
+/** paid on the first serve after a newDay */
+export const FIRST_SERVE_BONUS = 25;
+/** paid when the prepped special has gone out SPECIAL_POT_SERVES times */
+export const SPECIAL_POT = 60;
+export const SPECIAL_POT_SERVES = 5;
+/** rides Gus's serve; he comes once a real day, so this needs no flag */
+export const GUS_BONUS = 40;
+/** the three daily goals: each pays once, resets with the day */
+export const GOAL_PLATES = 10;
+export const GOAL_BONUS = 15;
+
+// ── away earnings (DEMO CONFIG): the grant for coming back, engine-owned so
+// the DOM stops doing inline math with a deprecated income function ─────────
+export const AWAY_CAP_HOURS = 10;
+export const AWAY_RATE_PER_HOUR = 20;
+
+/**
+ * What the crew banked while the tab was closed. Capped in HOURS, not scaled
+ * by how long you were gone past the cap: nothing anywhere counts the days
+ * you were away (the same kindness rule as the newDay delivery). Pure -- the
+ * DOM reads the clock, this turns hours into coins.
+ */
+export function awayEarnings(awayHrs: number, dials: Dials): number {
+  const hrs = Math.min(Math.max(0, awayHrs), AWAY_CAP_HOURS);
+  return Math.floor(hrs * AWAY_RATE_PER_HOUR * earningsMultiplier(dials).total);
+}
+
 
 export function crowdRate(rating: number, friendsToday: number): number {
   return 1.6 + rating * 1.05 + friendsToday * 0.45;
@@ -414,6 +639,18 @@ export const SELL_BACK = 0.5;
 const TRASH_BASE_SEC = 55;
 /** a restroom runs this long between breakages (DEMO CONFIG) */
 const TOILET_LIFE_SEC = 190;
+/** how long before the room can be rallied again (M8) */
+const PEP_COOLDOWN_SEC = 60;
+/**
+ * The most a day's cheers can add to the crowd (M8c).
+ *
+ * Bounded hard because `friendsToday` is multiplied into the arrival rate and
+ * cheers come from OTHER PLAYERS: an unbounded term would mean a popular
+ * player's room fills faster than they can serve it, and would make the board
+ * a place to farm rather than a place to look. Three is a felt bump against a
+ * base of 1.6 arrivals a minute, and no more than that.
+ */
+export const MAX_CHEER_BONUS = 3;
 
 /**
  * Quality v2 (ADR-0106): a bounded sum of EARNED parts. Presence comes from
@@ -464,6 +701,27 @@ function addStock(w: WorldState, id: string, n = 1): void {
   w.pantry.stock[id] = (w.pantry.stock[id] ?? 0) + n;
 }
 
+/**
+ * The common the player is most short of: the one blocking the cheapest dish
+ * upgrade they could otherwise afford. Deterministic (first match in catalog
+ * order), so a replay hands over the same jar.
+ */
+function mostWantedCommon(w: WorldState): string | null {
+  let best: { id: string; gap: number } | null = null;
+  for (const key of Object.keys(RECIPES)) {
+    const recipe = nextRecipe(key, w.pantry.levels[key] ?? 1);
+    if (!recipe) continue;
+    for (const [id, need] of Object.entries(recipe)) {
+      if (!COMMONS.includes(id)) continue;
+      const gap = need - (w.pantry.stock[id] ?? 0);
+      if (gap <= 0) continue;
+      if (!best || gap < best.gap) best = { id, gap };
+    }
+  }
+  // nothing pending: a common they already lean on is still a kind gift
+  return best ? best.id : COMMONS[Math.floor(roll(w) * COMMONS.length) % COMMONS.length];
+}
+
 /** Tenure days banked at a market (ADR-0105). Never decreases. */
 export function lpDaysAt(w: WorldState, marketId: string): number {
   return w.lpDays[marketId] ?? 0;
@@ -500,7 +758,14 @@ export interface Service {
   arrivalsPerMin: number;
   spawnInterval: number;
   night: boolean;
-  income: { lp: number; vol: number };
+  /** the wallet's factor on every payout (the inversion) */
+  mult: { lp: number; vol: number; total: number; capped: boolean };
+  /**
+   * @deprecated coins-per-hour from the retired drip. The DOM snapshot still
+   * reads it for the dials panel; the wiring swap replaces it with `mult`.
+   * The sim itself no longer pays or reads this.
+   */
+
 }
 
 export function deriveService(w: WorldState): Service {
@@ -512,7 +777,19 @@ export function deriveService(w: WorldState): Service {
   const rating = 1 + (4 * qualityOf(w)) / 100;
   const night = w.clockHrs >= 22 || w.clockHrs < 7;
   const gusHere = w.entities.some((e) => e.name === "Gus" && !e.dead);
-  const arrivals = crowdRate(rating, gusHere ? 1 : 0) * (night ? 0.35 : 1);
+  /**
+   * `friendsToday` has been a parameter of crowdRate since M2 and has only
+   * ever been fed `gusHere ? 1 : 0`. Regulars are what it was waiting for: a
+   * room with familiar faces in it draws a bigger crowd, which is both true of
+   * restaurants and the reason to want regulars at all. Bounded by MAX_REGULARS
+   * and by how many are actually SEATED, so it cannot run away.
+   */
+  const friends =
+    (gusHere ? 1 : 0) +
+    w.entities.filter((e) => e.kind === "guest" && !e.dead && e.regularIdx >= 0).length +
+    // people who cheered this kitchen on the board today (M8c), already capped
+    w.cheers;
+  const arrivals = crowdRate(rating, friends) * (night ? 0.35 : 1);
   return {
     tier,
     seatsOpen,
@@ -525,7 +802,7 @@ export function deriveService(w: WorldState): Service {
     arrivalsPerMin: arrivals,
     spawnInterval: Math.min(30, Math.max(4, 60 / arrivals)),
     night,
-    income: incomePerHour(w.dials),
+    mult: earningsMultiplier(w.dials),
   };
 }
 
@@ -536,6 +813,13 @@ const SPEED: Record<EntityKind, number> = {
 };
 
 export function effSpeed(e: Entity): number {
+  /**
+   * Staff only. A guest's `hustleT` means something completely different (it
+   * is the greet cooldown, M8), and without this guard saying hello to
+   * someone would send them power-walking out of the restaurant at one and a
+   * half times normal speed for the next forty-five seconds.
+   */
+  if (e.kind === "guest") return e.speed;
   return e.speed * (e.hustleT > 0 ? 1.55 : 1);
 }
 
@@ -809,6 +1093,45 @@ export function createWorld(
     market?: string;
     lpDays?: Record<string, number>;
     courses?: string[];
+    /**
+     * M8: the pantry, the menu and the best-quality mark are RESTORED here.
+     *
+     * These three were serialized by serializeSave and validated by
+     * sanitizeSave from the day they shipped, but nothing ever handed them
+     * back. Every reload silently emptied the pantry, dropped all four dishes
+     * to level 1 and zeroed bestQuality -- and because the save poll rewrites
+     * the save every 600ms, the emptied version immediately overwrote the good
+     * one, locally and in the cloud. The loss was permanent, not cosmetic.
+     */
+    pantry?: { stock: Record<string, number>; levels: Record<string, number> };
+    menu?: {
+      serves: Record<string, number>;
+      specialUnlocked: boolean;
+      specialServes: number;
+      specialMastered: boolean;
+    };
+    bestQuality?: number;
+    /** the real day this save last saw, and today's special (M8) */
+    utcDay?: number;
+    /** served + the beat flags ride along so a reload cannot re-pay a beat */
+    daily?: {
+      idx: number;
+      prepped: boolean;
+      served?: number;
+      potPaid?: boolean;
+      firstServePaid?: boolean;
+      plates?: number;
+      greeted?: boolean;
+      goalPlatesPaid?: boolean;
+      goalSpecialPaid?: boolean;
+      goalGreetPaid?: boolean;
+    };
+    /** the people who keep coming back (M8b) */
+    regulars?: Regular[];
+    /** which shell the room grew into (M8b) */
+    shellIdx?: number;
+    /** cheers received today, from the server (M8c) */
+    cheers?: number;
   }
 ): WorldState {
   const seed = fnv1a(seedStr);
@@ -819,6 +1142,7 @@ export function createWorld(
     timeSec: 0,
     clockHrs: 17,
     day: 0,
+    utcDay: opts?.utcDay ?? 0,
     dials: {
       parkedUsd: opts?.parkedUsd ?? 25,
       weeklyVolumeUsd: opts?.weeklyVolumeUsd ?? 60,
@@ -851,6 +1175,25 @@ export function createWorld(
     passAnchor: { x: room.door.x, y: room.door.y },
     waiterAnchors: [],
     stovePos: [],
+    daily: {
+      idx: opts?.daily?.idx ?? 0,
+      prepped: opts?.daily?.prepped ?? false,
+      served: Math.max(0, Math.floor(opts?.daily?.served ?? 0)),
+      firstServePaid: opts?.daily?.firstServePaid ?? false,
+      potPaid: opts?.daily?.potPaid ?? false,
+      plates: Math.max(0, Math.floor(opts?.daily?.plates ?? 0)),
+      greeted: opts?.daily?.greeted ?? false,
+      goalPlatesPaid: opts?.daily?.goalPlatesPaid ?? false,
+      goalSpecialPaid: opts?.daily?.goalSpecialPaid ?? false,
+      goalGreetPaid: opts?.daily?.goalGreetPaid ?? false,
+    },
+    cheers: Math.max(0, Math.min(MAX_CHEER_BONUS, Math.floor(opts?.cheers ?? 0))),
+    regulars: (opts?.regulars ?? []).slice(0, MAX_REGULARS).map((r) => ({ ...r })),
+    dueToday: [],
+    regularDueIn: -1,
+    gusDueIn: -1,
+    pepIn: 0,
+    shellIdx: opts?.shellIdx ?? 0,
     gusSeatIdx: -1,
     gusVisitDay: -1,
     menu: {
@@ -887,10 +1230,14 @@ export function createWorld(
       busedAuto: 0,
       busedByPlayer: 0,
       hustles: 0,
+      greets: 0,
       gusVisits: 0,
+      regularVisits: 0,
       hearts: 0,
       purchases: 0,
-      coinsFromPosition: 0,
+      coinsFromServes: 0,
+      coinsFromBeats: 0,
+      coinsFromMultiplier: 0,
       placements: 0,
       waited: 0,
       seatedFromBench: 0,
@@ -916,6 +1263,29 @@ export function createWorld(
       steamIn: 0.6,
     },
   };
+
+  // restore saved pantry stock and dish levels (see the opts comment above)
+  if (opts?.pantry) {
+    w.pantry.stock = { ...opts.pantry.stock };
+    for (const key of Object.keys(w.pantry.levels)) {
+      const lv = opts.pantry.levels[key];
+      if (typeof lv === "number" && lv >= 1) {
+        w.pantry.levels[key] = Math.min(MAX_DISH_LEVEL, Math.floor(lv));
+      }
+    }
+  }
+  if (opts?.menu) {
+    for (const d of w.menu.dishes) d.serves = Math.max(0, Math.floor(opts.menu.serves[d.key] ?? 0));
+    w.menu.specialUnlocked = opts.menu.specialUnlocked;
+    w.menu.specialServes = Math.max(0, Math.floor(opts.menu.specialServes));
+    w.menu.specialMastered = opts.menu.specialMastered;
+  }
+  // The best-quality mark is a RECORD, not a live reading: it is what the
+  // board ranks, so losing it on reload meant the board ranked whatever the
+  // current session happened to reach rather than the player's best night.
+  if (typeof opts?.bestQuality === "number" && opts.bestQuality > 0) {
+    w.stats.bestQuality = Math.max(0, Math.min(100, opts.bestQuality));
+  }
 
   for (const spec of opts?.layout ?? STARTER_LAYOUT) {
     w.layout.push({
@@ -969,6 +1339,7 @@ function makeEntity(
     carrying: false,
     seatIdx: -1,
     benchIdx: -1,
+    regularIdx: -1,
     taskSeat: -1,
     taskTable: -1,
     taskTrash: -1,
@@ -1000,9 +1371,26 @@ function pushMoment(w: WorldState, kind: Moment["kind"], emote = ""): void {
   }
 }
 
-/** Serve one plate off the menu; returns the level of the dish that went out. */
-function serveDish(w: WorldState): number {
+/**
+ * Serve one plate off the menu. Returns the LEVEL of the dish that went out
+ * and its KEY -- the key is what lets a regular be recognised as having been
+ * served the thing they actually came for (M8b).
+ */
+function serveDish(w: WorldState, prefer?: string): { level: number; key: string } {
   const m = w.menu;
+  /**
+   * A regular ORDERS their favourite. That is what being a regular means, and
+   * without it "Marta loves Tiramisu" was decoration: the kitchen rolled a
+   * random dish and the line in the book almost never came true. Measured at
+   * nine visits before this, exactly one landed on the right plate.
+   */
+  if (prefer) {
+    const want = m.dishes.findIndex((d) => d.key === prefer);
+    if (want >= 0) {
+      m.dishes[want].serves += 1;
+      return { level: w.pantry.levels[prefer] ?? 1, key: prefer };
+    }
+  }
   const n = m.dishes.length + (m.specialUnlocked && !m.specialMastered ? 2 : m.specialUnlocked ? 1 : 0);
   const pick = Math.floor(roll(w) * n) % n;
   if (pick >= m.dishes.length) {
@@ -1011,11 +1399,11 @@ function serveDish(w: WorldState): number {
       m.specialMastered = true;
       pushMoment(w, "mastered");
     }
-    return w.pantry.levels["special"] ?? 1;
+    return { level: w.pantry.levels["special"] ?? 1, key: "special" };
   }
   const dish = m.dishes[pick];
   dish.serves += 1;
-  return w.pantry.levels[dish.key] ?? 1;
+  return { level: w.pantry.levels[dish.key] ?? 1, key: dish.key };
 }
 
 /** Path using the world's cached layout grid (rebuilt only on layout change). */
@@ -1147,11 +1535,19 @@ function spawnWaiter(w: WorldState, room: RoomDef, variant: number): void {
   w.stats.arrived += 1;
 }
 
-function spawnGuest(w: WorldState, room: RoomDef, seatIdx: number, name: string, variant: number): void {
+function spawnGuest(
+  w: WorldState,
+  room: RoomDef,
+  seatIdx: number,
+  name: string,
+  variant: number,
+  regularIdx = -1
+): void {
   const seat = w.seats[seatIdx];
   const g = makeEntity(w, "guest", w.door.x, room.h + 0.7, "ne");
   g.variant = variant;
   g.name = name;
+  g.regularIdx = regularIdx;
   g.state = "enter";
   g.seatIdx = seatIdx;
   seat.occupiedBy = g.id;
@@ -1232,6 +1628,132 @@ function afterLayoutChange(w: WorldState, room: RoomDef): void {
 
 /** The ONLY door for player input (determinism = seed + action tape). */
 export function applyAction(w: WorldState, room: RoomDef, action: Action): boolean {
+  if (action.type === "newDay") {
+    // A real day turned over. The clock was read in wallclock.ts; by the time
+    // it gets here it is just numbers, so this stays replayable.
+    if (action.utcDay <= w.utcDay) return false;
+    w.utcDay = action.utcDay;
+    const banked = Math.max(1, Math.min(MAX_BANKED_DAYS, Math.floor(action.banked)));
+
+    // ── the delivery (ADR-0106), now REAL-daily and banked while you are away
+    const delivered: string[] = [];
+    for (let d = 0; d < banked; d++) {
+      for (let i = 0; i < DAILY_DELIVERY; i++) {
+        const id = COMMONS[Math.floor(roll(w) * COMMONS.length) % COMMONS.length];
+        addStock(w, id);
+        delivered.push(id);
+        w.stats.commonsDropped += 1;
+      }
+    }
+    // Away for more than a night? The crew put by the thing you were short of.
+    // This is the whole shape of the kindness rule: coming back is a gift, and
+    // nothing anywhere counts the days you were gone.
+    if (banked >= 2) {
+      const wanted = mostWantedCommon(w);
+      if (wanted) {
+        addStock(w, wanted);
+        delivered.push(wanted);
+        w.stats.commonsDropped += 1;
+      }
+    }
+    w.pantry.lastDelivery = delivered;
+    w.pantry.lastDeliveryDay = w.day;
+    pushMoment(w, "delivery", delivered.join(","));
+
+    // budgets are per REAL day now, so idling with the tab open no longer
+    // farms six commons and a rare every twelve minutes
+    w.pantry.dropDay = w.day;
+    w.pantry.volumeDrops = 0;
+    w.pantry.rareDrops = 0;
+
+    // tenure toward a domain collection, in days a human would recognise
+    if (action.tenure > 0) {
+      w.lpDays[w.market] = (w.lpDays[w.market] ?? 0) + Math.min(14, Math.floor(action.tenure));
+    }
+
+    // today's board, the beat flags re-armed, and Gus on his way in
+    w.daily = {
+      idx: Math.floor(roll(w) * DAILY_SPECIALS.length) % DAILY_SPECIALS.length,
+      prepped: false,
+      served: 0,
+      firstServePaid: false,
+      potPaid: false,
+      plates: 0,
+      greeted: false,
+      goalPlatesPaid: false,
+      goalSpecialPaid: false,
+      goalGreetPaid: false,
+    };
+    w.gusDueIn = 45 + roll(w) * 120;
+
+    // ── who is coming back today (M8b) ─────────────────────────────────────
+    // One to three of your regulars, drawn fresh each day. Nobody is ever
+    // dropped from the roster for not being picked, and a regular you did not
+    // see yesterday is not "lost" -- they simply were not due.
+    w.dueToday = [];
+    if (w.regulars.length > 0) {
+      const want = 1 + (Math.floor(roll(w) * 3) % Math.min(3, w.regulars.length));
+      const pool = w.regulars.map((_, i) => i);
+      for (let i = 0; i < want && pool.length > 0; i++) {
+        w.dueToday.push(pool.splice(Math.floor(roll(w) * pool.length) % pool.length, 1)[0]);
+      }
+      w.regularDueIn = 90 + roll(w) * 150;
+    } else {
+      w.regularDueIn = -1;
+    }
+    return true;
+  }
+  if (action.type === "expand") {
+    /**
+     * TAKE THE ROOM NEXT DOOR (M8b).
+     *
+     * The one purchase that is worth saving weeks for, and the reason coins
+     * keep meaning something past the first evening. It buys FLOOR: more space
+     * to place more tables. It does not touch quality, speed or income, which
+     * is what keeps it on the right side of the firewall.
+     *
+     * Nothing already placed moves. The room only ever grows, so every piece
+     * that was legal in the old shell is still inside the new one, and the
+     * validator will agree.
+     */
+    const next = w.shellIdx + 1;
+    const shell = SHELL_SIZES[next];
+    if (!shell) return false;
+    if (w.playMoney < shell.cost) return false;
+    w.playMoney -= shell.cost;
+    w.shellIdx = next;
+    w.stats.purchases += 1;
+    w.door = { ...shell.door };
+    afterLayoutChange(w, shell);
+    pushMoment(w, "expand", shell.label);
+    return true;
+  }
+  if (action.type === "prepSpecial") {
+    if (w.daily.prepped) return false;
+    const spec = DAILY_SPECIALS[w.daily.idx];
+    if (!spec) return false;
+    for (const [id, n] of Object.entries(spec.needs)) {
+      if ((w.pantry.stock[id] ?? 0) < n) return false;
+    }
+    for (const [id, n] of Object.entries(spec.needs)) {
+      w.pantry.stock[id] = (w.pantry.stock[id] ?? 0) - n;
+      if (w.pantry.stock[id] <= 0) delete w.pantry.stock[id];
+    }
+    w.daily.prepped = true;
+    if (!w.daily.goalSpecialPaid) {
+      w.daily.goalSpecialPaid = true;
+      const mult = earningsMultiplier(w.dials).total;
+      const got = Math.round(GOAL_BONUS * mult);
+      w.playMoney += got;
+      w.stats.coinsFromBeats += got;
+      w.stats.coinsFromMultiplier += got - GOAL_BONUS;
+    }
+    // presence, not quality: prep is a thing you DID, and doing things is what
+    // the hands segment measures. It must never touch the quality total.
+    w.presence = Math.min(PRESENCE_CAP, w.presence + 3);
+    pushMoment(w, "daily", spec.id);
+    return true;
+  }
   if (action.type === "dials") {
     w.dials.parkedUsd = Math.max(0, Math.min(5000, action.parkedUsd));
     w.dials.weeklyVolumeUsd = Math.max(0, Math.min(5000, action.weeklyVolumeUsd));
@@ -1252,7 +1774,72 @@ export function applyAction(w: WorldState, room: RoomDef, action: Action): boole
       (x) => x.id === action.entityId && (x.kind === "waiter" || x.kind === "chef") && !x.dead
     );
     if (!e) return false;
+    /**
+     * THE COOLDOWN ADR-0102 ASKED FOR, three milestones late.
+     *
+     * Without it the same person could be tapped over and over, and presence
+     * -- a quarter of the whole quality score -- went from nothing to its cap
+     * in about two seconds of drumming on one sprite. Refusing while the
+     * hustle is still running makes presence something a session earns across
+     * minutes of real verbs instead of a button anyone can mash.
+     */
+    if (e.hustleT > 0) return false;
     e.hustleT = 8;
+    w.presence = Math.min(PRESENCE_CAP, w.presence + 2);
+    w.stats.hustles += 1;
+    return true;
+  }
+  if (action.type === "greet") {
+    /**
+     * GREETING A GUEST. The one thing in the room the player could not touch
+     * was the customer, which is a strange gap in a restaurant game.
+     *
+     * Costs no new WorldState field: the heart is the emote slot the sim
+     * already draws, and `hustleT` is dead weight on a guest (the hustle
+     * action only ever accepts staff), so it doubles as the per-guest
+     * cooldown. That keeps the save shape and every existing tape intact.
+     */
+    const e = w.entities.find((x) => x.id === action.entityId && x.kind === "guest" && !x.dead);
+    if (!e) return false;
+    if (e.state !== "sit" && e.state !== "wait" && e.state !== "eat") return false;
+    if (e.hustleT > 0) return false;
+    w.daily.greeted = true;
+    if (!w.daily.goalGreetPaid) {
+      w.daily.goalGreetPaid = true;
+      const mult = earningsMultiplier(w.dials).total;
+      const got = Math.round(GOAL_BONUS * mult);
+      w.playMoney += got;
+      w.stats.coinsFromBeats += got;
+      w.stats.coinsFromMultiplier += got - GOAL_BONUS;
+    }
+    e.emote = "heart";
+    e.emoteT = 1.8;
+    e.hustleT = 45;
+    // deliberately smaller than bussing (+3) or a hustle (+2): a kind word is
+    // worth something, and it is not worth more than the work.
+    w.presence = Math.min(PRESENCE_CAP, w.presence + 1);
+    w.stats.greets += 1;
+    if (!w.moments.some((m) => m.kind === "greet" && m.day === w.day)) pushMoment(w, "greet");
+    return true;
+  }
+  if (action.type === "pep") {
+    /**
+     * THE PEP TALK — the answer to "can I control the characters?"
+     *
+     * Not direct control: sending a waiter somewhere fights a scheduler that
+     * is already better at the job than a player with one finger, and every
+     * destination worth sending them to is directly tappable anyway. What was
+     * actually missing is the feeling of being in charge of a room. Tapping
+     * your own chef rallies the whole floor at once, which is the thing a head
+     * chef really does, and it finally gives the name the player typed a job.
+     */
+    if (w.pepIn > 0) return false;
+    const crew = w.entities.filter(
+      (x) => (x.kind === "waiter" || x.kind === "chef") && !x.dead && x.state !== "clockOut"
+    );
+    if (crew.length === 0) return false;
+    for (const e of crew) e.hustleT = 8;
+    w.pepIn = PEP_COOLDOWN_SEC;
     w.presence = Math.min(PRESENCE_CAP, w.presence + 2);
     w.stats.hustles += 1;
     return true;
@@ -1583,10 +2170,61 @@ function stepWaiter(w: WorldState, e: Entity): void {
           guest.state = "eat";
           guest.stateT = 0;
           guest.eatT = 10 + roll(w) * 12;
-          guest.emote = guest.waitT < 25 && q >= 70 ? "heart" : "coin";
+          /**
+           * Today's special widens the window a heart can land in (M8): a
+           * guest served a shade slower still leaves delighted. It moves the
+           * ODDS, never the quality score, because quality is what money and
+           * stock are forbidden to buy (ADR-0043/0103). An unprepped day just
+           * uses the ordinary window, so skipping prep is never a penalty.
+           */
+          const heartWindow = w.daily.prepped ? 34 : 25;
+          // the plate goes out FIRST, because who is at the table and what
+          // landed in front of them together decide how the meal went
+          const reg = guest.regularIdx >= 0 ? w.regulars[guest.regularIdx] : undefined;
+          const plate = serveDish(w, reg?.fav);
+          /**
+           * A regular who got their dish at a reasonable pace leaves happy
+           * whatever the room's score (M8b): they already know the place, and
+           * knowing what somebody orders is the whole point of a regular. The
+           * QUALITY gate is waived, the PATIENCE gate is not -- so the player's
+           * own work still decides it, and a room can never farm hearts by
+           * leaving regulars sitting.
+           */
+          const favourite = !!reg && plate.key === reg.fav && guest.waitT < heartWindow;
+          if (reg && favourite) {
+            reg.served += 1;
+            pushMoment(w, "favourite", REGULAR_NAMES[reg.n]);
+          }
+          guest.emote =
+            favourite || (guest.waitT < heartWindow && q >= 70) ? "heart" : "coin";
           guest.emoteT = 1.8;
           if (guest.emote === "heart") {
             w.stats.hearts += 1;
+            /**
+             * A stranger becomes a REGULAR (M8b). Earned by hearts, which are
+             * earned by good service -- so the roster is a record of how well
+             * the room has actually been run, and money reaches none of it.
+             */
+            if (
+              w.regulars.length < MAX_REGULARS &&
+              w.stats.hearts % HEARTS_PER_REGULAR === 0
+            ) {
+              const taken = new Set(w.regulars.map((r) => r.n));
+              const free = REGULAR_NAMES.map((_, i) => i).filter((i) => !taken.has(i));
+              if (free.length > 0) {
+                const dishes = w.menu.dishes.map((d) => d.key);
+                const reg: Regular = {
+                  n: free[Math.floor(roll(w) * free.length) % free.length],
+                  // keep the face they already have, so the person the player
+                  // just delighted is the person who comes back
+                  look: guest.variant,
+                  fav: dishes[Math.floor(roll(w) * dishes.length) % dishes.length],
+                  served: 0,
+                };
+                w.regulars.push(reg);
+                pushMoment(w, "regular", REGULAR_NAMES[reg.n]);
+              }
+            }
             // RARES ARE PLAY-EARNED ONLY (ADR-0043/0106): they fall out of
             // genuinely good service, never out of money, and are capped.
             if (w.pantry.rareDrops < RARE_DROP_CAP) {
@@ -1596,11 +2234,56 @@ function stepWaiter(w: WorldState, e: Entity): void {
               w.stats.raresDropped += 1;
             }
           }
-          const dishLevel = serveDish(w);
-          // a better dish tips a little better; an unlevelled kitchen still
-          // cooks a solid B (ADR-0053's softening)
-          const tip = 1 + Math.round(q / 25) + (dishLevel - 1) + (guest.name === "Gus" ? 4 : 0);
-          w.playMoney += tip;
+          /**
+           * THE SERVE PAYOUT (the inversion). The plate is priced by PLAY --
+           * quality, dish level, who is at the table, whether today's board
+           * was cooked -- and the wallet multiplies the whole thing. A better
+           * dish still tips better, an unlevelled kitchen still cooks a solid
+           * B (ADR-0053's softening), and the ADR-0043 firewall stands: money
+           * scales the payout, never the quality that priced it.
+           */
+          const mult = earningsMultiplier(w.dials).total;
+          let rawPlate =
+            SERVE_BASE +
+            Math.round(q / 20) +
+            2 * (plate.level - 1) +
+            (favourite ? 3 : 0) +
+            (guest.name === "Gus" ? 8 : 0);
+          if (w.daily.prepped) {
+            rawPlate += SPECIAL_TIP;
+            w.daily.served += 1;
+          }
+          const paid = Math.round(rawPlate * mult);
+          w.playMoney += paid;
+          w.stats.coinsFromServes += paid;
+          w.stats.coinsFromMultiplier += paid - Math.round(rawPlate * 1);
+
+          /**
+           * THE DAILY BEATS ride the serve that earns them, so a payment is
+           * always attached to a moment the player can see. Each pays once a
+           * REAL day (newDay resets the flags); Gus needs no flag because he
+           * only walks in once a real day.
+           */
+          const payBeat = (base: number) => {
+            const got = Math.round(base * mult);
+            w.playMoney += got;
+            w.stats.coinsFromBeats += got;
+            w.stats.coinsFromMultiplier += got - base;
+          };
+          if (!w.daily.firstServePaid) {
+            w.daily.firstServePaid = true;
+            payBeat(FIRST_SERVE_BONUS);
+          }
+          w.daily.plates += 1;
+          if (!w.daily.goalPlatesPaid && w.daily.plates >= GOAL_PLATES) {
+            w.daily.goalPlatesPaid = true;
+            payBeat(GOAL_BONUS);
+          }
+          if (!w.daily.potPaid && w.daily.prepped && w.daily.served >= SPECIAL_POT_SERVES) {
+            w.daily.potPaid = true;
+            payBeat(SPECIAL_POT);
+          }
+          if (guest.name === "Gus") payBeat(GUS_BONUS);
         }
         if (seat) {
           const t = w.tables[seat.tableIdx];
@@ -1729,28 +2412,15 @@ export function stepWorld(w: WorldState, room: RoomDef): void {
   if (w.clockHrs >= 24) {
     w.clockHrs -= 24;
     w.day += 1;
-    // a day of liquidity banks a day of tenure at the market it sat in
-    // (ADR-0105). Tenure never decreases: pulling out only stops the clock.
-    if (w.dials.parkedUsd > 0) {
-      w.lpDays[w.market] = (w.lpDays[w.market] ?? 0) + 1;
-    }
-    // ── the daily delivery (ADR-0106): a handful of commons you did not
-    // choose. This is the beat worth waiting for — you are always hoping for
-    // the one your next dish needs.
-    const delivered: string[] = [];
-    for (let i = 0; i < DAILY_DELIVERY; i++) {
-      const id = COMMONS[Math.floor(roll(w) * COMMONS.length) % COMMONS.length];
-      addStock(w, id);
-      delivered.push(id);
-      w.stats.commonsDropped += 1;
-    }
-    w.pantry.lastDelivery = delivered;
-    w.pantry.lastDeliveryDay = w.day;
-    pushMoment(w, "delivery", delivered.join(","));
-    // per-day drop budgets reset with the day
-    w.pantry.dropDay = w.day;
-    w.pantry.volumeDrops = 0;
-    w.pantry.rareDrops = 0;
+    /**
+     * M8: the game day no longer GRANTS anything. It runs the light, the wall
+     * clock and the quiet-night crowd, and that is all it was ever meant to
+     * do. The delivery, the drop budgets and LP tenure moved to the real day
+     * (the `newDay` action) because a twelve-minute "day" meant a player who
+     * left the tab open out-earned a player who came back tomorrow, and it
+     * made the shop's "keep liquidity here for 3 days" a thirty-six minute
+     * promise. Do not put a grant back here.
+     */
   }
 
   // ── trading drops: every swap is a shopping trip (ADR-0043), and the cap
@@ -1766,21 +2436,21 @@ export function stepWorld(w: WorldState, room: RoomDef): void {
     }
   }
   w.presence = Math.max(0, w.presence - (dt * 0.5) / 60);
+  if (w.pepIn > 0) w.pepIn = Math.max(0, w.pepIn - dt);
 
   if (!w.menu.specialUnlocked && (w.dials.parkedUsd > 0 || w.dials.weeklyVolumeUsd > 0)) {
     w.menu.specialUnlocked = true;
     pushMoment(w, "special");
   }
 
-  // income: the position prints coins even while rearranging (ADR-0103)
-  const inc = incomePerHour(w.dials);
-  w.coinFloat += (inc.lp + inc.vol) * dt * HOURS_PER_SEC;
-  if (w.coinFloat >= 1) {
-    const whole = Math.floor(w.coinFloat);
-    w.coinFloat -= whole;
-    w.playMoney += whole;
-    w.stats.coinsFromPosition += whole;
-  }
+  /**
+   * THE DRIP IS GONE (the inversion). This is where the position printed
+   * coins per tick; with the tab open a room now earns only through real
+   * serves, and the wallet's whole effect is the earningsMultiplier on those
+   * payouts. coinFloat stays in state (removing a field would shift the sim
+   * hash and every replay) but it holds 0 forever. Do not put a grant back
+   * here -- the same law as the game-day rollover above.
+   */
 
   const svc = deriveService(w);
   // the service record: the best this room has ever held (ADR-0106 spotlight)
@@ -1805,18 +2475,57 @@ export function stepWorld(w: WorldState, room: RoomDef): void {
       w.spawnIn = svc.spawnInterval * (0.7 + roll(w) * 0.6);
     }
 
-    if (
-      w.clockHrs >= 18 &&
-      w.clockHrs < 20 &&
-      w.gusVisitDay < w.day &&
-      w.gusSeatIdx >= 0 &&
-      seatAvailable(w, w.gusSeatIdx)
-    ) {
-      spawnGuest(w, room, w.gusSeatIdx, "Gus", 6);
-      w.gusVisitDay = w.day;
-      w.stats.gusVisits += 1;
-    } else if (w.clockHrs >= 20 && w.gusVisitDay < w.day) {
-      w.gusVisitDay = w.day;
+    /**
+     * GUS COMES ONCE A REAL DAY (M8), and he comes while you are WATCHING.
+     *
+     * He used to keep 6pm-8pm game time: a one-minute window inside every
+     * twelve-minute game day, which most sessions simply missed. Pinning him
+     * to real 6pm would have been worse, because a player who plays at nine in
+     * the morning would never meet him at all. So the newDay action sets a
+     * countdown instead, and he walks in a minute or two into your first
+     * session of the day, whenever that happens to be.
+     */
+    if (w.gusDueIn > 0) {
+      w.gusDueIn -= dt;
+      if (w.gusDueIn <= 0 && w.gusSeatIdx >= 0 && seatAvailable(w, w.gusSeatIdx)) {
+        spawnGuest(w, room, w.gusSeatIdx, "Gus", 6);
+        w.gusVisitDay = w.day;
+        w.gusDueIn = -1;
+        w.stats.gusVisits += 1;
+      } else if (w.gusDueIn <= 0) {
+        // his seat is taken: wait a beat and try again rather than skip a day
+        w.gusDueIn = 20;
+      }
+    }
+
+    // ── your regulars, one at a time, spaced out across the session (M8b) ───
+    if (w.regularDueIn > 0 && w.dueToday.length > 0) {
+      w.regularDueIn -= dt;
+      if (w.regularDueIn <= 0) {
+        const free: number[] = [];
+        for (let i = 0; i < w.seats.length; i++) {
+          if (i !== w.gusSeatIdx && seatAvailable(w, i)) free.push(i);
+        }
+        if (free.length > 0) {
+          const ri = w.dueToday.shift()!;
+          const reg = w.regulars[ri];
+          if (reg) {
+            spawnGuest(
+              w,
+              room,
+              free[Math.floor(roll(w) * free.length) % free.length],
+              REGULAR_NAMES[reg.n],
+              reg.look,
+              ri
+            );
+            w.stats.regularVisits += 1;
+          }
+          w.regularDueIn = w.dueToday.length > 0 ? 120 + roll(w) * 180 : -1;
+        } else {
+          // a full room is a good problem: they will try again shortly
+          w.regularDueIn = 25;
+        }
+      }
     }
   }
 

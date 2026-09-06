@@ -25,6 +25,7 @@ import { BASELINE } from "@/app/bots/_engine/baseline";
 import { fightHash, runFight } from "@/app/bots/_engine/resolve";
 import { ENGINE_VERSION } from "@/app/bots/_engine/version";
 import { FONT_MONO, M } from "@/app/bots/_ui/tokens";
+import { BOTS_DOCK_HEIGHT, BOTS_NAV_HEIGHT } from "@/app/bots/_components/PageShell";
 
 interface Row {
   pairing: string;
@@ -89,7 +90,11 @@ export default function ReplayCheckPage({ searchParams }: { searchParams?: Recor
   const verdictColor = verdict === "MATCH" ? M.good : verdict === "MISMATCH" ? M.bad : M.muted;
 
   return (
-    <main style={{ background: M.ground, color: M.text, fontFamily: FONT_MONO, fontSize: 13, padding: 16, minHeight: "100vh" }}>
+    <main
+      // the /bots layout paints a FIXED 52 px nav over every page; this page has
+      // no PageShell, so it clears the nav (and the phone dock) itself
+      style={{ background: M.ground, color: M.text, fontFamily: FONT_MONO, fontSize: 13, padding: `${BOTS_NAV_HEIGHT + 20}px 16px ${BOTS_DOCK_HEIGHT + 32}px`, minHeight: "100vh" }}
+    >
       <h1 style={{ fontSize: 15, margin: "0 0 8px" }}>bots replay check (gate i, browser side)</h1>
       <p style={{ color: M.muted, margin: "0 0 12px" }}>
         engine v{ENGINE_VERSION}, baseline frozen under v{BASELINE.engineVersion} ({BASELINE.rows.length} fights, {BASELINE.pairings.join(" ")}).

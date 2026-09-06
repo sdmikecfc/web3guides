@@ -13,13 +13,21 @@
  * money never touches. The old "your stake sets how many tables you have"
  * line was true before the earn-and-spend change and is now simply wrong.
  */
+import { FONT } from "./_ui/tokens";
+
 export const BOOT_TIPS = [
-  "Tip: Your position pays you coins every hour. Coins buy tables, stoves and staff.",
+  "Tip: Money you have working at your market pays coins every hour. Coins buy tables, stoves and staff.",
   "Tip: What you build stays yours. Taking your money out never un-builds the room.",
   "Tip: Quality comes from your hands, a tidy room and better dishes. Never from coins.",
-  "Tip: Liquidity only earns while it is in range. Tap your position card to see.",
+  "Tip: Lend your token and dollars to the market and it pays you every hour. Tap the top-left card.",
   "Tip: Ingredients arrive every morning. Save the right ones to upgrade a dish.",
   "Tip: A bench by the door keeps guests waiting instead of walking out.",
+  // M8/M8b: the daily loop. Every one of these has to be true of the game as
+  // it runs today, which is what the old "your stake sets your tables" line
+  // stopped being.
+  "Tip: A new special goes up every day. Cook it and every plate tips better.",
+  "Tip: Tap a guest to say hello, and tap your own chef to rally the whole room.",
+  "Tip: Look after people and some of them become regulars, with a dish they love.",
 ];
 
 export function BootShell({
@@ -45,7 +53,7 @@ export function BootShell({
         background:
           "radial-gradient(120% 90% at 50% 0%, #2a1c14 0%, #1b1310 55%, #140e0b 100%)",
         color: "#f3e9d2",
-        fontFamily: 'ui-rounded, "Segoe UI", system-ui, sans-serif',
+        fontFamily: FONT,
         textAlign: "center",
         padding: 24,
         zIndex: 10,

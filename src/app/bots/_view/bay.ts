@@ -11,6 +11,15 @@
  * letterboxes them (createPixiStage, used as is). Sim space is 1520x1400 on
  * desktop (the 760x700 canvas at 2x) and 780x840 on a phone (390x420 at 2x),
  * so one sim px is half a css px on both.
+ *
+ * THE BOT ON THE LIFT IS AWAKE (2026-09-05). This is the screen where a player
+ * decides whether they care about this toy, so it is the screen where the toy
+ * has to look back. The rig carries the face and the breath (_view/rig.ts);
+ * what this file owes it is the three pieces of state only this screen has:
+ * WHERE THE POINTER IS, so the bot follows it and perks up when it is on him;
+ * WHICH SOCKETS ARE FILLED, so a half built bot reads flat and a finished one
+ * reads eager; and WHEN A PART WENT ON, so he bounces and looks at his new arm.
+ * All of it is rendering, and none of it can move a replay hash.
  */
 "use client";
 
@@ -133,9 +142,14 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
   }
 
   // ── the bot ──────────────────────────────────────────────────────────────
-  const rig = buildRig(PIXI);
+  // the renderer goes in so the rig can read the head texture back and put
+  // the blink on the lenses the art actually has (rig.ts measureEyes)
+  const rig = buildRig(PIXI, stage.app.renderer);
   rig.root.scale.set(rigScale);
   W.addChild(rig.root);
+  // a player who has asked the system for less movement gets a still toy: the
+  // bulb stays lit, because a light is not motion
+  rig.setCalm(typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches);
 
   // ── the wrencher (vector placeholder until the crew sheet lands) ─────────
   const crew: Container = new PIXI.Container();
@@ -260,6 +274,7 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
   // ── the lift's rise ──────────────────────────────────────────────────────
   let openAt = -1;
   let riseK = 0;
+  let landed = true;
   const platformTop = () => liftTop + liftRise * (1 - riseK);
 
   function render(now: number) {
@@ -268,7 +283,14 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
     if (openAt === -2) openAt = now;
     if (openAt >= 0) {
       riseK = ease(Math.max(0, Math.min(1, (now - openAt) / T.lift)));
-      if (riseK >= 1) openAt = -1;
+      if (riseK >= 1) {
+        openAt = -1;
+        // the lift stops and the toy settles onto it: a small squash, once
+        if (!landed) {
+          landed = true;
+          rig.poke("land");
+        }
+      }
     }
     // crossfade the two lift states across the middle of the rise
     const x = Math.max(0, Math.min(1, (riseK - 0.3) / 0.4));
@@ -340,6 +362,21 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
   const hitR = opts.small ? 22 : 17; // 44 css hit area on a phone, the ring itself on desktop
+
+  /**
+   * THE POINTER, IN THE BOT'S OWN UNITS, so the rig can be told where to look
+   * without knowing anything about this canvas. The inverse of socketSim, and
+   * it goes through the same rigScale and the same platformTop, so a rising
+   * lift never leaves the gaze behind.
+   */
+  const toRig = (cssX: number, cssY: number) => {
+    const p = toSim(cssX, cssY);
+    return { x: (p.x - cx) / rigScale, y: (p.y - platformTop()) / rigScale };
+  };
+  /** near enough to the toy that it should notice: a box around the figure */
+  const onTheBot = (r: { x: number; y: number }) =>
+    Math.abs(r.x) < RIG_HEIGHT * 0.5 && r.y > -RIG_HEIGHT - 60 && r.y < 60;
+
   const onMove = (e: PointerEvent) => {
     const { x, y } = local(e);
     const s = hitSocket(x, y, null, hitR);
@@ -348,6 +385,11 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
       canvas.style.cursor = s ? "pointer" : "default";
       opts.onSocketHover?.(s);
     }
+    // the eyes follow the pointer wherever it is on the canvas; the perk up
+    // and the lean in are for when it is actually on him
+    const r = toRig(x, y);
+    rig.lookAt(r);
+    rig.setNoticed(onTheBot(r));
   };
   const onDown = (e: PointerEvent) => {
     const { x, y } = local(e);
@@ -359,12 +401,18 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
       }
       opts.onSocketTap?.(s);
     }
+    // a touch is the only pointer a phone has, so a tap has to do the noticing
+    const r = toRig(x, y);
+    rig.lookAt(r);
+    rig.setNoticed(onTheBot(r));
   };
   const onLeave = () => {
     if (hover) {
       hover = null;
       opts.onSocketHover?.(null);
     }
+    rig.lookAt(null);
+    rig.setNoticed(false);
   };
   canvas.addEventListener("pointermove", onMove);
   canvas.addEventListener("pointerdown", onDown);
@@ -384,6 +432,11 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
     },
     setRings(state) {
       for (const s of SOCKETS) ringState[s] = state[s];
+      // WHAT THE BOT IS FEELING, off the one thing this screen knows: a bot
+      // still missing parts reads flat, a finished one reads eager. No new
+      // state, no new call for the client to remember to make.
+      const empty = SOCKETS.filter((s) => !ringState[s].filled).length;
+      rig.setMood(empty === 0 ? "eager" : empty >= 4 ? "sleepy" : "flat");
     },
     setArming(slot) {
       arming = slot;
@@ -404,10 +457,15 @@ export async function buildBay(canvas: HTMLCanvasElement, opts: BayOpts): Promis
     open() {
       openAt = -2;
       riseK = 0;
+      landed = false;
     },
     flashRing(socket) {
       ringFlash[socket] = 2;
       rig.flash(socket);
+      // a part just went on: the bot bounces and looks at what he was given.
+      // This is the moment ownership is made, so it is the one place on this
+      // screen that gets a reaction the player did not have to hunt for.
+      rig.poke("fit", socket);
     },
     hitSocket,
     socketCss(s) {

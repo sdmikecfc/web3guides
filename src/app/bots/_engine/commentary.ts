@@ -19,40 +19,43 @@ import { EVENT_KINDS, PIECE, PIECE_COUNT, PIECE_NAMES, TIMEOUT_WHY, type EventKi
 export type Names = readonly [string, string];
 
 /** {A} = the side that acted (or the winner), {B} = the other side, {part},
- * {arm}, {dmg} fill from the event. */
+ * {arm}, {lost} fill from the event. */
 export const TEMPLATES: Readonly<Record<EventKind, string>> = {
-  start: "{A} and {B} square up. Ding.",
+  start: "{A} against {B}. Fight!",
   swing: "{A} swings at {B}.",
   miss: "{A} swings and misses.",
-  block: "{B} blocks with the {arm}. The arm takes {dmg}.",
-  hit: "{A} hits the {part} for {dmg}.",
-  bounce: "Lucky. The {part} hangs on at 1.",
-  break: "{B} loses the {part}. Clang.",
-  stagger: "{B} staggers.",
-  tired: "Both bots are tired. Hits land easier.",
-  ko: "{A} wins by knockout.",
-  timeout: "Time. {A} wins with more body armor left.",
+  block: "{B} blocks. The {arm} loses {lost} life.",
+  hit: "{A} hits the {part}. {lost} life gone.",
+  bounce: "Lucky! The {part} nearly came off.",
+  break: "{B} loses the {part}! Clang.",
+  stagger: "{B} nearly falls over.",
+  tired: "Both robots are tired. Hits take off more life.",
+  ko: "{A} wins by knockout!",
+  timeout: "Time is up. {A} has more life left.",
 };
 
 /** Variants the narrator picks by context (still authored, still fixed). */
 export const VARIANTS = {
-  critHit: "Big hit. {A} cracks the {part} for {dmg}.",
+  critHit: "Big hit! The {part} loses {lost} life.",
   blockNoDamage: "{B} blocks with the {arm}.",
-  blockBreak: "Blocked, but the {arm} gave out.",
-  timeoutDamage: "Time. Body armor is even. {A} wins on damage dealt.",
-  timeoutChallenged: "Time. Dead even. {A} keeps it as the challenged bot.",
-  bodyBreak: "{B} takes it on the body. The body cracks.",
+  blockBreak: "{B} blocks, then the {arm} falls off.",
+  timeoutDamage: "Time is up. {A} took off more life.",
+  /** the WHY does not fit a one line bar, so it moves to the result card as
+   * STRINGS.en.fight.tieRule. This line never says "challenged", "defender"
+   * or "tie", none of which a seven year old has been taught. */
+  timeoutChallenged: "Time is up. Both are the same. {A} wins.",
+  bodyBreak: "The body of {B} cracks open!",
 } as const;
 
 /** Effect lines by piece, first loss and second loss of a pair. {B} is the
  * bot that lost the part. */
 export const EFFECT_LINES: readonly { first: string; second: string }[] = [
-  { first: "Headshot. {B} cannot aim.", second: "Headshot. {B} cannot aim." },
-  { first: "{B} is done.", second: "{B} is done." },
-  { first: "{B} hits softer, blocks less, and its body is open.", second: "{B} has no arms. Nothing shields the body now." },
-  { first: "{B} hits softer, blocks less, and its body is open.", second: "{B} has no arms. Nothing shields the body now." },
-  { first: "{B} is slower now and easier to hit.", second: "{B} has no legs. It can barely move." },
-  { first: "{B} is slower now and easier to hit.", second: "{B} has no legs. It can barely move." },
+  { first: "The head is off. {B} cannot aim.", second: "The head is off. {B} cannot aim." },
+  { first: "{B} cannot fight any more.", second: "{B} cannot fight any more." },
+  { first: "{B} hits softer and blocks less.", second: "Both arms are off. Nothing can block now." },
+  { first: "{B} hits softer and blocks less.", second: "Both arms are off. Nothing can block now." },
+  { first: "{B} is slower and easier to hit.", second: "Both legs are off. It cannot move much." },
+  { first: "{B} is slower and easier to hit.", second: "Both legs are off. It cannot move much." },
 ];
 
 export interface Line {
@@ -100,15 +103,15 @@ export function narrate(log: readonly FightEvent[], names: Names): Line[] {
       case "block":
         // who = the blocker; the swinger is the other side
         text = e.dmg > 0
-          ? fill(TEMPLATES.block, { B: A, arm: PIECE_NAMES[e.arm], dmg: e.dmg })
+          ? fill(TEMPLATES.block, { B: A, arm: PIECE_NAMES[e.arm], lost: e.dmg })
           : fill(VARIANTS.blockNoDamage, { B: A, arm: PIECE_NAMES[e.arm] });
         lastBlockArm = e.arm;
         lastBlockWho = e.who;
         break;
       case "hit":
         text = e.crit
-          ? fill(VARIANTS.critHit, { A, part: PIECE_NAMES[e.part], dmg: e.dmg })
-          : fill(TEMPLATES.hit, { A, part: PIECE_NAMES[e.part], dmg: e.dmg });
+          ? fill(VARIANTS.critHit, { A, part: PIECE_NAMES[e.part], lost: e.dmg })
+          : fill(TEMPLATES.hit, { A, part: PIECE_NAMES[e.part], lost: e.dmg });
         break;
       case "bounce":
         text = fill(TEMPLATES.bounce, { part: PIECE_NAMES[e.part] });
@@ -171,22 +174,42 @@ export function narrate(log: readonly FightEvent[], names: Names): Line[] {
 export const CHAIN_MAX_BREAKS = 4;
 
 function breakBeat(part: Piece): string {
-  if (part === PIECE.HEAD) return "headshot";
-  if (part === PIECE.BODY) return "body cracked";
-  return `${PIECE_NAMES[part]} off`;
+  if (part === PIECE.HEAD) return "the head";
+  if (part === PIECE.BODY) return "the body";
+  return `the ${PIECE_NAMES[part]}`;
 }
 
-/** The chain summary for the result screen and the card: every break in
- * order (capped at CHAIN_MAX_BREAKS, earliest kept) plus the final ko, as
- * one sentence: "Right arm off, left leg off, headshot, body cracked. Kettle
- * wins." When BOTH bots lose parts the beats carry the loser's name at every
- * change of victim ("Kettle right arm off, Sprocket right arm off, headshot,
- * ..."), so two right arms never read as one. A timeout closes with "time
- * ran out". */
+/** The chain summary for the result screen and the card: the winner first,
+ * then every break in order (capped at CHAIN_MAX_BREAKS, earliest kept), as
+ * a sentence with a verb in it: "Rattle wins. Parts that broke: the right
+ * arm, the left leg, the head." When BOTH robots lose parts the beats carry
+ * the loser's name at every change of victim ("Rattle loses the right arm,
+ * Spark loses the head"), so two right arms never read as one. A timeout
+ * closes with "time ran out". */
 export function chainSummary(log: readonly FightEvent[], names: Names): string {
+  const chain = chainParts(log, names);
+  const winner = winnerName(log, names);
+  if (!winner) return chain ? `The fight is still going. Parts that broke: ${chain}.` : "The fight is still going.";
+  return chain ? `${winner} wins. Parts that broke: ${chain}.` : `${winner} wins. No parts broke.`;
+}
+
+/** The winner's name, or "" while the fight is still going. */
+function winnerName(log: readonly FightEvent[], names: Names): string {
+  for (const e of log) if (e.t === "ko" || e.t === "timeout") return names[e.winner];
+  return "";
+}
+
+/** Just the parts clause, for the RESULT CARD, whose headline already says
+ * "{winner} wins." in display type right above it. Saying the winner's name
+ * twice in two lines is the one thing a reader notices before the parts. */
+export function chainDetail(log: readonly FightEvent[], names: Names): string {
+  const chain = chainParts(log, names);
+  return chain ? `Parts that broke: ${chain}.` : "No parts broke.";
+}
+
+function chainParts(log: readonly FightEvent[], names: Names): string {
   const beats: { who: number; text: string }[] = [];
   let limbs = 0;
-  let winner = "";
   for (const e of log) {
     if (e.t === "break") {
       // the body break is the ko beat and always stays; limbs cap
@@ -195,10 +218,7 @@ export function chainSummary(log: readonly FightEvent[], names: Names): string {
         beats.push({ who: e.who, text: breakBeat(e.part) });
         limbs += 1;
       }
-    } else if (e.t === "ko") {
-      winner = names[e.winner];
     } else if (e.t === "timeout") {
-      winner = names[e.winner];
       beats.push({ who: -1, text: "time ran out" });
     }
   }
@@ -206,14 +226,11 @@ export function chainSummary(log: readonly FightEvent[], names: Names): string {
   const named = victims.size > 1;
   let last = -1;
   const words = beats.map((b) => {
-    const prefix = named && b.who >= 0 && b.who !== last ? `${names[b.who]} ` : "";
+    const prefix = named && b.who >= 0 && b.who !== last ? `${names[b.who]} loses ` : "";
     last = b.who >= 0 ? b.who : last;
     return `${prefix}${b.text}`;
   });
-  const chain = words.length > 0 ? words.join(", ") : "";
-  const sentence = chain ? `${chain.charAt(0).toUpperCase()}${chain.slice(1)}.` : "";
-  if (!winner) return sentence ? `${sentence} The fight is still on.` : "The fight is still on.";
-  return `${sentence} ${winner} wins.`.trim();
+  return words.length > 0 ? words.join(", ") : "";
 }
 
 /** Coverage for the harness: every event kind has a template and every

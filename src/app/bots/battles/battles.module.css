@@ -1,0 +1,176 @@
+/*
+ * BATTLE BOTS BATTLES PAGE layout (screens doc 4.1): two columns on a
+ * desktop, two tabs on a phone (the fight.module.css breakpoint, 899px);
+ * the live dot's pulse; the stake slider's 44px hit area. Colours are the
+ * money tokens (tokens.ts M) spelled as hex, because a CSS module cannot
+ * read a TS constant.
+ */
+
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.tabs {
+  display: none;
+}
+
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+  scrollbar-width: thin;
+}
+.chips > * {
+  flex: 0 0 auto;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* the filled red dot with "LIVE" beside it */
+.live {
+  animation: livePulse 1.4s ease-in-out infinite;
+}
+@keyframes livePulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.75);
+  }
+}
+
+/* the stake slider: a 6px track, a 22px handle, a 44px tall hit area */
+.stakeRange {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.stakeRange::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #1c2236;
+}
+.stakeRange::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  border-radius: 999px;
+  background: #7c6aff;
+  border: 2px solid #e4e8f5;
+}
+.stakeRange::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #1c2236;
+}
+.stakeRange::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #7c6aff;
+  border: 2px solid #e4e8f5;
+}
+.stakeRange:focus-visible {
+  outline: 2px solid #7c6aff;
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+/* a house bot card (700x96 on a desktop): thumb, words, the reward and the buttons */
+.ladder {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 96px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid #1c2236;
+  background: #131826;
+}
+.ladderActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* a defender row (64px): thumb, names, the multiplier and Challenge; the
+   stake picker opens under it across the whole row */
+.def {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 64px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #1c2236;
+  background: #131826;
+}
+.defActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+@media (max-width: 599px) {
+  .ladder {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+  .ladderActions {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .def {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+  .defActions {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 899px) {
+  .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 12px;
+  }
+  .cols[data-tab="fight"] .watch {
+    display: none;
+  }
+  .cols[data-tab="watch"] .fight {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live {
+    animation: none;
+  }
+}

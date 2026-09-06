@@ -27,6 +27,52 @@
   justify-content: flex-end;
 }
 
+/*
+ * Each strip is two rows and each row is ONE line: nowrap, and the name and
+ * the wallet name ellipsise instead of wrapping (a flex box never ellipsises
+ * its own text, so the text sits in .idText). The record keeps its numbers.
+ */
+.idStrip {
+  min-width: 0;
+}
+
+.idName,
+.idMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.idName {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.idMeta {
+  gap: 10px;
+  align-items: baseline;
+  font-size: 12px;
+}
+
+.idRight .idName,
+.idRight .idMeta {
+  justify-content: flex-end;
+}
+
+.idText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.idRecord {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  flex: 0 0 auto;
+}
+
 /* ── THE hairline: the lit pit inside the dark frame ────────────────────── */
 
 .frame {
@@ -51,18 +97,23 @@
 .hudLeft { left: 12px; }
 .hudRight { right: 12px; }
 
-/* ── the commentary bar: 44px, one sentence, never two lines ───────────── */
+/* ── the commentary bar: 44px tall, and it WRAPS ─────────────────────────
+ * It used to be `height: 44px` with `nowrap` and an ellipsis, so a robot
+ * name of 19 characters (Crooked Duckling 99) cut the sentence off mid word
+ * and no honest line could be written. The bar now grows to hold the whole
+ * sentence, and 44px is the floor, not the ceiling, so the row below it
+ * never jumps as lines change length. */
 
 .commentary {
-  height: 44px;
+  min-height: 44px;
   display: flex;
   align-items: center;
-  padding: 0 4px;
+  padding: 6px 4px;
   font-size: 15px;
+  line-height: 1.35;
   color: #e4e8f5;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 /* ── the controls row ───────────────────────────────────────────────────── */
@@ -215,6 +266,16 @@
     grid-column: 1 / -1;
     order: -1;
     text-align: center;
+  }
+  .idName {
+    font-size: 15px;
+  }
+  .idMeta {
+    gap: 6px;
+    font-size: 11px;
+  }
+  .idRecord {
+    font-size: 10px;
   }
   .hud {
     top: 6px;

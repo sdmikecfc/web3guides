@@ -11,7 +11,7 @@
 import { useState } from "react";
 import { COURSES, isGraduate, type Course } from "./_engine/academy";
 
-const FONT = 'ui-rounded, "Segoe UI", system-ui, sans-serif';
+import { FONT } from "./_ui/tokens";
 
 const chip: React.CSSProperties = {
   background: "rgba(27,19,16,0.92)",
@@ -25,14 +25,39 @@ const chip: React.CSSProperties = {
   cursor: "pointer",
 };
 
+/** the "go and do it" button under a finished course (M10) */
+const doBtn: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "10px 12px",
+  borderRadius: 10,
+  border: "1px solid #e8a13d",
+  background: "#e8a13d",
+  color: "#1b1310",
+  fontFamily: FONT,
+  fontSize: 13,
+  fontWeight: 800,
+  textAlign: "center",
+  textDecoration: "none",
+  cursor: "pointer",
+  minHeight: 42,
+};
+
 export function AcademyModal({
   done,
   onComplete,
   onClose,
+  tradeHref,
+  onAddLiquidity,
 }: {
   done: string[];
   onComplete: (id: string) => void;
   onClose: () => void;
+  /** this market's own page on Doma, for a "go and buy" action */
+  tradeHref?: string;
+  /** opens the in-game add-liquidity flow */
+  onAddLiquidity?: () => void;
 }) {
   const [open, setOpen] = useState<Course | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
@@ -82,7 +107,7 @@ export function AcademyModal({
         {open === null ? (
           <>
             <div style={{ opacity: 0.75, lineHeight: 1.45, marginBottom: 10 }}>
-              Five short lessons on how any of this actually works. Each one pays you for
+              {COURSES.length} short lessons on how any of this actually works. Each one pays you for
               finishing it, and none of them can be failed.
             </div>
             {COURSES.map((c, i) => {
@@ -174,6 +199,38 @@ export function AcademyModal({
             {correct && (
               <div style={{ color: "#6fe3a0", lineHeight: 1.45, margin: "6px 0 2px", fontWeight: 700 }}>
                 That is it exactly.
+              </div>
+            )}
+
+            {/* THE DO (M10). The Academy used to end every course at a
+                multiple-choice tap, which meant the highest-intent moment in
+                the whole funnel — somebody who has just understood the thing —
+                had nowhere to go. Optional, and never a condition of the
+                coins: the reward is for learning. */}
+            {correct && open.action && (
+              <div style={{ marginTop: 10 }}>
+                {open.action.kind === "trade" && tradeHref ? (
+                  <a
+                    href={tradeHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={doBtn}
+                  >
+                    {open.action.label} ↗
+                  </a>
+                ) : open.action.kind === "lp" && onAddLiquidity ? (
+                  <button
+                    style={doBtn}
+                    onClick={() => {
+                      setOpen(null);
+                      setPicked(null);
+                      onClose();
+                      onAddLiquidity();
+                    }}
+                  >
+                    {open.action.label}
+                  </button>
+                ) : null}
               </div>
             )}
 

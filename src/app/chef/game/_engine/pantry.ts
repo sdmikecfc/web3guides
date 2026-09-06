@@ -69,6 +69,49 @@ export function dishQualityBonus(levels: Record<string, number>): number {
   return Math.min(QUALITY_DISH_CAP, n);
 }
 
+/**
+ * THE DAILY SPECIAL (M8) — the reason a pantry keeps mattering.
+ *
+ * "Cook it better" is a finite pool: four dishes, two upgrades each, eight
+ * presses and then ingredients are worthless forever. The special is the sink
+ * that never closes. One is drawn each REAL day; prepping it spends commons
+ * you have, and the board turns over tomorrow whether you cooked it or not.
+ *
+ * Prep is PURE UPSIDE. It never adds quality points (money and stock do not
+ * buy quality, ADR-0043/0103) and an unprepped day is never a penalty state:
+ * the kitchen simply serves its ordinary menu, as it always has.
+ */
+export interface DailySpecial {
+  id: string;
+  name: string;
+  icon: string;
+  needs: Recipe;
+}
+
+/**
+ * Icons are deliberately OLD emoji (Unicode 9 and earlier). Windows 10 has no
+ * glyph for anything newer and renders a hollow box: M7 shipped country flags
+ * that came out as bare letter pairs for exactly this reason, and 🫓 (Unicode
+ * 13) did the same here before it became a baguette. If you add a special,
+ * look at it on Windows before you believe it.
+ */
+export const DAILY_SPECIALS: DailySpecial[] = [
+  { id: "soup", name: "Tomato Soup", icon: "🍲", needs: { tomato: 2, herb: 1 } },
+  { id: "flatbread", name: "Herb Bread", icon: "🥖", needs: { flour: 2, herb: 1 } },
+  { id: "pepperpasta", name: "Pepper Pasta", icon: "🍝", needs: { flour: 2, pepper: 1 } },
+  { id: "lemontart", name: "Lemon Tart", icon: "🍋", needs: { lemon: 2, flour: 1 } },
+  { id: "cheeseplate", name: "Cheese Plate", icon: "🧀", needs: { cheese: 2, herb: 1 } },
+  { id: "brightsalad", name: "Bright Salad", icon: "🥗", needs: { lemon: 1, herb: 1, tomato: 1 } },
+];
+
+/**
+ * Extra tip a plate earns while today's special is on (never quality).
+ * 1 -> 2 with the inversion: it now rides SERVE_BASE 4 instead of base 1, and
+ * a prepped board also feeds the SPECIAL_POT beat, so prep stays worth the
+ * commons it spends.
+ */
+export const SPECIAL_TIP = 2;
+
 // ── drop rates (DEMO CONFIG) ───────────────────────────────────────────────
 /** commons handed over at the start of each game day, no matter what */
 export const DAILY_DELIVERY = 2;

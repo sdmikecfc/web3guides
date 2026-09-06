@@ -28,15 +28,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageShell } from "../_components/PageShell";
 import { IconPlay, IconReplay, IconShare, STAT_ICON } from "../_ui/icons";
 import { Button, Dot, Panel } from "../_ui/primitives";
-import { FONT_BODY, FONT_DISPLAY, FONT_MONO, M, PAINTS, TIER_COLOR, type PaintId } from "../_ui/tokens";
+import { FONT_BODY, FONT_DISPLAY, FONT_MONO, M, TIER_COLOR, type PaintId } from "../_ui/tokens";
 import { buildFightScene, type FightSceneHandle } from "../_view/scene";
 import { SLOWMO_RATE, SLOWMO_S, TELL_F, mkFightFx, resetFightFx, tickFightFx } from "../_view/fightfx";
+import { koLineUp, scheduleCommentary } from "../_view/commentary-bar";
 import { createBotsSfx, type BotsSfx } from "../_view/sfx";
-import { NO_ORDERS, PIECE, botTier, buildTotal, type Build, type FightEvent, type Mode, type Orders, type Side } from "../_engine/parts";
+import { NO_ORDERS, PIECE, TIMEOUT_WHY, botTier, buildTotal, type Build, type FightEvent, type Mode, type Orders, type Side } from "../_engine/parts";
 import { createFight, resultOf, runFight, stepFight, type Fight } from "../_engine/resolve";
 import { aggregates, type Aggregates } from "../_engine/derive";
-import { chainSummary, narrate } from "../_engine/commentary";
-import { STRINGS, fill } from "@/lib/bots/strings";
+import { chainDetail, chainSummary, narrate } from "../_engine/commentary";
+// type-only (erased at compile time): the stored fight's shape, never the server client
+import type { FightView, LookView } from "../_server/types";
+import { rigLookFromBuild, rigLookOf } from "../_view/look-view";
+import type { BotLook } from "../_view/look";
+import { authHeaders, readBotsSession } from "../battles/session";
+import { STRINGS, fightPointWord, fill, winLossWords } from "@/lib/bots/strings";
 import css from "./fight.module.css";
 
 export interface FightIdentity {
@@ -56,30 +62,43 @@ export interface FightClientProps {
   a: Build;
   b: Build;
   ids: [FightIdentity, FightIdentity];
+  /**
+   * BOTH ROBOTS AS THEY WERE AT THE BELL, off the stored fight row: the colour
+   * on every socket, the face, the sticker, the plate, the won hat and the
+   * earned marks. A replay watched a month later shows the robots that fought,
+   * not the robots their owners have since rebuilt.
+   *
+   * Absent on the demo replays, which have no row: those fall back to the
+   * colours in their own saved build, the calm face and no marks, which is the
+   * same fallback the server makes for a row stored before looks existed
+   * (_server/fight-read.ts looksFromBuild).
+   */
+  looks?: readonly [LookView, LookView];
   mode: Mode;
   /** the mono line between the strips: "SPAR . SEED 7", "PVE . SCRAPPER" */
   modeLabel: string;
   orders?: [Orders, Orders];
   /** the stored hash when a server row exists; a mismatch is version skew */
   expectedHash?: number;
-  /** the replay link, which is the share link */
+  /** the replay link, which is the share link (a path is made absolute at share time) */
   replayUrl: string;
   /** where "Watch another" goes */
   watchAnotherHref: string;
+  /** a live spectator starts here (engine doc 6: the offset now minus
+   * createdAt, so everyone sees the same frame); absent = the bell */
+  startAtFrame?: number;
+  /** plain-words lines under the result card: coins, points, drops, the shop */
+  rewardLines?: readonly string[];
 }
 
 const t = STRINGS.en;
 const FIXED_DT = 1 / 60; // the engine's beat (resolve.ts BEAT.FPS)
 const MAX_SUBSTEPS = 8; // spiral-of-death guard, the RunShell value
-/** a commentary line holds for at least this many frames (two thirds of a
- * second: a break line and its effect line both get read) */
-const DWELL_F = 40;
 /** the KO slow motion measured in presentation seconds (1.5 s of wall time) */
 const KO_SLOW_FX = SLOWMO_S * SLOWMO_RATE;
 /** the result card and the Share offer come right after the slow motion */
 const KO_OVER_FX = KO_SLOW_FX + 0.3;
 const UI_EVERY_F = 3;
-const hexNum = (h: string): number => parseInt(h.slice(1), 16);
 
 /** React StrictMode dev-mounts effects twice; two app.init() calls racing on
  * ONE canvas kill each other's shaders (the Battlefield law). Every build AND
@@ -118,6 +137,20 @@ function soundOf(e: FightEvent): "bell" | "whoosh" | "clank" | "crunch" | "clang
 
 export default function FightClient(p: FightClientProps) {
   const names = useMemo<[string, string]>(() => [p.ids[0].name, p.ids[1].name], [p.ids]);
+  /**
+   * WHAT THE PIT DRAWS. One look per robot, built once: the stored snapshot
+   * when the row has one, else the robot's own build colours. The identity's
+   * paint is the fallback for a socket that never recorded a colour, so a row
+   * from before the snapshot existed draws exactly the picture it drew before
+   * this lane and every newer row draws the real robot.
+   */
+  const looks = useMemo<[BotLook, BotLook]>(
+    () => [
+      p.looks?.[0] ? rigLookOf(p.looks[0], p.ids[0].paint) : rigLookFromBuild(p.a, p.ids[0].paint),
+      p.looks?.[1] ? rigLookOf(p.looks[1], p.ids[1].paint) : rigLookFromBuild(p.b, p.ids[1].paint),
+    ],
+    [p.looks, p.ids, p.a, p.b],
+  );
   const oa = p.orders?.[0] ?? NO_ORDERS;
   const ob = p.orders?.[1] ?? NO_ORDERS;
 
@@ -126,13 +159,8 @@ export default function FightClient(p: FightClientProps) {
     const f = runFight(p.seed, p.a, p.b, oa, ob, p.mode);
     const result = resultOf(f);
     const lines = narrate(result.log, names);
-    const disp: number[] = [];
-    let last = -DWELL_F;
-    for (const l of lines) {
-      const d = Math.max(l.f, last + DWELL_F);
-      disp.push(d);
-      last = d;
-    }
+    // the bar's clock lives in _view/commentary-bar.ts: a line never lags its event by more than a second
+    const disp = scheduleCommentary(lines);
     const ticks = result.log
       .filter((e) => e.t === "break" || e.t === "ko" || e.t === "timeout")
       .map((e) => ({ f: e.f, gold: e.t !== "break" }));
@@ -143,6 +171,8 @@ export default function FightClient(p: FightClientProps) {
       ticks,
       hashHex: (result.hash >>> 0).toString(16).padStart(8, "0"),
       chain: chainSummary(result.log, names),
+      // the result card headline already says who won, in display type
+      chainDetail: chainDetail(result.log, names),
       stats: [aggregates(p.a, oa), aggregates(p.b, ob)] as [Aggregates, Aggregates],
     };
   }, [p.seed, p.a, p.b, p.mode, oa, ob, names]);
@@ -207,7 +237,8 @@ export default function FightClient(p: FightClientProps) {
         logLenRef.current = f.st.log.length;
         setHudTick((n) => n + 1);
       }
-      const over = f.st.done === 1 && (fx.ko >= KO_OVER_FX || fx.timeout >= 1);
+      // the card waits for the KO line, so the bar never calls a hit under a card that names the winner
+      const over = f.st.done === 1 && (fx.ko >= KO_OVER_FX || fx.timeout >= 1) && koLineUp(full.disp, idx);
       if (over !== endedRef.current) {
         endedRef.current = over;
         setEnded(over);
@@ -346,7 +377,7 @@ export default function FightClient(p: FightClientProps) {
           scene.destroy();
           return;
         }
-        await scene.setBuilds(p.a, p.b, [hexNum(PAINTS[p.ids[0].paint]), hexNum(PAINTS[p.ids[1].paint])]);
+        await scene.setBuilds(p.a, p.b, looks);
         if (dead) {
           scene.destroy();
           return;
@@ -359,8 +390,9 @@ export default function FightClient(p: FightClientProps) {
         fit();
         ro = new ResizeObserver(fit);
         ro.observe(wrap);
-        // reduced motion: one settled frame at the end, no loop at all
-        seekTo(isReduced ? full.result.frames : 0);
+        // reduced motion: one settled frame at the end, no loop at all;
+        // a live spectator joins at the clock's frame, everyone else at the bell
+        seekTo(isReduced ? full.result.frames : Math.max(0, Math.min(p.startAtFrame ?? 0, full.result.frames)));
         scene.render(fightRef.current!.st, fxRef.current);
         document.addEventListener("visibilitychange", onVis);
         if (!document.hidden) start();
@@ -421,10 +453,12 @@ export default function FightClient(p: FightClientProps) {
   const share = useCallback(async () => {
     const winner = names[full.result.winner];
     const loser = names[full.result.winner === 0 ? 1 : 0];
-    const text = fill(t.card.shareText, { winner, loser, url: p.replayUrl });
+    // the share link is absolute: a path only means something inside this tab
+    const url = /^https?:\/\//.test(p.replayUrl) ? p.replayUrl : `${window.location.origin}${p.replayUrl}`;
+    const text = fill(t.card.shareText, { winner, loser, url });
     try {
       if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-        await navigator.share({ title: t.nav.wordmark, text, url: p.replayUrl });
+        await navigator.share({ title: t.nav.wordmark, text, url });
         setShareNote("Shared.");
         return;
       }
@@ -494,11 +528,8 @@ export default function FightClient(p: FightClientProps) {
       <PageShell wide>
         <div className={css.viewer}>
           <Panel title={t.nav.wordmark} style={{ marginTop: 24 }}>
-            <p style={{ fontFamily: FONT_DISPLAY, fontSize: 20, margin: "0 0 8px" }}>This replay needs the new version.</p>
-            <p style={{ color: M.lore, margin: "0 0 12px" }}>{full.chain}</p>
-            <p style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted, margin: 0 }}>
-              stored hash {(p.expectedHash! >>> 0).toString(16).padStart(8, "0")}, this build {full.hashHex}
-            </p>
+            <p style={{ fontFamily: FONT_DISPLAY, fontSize: 20, margin: "0 0 8px" }}>Please reload the page to watch this fight.</p>
+            <p style={{ color: M.lore, margin: 0 }}>{full.chain}</p>
           </Panel>
         </div>
       </PageShell>
@@ -522,7 +553,7 @@ export default function FightClient(p: FightClientProps) {
 
         {/* THE hairline: the lit pit inside the dark frame */}
         <div ref={wrapRef} className={css.frame} data-hud={hudTick}>
-          <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} aria-label="The pit" />
+          <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} aria-label="The ring" />
           <div className={`${css.hud} ${css.hudLeft}`}>
             <Hud armor={st?.sides[0].armor} armorMax={st?.sides[0].armorMax} id="a" mirror={false} />
           </div>
@@ -544,12 +575,12 @@ export default function FightClient(p: FightClientProps) {
                 textTransform: "uppercase",
               }}
             >
-              Opening the pit
+              {t.landingUi.opening}
             </div>
           ) : null}
         </div>
 
-        {/* the commentary bar: one sentence, 44px, never two lines */}
+        {/* the commentary bar: one sentence, at least 44px, and it wraps */}
         <div className={css.commentary} aria-live="polite" style={{ fontFamily: FONT_BODY }}>
           {line}
         </div>
@@ -572,18 +603,18 @@ export default function FightClient(p: FightClientProps) {
             onClick={() => setRate(speed === 2 ? 1 : 2)}
             disabled={reduced}
             aria-pressed={speed === 2}
-            aria-label="Playback speed"
+            aria-label="Speed"
             style={{ fontFamily: FONT_MONO, fontSize: 13, fontWeight: 700 }}
           >
-            {speed === 2 ? "2x" : "1x"}
+            {speed === 2 ? "Fast" : "Normal"}
           </button>
           <button
             type="button"
             className={css.ctl}
             onClick={skipToEnd}
             disabled={reduced || ended}
-            aria-label="Skip to the knockout"
-            title="Skip to the knockout"
+            aria-label="Skip to the end"
+            title="Skip to the end"
           >
             <SkipGlyph />
           </button>
@@ -604,7 +635,7 @@ export default function FightClient(p: FightClientProps) {
               step={1}
               value={Math.min(frame, totalFrames)}
               onChange={(e) => seekTo(Number(e.target.value))}
-              aria-label="Fight position"
+              aria-label="Move through the fight"
               aria-valuetext={`${clock(frame)} of ${clock(totalFrames)}`}
             />
           </div>
@@ -633,7 +664,7 @@ export default function FightClient(p: FightClientProps) {
           </button>
         </div>
         {reduced ? (
-          <p style={{ fontSize: 13, color: M.muted, margin: "2px 4px 0" }}>Reduced motion is on. Move the bar to step through the fight.</p>
+          <p style={{ fontSize: 13, color: M.muted, margin: "2px 4px 0" }}>Moving pictures are turned off on your device. Drag the bar to move through the fight.</p>
         ) : null}
 
         {/* the result card, offered after the KO */}
@@ -649,15 +680,30 @@ export default function FightClient(p: FightClientProps) {
                 margin: "0 0 6px",
               }}
             >
-              {full.result.end === "ko" ? `KO in ${secs} s` : `Time at ${secs} s`}
+              {full.result.end === "ko" ? `Knockout after ${secs} seconds` : `Time ran out after ${secs} seconds`}
             </p>
             <p style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 8px", color: M.text }}>
               {winnerName} wins.
             </p>
-            <p style={{ fontSize: 15, color: M.lore, margin: "0 0 10px", lineHeight: 1.45 }}>{full.chain}</p>
-            <p style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted, margin: 0 }} data-testid="fight-hash">
-              hash {full.hashHex}, engine v{full.result.engineVersion}, {full.result.log.length} events
-            </p>
+            <p style={{ fontSize: 15, color: M.lore, margin: "0 0 10px", lineHeight: 1.45 }}>{full.chainDetail}</p>
+            {full.result.log.some((e) => e.t === "timeout" && e.why === TIMEOUT_WHY.CHALLENGED) ? (
+              <p style={{ fontSize: 14, color: M.lore, margin: "0 0 10px", lineHeight: 1.45 }}>{t.fight.tieRule}</p>
+            ) : null}
+            {p.rewardLines && p.rewardLines.length ? (
+              <ul style={{ margin: "0 0 10px", paddingLeft: 18, fontSize: 14, color: M.text, lineHeight: 1.5 }} data-testid="fight-rewards">
+                {p.rewardLines.map((l, i) => (
+                  <li key={i}>{l}</li>
+                ))}
+              </ul>
+            ) : null}
+            <details style={{ margin: 0 }} data-testid="fight-hash">
+              <summary style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted, cursor: "pointer", minHeight: 44, display: "flex", alignItems: "center" }}>
+                Fight code {full.hashHex}
+              </summary>
+              <p style={{ fontFamily: FONT_MONO, fontSize: 12, color: M.muted, margin: "6px 0 0" }}>
+                engine v{full.result.engineVersion}, {full.result.log.length} events
+              </p>
+            </details>
             <div className={css.resultActions}>
               <Button variant="primary" onClick={play}>
                 <IconReplay size={18} />
@@ -665,7 +711,7 @@ export default function FightClient(p: FightClientProps) {
               </Button>
               <Button onClick={share}>
                 <IconShare size={18} />
-                {full.result.end === "ko" ? t.fight.share : "Share the fight"}
+                {full.result.end === "ko" ? t.fight.share : "Share this fight"}
               </Button>
               <Link
                 href={p.watchAnotherHref}
@@ -674,7 +720,7 @@ export default function FightClient(p: FightClientProps) {
                 style={{ width: "auto", padding: "0 16px", fontWeight: 700, fontSize: 14, textDecoration: "none", fontFamily: FONT_BODY }}
                 data-fun-gate="watchAnother"
               >
-                Watch another
+                Watch another fight
               </Link>
               <Link
                 href="/bots/garage/build"
@@ -683,7 +729,7 @@ export default function FightClient(p: FightClientProps) {
                 style={{ width: "auto", padding: "0 16px", fontWeight: 700, fontSize: 14, textDecoration: "none", fontFamily: FONT_BODY }}
                 data-fun-gate="buildOne"
               >
-                Build one
+                Build a robot
               </Link>
             </div>
             {shareNote ? (
@@ -701,7 +747,7 @@ export default function FightClient(p: FightClientProps) {
             className={css.ctl}
             style={{ width: "auto", padding: "0 16px", fontFamily: FONT_BODY, fontWeight: 700, fontSize: 14 }}
           >
-            {sheetOpen ? "Hide the stat sheet" : "Stat sheet"}
+            {sheetOpen ? "Hide the numbers" : "The numbers"}
           </button>
           {sheetOpen ? (
             <Panel style={{ marginTop: 10 }}>
@@ -718,31 +764,23 @@ export default function FightClient(p: FightClientProps) {
 
 function IdentityStrip({ id, build, right }: { id: FightIdentity; build: Build; right: boolean }) {
   const tier = botTier(buildTotal(build));
+  // layout lives in fight.module.css (.idName, .idMeta, .idText, .idRecord):
+  // each row is one line, nowrap, and the name and the wallet name ellipsise
+  // rather than wrap, so a 177 px column on a 390 phone still reads as two
+  // lines (week 2: the wallet and the record wrapped to a third line)
   return (
-    <div className={right ? css.idRight : undefined} style={{ minWidth: 0 }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          justifyContent: right ? "flex-end" : "flex-start",
-          fontFamily: FONT_DISPLAY,
-          fontSize: 16,
-          fontWeight: 700,
-          color: M.text,
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
+    <div className={`${css.idStrip} ${right ? css.idRight : ""}`}>
+      <div className={css.idName} style={{ fontFamily: FONT_DISPLAY, color: M.text }}>
         {right ? null : <Dot color={TIER_COLOR[tier]} />}
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{id.name}</span>
+        <span className={css.idText}>{id.name}</span>
         {right ? <Dot color={TIER_COLOR[tier]} /> : null}
       </div>
-      <div style={{ display: "flex", gap: 10, justifyContent: right ? "flex-end" : "flex-start", alignItems: "baseline" }}>
-        <span style={{ fontFamily: FONT_BODY, fontSize: 12, color: M.muted }}>{id.wallet}</span>
-        <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: M.muted }}>
-          {fill(t.profile.record, { w: id.wins, l: id.losses })}
+      <div className={css.idMeta}>
+        <span className={css.idText} style={{ fontFamily: FONT_BODY, color: M.muted }}>
+          {id.wallet}
+        </span>
+        <span className={css.idRecord} style={{ color: M.muted }}>
+          {winLossWords(id.wins, id.losses)}
         </span>
       </div>
     </div>
@@ -836,7 +874,7 @@ function StatSheet({
   );
   return (
     <div className={css.sheetGrid}>
-      <div style={{ fontFamily: FONT_DISPLAY, fontSize: 12, letterSpacing: "0.32em", textTransform: "uppercase", color: M.muted }}>Stats</div>
+      <div style={{ fontFamily: FONT_DISPLAY, fontSize: 12, letterSpacing: "0.32em", textTransform: "uppercase", color: M.muted }}>NUMBERS</div>
       {head(0)}
       {head(1)}
       {SHEET_ROWS.map((row) => {
@@ -845,8 +883,8 @@ function StatSheet({
           <RowCells key={row.key} icon={<Icon size={16} />} label={row.label} a={stats[0][row.agg]} b={stats[1][row.agg]} />
         );
       })}
-      <RowCells label="Total" a={buildTotal(builds[0])} b={buildTotal(builds[1])} />
-      <div style={{ color: M.muted, fontFamily: FONT_BODY, fontSize: 12.5 }}>Strategy</div>
+      <RowCells label={t.ui.total} a={buildTotal(builds[0])} b={buildTotal(builds[1])} />
+      <div style={{ color: M.muted, fontFamily: FONT_BODY, fontSize: 12.5 }}>Auto trading</div>
       <div style={{ textAlign: "right", fontFamily: FONT_BODY, fontSize: 12, color: M.lore, gridColumn: "2 / 3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ids[0].strategy}</div>
       <div style={{ textAlign: "right", fontFamily: FONT_BODY, fontSize: 12, color: M.lore, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ids[1].strategy}</div>
     </div>
@@ -892,5 +930,130 @@ function SoundGlyph({ on }: { on: boolean }) {
       <path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor" stroke="none" />
       {on ? <path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" /> : <path d="M16 9.5l5 5M21 9.5l-5 5" />}
     </svg>
+  );
+}
+
+/* ── the real page: a stored fight from GET /api/bots/fight/[id] ────────── */
+
+/** Fights created inside this window are "live": a spectator joins at the
+ * frame the clock says (the same 90 s as _server/battles.ts LIVE_WINDOW_MS,
+ * spelled here because that module is server-only). */
+const LIVE_MS = 90 * 1000;
+
+type LoadState = { kind: "loading" } | { kind: "error"; status: number; message: string } | { kind: "ready"; view: FightView; startAt: number };
+
+const pointsWords = fightPointWord;
+
+/** Plain words for what the fight paid, read off the STORED rewards JSON
+ * (the guide's tables were applied by the server; nothing is recomputed
+ * here). Whole numbers, wallet names only, never a dollar. */
+export function rewardLinesOf(v: FightView): string[] {
+  const a = v.names[0];
+  const b = v.names[1];
+  const r = v.rewards;
+  const won = v.winner === 0;
+  if (v.mode === "spar") return ["This was a practice fight. No coins, no fight points, and nothing needs fixing."];
+  const lines: string[] = [];
+  if (v.mode === "pvp") {
+    if (won) {
+      const extra = Math.max(0, r.stakePayout - v.stake);
+      lines.push(`${a} gets the ${v.stake} coins back and wins ${extra} more${r.houseBonus > 0 ? `, including ${r.houseBonus} extra coins` : ""}.`);
+      lines.push(`${pointsWords(r.attackerPoints)} for ${a}.`);
+    } else {
+      lines.push(`${a} loses the ${v.stake} coins. ${b} takes them${r.defenderCoins > 0 ? `, and gets ${r.defenderCoins} coins for winning` : ""}.`);
+      lines.push(`${pointsWords(r.attackerPoints)} for ${a}. ${b} was a saved copy, so that player paid nothing and their robot is fine.`);
+    }
+  } else {
+    lines.push(
+      won && r.attackerPoints > 0
+        ? `${a} won ${r.attackerCoins} coins and ${pointsWords(r.attackerPoints)}.`
+        : `${a} got ${r.attackerCoins} coins for fighting.`,
+    );
+    // the part's title already carries the maker, the stars and the socket it
+    // fills, so a badge beside it would say the number twice. "Dropped" said
+    // it fell on the floor and broke, the opposite of the good news it carries.
+    if (r.drop) lines.push(`You won a free part: ${r.drop.name}. It is with your parts.`);
+  }
+  if (r.attackerRepair) lines.push(`${a} is being fixed. It can fight again tomorrow.`);
+  return lines;
+}
+
+/**
+ * Loads a stored fight and hands FightClient the same props the server
+ * resolved from (engine doc 7): the client replays from the seed and the
+ * hash comparison inside FightClient catches version skew. Sparring is
+ * private, so the play session rides along when there is one (a 403 says
+ * so in plain words). Fail-soft on every other answer.
+ */
+export function ServerFight({ id }: { id: string }) {
+  const [state, setState] = useState<LoadState>({ kind: "loading" });
+
+  useEffect(() => {
+    let dead = false;
+    (async () => {
+      let status = 0;
+      try {
+        const res = await fetch(`/api/bots/fight/${encodeURIComponent(id)}`, { headers: authHeaders(readBotsSession()), cache: "no-store" });
+        status = res.status;
+        const j = (await res.json().catch(() => null)) as (Partial<FightView> & { error?: string }) | null;
+        if (dead) return;
+        if (!res.ok || !j || j.ok !== true) {
+          setState({ kind: "error", status, message: (j && j.error) || "Fight not found." });
+          return;
+        }
+        const view = j as FightView;
+        const age = Date.now() - Date.parse(view.createdAt);
+        const startAt = Number.isFinite(age) && age >= 0 && age < LIVE_MS ? Math.min(view.frames, Math.floor((age * 60) / 1000)) : 0;
+        setState({ kind: "ready", view, startAt });
+      } catch {
+        if (!dead) setState({ kind: "error", status, message: "The fight did not load. Try again." });
+      }
+    })();
+    return () => {
+      dead = true;
+    };
+  }, [id]);
+
+  if (state.kind !== "ready") {
+    const loading = state.kind === "loading";
+    return (
+      <PageShell wide>
+        <div className={css.viewer}>
+          <Panel title={t.nav.wordmark} style={{ marginTop: 24 }}>
+            <p style={{ fontFamily: FONT_DISPLAY, fontSize: 20, margin: "0 0 8px" }}>{loading ? "Opening the fight." : state.message}</p>
+            <p style={{ color: M.lore, margin: "0 0 14px" }}>
+              {loading ? "The stored fight is on its way." : state.status === 403 ? "Only you can watch your own practice fights." : "Every fight anyone can watch is on the Fights page."}
+            </p>
+            {!loading ? (
+              <Link
+                href="/bots/battles"
+                className={css.ctl}
+                style={{ width: "auto", padding: "0 16px", fontWeight: 700, fontSize: 14, textDecoration: "none", fontFamily: FONT_BODY }}
+              >
+                {t.nav.battles}
+              </Link>
+            ) : null}
+          </Panel>
+        </div>
+      </PageShell>
+    );
+  }
+  const v = state.view;
+  return (
+    <FightClient
+      seed={v.seed}
+      a={v.buildA}
+      b={v.buildB}
+      ids={v.ids}
+      looks={v.looks}
+      mode={v.mode}
+      modeLabel={v.modeLabel}
+      orders={v.orders}
+      expectedHash={v.hash}
+      replayUrl={`/bots/fight/${v.id}`}
+      watchAnotherHref="/bots/battles"
+      startAtFrame={state.startAt}
+      rewardLines={rewardLinesOf(v)}
+    />
   );
 }

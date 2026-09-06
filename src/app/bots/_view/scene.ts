@@ -24,9 +24,11 @@
 "use client";
 
 import type { Container, Graphics, Sprite, Texture } from "pixi.js";
-import { createPixiStage, type PixiStage } from "@/app/s7/games/_shared/pixi";
-import { DRAW_ORDER, buildRig, RIG_HEIGHT, type PartArt, type Rig } from "./rig";
-import { RIG, maskFile, partFile, type ArtSlot } from "./rig-points";
+import { createPixiStage, type Pixi, type PixiStage } from "@/app/s7/games/_shared/pixi";
+import { DRAW_ORDER, PART_SCALE, buildRig, handOffset, paintBrokenFace, RIG_HEIGHT, type BotMood, type PartArt, type Rig } from "./rig";
+import type { BotLook } from "./look";
+import { bodyTintOf } from "./look-view";
+import { FIGURE, RIG, maskFile, partFile, type ArtSlot } from "./rig-points";
 import { K, M, TIER_COLOR } from "../_ui/tokens";
 import { fnv1a } from "../_engine/rng";
 import { PIECE, PIECE_COUNT, partTier, type Build, type FightEvent, type Piece, type Side, type Slot } from "../_engine/parts";
@@ -86,17 +88,58 @@ const SLOT_OF_SOCKET: Record<Socket, Slot> = {
   head: "head", torso: "torso", armL: "arms", armR: "arms", legL: "legs", legR: "legs", weapon: "weapon",
 };
 
-/** HP bar offsets from each socket pivot, in rig units (the head pivot is
- * the neck, so its bar rides above the crown; the limbs hang from their
- * pivots, so theirs sit mid limb) */
+/** one colour on every socket: what a rig wears before a look has dressed it */
+const flatPaints = (hex: number): Record<Socket, number> => ({
+  head: hex, torso: hex, armL: hex, armR: hex, legL: hex, legR: hex, weapon: hex,
+});
+
+/**
+ * The head's crown above its own neck pivot. The head canvas holds a
+ * band-maximum head, so the drawn crown starts FIGURE.headApexY rows below
+ * the canvas top; anything that hangs something over the head has to take
+ * that off or it floats.
+ */
+const HEAD_TOP = RIG.head.neck[1] - FIGURE.headApexY; // 288
+
+/**
+ * The face's own points, in the head canvas, derived the way the bake derives
+ * them. The drawn stand-in below has to put its eyes here or the rig's lit
+ * bulb (_view/rig.ts) hangs over the forehead when public/bots-art is gone.
+ */
+const HEAD_CORE_W = FIGURE.ratio.headCoreW.target * FIGURE.H; // 328.2
+const HEAD_ART_H = FIGURE.ratio.headH.target * FIGURE.H; // 288.4
+const HEAD_CROWN = RIG.head.neck[1] - HEAD_ART_H; // 26.6
+const EYE_DX = HEAD_CORE_W * 0.215; // 70.6
+const EYE_CY = HEAD_CROWN + HEAD_ART_H * 0.46; // 159.3
+const EYE_R = HEAD_CORE_W * 0.145; // 47.6
+const MOUTH_Y = HEAD_CROWN + HEAD_ART_H * 0.7; // 228.5
+/**
+ * HP bar offsets from each socket pivot, in rig units. Every one of these had
+ * to move with the concept contract, because every pivot did: the head's
+ * pivot is its neck and the crown is now 288 above it rather than 150, and a
+ * limb's pivot is now half a limb width down its own shaft rather than 20
+ * from the top of a 200-tall canvas. Left alone, the head's bar drew across
+ * its own forehead.
+ */
 const BAR_AT: Record<Socket, readonly [number, number]> = {
-  head: [0, -175], torso: [0, -110], armL: [0, 100], armR: [0, 100], legL: [0, 100], legR: [0, 100], weapon: [0, 0],
+  head: [0, -HEAD_TOP - 26], torso: [0, -20], armL: [0, 74], armR: [0, 74], legL: [0, 52], legR: [0, 52], weapon: [0, 0],
+};
+/**
+ * The MIDDLE of a part, for crumbs, sparks and the tumble's start. Separate
+ * from BAR_AT because the two want different points and folding them into one
+ * number (a bar offset plus 90 for the head) is what left the old head's
+ * crumbs floating above it. Nothing here reaches the engine: a crumb's
+ * position is fx state, so no replay hash can move.
+ */
+const HIT_AT: Record<Socket, readonly [number, number]> = {
+  head: [0, -HEAD_TOP * 0.55], torso: [0, -34], armL: [0, 74], armR: [0, 74], legL: [0, 66], legR: [0, 66], weapon: [0, 0],
 };
 const BAR_W = 36;
 const BAR_H = 5;
-/** shoulder to hand in rig units, and the weapon's rest angle in the hand
- * (both as rig.ts has them; the rig does not export its privates) */
-const HAND = { x: RIG.arm.hand[0] - RIG.arm.shoulder[0], y: RIG.arm.hand[1] - RIG.arm.shoulder[1] };
+/** the weapon's rest angle in the hand, as rig.ts has it. The shoulder to
+ *  hand vector is NOT copied here any more: rig.ts exports handOffset, which
+ *  carries the arm's own scale, and a second copy of that formula was one
+ *  more thing to get wrong. */
 const WEAPON_REST = -0.62;
 
 /** the bulbs on the WebP plate's front rim, measured off the render (sim
@@ -119,9 +162,19 @@ export interface FightSceneHandle {
   stage: PixiStage;
   /** true when the WebP plate loaded; false = the vector pit */
   plate: boolean;
-  /** load both builds' art onto the rigs (vector fallback per part) and
-   * paint them */
-  setBuilds: (a: Build, b: Build, paints: readonly [number, number]) => Promise<void>;
+  /**
+   * LOAD BOTH BUILDS' ART ONTO THE RIGS (vector fallback per part) AND DRESS
+   * THEM. A look, not a paint: a robot is normally FOUR colours at once (head,
+   * body, arms, legs, and the weapon rides the arm), and it also carries the
+   * face it chose, the sticker in its spot, its plate number, the hat it won
+   * and every mark it earned. The pit used to flatten all of that to one
+   * colour per robot, which is why the same eight paints made the whole
+   * catalogue read as two robots at ring size.
+   *
+   * The caller builds the look with _view/look-view.ts, from what the SERVER
+   * stored on the fight row. Nothing here decides what a robot has earned.
+   */
+  setBuilds: (a: Build, b: Build, looks: readonly [BotLook, BotLook]) => Promise<void>;
   /** one new engine event: spawn what it needs at the right sim point */
   onEvent: (e: FightEvent, st: FightState, fx: FightFx) => void;
   /** back to the bell (a seek): every node visible, no debris, no cracks */
@@ -159,6 +212,108 @@ export function designOf(part: { id: string; s: readonly number[] }, slot: Slot)
   const i = group.findIndex((p) => p.id === part.id);
   if (i >= 0) return { tier, design: i % 2 === 0 ? 1 : 2 };
   return { tier, design: (fnv1a(part.id) & 1) === 0 ? 1 : 2 };
+}
+
+
+/**
+ * THE DRAWN PART, ON THE CONCEPT CONTRACT (2026-09-04).
+ *
+ * Exported, and module level, for two reasons. It is the house law's fallback
+ * ("every screen keeps working with public/bots-art deleted") so it has to be
+ * testable without a renderer, and there must be exactly one drawing of a
+ * fallback part in the repo: `_view/part-art.ts` holds a second copy that the
+ * Garage and the Build screen still call, and it is on the OLD canvases.
+ *
+ * The canvases changed with the contract (head 160x160 -> 456x384, torso
+ * 200x240 -> 288x264, arm and leg 90x200 -> 128x280 and 192x280) and the old
+ * drawing did not follow them, so with the art folder gone every part landed
+ * as a quarter-size shape in the corner of its own canvas. Redrawn to the
+ * contract's own pivots: a domed head wider than it is tall whose UNDERSIDE
+ * IS A DOME (a head cut off at its widest row lays a straight bar across the
+ * chest), low side lugs whose outer edge is the full head width so they hide
+ * the shoulder caps, a small wide barrel body, stubby limbs whose pivot is
+ * half their own width below their own top, wide splayed feet, one piece of
+ * brass on the whole figure, and no hardware at any joint.
+ */
+export function drawVectorPart(PIXI: Pixi, slot: ArtSlot, tier: number): { base: Graphics; mask: Graphics } {
+  const base: Graphics = new PIXI.Graphics();
+  const mask: Graphics = new PIXI.Graphics();
+  const clay = hex(K.clay);
+  const edge = 0x9aa3b0;
+  const tint = hex(TIER_COLOR[(tier as 1 | 2 | 3 | 4) ?? 1]);
+  // THE DRAWN PART, ON THE CONCEPT CONTRACT (2026-09-04). The canvases
+  // changed with the contract (head 160x160 -> 456x384, torso 200x240 ->
+  // 288x264, arm and leg 90x200 -> 128x280 and 192x280) and this drawing
+  // did not follow them, so with public/bots-art deleted every part landed
+  // as a quarter-size shape in the corner of its own canvas. Redrawn to the
+  // contract's own pivots: a domed head wider than it is tall whose
+  // UNDERSIDE IS A DOME (a head cut off at its widest row lays a straight
+  // bar across the chest), low side lugs whose outer edge is the full head
+  // width so they hide the shoulder caps, a small wide barrel body, stubby
+  // limbs whose pivot is half their own width below their own top, wide
+  // splayed feet, and no hardware at any joint.
+  const H = RIG.head, T = RIG.torso, A = RIG.arm, L = RIG.leg, Wp = RIG.weapon;
+  if (slot === "head") {
+    const cx = H.neck[0], cy = 198, rx = 166, ry = 172;
+    for (const lx of [cx - 154, cx + 154]) {
+      base.circle(lx, cy - 30, 56).fill(clay); // the structural side lug
+      base.circle(lx, cy - 30, 56).stroke({ width: 4, color: edge });
+      mask.circle(lx, cy - 30, 56).fill(0xffffff);
+    }
+    base.ellipse(cx, cy, rx, ry).fill(clay);
+    base.ellipse(cx, cy, rx, ry).stroke({ width: 4, color: edge });
+    mask.ellipse(cx, cy, rx, ry).fill(0xffffff);
+    // THE EYES AND THE MOUTH GO WHERE THE CONTRACT PUTS THEM, not where this
+    // drawing used to guess (they were 9 across and 31 down from the baked
+    // ones). Three files draw an eye at this point now, the bake, part-art.ts
+    // and this, and _view/rig.ts hangs the lit bulb over it, so a stand-in
+    // that guessed left the light floating above the eye with the art folder
+    // deleted. Same formula as scripts/bots-bake-parts.mjs headParts().
+    for (const ex of [cx - EYE_DX, cx + EYE_DX]) {
+      base.circle(ex, EYE_CY, EYE_R).fill(hex(K.glass));
+      base.circle(ex, EYE_CY, EYE_R * 0.3).fill(hex(K.rubber));
+    }
+    base.circle(cx, EYE_CY + EYE_R * 1.15, 12).fill(tint); // the tier stud
+    base.roundRect(cx - HEAD_CORE_W * 0.185, MOUTH_Y, HEAD_CORE_W * 0.37, HEAD_ART_H * 0.115, 14)
+      .fill(hex(K.rubber)); // the grille
+  } else if (slot === "torso") {
+    const x0 = 24, y0 = 8, w = T.w - 48, h = 212;
+    base.roundRect(x0, y0, w, h, 78).fill(clay);
+    base.roundRect(x0, y0, w, h, 78).stroke({ width: 4, color: edge });
+    mask.roundRect(x0, y0, w, h, 78).fill(0xffffff);
+    base.roundRect(T.decal[0] - 46, T.decal[1] + 22, 92, 34, 10).fill(hex(K.rubber)); // the vent
+    for (let i = 0; i < 3; i++) base.rect(T.decal[0] - 38, T.decal[1] + 28 + i * 9, 76, 4).fill(0x6b6b72);
+    // the ONE piece of metal on the whole figure: the wind-up key
+    base.circle(T.decal[0] + 52, T.decal[1] - 14, 11).fill(hex(K.brass));
+    base.circle(T.decal[0] + 74, T.decal[1] - 14, 11).fill(hex(K.brass));
+    base.roundRect(T.decal[0] + 60, T.decal[1] - 14, 6, 40, 3).fill(hex(K.brass));
+    base.circle(T.decal[0] - 58, T.decal[1] - 22, 13).fill(tint); // the tier lamp
+  } else if (slot === "arm") {
+    const px = A.shoulder[0], py = A.shoulder[1], hw = 43;
+    base.roundRect(px - hw, py - hw, hw * 2, 165, hw).fill(clay);
+    base.roundRect(px - hw, py - hw, hw * 2, 165, hw).stroke({ width: 4, color: edge });
+    base.circle(A.hand[0], A.hand[1] - 8, 42).fill(clay); // the mitt
+    base.circle(A.hand[0], A.hand[1] - 8, 42).stroke({ width: 4, color: edge });
+    mask.roundRect(px - hw, py - hw, hw * 2, 165, hw).fill(0xffffff);
+    mask.circle(A.hand[0], A.hand[1] - 8, 42).fill(0xffffff);
+  } else if (slot === "leg") {
+    const px = L.hip[0], py = L.hip[1], hw = 44;
+    base.roundRect(px - hw, py - hw, hw * 2, 90, hw).fill(clay);
+    base.roundRect(px - hw, py - hw, hw * 2, 90, hw).stroke({ width: 4, color: edge });
+    mask.roundRect(px - hw, py - hw, hw * 2, 90, hw).fill(0xffffff);
+    // the foot is wide, splayed and toes OUTWARD: the leg is mostly foot
+    base.roundRect(15, L.foot[1] - 81, 154, 81, 34).fill(clay);
+    base.roundRect(15, L.foot[1] - 81, 154, 81, 34).stroke({ width: 4, color: edge });
+    mask.roundRect(15, L.foot[1] - 81, 154, 81, 34).fill(0xffffff);
+    base.roundRect(19, L.foot[1] - 26, 146, 22, 11).fill(hex(K.rubber)); // the sole
+  } else {
+    base.roundRect(Wp.grip[0] - 30, Wp.grip[1] - 10, 130, 20, 10).fill(hex(K.rubber)); // the handle
+    base.roundRect(Wp.grip[0] + 88, Wp.grip[1] - 50, 84, 84, 16).fill(hex(K.brass)); // the head
+    base.roundRect(Wp.grip[0] + 88, Wp.grip[1] - 50, 84, 84, 16).stroke({ width: 4, color: 0xa87a2a });
+    base.circle(Wp.grip[0], Wp.grip[1], 12).fill(tint); // the grip band
+    mask.roundRect(Wp.grip[0] + 88, Wp.grip[1] - 50, 84, 84, 16).fill({ color: 0xffffff, alpha: 0 });
+  }
+  return { base, mask };
 }
 
 export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightSceneOpts): Promise<FightSceneHandle> {
@@ -323,13 +478,19 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
   cam.addChild(debrisLayer);
 
   // ── the bots ─────────────────────────────────────────────────────────────
-  const rigs: [Rig, Rig] = [buildRig(PIXI), buildRig(PIXI)];
+  // the renderer goes in so the rig can read a head texture back and put the
+  // blink and the dim on the lenses the art actually has (rig.ts measureEyes)
+  const rigs: [Rig, Rig] = [buildRig(PIXI, stage.app.renderer), buildRig(PIXI, stage.app.renderer)];
   const nodes: [Map<Socket, Container>, Map<Socket, Container>] = [new Map(), new Map()];
   const rest: [Map<Socket, { x: number; y: number }>, Map<Socket, { x: number; y: number }>] = [new Map(), new Map()];
   const arts: [Map<Socket, PartArt | null>, Map<Socket, PartArt | null>] = [new Map(), new Map()];
   rigs.forEach((rig, i) => {
     const dir = i === 0 ? 1 : -1;
     rig.root.scale.set(RIG_SCALE * dir, RIG_SCALE);
+    // B is drawn in a mirror so the two face each other. Every shape a look
+    // draws survives that; the plate's NUMBER does not, so the rig is told and
+    // turns that one node back round (rig.ts setMirrored).
+    rig.setMirrored(dir < 0);
     rig.root.position.set(BOT_X[i], FLOOR_Y);
     cam.addChild(rig.root);
     // the rig adds one Container per socket in DRAW_ORDER with zIndex = index
@@ -359,50 +520,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     const hit = artCache.get(key);
     if (hit) return hit;
     const r = RIG[slot];
-    const base: Graphics = new PIXI.Graphics();
-    const mask: Graphics = new PIXI.Graphics();
-    const clay = hex(K.clay);
-    const edge = 0x9aa3b0;
-    const tint = hex(TIER_COLOR[(tier as 1 | 2 | 3 | 4) ?? 1]);
-    if (slot === "head") {
-      base.roundRect(22, 28, 116, 116, 30).fill(clay);
-      base.roundRect(22, 28, 116, 116, 30).stroke({ width: 4, color: edge });
-      base.roundRect(70, 6, 20, 30, 8).fill(edge); // the antenna
-      base.circle(80, 6, 8).fill(tint);
-      base.circle(56, 84, 16).fill(hex(K.glass));
-      base.circle(104, 84, 16).fill(hex(K.glass));
-      base.circle(58, 86, 7).fill(hex(K.rubber));
-      base.circle(106, 86, 7).fill(hex(K.rubber));
-      base.roundRect(58, 116, 44, 8, 4).fill(hex(K.rubber)); // the grille smile
-      mask.roundRect(22, 28, 116, 116, 30).fill(0xffffff);
-    } else if (slot === "torso") {
-      base.roundRect(26, 20, 148, 200, 34).fill(clay);
-      base.roundRect(26, 20, 148, 200, 34).stroke({ width: 4, color: edge });
-      base.roundRect(64, 150, 72, 40, 8).fill(hex(K.rubber)); // the vent
-      for (let i = 0; i < 3; i++) base.rect(72, 158 + i * 10, 56, 4).fill(0x6b6b72);
-      base.circle(100, 60, 14).fill(tint); // the tier lamp
-      base.circle(100, 60, 6).fill(0xffffff);
-      mask.roundRect(26, 20, 148, 200, 34).fill(0xffffff);
-    } else if (slot === "arm") {
-      base.roundRect(25, 12, 40, 140, 20).fill(clay);
-      base.roundRect(25, 12, 40, 140, 20).stroke({ width: 4, color: edge });
-      base.circle(45, 160, 26).fill(clay); // the mitt
-      base.circle(45, 160, 26).stroke({ width: 4, color: edge });
-      base.circle(45, 20, 12).fill(tint); // the shoulder bolt
-      mask.roundRect(25, 12, 40, 140, 20).fill(0xffffff);
-    } else if (slot === "leg") {
-      base.roundRect(25, 12, 40, 150, 20).fill(clay);
-      base.roundRect(25, 12, 40, 150, 20).stroke({ width: 4, color: edge });
-      base.roundRect(16, 160, 62, 36, 12).fill(hex(K.rubber)); // the boot
-      base.circle(45, 20, 12).fill(tint); // the hip bolt
-      mask.roundRect(25, 12, 40, 150, 20).fill(0xffffff);
-    } else {
-      base.roundRect(8, 50, 130, 20, 10).fill(hex(K.rubber)); // the handle
-      base.roundRect(126, 18, 84, 84, 16).fill(hex(K.brass)); // the head
-      base.roundRect(126, 18, 84, 84, 16).stroke({ width: 4, color: 0xa87a2a });
-      base.circle(30, 60, 12).fill(tint); // the grip bolt
-      mask.roundRect(126, 18, 84, 84, 16).fill({ color: 0xffffff, alpha: 0 });
-    }
+    const { base, mask } = drawVectorPart(PIXI, slot, tier);
     const frame = new PIXI.Rectangle(0, 0, r.w, r.h);
     const art: PartArt = {
       base: stage.app.renderer.generateTexture({ target: base, frame, resolution: 1 }),
@@ -435,7 +553,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     }
   }
 
-  async function setBuilds(a: Build, b: Build, paints: readonly [number, number]) {
+  async function setBuilds(a: Build, b: Build, looks: readonly [BotLook, BotLook]) {
     const builds: [Build, Build] = [a, b];
     for (let i = 0; i < 2; i++) {
       for (const socket of DRAW_ORDER) {
@@ -446,7 +564,13 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
         arts[i].set(socket, art);
         rigs[i].setArt(socket, art);
       }
-      rigs[i].setPaint(paints[i]);
+      // THE BODY COLOUR FIRST, THEN THE LOOK. setPaint is not the picture any
+      // more, it is the ONE number the rig still keeps outside the look: the
+      // colour of the CHIP a limb leaves on the body when it comes off
+      // (rig.ts drawScar). Every socket is then given its own colour by
+      // setLook, which is the picture.
+      rigs[i].setPaint(bodyTintOf(looks[i]));
+      rigs[i].setLook(looks[i]);
     }
   }
 
@@ -465,11 +589,18 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
   /** the struck piece's centre, for crumbs and sparks */
   function pieceCentre(side: Side, piece: Piece): { x: number; y: number } {
     const socket = SOCKET_OF_PIECE[piece];
-    const off = BAR_AT[socket];
-    return restPoint(side, socket, off[0], off[1] + (socket === "head" ? 90 : 0));
+    const off = HIT_AT[socket];
+    return restPoint(side, socket, off[0], off[1]);
   }
 
-  const paintOf: [number, number] = [0xffffff, 0xffffff];
+  /**
+   * EVERY SOCKET'S OWN COLOUR, per side, for the pieces that leave the rig.
+   * A part that flies off is the same part in the same colour it was wearing
+   * a frame earlier, so a coral arm must not land as a mint arm because the
+   * mint torso happened to be the bot's "colour". It was one number per bot
+   * before the look, and a four colour robot losing a leg proved it wrong.
+   */
+  const paintOf: [Record<Socket, number>, Record<Socket, number>] = [flatPaints(0xffffff), flatPaints(0xffffff)];
 
   function onEvent(e: FightEvent, _st: FightState, fx: FightFx) {
     if (e.t === "hit") {
@@ -542,38 +673,71 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
       const node = nodes[p.side].get(socket);
       if (node) node.visible = false;
       const root: Container = new PIXI.Container();
+      // A flown-off part is the SAME part at the SAME size on the SAME pivot
+      // it hung from. Both halves of that used to be wrong: the anchor was
+      // the canvas centre 20 rows down (a guess that was never the contract's
+      // pivot and is 43 rows out on the new canvases) and the part's own
+      // scale was left off, so a head POPPED smaller the instant it broke.
+      const anchorOf = (sock: Socket): { x: number; y: number } => {
+        const r = RIG[ART_OF_SOCKET[sock]];
+        const p2 =
+          sock === "head" ? RIG.head.neck
+          : sock === "weapon" ? RIG.weapon.grip
+          : sock === "armL" || sock === "armR" ? RIG.arm.shoulder
+          : RIG.leg.hip;
+        return { x: p2[0] / r.w, y: p2[1] / r.h };
+      };
       const addSprite = (sock: Socket, dx: number, dy: number, rot: number) => {
         const art = arts[p.side].get(sock);
         if (!art) return;
-        const r = RIG[ART_OF_SOCKET[sock]];
-        const anchor = sock === "head" ? [r.w / 2, RIG.head.neck[1]] : sock === "weapon" ? [RIG.weapon.grip[0], RIG.weapon.grip[1]] : [r.w / 2, 20];
-        const base: Sprite = new PIXI.Sprite(art.base);
-        base.anchor.set(anchor[0] / r.w, anchor[1] / r.h);
-        base.position.set(dx, dy);
-        base.rotation = rot;
-        root.addChild(base);
+        const a = anchorOf(sock);
+        const k = PART_SCALE[sock];
+        const put = (s: Sprite) => {
+          s.anchor.set(a.x, a.y);
+          s.position.set(dx, dy);
+          s.rotation = rot;
+          s.scale.set(k.x, k.y);
+          root.addChild(s);
+        };
+        put(new PIXI.Sprite(art.base));
         if (art.mask) {
           const mask: Sprite = new PIXI.Sprite(art.mask);
-          mask.anchor.set(anchor[0] / r.w, anchor[1] / r.h);
-          mask.position.set(dx, dy);
-          mask.rotation = rot;
           mask.blendMode = "multiply";
-          mask.tint = paintOf[p.side];
-          root.addChild(mask);
+          // the piece's OWN colour, not the bot's: an arm that comes off is
+          // still the arm's colour, and the weapon in its hand is still the
+          // weapon's (which is the arm's, because a weapon rides the arm)
+          mask.tint = paintOf[p.side][sock];
+          put(mask);
         }
       };
       addSprite(socket, 0, 0, 0);
-      // the near arm carries the weapon: it goes with the arm
+      // A HEAD THAT COMES OFF KEEPS ITS FACE. The debris is built from the
+      // same textures the rig wears, and the face is not in those textures, so
+      // without this a knocked off head bounces across the pit as a blank
+      // dome and comes to rest that way for the whole knockout, which is the
+      // one frame anybody screenshots. The light is out and the lids are half
+      // down (rig.ts paints it), so the head reads as broken rather than lost.
+      if (socket === "head") {
+        const faceG: Graphics = new PIXI.Graphics();
+        // the rig this head came off already measured its lenses, so nothing
+        // is read back twice and the debris cannot land its lids anywhere the
+        // standing bot did not
+        // the HEAD's colour, because the lid is the head at the eye's row
+        paintBrokenFace(faceG, rigs[p.side].headEyes(), paintOf[p.side].head);
+        faceG.scale.set(PART_SCALE.head.x, PART_SCALE.head.y);
+        root.addChild(faceG);
+      }
+      // the near arm carries the weapon: it goes with the arm, through the
+      // rig's own hand formula
       if (socket === "armR") {
-        const hx = RIG.arm.hand[0] - RIG.arm.shoulder[0];
-        const hy = RIG.arm.hand[1] - RIG.arm.shoulder[1];
-        addSprite("weapon", hx, hy, -0.62);
+        const h = handOffset("armR", 0);
+        addSprite("weapon", h.x, h.y, WEAPON_REST);
         const wn = nodes[p.side].get("weapon");
         if (wn) wn.visible = false;
       }
-      // the crack, drawn once on the piece
+      // the crack, drawn once on the piece, at that piece's own middle
       const crack: Graphics = new PIXI.Graphics();
-      drawCrack(crack, 0, socket === "head" ? -70 : 80, 1);
+      drawCrack(crack, 0, HIT_AT[socket][1], 1);
       root.addChild(crack);
       const mirror = p.side === 0 ? 1 : -1;
       root.scale.set(RIG_SCALE * mirror, RIG_SCALE);
@@ -592,10 +756,13 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     }
   }
 
-  const setBuildsPainted = async (a: Build, b: Build, paints: readonly [number, number]) => {
-    paintOf[0] = paints[0];
-    paintOf[1] = paints[1];
-    await setBuilds(a, b, paints);
+  const setBuildsDressed = async (a: Build, b: Build, looks: readonly [BotLook, BotLook]) => {
+    for (let i = 0; i < 2; i++) {
+      const body = bodyTintOf(looks[i]);
+      const p = looks[i].paint;
+      for (const socket of DRAW_ORDER) paintOf[i][socket] = p?.[socket] ?? body;
+    }
+    await setBuilds(a, b, looks);
   };
 
   function reset() {
@@ -603,6 +770,13 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     for (const d of debrisNodes) d.root.destroy({ children: true });
     debrisNodes.length = 0;
     for (const m of nodes) m.forEach((n) => (n.visible = true));
+    // back to the bell: a mood or a gaze half way to somewhere would slide
+    // across the cut, so everything eased lands on its target now
+    for (const rig of rigs) {
+      rig.setMood("calm");
+      rig.snap();
+    }
+    airborne[0] = airborne[1] = false;
     cracks[0].clear();
     cracks[1].clear();
     puffs.clear();
@@ -730,6 +904,42 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     return hex(M.bad);
   };
 
+  /**
+   * HOW THIS BOT IS DOING, off state the engine already published. Nothing is
+   * invented and nothing is fed back: the mood only moves the face and the
+   * pose (rig.ts), so no replay hash can move.
+   *
+   *   down and out        hurt, eyes almost out, chin on the chest
+   *   the winner          proud, chin up, the bulb at full
+   *   body low or two     hurt: a bot missing an arm and a leg should not be
+   *   pieces gone         standing there beaming
+   *   winding up a swing  eager, the tell you can read on his face
+   *   otherwise           calm
+   */
+  function moodOf(side: Side, st: FightState, fx: FightFx): BotMood {
+    const s = fx.sides[side];
+    if (s.sit >= 0) return "hurt";
+    if (s.armsUp >= 0) return "proud";
+    const ss = st.sides[side];
+    let lost = 0;
+    for (let p = 0; p < PIECE_COUNT; p++) if (p !== PIECE.BODY && s.gone[p]) lost++;
+    const body = ss.armorMax[PIECE.BODY] > 0 ? ss.armor[PIECE.BODY] / ss.armorMax[PIECE.BODY] : 0;
+    if (body <= 0.35 || lost >= 2) return "hurt";
+    if (!st.done && ss.staggerT === 0 && ss.swingT <= TELL_F && ss.swingT > 0) return "eager";
+    return st.done ? "flat" : "calm";
+  }
+
+  /**
+   * WHERE HE IS LOOKING. At the other bot, always, because that is the only
+   * thing in the pit worth looking at, and at the floor once he is sitting on
+   * it. The target is in the rig's OWN units, so both bots use the same number
+   * even though B's root is mirrored: forward is forward.
+   */
+  const FACE_OFF = Math.abs(BOT_X[1] - BOT_X[0]) / RIG_SCALE;
+  const EYE_LINE = -RIG_HEIGHT * 0.75;
+  /** whether each bot's feet were off the floor last frame, so a landing lands */
+  const airborne: [boolean, boolean] = [false, false];
+
   function render(st: FightState, fx: FightFx) {
     detach(fx);
 
@@ -752,8 +962,18 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
       const side = i as Side;
       const dir = side === 0 ? 1 : -1;
       const rig = rigs[side];
+      // the face and the look are set BEFORE the idle runs, so this frame's
+      // update paints them rather than the next one
+      const down = fx.sides[side].sit >= 0;
+      rig.setMood(moodOf(side, st, fx));
+      rig.lookAt(down ? { x: FACE_OFF * 0.2, y: 0 } : { x: FACE_OFF, y: EYE_LINE });
       rig.update(tMs);
       const p = computePose(side, st, fx);
+      // the hop-lunge and the hop back put the feet in the air; the frame they
+      // come down on, the toy settles
+      const up = p.y < -6;
+      if (airborne[side] && !up) rig.poke("land");
+      airborne[side] = up;
       rig.root.position.set(BOT_X[side] + dir * p.x, FLOOR_Y + p.y + p.sink * RIG_SCALE);
       rig.root.rotation = dir * p.rot;
       const s = fx.sides[side];
@@ -778,10 +998,8 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
         const wn = nm.get("weapon");
         if (arm && wn) {
           const ar = arm.rotation;
-          wn.position.set(
-            arm.position.x + HAND.x * Math.cos(ar) - HAND.y * Math.sin(ar),
-            arm.position.y + HAND.x * Math.sin(ar) + HAND.y * Math.cos(ar),
-          );
+          const h = handOffset("armR", ar);
+          wn.position.set(arm.position.x + h.x, arm.position.y + h.y);
           wn.rotation = ar + WEAPON_REST;
         }
       }
@@ -796,6 +1014,26 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
         const wn = nm.get("weapon");
         if (wn) wn.visible = false;
       }
+
+      // THE CONTACT SHADOW stays on the pit floor while the bot does not.
+      // The root has been moved to the hop and the sink, so the floor is that
+      // far back up in the root's own units; a bot in the air also throws a
+      // smaller, softer one.
+      // `lift` is how far ABOVE the root's own origin the real floor now is.
+      // The root sits at FLOOR_Y + p.y + p.sink x RIG_SCALE, so the floor is
+      // that whole displacement back up, in rig units: a hop (p.y negative)
+      // lifts the bot and a kneel (p.sink positive) drops it, and the shadow
+      // has to stay behind for both.
+      const air = Math.min(1, Math.max(0, -p.y) / 40);
+      rig.setShadow({
+        lift: p.y / RIG_SCALE + p.sink,
+        scale: 1 - 0.22 * air,
+        alpha: 1 - 0.4 * air,
+      });
+      // and the rig re-settles LAST, after the pose and after the hiding: it
+      // is what promotes an arm carried across the chest in front of the body
+      // and what puts a scar chip where a limb used to be
+      rig.afterPose();
 
       // the crack overlay on a cracked piece that is still attached
       const cg = cracks[side];
@@ -893,7 +1131,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
   return {
     stage,
     plate,
-    setBuilds: setBuildsPainted,
+    setBuilds: setBuildsDressed,
     onEvent,
     reset,
     settle(fx) {
@@ -902,8 +1140,10 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
       settleFightFx(fx);
       // a replayed hit leaves a two-frame flash armed; a still frame must
       // not show it (found on the reduced-motion capture: the winner was white)
+      // and a settled frame shows the mood and the gaze ARRIVED, not part way
       for (const rig of rigs) {
         rig.update(fx.time * 1000);
+        rig.snap();
         rig.update(fx.time * 1000);
       }
     },

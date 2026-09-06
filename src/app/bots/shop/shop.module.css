@@ -1,0 +1,170 @@
+/*
+ * THE JUNKYARD (screens doc 3.3). Only the things a style attribute cannot
+ * do: the media query between 1440 and 390, the scrolling strips, and the
+ * 44px tap floor. Every colour and radius still comes from _ui/tokens.ts
+ * through the inline styles, the way the Build screen does it.
+ *
+ * Desktop 1440: the band is 220 tall, the cards are a 300px auto-fill grid
+ * and the Tier 4 card spans two columns. Phone 390: the band is 160 with the
+ * thumbs in a horizontal scroll, the strips scroll sideways, and every row
+ * is one column of 88px card rows.
+ */
+
+/* the shelf diorama */
+.band {
+  position: relative;
+  height: 220px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 28px;
+}
+
+/* the planks of thumbs inside the band */
+.planks {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 0 16px 26px;
+}
+
+.plankRow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  justify-content: center;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.plankRow::-webkit-scrollbar {
+  display: none;
+}
+
+/* the colour strip and the calendar strip: one scrolling row each on a phone */
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+}
+
+.strip::-webkit-scrollbar {
+  display: none;
+}
+
+/* a row of listing cards */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+/* the Tier 4 spotlight card spans two columns where there is room */
+.wide {
+  grid-column: span 2;
+}
+
+/*
+ * THE THUMB'S PAINT LAYER. The shelf's whole job is "buy the right colour on
+ * the right day", so a listing has to be drawn in the colour you would buy.
+ * The rig does that with two sprites, the grey base and the white paint mask
+ * tinted at multiply; this is the same composite in CSS: the colour, cut to
+ * the mask's shape, multiplied onto the base underneath.
+ *
+ * Behind @supports on purpose. A browser that cannot cut the colour to the
+ * mask would paint a solid square over the part, which is worse than the
+ * untinted plate, so it gets the untinted plate and the colour dot instead.
+ */
+.paint {
+  display: none;
+}
+
+@supports ((-webkit-mask-image: url("")) or (mask-image: url(""))) {
+  .paint {
+    display: block;
+    position: absolute;
+    inset: 0;
+    mix-blend-mode: multiply;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    pointer-events: none;
+  }
+}
+
+/* every control on this screen clears the 44px tap floor */
+.tap {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.desktopOnly {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.mobileOnly {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wide {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 759px) {
+  /*
+   * Phone: the band is 160 tall, so the two planks would not fit stacked.
+   * The whole shipment becomes ONE scrolling line of thumbs (screens doc
+   * 3.3, mobile: "the band 390x160 with the thumbs in a horizontal
+   * scroll"): the planks column turns into a row, the drawn plank bars go,
+   * and the props go with them so the sixteen thumbs get the full width.
+   */
+  .band {
+    height: 160px;
+    padding: 0 10px;
+    align-items: center;
+  }
+  .planks {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 0 8px;
+    gap: 10px;
+  }
+  .planks::-webkit-scrollbar {
+    display: none;
+  }
+  .plankRow {
+    justify-content: flex-start;
+    overflow: visible;
+    margin-top: 0 !important;
+  }
+  .plankBar {
+    display: none;
+  }
+  .desktopOnly {
+    display: none;
+  }
+  .mobileOnly {
+    display: block;
+  }
+}

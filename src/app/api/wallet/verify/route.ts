@@ -124,6 +124,7 @@ export async function POST(req: NextRequest) {
   const expectedDomains = new Set([
     "web3guides.com",
     "www.web3guides.com",
+    "tanks.web3guides.com", // S5 IRON SIEGE subdomain (wallet link from the /s5 surface)
     process.env.WALLET_LINK_DOMAIN_OVERRIDE || "",
   ].filter(Boolean));
   if (!expectedDomains.has(parsed.domain)) {

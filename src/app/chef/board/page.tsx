@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { topRooms } from "@/lib/chef/board";
 import { SERVICE_TIERS } from "../game/_engine/campaign";
+import { CheerButton } from "./CheerButton";
 
 /**
  * THE BEST TABLES IN TOWN — the public spotlight (ADR-0111).
@@ -108,18 +109,22 @@ export default async function BoardPage() {
                 >
                   {r.rank}
                 </span>
-                <span style={{ flex: 1, minWidth: 0 }}>
+                <Link
+                  href={`/chef/visit/${r.handle}`}
+                  style={{ flex: 1, minWidth: 0, color: "inherit", textDecoration: "none" }}
+                >
                   <span style={{ fontWeight: 700 }}>
                     {r.topTier && <span style={{ color: "#e8a13d" }}>★ </span>}
-                    {r.handle}
+                    {r.name || r.handle}
                   </span>
                   <span style={{ display: "block", opacity: 0.62, fontSize: 12, marginTop: 2 }}>
-                    {r.tier} · {r.seats} seat{r.seats === 1 ? "" : "s"}
+                    {r.tier} · {r.seats} seat{r.seats === 1 ? "" : "s"} · tap to visit
                   </span>
-                </span>
+                </Link>
                 <span style={{ fontWeight: 800, color: r.topTier ? "#e8a13d" : "#f3e9d2" }}>
                   {r.quality}
                 </span>
+                <CheerButton handle={r.handle} />
               </div>
             ))}
           </div>

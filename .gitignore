@@ -45,3 +45,6 @@ art-src/
 .dev-captures/
 .dk-preview/
 .crypt-v1-backup
+
+# Battle Bots art factory scratch (renders, decision sheets, gate sandboxes)
+.bots-preview/

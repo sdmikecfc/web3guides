@@ -97,6 +97,25 @@ export const POOL_ABI = [
       { name: "unlocked", type: "bool" },
     ],
   },
+  // which side of the pair is token0 (M9): valuing a position needs to know
+  // whether the domain token or USDC.e sits in slot 0
+  {
+    type: "function",
+    name: "token0",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "address" }],
+  },
+  // in-range depth (M10). A market can have pools at all four fee tiers, and
+  // putting a beginner's money into the one nobody trades in would be the
+  // wrong default, so the add-liquidity flow picks the deepest.
+  {
+    type: "function",
+    name: "liquidity",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint128" }],
+  },
 ] as const;
 
 export const ERC20_ABI = [
@@ -113,6 +132,42 @@ export const ERC20_ABI = [
     stateMutability: "view",
     inputs: [],
     outputs: [{ type: "string" }],
+  },
+  // supply, for the FDV term the campaign bonus is measured against (M9)
+  {
+    type: "function",
+    name: "totalSupply",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  // ── M10: the add-liquidity flow needs to spend, not just read ────────────
+  {
+    type: "function",
+    name: "balanceOf",
+    stateMutability: "view",
+    inputs: [{ name: "owner", type: "address" }],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "allowance",
+    stateMutability: "view",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "approve",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ type: "bool" }],
   },
 ] as const;
 

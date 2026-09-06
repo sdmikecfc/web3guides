@@ -36,6 +36,34 @@ export const BOT_TIER_AT = {
 } as const;
 
 /**
+ * WHAT A PLAYER READS INSTEAD OF "TIER" (ADR-0140, dated section
+ * 2026-09-04). "Tier" is a word this game asks a new player to learn for no
+ * gain: a part's tier is already the model number in its name, so the shelf
+ * can say "Model 3 parts" and the card can say "Spark 3 Legs" and the two
+ * agree by construction. The word "tier" stays in the code, in the engine
+ * doc and in the prize ladder; it never reaches a part, a shop row or a
+ * garage chip. scripts/bots-naming-check.ts bans it from this lane's copy.
+ *
+ * A BOT still has a size, and a bot's size is not a model number, so the
+ * bot readout says the weight class the guide already names.
+ */
+export const MODEL_WORD: Readonly<Record<Tier, string>> = {
+  1: "Model 1",
+  2: "Model 2",
+  3: "Model 3",
+  4: "Model 4",
+};
+
+/** The weight class a whole bot sits in, by bot tier: the guide's four
+ * words, which rank themselves without a legend. */
+export const WEIGHT_CLASS: Readonly<Record<Tier, string>> = {
+  1: "Light",
+  2: "Middle",
+  3: "Heavy",
+  4: "Super",
+};
+
+/**
  * A part totals 1 to 20 and has at least 1 point. Anything else is a catalog
  * bug, and a catalog bug must THROW here rather than render a plausible
  * tier: a silent clamp is how a 0-point part would ship as "Tier 1". The

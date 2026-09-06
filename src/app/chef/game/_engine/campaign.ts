@@ -23,6 +23,25 @@ export interface CampaignWeights {
   /** relative pull of each contribution input */
   volumeWeight: number;
   liquidityWeight: number;
+  /**
+   * How hard concentration is paid, as an exponent on the concentration
+   * signal. Measured 2026-08-13: a full range scores 0.5 and the tightest
+   * reachable range scores 8, so the RAW gap is 16x — but the score has
+   * always applied a square root, making the real gap in the payout 4x.
+   *
+   * Mike's call 2026-08-14, after that measurement: lower it so the gap is
+   * smaller. ADR-0115 makes the in-game LP button mint FULL RANGE only, so
+   * the 4x fell entirely on beginners using the game's own button, while the
+   * Academy taught tight/medium/wide.
+   *
+   *   0.5  (the old hardcoded sqrt) -> full 0.707, tight 2.828, gap 4.00x
+   *   0.25 (this default)           -> full 0.841, tight 1.682, gap 2.00x
+   *
+   * Tight still earns double, so the incentive and the lesson survive; a
+   * beginner is no longer quartered for pressing the button we point them at.
+   * Per-campaign config like every other weight (ADR-0111).
+   */
+  concentrationExponent: number;
   /** the most the FDV bonus can lift a score */
   fdvBonusMax: number;
   /** no wallet may take more than this fraction of one window */
@@ -37,6 +56,7 @@ export const DEFAULT_WEIGHTS: CampaignWeights = {
   serviceAwardShare: 0.1,
   volumeWeight: 1,
   liquidityWeight: 1.4,
+  concentrationExponent: 0.25,
   fdvBonusMax: 0.25,
   perWalletCap: 0.25,
   activeFloor: 0.005,
@@ -95,11 +115,23 @@ export function volumeScore(usd: number): number {
   return Math.log1p(Math.max(0, usd) / 50);
 }
 
-/** In-range dollars, paid more per dollar the tighter they work. */
-export function liquidityScore(inRangeUsd: number, concentration: number): number {
+/**
+ * In-range dollars, paid a little more per dollar the tighter they work.
+ *
+ * The exponent is config (see `concentrationExponent`): at the 0.25 default a
+ * tight range earns 2x a full range, down from the 4x the hardcoded square
+ * root used to give. The clamp stays as a belt-and-braces guard even though
+ * `measureLiquidity` already bounds the input.
+ */
+export function liquidityScore(
+  inRangeUsd: number,
+  concentration: number,
+  exponent: number = DEFAULT_WEIGHTS.concentrationExponent
+): number {
   if (!(inRangeUsd > 0)) return 0; // out of range earns nothing at all
   const c = Math.max(0.25, Math.min(8, concentration || 1));
-  return Math.log1p(inRangeUsd / 25) * Math.sqrt(c);
+  const e = Number.isFinite(exponent) && exponent >= 0 ? exponent : DEFAULT_WEIGHTS.concentrationExponent;
+  return Math.log1p(inRangeUsd / 25) * Math.pow(c, e);
 }
 
 /** The FDV bonus, bounded and only ever upward from the campaign start. */
@@ -132,7 +164,7 @@ export function scoreWindow(input: WindowInput): WindowResult {
   // ── contribution ─────────────────────────────────────────────────────────
   const raw = entries.map((e) => {
     const v = volumeScore(e.volumeUsd) * w.volumeWeight;
-    const l = liquidityScore(e.inRangeUsd, e.concentration) * w.liquidityWeight;
+    const l = liquidityScore(e.inRangeUsd, e.concentration, w.concentrationExponent) * w.liquidityWeight;
     return { wallet: e.wallet, active: e.active, score: (v + l) * (1 + bonus) };
   });
   const totalRaw = raw.reduce((n, r) => n + r.score, 0);

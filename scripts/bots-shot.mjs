@@ -52,6 +52,17 @@ const EVAL = EVAL_FILE ? readFileSync(EVAL_FILE, "utf8") : arg("--eval", null);
 // a touch-capable UA and touch event support, which is what decides whether
 // hover styles apply and how the canvas is sized on a phone.
 const MOBILE = process.argv.includes("--mobile");
+// --art-ready waits for window.__bots.artReady (a page sets it once every part
+// texture of every bot on it is on a rig). A page that does not publish the
+// flag is a HARD FAIL, not a warning: an unwaited capture of a page that
+// claims to have waited is a lying screenshot, and we shipped one.
+const ART_READY = process.argv.includes("--art-ready");
+// --block <substring>[,<substring>] refuses every request whose URL contains
+// one of them (the CDP Fetch domain, see requestPaused below), so "the art
+// folder removed" can be exercised without touching public/: --block bots-art
+// puts every canvas on its drawn fallback (the house law that every canvas
+// keeps working); --block bots-art,api/bots also puts the landing on the demo
+const BLOCK = arg("--block", null);
 // per-process port and profile (week 2): process.uptime() is ~0 this early,
 // so every run landed on 9222 and a Chrome left behind by a killed run held
 // its profile dir open (EBUSY on "Account Web Data"); the pid spreads them
@@ -118,6 +129,11 @@ async function cdp() {
     } else if (msg.method === "Runtime.consoleAPICalled" && msg.params?.type === "error") {
       const parts = (msg.params.args || []).map((a) => a.value ?? a.description ?? "").join(" ");
       console.warn("page console.error:", String(parts).split("\n").slice(0, 3).join(" | "));
+    } else if (msg.method === "Fetch.requestPaused") {
+      // --block: every paused request matched the pattern; refuse it the way
+      // a missing file would fail (Network.setBlockedURLs let the WebP plate
+      // through in headless, measured 2026-09-03, so this is the Fetch domain)
+      send("Fetch.failRequest", { requestId: msg.params.requestId, errorReason: "BlockedByClient" }).catch(() => {});
     }
   });
   const send = (method, params = {}) =>
@@ -136,6 +152,7 @@ const evaluate = (send, expression) =>
     .then((r) => r.result?.value);
 
 const shot = await cdp();
+let failure = null;
 try {
   await shot.send("Page.enable");
   await shot.send("Runtime.enable");
@@ -151,6 +168,11 @@ try {
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 " +
         "(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
     });
+  }
+  if (BLOCK) {
+    // a comma separates several substrings: --block bots-art,api/bots
+    const patterns = BLOCK.split(",").filter(Boolean).map((s) => ({ urlPattern: `*${s}*`, requestStage: "Request" }));
+    await shot.send("Fetch.enable", { patterns });
   }
   await shot.send("Page.navigate", { url: URL_ });
 
@@ -168,15 +190,48 @@ try {
   if (ready === "timeout") console.warn("warn: bay never booted, capturing whatever is there");
 
   // the tray thumbnails are <img>s loaded over the network after the bay
+  // (week 2 fix: a page with ZERO <img> used to spin the whole 12 s here,
+  // because "every image is complete" was only accepted when there was one)
   const imgs = await evaluate(shot.send, `(async () => {
     for (let i = 0; i < 120; i++) {
       const all = [...document.images];
-      if (all.length && all.every(im => im.complete && im.naturalWidth > 0)) return all.length;
+      if (!all.length) return 0;
+      if (all.every(im => im.complete && im.naturalWidth > 0)) return all.length;
       await new Promise(r => setTimeout(r, 100));
     }
     return "images-timeout:" + [...document.images].filter(im => !im.complete || !im.naturalWidth).length;
   })()`);
   if (String(imgs).startsWith("images-timeout")) console.warn(`warn: ${imgs}`);
+
+  if (ART_READY) {
+    const art = await evaluate(shot.send, `(async () => {
+      for (let i = 0; i < 200; i++) {
+        const b = window.__bots;
+        if (b && b.artReady) return "art";
+        if (b && !("artReady" in b)) return "no-artReady";
+        if (!b && i > 20) return "no-bots";
+        await new Promise(r => setTimeout(r, 150));
+      }
+      return "art-timeout";
+    })()`);
+    // --art-ready is a PROMISE that the capture waited for the art, and a
+    // warning is not a promise: a page that never sets the flag was captured
+    // anyway and the PNG lied (2026-09-04: the first --art-ready shot of the
+    // Build screen caught a floating head over six empty sockets). So this
+    // FAILS, before the capture, and nothing is written.
+    if (art !== "art") {
+      const why =
+        art === "art-timeout"
+          ? "window.__bots.artReady was still false after 30 s"
+          : art === "no-bots"
+            ? "the page never set window.__bots"
+            : "the page sets window.__bots but never window.__bots.artReady";
+      throw new Error(
+        `--art-ready cannot be kept on ${URL_}: ${why}. ` +
+          `Set the flag on that page the way GarageClient and BuildClient do (artReady: <every socket is on the rig>), or drop --art-ready.`,
+      );
+    }
+  }
 
   if (EVAL) {
     const out = await evaluate(shot.send, `(async () => { ${EVAL} })()`);
@@ -203,6 +258,12 @@ try {
   mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, Buffer.from(data, "base64"));
   console.log(`${ready} -> ${OUT} (${W}x${H})`);
+} catch (e) {
+  failure = e instanceof Error ? e : new Error(String(e));
 } finally {
   shot.close();
+}
+if (failure) {
+  console.error(`FAIL  ${failure.message}`);
+  process.exit(1);
 }

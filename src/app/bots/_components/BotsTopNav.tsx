@@ -10,18 +10,25 @@
  * active match is longest-prefix: /bots/garage/build lights Build, not
  * Garage.
  *
- * Week 1: coins and the wallet name come from the fixture. When the enlist
- * route lands they come from the play session; nothing else here changes.
+ * WHO THE BAR IS ALLOWED TO NAME. It used to print the FIXTURE's coins and
+ * the fixture's wallet name to everybody, signed in or not, on every screen
+ * and in every screenshot: a visitor who had never connected a wallet was
+ * told they had 1,240 coins and shown somebody else's name. The bar now says
+ * the player's own name when there is a play session, and offers the Play
+ * door when there is not. It carries NO coin count: the number changes on
+ * every purchase, and the three screens that know the true number (Parts,
+ * Build, Garage) each show it themselves.
  */
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { FONT_BODY, FONT_DISPLAY, M } from "../_ui/tokens";
-import { CoinChip, DockButton, NameChip } from "../_ui/primitives";
+import { DockButton, NameChip } from "../_ui/primitives";
 import { IconGarage, IconPegboard, IconStar, IconWeapon, IconWrench } from "../_ui/icons";
 import { STRINGS } from "@/lib/bots/strings";
-import { ME } from "@/lib/bots/fixtures";
+import { readBotsPlayerName } from "../battles/session";
 import css from "../_ui/ui.module.css";
 
 export const BOTS_NAV_HEIGHT = 52;
@@ -30,6 +37,10 @@ export function BotsTopNav() {
   const path = usePathname() || "";
   const router = useRouter();
   const t = STRINGS.en.nav;
+  // read after mount: the server has no localStorage, and a name rendered on
+  // the server would be a different name from the one the browser knows
+  const [playerName, setPlayerName] = useState("");
+  useEffect(() => setPlayerName(readBotsPlayerName()), [path]);
 
   const nav = [
     { t: t.garage, href: "/bots/garage", icon: <IconGarage size={22} /> },
@@ -106,10 +117,32 @@ export function BotsTopNav() {
           })}
         </nav>
         <div style={{ marginLeft: "auto", flexShrink: 0, display: "flex", alignItems: "center", gap: 8 }}>
-          <CoinChip coins={ME.coins} ariaLabel={t.coinsAria} />
-          <span className={css.navWords}>
-            <NameChip ariaLabel={t.walletAria}>{ME.walletName}</NameChip>
-          </span>
+          {playerName ? (
+            <span className={css.navWords}>
+              <NameChip ariaLabel={t.walletAria}>{playerName}</NameChip>
+            </span>
+          ) : (
+            <Link
+              href="/bots"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                minHeight: 36,
+                padding: "0 16px",
+                borderRadius: 999,
+                border: `1px solid ${M.border}`,
+                background: M.panel,
+                fontFamily: FONT_BODY,
+                fontSize: 12.5,
+                fontWeight: 700,
+                color: M.text,
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {STRINGS.en.landing.play}
+            </Link>
+          )}
         </div>
       </header>
 

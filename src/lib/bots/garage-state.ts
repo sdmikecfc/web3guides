@@ -16,26 +16,32 @@
  *    purchase or a paint job that cannot be paid returns { ok: false } with
  *    the coins still needed, and the screen says so in plain words.
  *  - ONE PURCHASE PER LISTING PER DAY (economy doc section 3). The day key
- *    is the shop's UTC day.
+ *    is the shipment's UTC day and the listing id is "row:n" ("t1:3"),
+ *    because one catalog part can sit on the shelf twice in two colours.
  *  - RECYCLE RETURNS 40 PERCENT of list price (fixtures.recycleValue) and
  *    the parts are GONE (Mike: "recycle them for a fraction").
- *  - A PAINT JOB IS 25 COINS PER PART and only parts whose colour changes
- *    are charged; the painted colour is what the set rule counts.
+ *  - A CARD WEARS THE COLOUR IT ARRIVED IN, for life (ADR-0141). There is no
+ *    paint job and nothing here spends coins on a colour: the shipment
+ *    listing's colour is copied onto the card at purchase and never moves.
+ *  - A LOOK IS NEVER TAKEN ON TRUST. saveLook() below runs look.ts parseLook
+ *    against a LookEarned that findsOf() builds out of this store's own rows,
+ *    which are the two functions POST /api/bots/bot/save runs. Nothing here
+ *    re-states a rule about what may be worn, so a face this store accepts is
+ *    a face that route accepts, and there is exactly one place to change when
+ *    a rule changes.
  */
 
 import { useEffect, useSyncExternalStore } from "react";
-import type { PaintId } from "@/app/bots/_ui/tokens";
 import {
   BAY_COUNT,
+  BODY_SLOTS,
   CARD_BY_ID,
   CARD_SLOTS,
   CREW,
   FIXTURE_BUILDS,
   FIXTURE_REPAIR_LEFT_MS,
-  LEVEL_FOR_TIER,
   ME,
   OWNED_PARTS,
-  PAINT_COST,
   RECORDS,
   emptySockets,
   recycleValue,
@@ -43,8 +49,17 @@ import {
   type CardSlot,
   type CrewLive,
   type OwnedPart,
-  type ShopListing,
 } from "./fixtures";
+import {
+  dedupeHats,
+  findsOf,
+  normalizeLook,
+  parseLook,
+  type BotLook,
+  type BotLookRaw,
+  type LookEarned,
+} from "./look";
+import type { Listing } from "./shipment";
 
 /* ── shapes ──────────────────────────────────────────────────────────────── */
 
@@ -114,6 +129,93 @@ export function seedState(nowMs: number): GarageState {
 /** The one server snapshot: stable identity, no clock. */
 const SERVER_SEED: GarageState = seedState(0);
 
+/* ── the look: what this robot has actually earned ───────────────────────── */
+
+/**
+ * WHAT ONE ROBOT HAS UNLOCKED, out of this store's own rows.
+ *
+ * It hands plain numbers to look.ts findsOf and takes back a LookEarned, so
+ * every rule about what may be worn lives in that one file and this one owns
+ * nothing but the reading. _server/bots.ts earnedFor does the same job from
+ * database rows and calls the same findsOf, which is why a look this screen
+ * offers is a look POST /api/bots/bot/save accepts.
+ *
+ * THREE THINGS THIS STORE CANNOT KNOW, and each returns its true answer:
+ *  - a CROWN is a week champion card, and only the server writes those, so
+ *    nothing here is ever a champion;
+ *  - a HAT drops from beating a bigger robot, which is a real fight, so the
+ *    only hat this store knows about is the one already on the robot, put
+ *    there by the route that checked it (see the note on `hats` below);
+ *  - LEVEL is one number for the whole garage here (the server keeps one per
+ *    robot), so every robot in the garage reads the player's level.
+ * None of the three is a guess in the player's favour: each is the smallest
+ * true answer, so this screen can never offer a mark the route would refuse.
+ */
+export function earnedOfBuild(
+  build: Build | undefined,
+  parts: readonly OwnedPart[],
+  bay: BayState | undefined,
+  level: number,
+): LookEarned {
+  const on = (slot: CardSlot): OwnedPart | undefined => {
+    const uid = build?.cards[slot];
+    return uid ? parts.find((p) => p.uid === uid) : undefined;
+  };
+  const worn = CARD_SLOTS.map(on).filter((p): p is OwnedPart => !!p);
+  return findsOf({
+    wins: bay?.wins ?? 0,
+    losses: bay?.losses ?? 0,
+    level,
+    champion: false,
+    bodyPaints: BODY_SLOTS.map((s) => on(s)?.paint).filter((c): c is NonNullable<typeof c> => !!c),
+    partStars: worn.map((p) => p.tier),
+    // THE ONE HAT THE ROBOT IS ALREADY WEARING, and never any other.
+    //
+    // The browser cannot know which hats a wallet has won: hat rows are server
+    // truth (the ninth law) and this file has none of them. Handed an empty
+    // list it would do something worse than not knowing, though. parseLook
+    // refuses a hat that is not in the list, so every tap on a face by a
+    // player whose robot wears a hat would be refused with "You have not won
+    // that hat yet", and normalizeLook would quietly take the hat off the
+    // drawn robot and then off the row on the next save. A player would lose
+    // a trophy because a browser could not see it.
+    //
+    // A hat can only have reached a stored build through POST
+    // /api/bots/bot/look, which checked it against the wallet's own rows, so a
+    // hat on a stored look IS a won hat. This echoes that one hat back and
+    // invents nothing: it cannot add a hat, cannot change one's colour, and
+    // cannot offer a second. The picker's row is drawn from the SERVER's
+    // earned, never from this, so nothing here puts a tile on a screen.
+    hats: dedupeHats(build?.look?.hat ? [build.look.hat] : []),
+    plateNumber: build?.name.num ?? null,
+  });
+}
+
+/** The same, for a bay of the store as it stands. */
+export function lookEarnedOf(st: GarageState, bay: number): LookEarned {
+  return earnedOfBuild(st.builds[bay], st.parts, st.bays[bay], st.level);
+}
+
+/**
+ * The look a bay is wearing right now, already checked against its rows. A
+ * bay with nothing chosen answers the plain robot, never null, so a caller
+ * draws one thing and not two.
+ */
+export function lookOfBay(st: GarageState, bay: number): BotLook {
+  return normalizeLook(st.builds[bay]?.look, lookEarnedOf(st, bay));
+}
+
+/**
+ * Put a look on a build, and MIRROR A CHEST STICKER onto the old `decal`
+ * field. A robot must never wear two stickers: the rig draws the look's own
+ * sticker and stands its decal down, and every older surface that still reads
+ * `decal` (the fight, a stored replay, the knockout card) gets the same
+ * answer as the ones that read the look.
+ */
+function withLook(build: Build, look: BotLook): Build {
+  return { ...build, look, decal: look.sticker && look.spot === "chest" ? look.sticker : null };
+}
+
 /* ── persistence ─────────────────────────────────────────────────────────── */
 
 function load(): GarageState | null {
@@ -140,7 +242,7 @@ function load(): GarageState | null {
         const p = uid ? parts.find((x) => x.uid === uid) : null;
         cards[slot] = p && p.slot === slot && have.has(p.uid) ? p.uid : null;
       }
-      builds[bay] = { bay, name: b.name, decal: b.decal ?? null, cards };
+      builds[bay] = { bay, name: b.name, decal: b.decal ?? null, cards, look: null };
     }
     const bays: Record<number, BayState> = {};
     for (let b = 1; b <= BAY_COUNT; b++) {
@@ -148,10 +250,19 @@ function load(): GarageState | null {
       const quiet: BayState = { ...bayState(b, 0), repairUntil: null, inBattle: false };
       bays[b] = { ...quiet, ...(st.bays?.[b] ?? {}) };
     }
+    const level = typeof st.level === "number" ? st.level : ME.level;
+    // THE LOOK IS RE-CHECKED ON EVERY READ, never trusted off the disk. This
+    // is the read path (look.ts normalizeLook), so a robot whose owner took
+    // the fourth mint part off between visits quietly loses the wink and
+    // still draws, rather than throwing on the way in and blanking a garage.
+    for (const bay of Object.keys(builds).map(Number)) {
+      const stored = (st.builds?.[bay] as { look?: BotLookRaw } | undefined)?.look;
+      builds[bay] = withLook(builds[bay], normalizeLook(stored, earnedOfBuild(builds[bay], parts, bays[bay], level)));
+    }
     return {
       v: 1,
       coins: Math.max(0, Math.floor(st.coins)),
-      level: typeof st.level === "number" ? st.level : ME.level,
+      level,
       parts,
       builds,
       bays,
@@ -289,12 +400,15 @@ export function bayStatus(st: GarageState, bay: number, nowMs: number): BayStatu
   return { kind: "ready", attacksLeft: bs?.attacksLeft ?? 0 };
 }
 
-/** "14:22" from ms left: hours and minutes, whole numbers, never negative. */
+/** "14 hours" or "45 minutes" from ms left, in whole numbers and in words,
+ * never negative. It used to print "14:22", which reads as twenty two
+ * minutes past two. (ShopClient.tsx has the same helper and the same words;
+ * that screen cannot import this one without its React store.) */
 export function formatLeft(ms: number): string {
   const mins = Math.max(0, Math.ceil(ms / 60000));
   const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${h}:${String(m).padStart(2, "0")}`;
+  if (h > 0) return `${h} ${h === 1 ? "hour" : "hours"}`;
+  return `${mins} ${mins === 1 ? "minute" : "minutes"}`;
 }
 
 /** The first empty bay, or null when the garage holds five bots. */
@@ -340,46 +454,57 @@ export function saveBuild(build: Build): void {
   setState({ ...state, builds: { ...state.builds, [build.bay]: { ...build, cards: { ...build.cards } } }, bays });
 }
 
-export type PayResult = { ok: true; cost: number } | { ok: false; need: number };
-
 /**
- * Paint the given parts one colour. Charges PAINT_COST per part whose
- * colour actually changes; refuses (nothing painted) when coins fall short.
+ * PUT A LOOK ON A ROBOT, THROUGH THE SAVE ROUTE'S OWN GATE.
+ *
+ * It runs look.ts parseLook against earnedOfBuild's LookEarned, which is the
+ * pair POST /api/bots/bot/save runs, and it THROWS a LookRefused carrying the
+ * sentence the player reads when a claim does not hold up. Nothing is stored
+ * on a refusal: a screen that asked for a face nobody earned has drifted, and
+ * quietly storing a different look than the one asked for would hide that.
+ *
+ * IT SAVES THE MOMENT IT IS CALLED, because the game takes no step for a
+ * cosmetic (the joint law): a tap on a face IS the save. There is no second
+ * button to find and nothing to lose by walking away.
+ *
+ * IT WRITES THE WHOLE BUILD, parts and look together, exactly as the save
+ * route writes one row. That is deliberate and it is the only arrangement in
+ * which the two halves cannot disagree: a player who fits the fourth mint
+ * part and then picks the Wink is picking a face the robot HAS earned, and
+ * storing the face without the part that earned it would make the read path
+ * quietly take it off again on the next visit. Building costs nothing
+ * (strings.ts build.costsNothing), so committing the parts a tap early takes
+ * nothing away from anybody.
  */
-export function paintParts(uids: readonly string[], paint: PaintId): PayResult {
-  const changing = state.parts.filter((p) => uids.includes(p.uid) && p.paint !== paint);
-  const cost = changing.length * PAINT_COST;
-  if (cost > state.coins) return { ok: false, need: cost - state.coins };
-  if (cost === 0) return { ok: true, cost: 0 };
-  const ids = new Set(changing.map((p) => p.uid));
-  setState({
-    ...state,
-    coins: state.coins - cost,
-    parts: state.parts.map((p) => (ids.has(p.uid) ? { ...p, paint } : p)),
-  });
-  return { ok: true, cost };
-}
-
-/** The cost a paint job WOULD charge, for the confirm line. */
-export function paintCost(st: GarageState, uids: readonly string[], paint: PaintId): { cost: number; parts: number } {
-  const n = st.parts.filter((p) => uids.includes(p.uid) && p.paint !== paint).length;
-  return { cost: n * PAINT_COST, parts: n };
+export function saveLook(bay: number, raw: BotLookRaw | null | undefined, build?: Build): BotLook {
+  const current = build ?? state.builds[bay];
+  if (!current) throw new Error(`spot ${bay} is empty`);
+  const look = parseLook(raw, earnedOfBuild(current, state.parts, state.bays[bay], state.level));
+  const bays = { ...state.bays };
+  if (!bays[bay]) bays[bay] = { repairUntil: null, inBattle: false, attacksLeft: ATTACKS_PER_DAY, wins: 0, losses: 0 };
+  const next = withLook({ ...current, bay, cards: { ...current.cards } }, look);
+  setState({ ...state, builds: { ...state.builds, [bay]: next }, bays });
+  return look;
 }
 
 export type BuyResult =
   | { ok: true; uid: string }
   | { ok: false; reason: "bought" | "coins" | "level"; need: number };
 
-/** One purchase per listing per day; the level gate; then the coins. */
-export function buyListing(listing: ShopListing, day: string, provenance: string): BuyResult {
+/**
+ * Buy one listing off today's shipment: one purchase per listing per day,
+ * then the level gate, then the coins. The card is stamped with the
+ * LISTING's colour, which is the only place a colour ever comes from
+ * (ADR-0141); a weapon gets none.
+ */
+export function buyListing(listing: Listing, day: string, provenance: string): BuyResult {
   const today = state.bought[day] ?? [];
   if (today.includes(listing.id)) return { ok: false, reason: "bought", need: 0 };
-  const needLevel = LEVEL_FOR_TIER[listing.card.tier];
-  if (state.level < needLevel) return { ok: false, reason: "level", need: needLevel };
-  const price = listing.card.price;
+  if (state.level < listing.needsLevel) return { ok: false, reason: "level", need: listing.needsLevel };
+  const price = listing.price;
   if (price > state.coins) return { ok: false, reason: "coins", need: price - state.coins };
   const uid = `p_${String(state.nextUid).padStart(3, "0")}`;
-  const part: OwnedPart = { ...listing.card, uid, provenance, paint: listing.card.slot === "weapon" ? undefined : listing.card.color };
+  const part: OwnedPart = { ...listing.card, uid, provenance, paint: listing.color ?? undefined };
   setState({
     ...state,
     coins: state.coins - price,

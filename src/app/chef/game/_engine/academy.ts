@@ -23,6 +23,25 @@ export interface Question {
   hint: string;
 }
 
+/**
+ * A DO, not just a quiz (M10).
+ *
+ * The Academy was five courses of decent prose that each ended in a
+ * multiple-choice tap, with no link and no on-chain action anywhere — while
+ * this file's own header claimed the point was learning "by PLAYING, not by
+ * reading documentation". It was documentation with a quiz on the end.
+ *
+ * A course may now carry ONE action, offered after the answer lands, so the
+ * highest-intent moment in the funnel (somebody who has just understood the
+ * thing) has a button instead of a dead end. Always optional, never a gate on
+ * the reward: the coins are for learning, not for spending money.
+ */
+export interface CourseAction {
+  /** "trade" opens the market's own page; "lp" opens the in-game flow */
+  kind: "trade" | "lp";
+  label: string;
+}
+
 export interface Course {
   id: string;
   title: string;
@@ -31,11 +50,47 @@ export interface Course {
   question: Question;
   /** coins for finishing, a real reward for real learning */
   reward: number;
+  /** optional: what to go and DO now that this makes sense */
+  action?: CourseAction;
 }
 
 export const COURSE_REWARD = 40;
 
 export const COURSES: Course[] = [
+  /**
+   * THE MISSING FIRST STEP (M10).
+   *
+   * The Academy used to open on "A pool is two piles of money", which smuggles
+   * in two undefined terms in its first clause: "a domain's token" and "swap".
+   * The single idea the whole product rests on — that a web address can be cut
+   * into pieces people can own — was assumed knowledge.
+   *
+   * The wording here is lifted from `src/lib/s5/strings.ts` (domaCard1Body),
+   * which is already written for players who may not read English first, and
+   * is checked against docs.doma.xyz. Do not rewrite it from memory; if the
+   * protocol facts change, change them there and copy across.
+   */
+  {
+    id: "token",
+    title: "What you actually own",
+    lesson: [
+      "A domain is a web address, like software.ai. Somebody owns it, the same way somebody owns a shop.",
+      "Doma puts that ownership on a blockchain and then cuts it into a fixed number of small pieces, so lots of people can each own a bit of it instead of one person owning all of it.",
+      "Those pieces are what you buy, hold and sell. The domain carries on working as a normal web address the whole time.",
+    ],
+    question: {
+      ask: "You buy some pieces of software.ai. What do you have?",
+      options: [
+        "A share of that one domain",
+        "The whole website",
+        "A voucher you swap for a domain later",
+      ],
+      answer: 0,
+      hint: "Think of a shop split into a hundred parts. Owning three parts makes you an owner of that shop, not of a different one.",
+    },
+    reward: COURSE_REWARD,
+    action: { kind: "trade", label: "Go and buy a little" },
+  },
   {
     id: "pool",
     title: "What a pool actually is",
@@ -71,6 +126,8 @@ export const COURSES: Course[] = [
       hint: "Nothing is lost. It just stops working, like a stall with the shutters down.",
     },
     reward: COURSE_REWARD,
+    // the moment somebody understands in-range is the moment to offer the DO
+    action: { kind: "lp", label: "Put some money to work" },
   },
   {
     id: "width",
@@ -96,7 +153,7 @@ export const COURSES: Course[] = [
     id: "income",
     title: "How your restaurant grows",
     lesson: [
-      "Your position pays you coins every hour, and so does your trading. Coins are a game thing. They never turn back into real money.",
+      "Money you have working at your market pays you coins every hour, and so does your trading. Coins are a game thing. They never turn back into real money.",
       "Coins buy permanent things: tables, chairs, stoves, and the crew. Once you own it, it is yours.",
       "Here is the part worth remembering. Taking your money back out of a pool stops the coins coming in, but it never un-builds your room. Nothing you built goes away.",
     ],

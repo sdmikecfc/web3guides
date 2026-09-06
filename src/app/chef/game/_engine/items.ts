@@ -72,8 +72,12 @@ export const MARKETS: MarketDef[] = [
     collection: "bonebronze",
     collectionName: "Bone & Bronze",
     blurb: "Old stone, warm bronze, torchlight.",
-    // TODO: fill in from the Doma API (needs DOMA_API_KEY) or a probe; until
-    // then this market runs on the demo dials, which the UI states plainly
+    // resolved 2026-08-10 from the Doma API (fractionalTokenId 11,
+    // GRADUATION_SUCCESSFUL, 6 decimals) and confirmed on-chain: real pools
+    // with real liquidity at fee 100 and fee 3000 against USDC.e. Until this
+    // was filled in, the second of the game's two markets silently ran on the
+    // demo dials.
+    token: "0xa1000000009a7a132488b2d48235b7024a843039",
   },
 ];
 export function marketDef(id: string): MarketDef | undefined {

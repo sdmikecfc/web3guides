@@ -6,6 +6,22 @@
     "folder": "arm",
     "tier": 1,
     "design": 1,
+    "canvas": {
+      "w": 128,
+      "h": 280
+    },
+    "pivots": {
+      "shoulder": [
+        64,
+        63
+      ],
+      "hand": [
+        64,
+        184
+      ]
+    },
+    "placeholder": "public/bots-art/parts/arm/t1-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/arms-t1-1.png",
     "name": "Sprocket Mitts",
     "family": "sprocket",
     "motif": "gear-tooth edges, a hub with spokes, chain-link seams",
@@ -19,6 +35,22 @@
     "folder": "arm",
     "tier": 1,
     "design": 2,
+    "canvas": {
+      "w": 128,
+      "h": 280
+    },
+    "pivots": {
+      "shoulder": [
+        64,
+        63
+      ],
+      "hand": [
+        64,
+        184
+      ]
+    },
+    "placeholder": "public/bots-art/parts/arm/t1-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/arms-t1-2.png",
     "name": "Peeper Hooks",
     "family": "peeper",
     "motif": "extra lens rings, a periscope nub, dial markings",
@@ -32,6 +64,22 @@
     "folder": "arm",
     "tier": 2,
     "design": 1,
+    "canvas": {
+      "w": 128,
+      "h": 280
+    },
+    "pivots": {
+      "shoulder": [
+        64,
+        63
+      ],
+      "hand": [
+        64,
+        184
+      ]
+    },
+    "placeholder": "public/bots-art/parts/arm/t2-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/arms-t2-1.png",
     "name": "Kettle Grips",
     "family": "kettle",
     "motif": "rounded kettle shapes, a spout-like ridge, a lid-rim seam",
@@ -45,6 +93,22 @@
     "folder": "arm",
     "tier": 2,
     "design": 2,
+    "canvas": {
+      "w": 128,
+      "h": 280
+    },
+    "pivots": {
+      "shoulder": [
+        64,
+        63
+      ],
+      "hand": [
+        64,
+        184
+      ]
+    },
+    "placeholder": "public/bots-art/parts/arm/t2-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/arms-t2-2.png",
     "name": "Lantern Clamps",
     "family": "lantern",
     "motif": "a lantern glass window, a small hanging ring, warm inner glow",
@@ -58,6 +122,22 @@
     "folder": "arm",
     "tier": 3,
     "design": 1,
+    "canvas": {
+      "w": 128,
+      "h": 280
+    },
+    "pivots": {
+      "shoulder": [
+        64,
+        63
+      ],
+      "hand": [
+        64,
+        184
+      ]
+    },
+    "placeholder": "public/bots-art/parts/arm/t3-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/arms-t3-1.png",
     "name": "Hornet Fists",
     "family": "hornet",
     "motif": "sleek tapered shapes, a fine stripe seam, small fin edges",
@@ -71,6 +151,22 @@
     "folder": "arm",
     "tier": 3,
     "design": 2,
+    "canvas": {
+      "w": 128,
+      "h": 280
+    },
+    "pivots": {
+      "shoulder": [
+        64,
+        63
+      ],
+      "hand": [
+        64,
+        184
+      ]
+    },
+    "placeholder": "public/bots-art/parts/arm/t3-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/arms-t3-2.png",
     "name": "Piston Levers",
     "family": "piston",
     "motif": "cylinder and piston shapes, banded rings, exposed bolt heads",
@@ -84,6 +180,22 @@
     "folder": "arm",
     "tier": 4,
     "design": 1,
+    "canvas": {
+      "w": 128,
+      "h": 280
+    },
+    "pivots": {
+      "shoulder": [
+        64,
+        63
+      ],
+      "hand": [
+        64,
+        184
+      ]
+    },
+    "placeholder": "public/bots-art/parts/arm/t4-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/arms-t4-1.png",
     "name": "Bulldozer Fists",
     "family": "bulldozer",
     "motif": "wide flat plates, a blade-like brow, tread-like grooves",
@@ -97,6 +209,22 @@
     "folder": "arm",
     "tier": 4,
     "design": 2,
+    "canvas": {
+      "w": 128,
+      "h": 280
+    },
+    "pivots": {
+      "shoulder": [
+        64,
+        63
+      ],
+      "hand": [
+        64,
+        184
+      ]
+    },
+    "placeholder": "public/bots-art/parts/arm/t4-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/arms-t4-2.png",
     "name": "Anvil Grips",
     "family": "anvil",
     "motif": "heavy flat-topped blocks, a horn-like edge, thick corners",
@@ -110,6 +238,18 @@
     "folder": "head",
     "tier": 1,
     "design": 1,
+    "canvas": {
+      "w": 456,
+      "h": 384
+    },
+    "pivots": {
+      "neck": [
+        228,
+        315
+      ]
+    },
+    "placeholder": "public/bots-art/parts/head/t1-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/head-t1-1.png",
     "name": "Sprocket Cap",
     "family": "sprocket",
     "motif": "gear-tooth edges, a hub with spokes, chain-link seams",
@@ -123,6 +263,18 @@
     "folder": "head",
     "tier": 1,
     "design": 2,
+    "canvas": {
+      "w": 456,
+      "h": 384
+    },
+    "pivots": {
+      "neck": [
+        228,
+        315
+      ]
+    },
+    "placeholder": "public/bots-art/parts/head/t1-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/head-t1-2.png",
     "name": "Peeper Eye",
     "family": "peeper",
     "motif": "extra lens rings, a periscope nub, dial markings",
@@ -136,6 +288,18 @@
     "folder": "head",
     "tier": 2,
     "design": 1,
+    "canvas": {
+      "w": 456,
+      "h": 384
+    },
+    "pivots": {
+      "neck": [
+        228,
+        315
+      ]
+    },
+    "placeholder": "public/bots-art/parts/head/t2-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/head-t2-1.png",
     "name": "Kettle Dome",
     "family": "kettle",
     "motif": "rounded kettle shapes, a spout-like ridge, a lid-rim seam",
@@ -149,6 +313,18 @@
     "folder": "head",
     "tier": 2,
     "design": 2,
+    "canvas": {
+      "w": 456,
+      "h": 384
+    },
+    "pivots": {
+      "neck": [
+        228,
+        315
+      ]
+    },
+    "placeholder": "public/bots-art/parts/head/t2-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/head-t2-2.png",
     "name": "Lantern Lens",
     "family": "lantern",
     "motif": "a lantern glass window, a small hanging ring, warm inner glow",
@@ -162,6 +338,18 @@
     "folder": "head",
     "tier": 3,
     "design": 1,
+    "canvas": {
+      "w": 456,
+      "h": 384
+    },
+    "pivots": {
+      "neck": [
+        228,
+        315
+      ]
+    },
+    "placeholder": "public/bots-art/parts/head/t3-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/head-t3-1.png",
     "name": "Hornet Scope",
     "family": "hornet",
     "motif": "sleek tapered shapes, a fine stripe seam, small fin edges",
@@ -175,6 +363,18 @@
     "folder": "head",
     "tier": 3,
     "design": 2,
+    "canvas": {
+      "w": 456,
+      "h": 384
+    },
+    "pivots": {
+      "neck": [
+        228,
+        315
+      ]
+    },
+    "placeholder": "public/bots-art/parts/head/t3-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/head-t3-2.png",
     "name": "Piston Visor",
     "family": "piston",
     "motif": "cylinder and piston shapes, banded rings, exposed bolt heads",
@@ -188,6 +388,18 @@
     "folder": "head",
     "tier": 4,
     "design": 1,
+    "canvas": {
+      "w": 456,
+      "h": 384
+    },
+    "pivots": {
+      "neck": [
+        228,
+        315
+      ]
+    },
+    "placeholder": "public/bots-art/parts/head/t4-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/head-t4-1.png",
     "name": "Bulldozer Helm",
     "family": "bulldozer",
     "motif": "wide flat plates, a blade-like brow, tread-like grooves",
@@ -201,6 +413,18 @@
     "folder": "head",
     "tier": 4,
     "design": 2,
+    "canvas": {
+      "w": 456,
+      "h": 384
+    },
+    "pivots": {
+      "neck": [
+        228,
+        315
+      ]
+    },
+    "placeholder": "public/bots-art/parts/head/t4-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/head-t4-2.png",
     "name": "Anvil Mask",
     "family": "anvil",
     "motif": "heavy flat-topped blocks, a horn-like edge, thick corners",
@@ -214,6 +438,22 @@
     "folder": "leg",
     "tier": 1,
     "design": 1,
+    "canvas": {
+      "w": 192,
+      "h": 280
+    },
+    "pivots": {
+      "hip": [
+        70,
+        63
+      ],
+      "foot": [
+        70,
+        181
+      ]
+    },
+    "placeholder": "public/bots-art/parts/leg/t1-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/legs-t1-1.png",
     "name": "Sprocket Pegs",
     "family": "sprocket",
     "motif": "gear-tooth edges, a hub with spokes, chain-link seams",
@@ -227,6 +467,22 @@
     "folder": "leg",
     "tier": 1,
     "design": 2,
+    "canvas": {
+      "w": 192,
+      "h": 280
+    },
+    "pivots": {
+      "hip": [
+        70,
+        63
+      ],
+      "foot": [
+        70,
+        181
+      ]
+    },
+    "placeholder": "public/bots-art/parts/leg/t1-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/legs-t1-2.png",
     "name": "Peeper Stilts",
     "family": "peeper",
     "motif": "extra lens rings, a periscope nub, dial markings",
@@ -240,6 +496,22 @@
     "folder": "leg",
     "tier": 2,
     "design": 1,
+    "canvas": {
+      "w": 192,
+      "h": 280
+    },
+    "pivots": {
+      "hip": [
+        70,
+        63
+      ],
+      "foot": [
+        70,
+        181
+      ]
+    },
+    "placeholder": "public/bots-art/parts/leg/t2-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/legs-t2-1.png",
     "name": "Kettle Shins",
     "family": "kettle",
     "motif": "rounded kettle shapes, a spout-like ridge, a lid-rim seam",
@@ -253,6 +525,22 @@
     "folder": "leg",
     "tier": 2,
     "design": 2,
+    "canvas": {
+      "w": 192,
+      "h": 280
+    },
+    "pivots": {
+      "hip": [
+        70,
+        63
+      ],
+      "foot": [
+        70,
+        181
+      ]
+    },
+    "placeholder": "public/bots-art/parts/leg/t2-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/legs-t2-2.png",
     "name": "Lantern Struts",
     "family": "lantern",
     "motif": "a lantern glass window, a small hanging ring, warm inner glow",
@@ -266,6 +554,22 @@
     "folder": "leg",
     "tier": 3,
     "design": 1,
+    "canvas": {
+      "w": 192,
+      "h": 280
+    },
+    "pivots": {
+      "hip": [
+        70,
+        63
+      ],
+      "foot": [
+        70,
+        181
+      ]
+    },
+    "placeholder": "public/bots-art/parts/leg/t3-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/legs-t3-1.png",
     "name": "Hornet Boots",
     "family": "hornet",
     "motif": "sleek tapered shapes, a fine stripe seam, small fin edges",
@@ -279,6 +583,22 @@
     "folder": "leg",
     "tier": 3,
     "design": 2,
+    "canvas": {
+      "w": 192,
+      "h": 280
+    },
+    "pivots": {
+      "hip": [
+        70,
+        63
+      ],
+      "foot": [
+        70,
+        181
+      ]
+    },
+    "placeholder": "public/bots-art/parts/leg/t3-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/legs-t3-2.png",
     "name": "Piston Treads",
     "family": "piston",
     "motif": "cylinder and piston shapes, banded rings, exposed bolt heads",
@@ -292,6 +612,22 @@
     "folder": "leg",
     "tier": 4,
     "design": 1,
+    "canvas": {
+      "w": 192,
+      "h": 280
+    },
+    "pivots": {
+      "hip": [
+        70,
+        63
+      ],
+      "foot": [
+        70,
+        181
+      ]
+    },
+    "placeholder": "public/bots-art/parts/leg/t4-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/legs-t4-1.png",
     "name": "Bulldozer Hooves",
     "family": "bulldozer",
     "motif": "wide flat plates, a blade-like brow, tread-like grooves",
@@ -305,6 +641,22 @@
     "folder": "leg",
     "tier": 4,
     "design": 2,
+    "canvas": {
+      "w": 192,
+      "h": 280
+    },
+    "pivots": {
+      "hip": [
+        70,
+        63
+      ],
+      "foot": [
+        70,
+        181
+      ]
+    },
+    "placeholder": "public/bots-art/parts/leg/t4-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/legs-t4-2.png",
     "name": "Anvil Springs",
     "family": "anvil",
     "motif": "heavy flat-topped blocks, a horn-like edge, thick corners",
@@ -318,9 +670,41 @@
     "folder": "torso",
     "tier": 1,
     "design": 1,
+    "canvas": {
+      "w": 288,
+      "h": 264
+    },
+    "pivots": {
+      "neck": [
+        144,
+        64
+      ],
+      "shoulderL": [
+        -23,
+        81
+      ],
+      "shoulderR": [
+        311,
+        81
+      ],
+      "hipL": [
+        94,
+        218
+      ],
+      "hipR": [
+        194,
+        218
+      ],
+      "decal": [
+        144,
+        148
+      ]
+    },
+    "placeholder": "public/bots-art/parts/torso/t1-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/torso-t1-1.png",
     "name": "Sprocket Can",
     "family": "sprocket",
-    "motif": "gear-tooth edges, a hub with spokes, chain-link seams. Fill the editable region completely, edge to edge, including the side lugs at shoulder height; the outline must reach every edge of the region",
+    "motif": "gear-tooth edges, a hub with spokes, chain-link seams",
     "color": "butter",
     "quality": "medium"
   },
@@ -331,6 +715,38 @@
     "folder": "torso",
     "tier": 1,
     "design": 2,
+    "canvas": {
+      "w": 288,
+      "h": 264
+    },
+    "pivots": {
+      "neck": [
+        144,
+        64
+      ],
+      "shoulderL": [
+        -23,
+        81
+      ],
+      "shoulderR": [
+        311,
+        81
+      ],
+      "hipL": [
+        94,
+        218
+      ],
+      "hipR": [
+        194,
+        218
+      ],
+      "decal": [
+        144,
+        148
+      ]
+    },
+    "placeholder": "public/bots-art/parts/torso/t1-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/torso-t1-2.png",
     "name": "Peeper Box",
     "family": "peeper",
     "motif": "extra lens rings, a periscope nub, dial markings",
@@ -344,6 +760,38 @@
     "folder": "torso",
     "tier": 2,
     "design": 1,
+    "canvas": {
+      "w": 288,
+      "h": 264
+    },
+    "pivots": {
+      "neck": [
+        144,
+        64
+      ],
+      "shoulderL": [
+        -23,
+        81
+      ],
+      "shoulderR": [
+        311,
+        81
+      ],
+      "hipL": [
+        94,
+        218
+      ],
+      "hipR": [
+        194,
+        218
+      ],
+      "decal": [
+        144,
+        148
+      ]
+    },
+    "placeholder": "public/bots-art/parts/torso/t2-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/torso-t2-1.png",
     "name": "Kettle Chest",
     "family": "kettle",
     "motif": "rounded kettle shapes, a spout-like ridge, a lid-rim seam",
@@ -357,6 +805,38 @@
     "folder": "torso",
     "tier": 2,
     "design": 2,
+    "canvas": {
+      "w": 288,
+      "h": 264
+    },
+    "pivots": {
+      "neck": [
+        144,
+        64
+      ],
+      "shoulderL": [
+        -23,
+        81
+      ],
+      "shoulderR": [
+        311,
+        81
+      ],
+      "hipL": [
+        94,
+        218
+      ],
+      "hipR": [
+        194,
+        218
+      ],
+      "decal": [
+        144,
+        148
+      ]
+    },
+    "placeholder": "public/bots-art/parts/torso/t2-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/torso-t2-2.png",
     "name": "Lantern Drum",
     "family": "lantern",
     "motif": "a lantern glass window, a small hanging ring, warm inner glow",
@@ -370,6 +850,38 @@
     "folder": "torso",
     "tier": 3,
     "design": 1,
+    "canvas": {
+      "w": 288,
+      "h": 264
+    },
+    "pivots": {
+      "neck": [
+        144,
+        64
+      ],
+      "shoulderL": [
+        -23,
+        81
+      ],
+      "shoulderR": [
+        311,
+        81
+      ],
+      "hipL": [
+        94,
+        218
+      ],
+      "hipR": [
+        194,
+        218
+      ],
+      "decal": [
+        144,
+        148
+      ]
+    },
+    "placeholder": "public/bots-art/parts/torso/t3-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/torso-t3-1.png",
     "name": "Hornet Frame",
     "family": "hornet",
     "motif": "sleek tapered shapes, a fine stripe seam, small fin edges",
@@ -383,6 +895,38 @@
     "folder": "torso",
     "tier": 3,
     "design": 2,
+    "canvas": {
+      "w": 288,
+      "h": 264
+    },
+    "pivots": {
+      "neck": [
+        144,
+        64
+      ],
+      "shoulderL": [
+        -23,
+        81
+      ],
+      "shoulderR": [
+        311,
+        81
+      ],
+      "hipL": [
+        94,
+        218
+      ],
+      "hipR": [
+        194,
+        218
+      ],
+      "decal": [
+        144,
+        148
+      ]
+    },
+    "placeholder": "public/bots-art/parts/torso/t3-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/torso-t3-2.png",
     "name": "Piston Shell",
     "family": "piston",
     "motif": "cylinder and piston shapes, banded rings, exposed bolt heads",
@@ -396,6 +940,38 @@
     "folder": "torso",
     "tier": 4,
     "design": 1,
+    "canvas": {
+      "w": 288,
+      "h": 264
+    },
+    "pivots": {
+      "neck": [
+        144,
+        64
+      ],
+      "shoulderL": [
+        -23,
+        81
+      ],
+      "shoulderR": [
+        311,
+        81
+      ],
+      "hipL": [
+        94,
+        218
+      ],
+      "hipR": [
+        194,
+        218
+      ],
+      "decal": [
+        144,
+        148
+      ]
+    },
+    "placeholder": "public/bots-art/parts/torso/t4-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/torso-t4-1.png",
     "name": "Bulldozer Hull",
     "family": "bulldozer",
     "motif": "wide flat plates, a blade-like brow, tread-like grooves",
@@ -409,6 +985,38 @@
     "folder": "torso",
     "tier": 4,
     "design": 2,
+    "canvas": {
+      "w": 288,
+      "h": 264
+    },
+    "pivots": {
+      "neck": [
+        144,
+        64
+      ],
+      "shoulderL": [
+        -23,
+        81
+      ],
+      "shoulderR": [
+        311,
+        81
+      ],
+      "hipL": [
+        94,
+        218
+      ],
+      "hipR": [
+        194,
+        218
+      ],
+      "decal": [
+        144,
+        148
+      ]
+    },
+    "placeholder": "public/bots-art/parts/torso/t4-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/torso-t4-2.png",
     "name": "Anvil Core",
     "family": "anvil",
     "motif": "heavy flat-topped blocks, a horn-like edge, thick corners",
@@ -422,6 +1030,18 @@
     "folder": "weapon",
     "tier": 1,
     "design": 1,
+    "canvas": {
+      "w": 240,
+      "h": 136
+    },
+    "pivots": {
+      "grip": [
+        38,
+        68
+      ]
+    },
+    "placeholder": "public/bots-art/parts/weapon/t1-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/weapon-t1-1.png",
     "name": "Rusty Spanner",
     "family": null,
     "motif": null,
@@ -435,6 +1055,18 @@
     "folder": "weapon",
     "tier": 1,
     "design": 2,
+    "canvas": {
+      "w": 240,
+      "h": 136
+    },
+    "pivots": {
+      "grip": [
+        38,
+        68
+      ]
+    },
+    "placeholder": "public/bots-art/parts/weapon/t1-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/weapon-t1-2.png",
     "name": "Tin Mallet",
     "family": null,
     "motif": null,
@@ -448,6 +1080,18 @@
     "folder": "weapon",
     "tier": 2,
     "design": 1,
+    "canvas": {
+      "w": 240,
+      "h": 136
+    },
+    "pivots": {
+      "grip": [
+        38,
+        68
+      ]
+    },
+    "placeholder": "public/bots-art/parts/weapon/t2-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/weapon-t2-1.png",
     "name": "Iron Wrench",
     "family": null,
     "motif": null,
@@ -461,6 +1105,18 @@
     "folder": "weapon",
     "tier": 2,
     "design": 2,
+    "canvas": {
+      "w": 240,
+      "h": 136
+    },
+    "pivots": {
+      "grip": [
+        38,
+        68
+      ]
+    },
+    "placeholder": "public/bots-art/parts/weapon/t2-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/weapon-t2-2.png",
     "name": "Spark Drill",
     "family": null,
     "motif": null,
@@ -474,6 +1130,18 @@
     "folder": "weapon",
     "tier": 3,
     "design": 1,
+    "canvas": {
+      "w": 240,
+      "h": 136
+    },
+    "pivots": {
+      "grip": [
+        38,
+        68
+      ]
+    },
+    "placeholder": "public/bots-art/parts/weapon/t3-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/weapon-t3-1.png",
     "name": "Steel Saw",
     "family": null,
     "motif": null,
@@ -487,6 +1155,18 @@
     "folder": "weapon",
     "tier": 3,
     "design": 2,
+    "canvas": {
+      "w": 240,
+      "h": 136
+    },
+    "pivots": {
+      "grip": [
+        38,
+        68
+      ]
+    },
+    "placeholder": "public/bots-art/parts/weapon/t3-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/weapon-t3-2.png",
     "name": "Brass Pike",
     "family": null,
     "motif": null,
@@ -500,6 +1180,18 @@
     "folder": "weapon",
     "tier": 4,
     "design": 1,
+    "canvas": {
+      "w": 240,
+      "h": 136
+    },
+    "pivots": {
+      "grip": [
+        38,
+        68
+      ]
+    },
+    "placeholder": "public/bots-art/parts/weapon/t4-1.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/weapon-t4-1.png",
     "name": "Piston Hammer",
     "family": null,
     "motif": null,
@@ -513,6 +1205,18 @@
     "folder": "weapon",
     "tier": 4,
     "design": 2,
+    "canvas": {
+      "w": 240,
+      "h": 136
+    },
+    "pivots": {
+      "grip": [
+        38,
+        68
+      ]
+    },
+    "placeholder": "public/bots-art/parts/weapon/t4-2.png",
+    "plate": "public/bots-art/_raw/parts/placeholders/weapon-t4-2.png",
     "name": "Anvil Cleaver",
     "family": null,
     "motif": null,

@@ -14,6 +14,12 @@
  *  (0)   content: validateCatalog() + validateCommentary() + 40 launch parts
  *        in 8 families + the 5 starter cards
  *  (grep) no Math.random / Date / performance / toFixed anywhere in _engine/
+ *  (m-src) _engine/ never names the look layer in code (look, face, sticker,
+ *        decal, topper, hat, mark) - comments and authored strings exempt
+ *  (m)   nothing in the look enters the fight: the four mirrors run bare and
+ *        with a full look on every part, outcome / log / fighters / sides /
+ *        cursors byte-identical, only .builds differs, undressed hash equal
+ *  (m-roll) the dressed run reproduces the frozen rollup
  *  (p)   the engine's PAINT_IDS mirror equals src/app/bots/_ui/tokens.ts
  *  (s)   the set bonus never changes a bot's total or tier, and moves every
  *        fight aggregate by exactly perStat (family 2, paint 1, both 3)
@@ -37,7 +43,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fnv1a } from "../src/app/bots/_engine/rng";
-import { PAINT_IDS, PIECE, botTier, buildTotal, setBonus, validateCatalog, type Build, type CanonKey, type FightEvent } from "../src/app/bots/_engine/parts";
+import { PAINT_IDS, PIECE, botTier, buildTotal, setBonus, validateCatalog, type Build, type CanonKey, type FightEvent, type Part } from "../src/app/bots/_engine/parts";
 import { CANON, CARD_INDEX, CATALOG, FAMILIES, PARTS, PART_INDEX, WEAPON_OF_TIER, familyBuild, paintAll, unmatchedTwin } from "../src/app/bots/_engine/catalog";
 import { AGGREGATE_KEYS, deriveFighter } from "../src/app/bots/_engine/derive";
 import { createFight, fightHash, runFight, stepFight, type Fight, type FightState } from "../src/app/bots/_engine/resolve";
@@ -45,6 +51,9 @@ import { validateCommentary } from "../src/app/bots/_engine/commentary";
 import { ENGINE_VERSION } from "../src/app/bots/_engine/version";
 import { BASELINE, type BaselineRow } from "../src/app/bots/_engine/baseline";
 import { PAINT_IDS as UI_PAINT_IDS } from "../src/app/bots/_ui/tokens";
+// (m) reads the SHIPPED look module, never a copy of it: a gate that
+// reimplements what it checks reproduces the author's assumptions and passes.
+import { EVERY_HAT, earnedMarks, normalizeLook, type LookEarned } from "../src/lib/bots/look";
 
 // ---------------------------------------------------------------------------
 // shared shapes (mirroring scripts/s7-harness.ts)
@@ -211,6 +220,233 @@ function gateSets(): void {
   );
 }
 
+// ---------------------------------------------------------------------------
+// (m) NOTHING IN THE LOOK ENTERS THE FIGHT
+// ---------------------------------------------------------------------------
+
+/** Every word the look layer is built out of. `shape` is deliberately NOT
+ * here: catalog.ts has always used it for the house bots. Words are matched
+ * as whole identifier tokens after camelCase is split, so `CardLookup`,
+ * `interface` and `what` are not hits; the point is to catch `part.look`,
+ * not the English language. */
+const LOOK_WORDS: readonly string[] = [
+  "look", "looks", "face", "faces", "sticker", "stickers", "decal", "decals",
+  "topper", "toppers", "hat", "hats", "mark", "marks",
+];
+const LOOK_WORD_SET = new Set(LOOK_WORDS);
+
+/** Drop comments and string bodies, so English prose in a doc comment or in
+ * an authored part description ("heavy enough to leave a mark") is not a
+ * violation while `p.look` is. A quote inside a comment and a slash inside a
+ * string both have to be handled, hence a state machine and not a regex. */
+function codeOnly(src: string): string {
+  let out = "";
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const c = src[i];
+    const d = src[i + 1];
+    if (c === "/" && d === "/") {
+      while (i < n && src[i] !== "\n") i++;
+      continue;
+    }
+    if (c === "/" && d === "*") {
+      i += 2;
+      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) i++;
+      i += 2;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      const quote = c;
+      out += quote; // keep the delimiters so a key like "look": still reads
+      i++;
+      while (i < n && src[i] !== quote) {
+        if (src[i] === "\\") i++;
+        i++;
+      }
+      out += quote;
+      i++;
+      continue;
+    }
+    out += c;
+    i++;
+  }
+  return out;
+}
+
+/** camelCase and snake_case split into lower-case words. */
+function identWords(code: string): string[] {
+  const out: string[] = [];
+  for (const raw of code.split(/[^A-Za-z]+/)) {
+    if (!raw) continue;
+    const split = raw.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
+    for (const w of split.split(" ")) if (w) out.push(w.toLowerCase());
+  }
+  return out;
+}
+
+/** (m-src) the engine may not name the look layer in code. Two passes: an
+ * identifier pass over comment-free, string-free code, and a string pass for
+ * the back door an identifier pass cannot see, `b["look"]` and `{ "hat": 1 }`. */
+function gateLookSource(root: string): void {
+  const dir = path.join(root, ENGINE_REL);
+  const bad: string[] = [];
+  const keyRe = new RegExp(`(?:\\[\\s*|[,{]\\s*)(['"\`])(${LOOK_WORDS.join("|")})\\1\\s*(?:\\]|:)`, "i");
+  let files = 0;
+  for (const file of fs.readdirSync(dir)) {
+    if (!file.endsWith(".ts")) continue;
+    files += 1;
+    const lines = fs.readFileSync(path.join(dir, file), "utf8").split("\n");
+    // comment / string stripping has to run over the whole file (a block
+    // comment spans lines), then be split back into lines to report one.
+    const stripped = codeOnly(lines.join("\n")).split("\n");
+    stripped.forEach((line, i) => {
+      const hit = identWords(line.replace(/(['"`]).*?\1/g, "")).filter((w) => LOOK_WORD_SET.has(w));
+      if (hit.length) bad.push(`${file}:${i + 1} names ${Array.from(new Set(hit)).join("/")}`);
+      const key = keyRe.exec(line);
+      if (key) bad.push(`${file}:${i + 1} reads the key "${key[2]}"`);
+    });
+  }
+  report(
+    bad.length === 0,
+    "(m-src)",
+    bad.length === 0
+      ? `${ENGINE_REL}/ (${files} files) never names ${LOOK_WORDS.length} look words in code: ${LOOK_WORDS.join(", ")}`
+      : `the look reached the engine: ${bad.slice(0, 5).join("; ")}`,
+  );
+}
+
+/** The keys the dressed build carries, so they can be taken back off again. */
+const DRESS_KEYS = ["look", "marks", "face", "sticker", "spot", "stickerPaint", "hat", "decal", "topper", "plate", "plateNumber"] as const;
+
+/** A robot wearing everything the look layer can put on it, built by the
+ * SHIPPED module off a server-shaped LookEarned. Champion, 27 wins (past the
+ * gold star), level 10, four repairs, every hat won. */
+const DRESS_EARNED: LookEarned = {
+  wins: 27, level: 10, repairs: 4, champion: true, colourMatch: true, fourStar: true,
+  hats: EVERY_HAT.slice(), paints: ["mint", "coral", "moss", "ink"], plateNumber: 41,
+};
+
+function dressBuild(b: Build): Build {
+  const look = normalizeLook(
+    { face: "stars", sticker: "star", spot: "chest", stickerPaint: "mint", hat: { kind: "bow", color: "sky" } },
+    DRESS_EARNED,
+  );
+  const marks = earnedMarks(DRESS_EARNED);
+  const dress = (p: Part): Part =>
+    ({
+      ...p, look, marks, face: look.face, sticker: look.sticker, spot: look.spot,
+      stickerPaint: look.stickerPaint, hat: look.hat, decal: look.sticker,
+      topper: look.hat, plate: look.plateNumber, plateNumber: look.plateNumber,
+    }) as Part;
+  return {
+    legs: dress(b.legs), arms: dress(b.arms), torso: dress(b.torso),
+    head: dress(b.head), weapon: dress(b.weapon),
+    look, marks,
+  } as Build;
+}
+
+/** Take the look back off, at any depth, so what is left is the build the
+ * engine was handed before it was dressed. */
+function undress(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(undress);
+  if (v && typeof v === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+      if ((DRESS_KEYS as readonly string[]).includes(k)) continue;
+      out[k] = undress(x);
+    }
+    return out;
+  }
+  return v;
+}
+
+/** Every path at which two states differ, so "only the builds moved" is
+ * measured and not asserted by looking at four fields. */
+function diffPaths(a: unknown, b: unknown, at: string, out: string[], cap = 40): void {
+  if (out.length >= cap) return;
+  if (a === b) return;
+  const ao = a && typeof a === "object";
+  const bo = b && typeof b === "object";
+  if (!ao || !bo) {
+    if (JSON.stringify(a) !== JSON.stringify(b)) out.push(at);
+    return;
+  }
+  const keys = Array.from(new Set(Object.keys(a as object).concat(Object.keys(b as object))));
+  for (const k of keys) {
+    diffPaths((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k], `${at}.${k}`, out, cap);
+  }
+}
+
+/**
+ * (m) the four canonical mirrors, every seed, run twice: once bare and once
+ * with a full look on every part AND on the build. What is proven:
+ *
+ *  (m1) the FIGHT is untouched - winner, frames, end, the whole event log,
+ *       both derived fighters, both side states and the draw cursors are
+ *       byte-identical, so no stat, no roll and no target moved;
+ *  (m2) the ONLY paths that differ anywhere in the final state are under
+ *       .builds, measured by a full structural diff rather than by checking
+ *       a handful of fields;
+ *  (m3) with the look taken back off .builds, the state hashes byte-identical
+ *       to the bare fight and the rollup is the frozen one.
+ *
+ * NOTE the hash of a DRESSED state is deliberately not asserted equal: the
+ * state carries `builds` verbatim, so dressing the input changes the record
+ * the fight is stored with. That is the state echoing its input, not the
+ * fight moving, and (m1)+(m2) are the stronger claim.
+ */
+function gateLook(bare: RunRow[]): void {
+  const behaviour: string[] = [];
+  const outside: string[] = [];
+  const hashDrift: string[] = [];
+  const dressedRows: RunRow[] = [];
+
+  for (const r of bare) {
+    const [ka, kb] = PAIRINGS[r.pairing];
+    const fight = runFight(seedAt(r.seed), dressBuild(CANON[ka]), dressBuild(CANON[kb]));
+    const st = fight.st;
+    const tag = `${PAIRINGS[r.pairing].join("v")}#${r.seed}`;
+
+    // (m1) the fight itself
+    if (st.winner !== r.state.winner || st.frame !== r.state.frame || st.end !== r.state.end) behaviour.push(`${tag} outcome`);
+    if (JSON.stringify(st.log) !== JSON.stringify(r.state.log)) behaviour.push(`${tag} log`);
+    if (JSON.stringify(st.fighters) !== JSON.stringify(r.state.fighters)) behaviour.push(`${tag} fighters`);
+    if (JSON.stringify(st.sides) !== JSON.stringify(r.state.sides)) behaviour.push(`${tag} sides`);
+    if (JSON.stringify(st.cursors) !== JSON.stringify(r.state.cursors)) behaviour.push(`${tag} cursors`);
+
+    // (m2) nothing outside .builds moved
+    const paths: string[] = [];
+    diffPaths(r.state, st, "st", paths);
+    for (const p of paths) if (!p.startsWith("st.builds")) outside.push(`${tag} ${p}`);
+
+    // (m3) undress and re-hash
+    const back = undress(st) as FightState;
+    const hash = fnv1a(JSON.stringify(back));
+    if (hash !== r.hash) hashDrift.push(`${tag} ${hex(hash)} vs ${hex(r.hash)}`);
+    dressedRows.push({ ...r, hash, state: back });
+  }
+
+  const ok = behaviour.length === 0 && outside.length === 0 && hashDrift.length === 0;
+  report(
+    ok,
+    "(m)",
+    ok
+      ? `look on every part over ${bare.length} fights: outcome, log, fighters, sides and cursors byte-identical; ` +
+          `the only state paths that moved are under .builds; undressed hashes equal the baseline`
+      : `the look moved the fight: ${[...behaviour, ...outside, ...hashDrift].slice(0, 5).join("; ")}`,
+  );
+
+  // (m-roll) the frozen rollup, recomputed from the dressed-then-undressed run
+  const roll = (rs: RunRow[]): string => hex(fnv1a(rs.map((x) => hex(x.hash)).join(",")));
+  const per = PAIRINGS.map((p, i) => `${p[0]}v${p[1]} ${roll(dressedRows.filter((x) => x.pairing === i))}`);
+  const all = roll(dressedRows);
+  const want = ["T1vT1 fa0df511", "T2vT2 98c10093", "T3vT3 e750eafb", "T4vT4 9e5392ed"];
+  const wantAll = "9fd36ca7";
+  const rollOk = per.every((s, i) => s === want[i]) && all === wantAll;
+  report(rollOk, "(m-roll)", `dressed rollup ${per.join("  ")}  all ${all}${rollOk ? " (unmoved)" : ` - WANT ${want.join("  ")}  all ${wantAll}`}`);
+}
+
 /** (i) the node half of "node vs browser": a rollup hash per pairing and
  * over the whole table (fnv1a of the hex hashes joined by commas, seed
  * order inside a pairing, pairing order over the table), the same numbers
@@ -372,6 +608,7 @@ try {
 }
 
 gateGrep(ROOT);
+gateLookSource(ROOT);
 gatePaint();
 gateSets();
 
@@ -379,6 +616,8 @@ const rows: RunRow[] = [];
 for (let p = 0; p < PAIRINGS.length; p++) {
   for (let i = 0; i < SEED_COUNT; i++) rows.push(runRow(p, i));
 }
+
+gateLook(rows);
 
 if (recording) {
   const stamp = new Date().toISOString().slice(0, 10);

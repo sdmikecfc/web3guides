@@ -12,7 +12,7 @@ import { M } from "./_ui/tokens";
 
 export const metadata = {
   title: "Battle Bots",
-  description: "Build a bot. Trade to feed it. Watch it fight.",
+  description: "Build a robot. Watch it fight.",
 };
 
 /**

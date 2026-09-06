@@ -4,7 +4,7 @@
  * the corkboard on the left wall and the tool board on the right, five bays
  * along the floor each with the real stand under its bot, the workbench
  * between bays 2 and 3 with the crew at it, the toolbox and the ceiling fan
- * as dressing, a cream bay tag hanging off every stand, and the warm
+ * as dressing, a cream bay tag propped in every bay, and the warm
  * vignette fading to the frame edge (never to the page dark).
  *
  * Shape copied from the bay (src/app/bots/_view/bay.ts, itself the S7 front
@@ -18,6 +18,15 @@
  * Text painted in here (Baloo 2, the toy voice): the bay tags (name and
  * status, the countdown included, the one number a canvas may paint), the
  * floor plate numbers and the crew speech chips. Everything else is DOM.
+ *
+ * FIVE BOTS, FIVE MOODS (2026-09-05). A shelf of five identical idles reads as
+ * a shop display, not as five toys somebody owns. The rig carries the face and
+ * the breath (_view/rig.ts); this file gives it the two things only the garage
+ * knows. THE TAG ALREADY SAYS HOW EACH BOT IS DOING, so the mood is read
+ * straight off the tag's own dot and no client has to remember a second call:
+ * ready is eager, being fixed is asleep with the eyes down, parts missing is
+ * flat. AND THE POINTER IS SOMEWHERE, so every bot in the room turns to watch
+ * it, and the one under it perks up and leans in. Rendering only.
  */
 "use client";
 
@@ -40,6 +49,7 @@ import {
 } from "./setdressing";
 import { K, M } from "../_ui/tokens";
 import { BAY_COUNT, type Socket, type StrategyKind } from "@/lib/bots/fixtures";
+import type { BotMood } from "./rig";
 
 export type TagDot = "good" | "warn" | "bad" | "muted" | "dashed";
 
@@ -49,7 +59,30 @@ export interface BayTag {
   dot: TagDot;
   /** the "In a battle" dot pulses */
   pulse?: boolean;
+  /**
+   * How this bot is doing, if the owner knows something the dot cannot say
+   * (out of fights, just lost one). Left off, it is read from the dot, which
+   * already carries four of the five moods the garage can show.
+   */
+  mood?: BotMood;
 }
+
+/**
+ * The dot a bay tag already carries IS the bot's mood, so nothing new has to
+ * be plumbed for a bot to look how he is doing:
+ *   good   ready to fight        eager
+ *   warn   being fixed           asleep, eyes down
+ *   bad    away at a battle      eager, he is up next
+ *   muted  parts missing         flat
+ *   dashed no bot here at all    the rig is hidden anyway
+ */
+const MOOD_OF_DOT: Record<TagDot, BotMood> = {
+  good: "eager",
+  warn: "sleepy",
+  bad: "eager",
+  muted: "flat",
+  dashed: "calm",
+};
 
 export interface GarageOpts {
   small: boolean;
@@ -95,18 +128,21 @@ function band(base: number, k: number): number {
 }
 
 /**
- * Per-socket paint. The rig's setPaint tints every mask at once; a paint
- * job is per part, so this reaches the mask sprite of each node (children
- * order in rig.ts: ghost, base, mask, flash). TODO(rig): replace with a
- * rig.setPaintFor(socket, hex) once the rig lane adds it.
+ * Per-socket paint. The rig's setPaint tints every mask at once; a paint job
+ * is per part, so this asks the rig for each socket in turn.
+ *
+ * IT USED TO REACH IN BY INDEX, `rig.root.children[i].children[2]`, and that
+ * had to go before the joint law landed. Two of that law's changes break it:
+ * root now carries a contact shadow, which shifts every socket index by one,
+ * and an arm carried across the chest is promoted by zIndex, which reorders
+ * root.children on the next render. Either one paints every limb with its
+ * neighbour's colour. rig.setPaintFor names the socket, so neither can.
  */
 export function paintRigSockets(rig: Rig, paints: Partial<Record<Socket, number>>): void {
-  DRAW_ORDER.forEach((socket, i) => {
-    const node = rig.root.children[i] as Container | undefined;
-    const mask = node?.children?.[2] as Sprite | undefined;
+  for (const socket of DRAW_ORDER) {
     const v = paints[socket];
-    if (mask && v != null) mask.tint = v;
-  });
+    if (v != null) rig.setPaintFor(socket, v);
+  }
 }
 
 export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): Promise<GarageHandle> {
@@ -261,6 +297,9 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
   // ── the five bays: stand, rig, floor plate, tag ──────────────────────────
   const rigScale = BOT_HEIGHT / RIG_HEIGHT;
   const feetY = BAY_FLOOR_Y - STAND.feetAboveGround;
+  // a player who has asked the system for less movement gets five still toys;
+  // the bulbs stay lit, because a light is not motion
+  const reduced = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const rigs: Rig[] = [];
   const tags: Array<{ root: Container; bg: Graphics; name: Text; status: Text; dot: Graphics; pulse: boolean; on: boolean }> = [];
   const emptyRings: Graphics[] = [];
@@ -269,11 +308,12 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     const x = BAY_X[i];
     placeProp({ key: "stand", x, y: BAY_FLOOR_Y, s: STAND.s, anchor: "floor" });
 
-    const rig = buildRig(PIXI);
+    const rig = buildRig(PIXI, stage.app.renderer);
     rig.root.scale.set(rigScale);
     rig.root.position.set(x, feetY);
     rig.root.zIndex = BAY_FLOOR_Y + 1;
     rig.root.visible = false;
+    rig.setCalm(reduced);
     floorLayer.addChild(rig.root);
     rigs.push(rig);
 
@@ -347,8 +387,15 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     const w = Math.max(200, Math.max(t.name.width, t.status.width + 30) + 40);
     const h = 92;
     t.bg.clear();
-    // the string up to the cradle
-    t.bg.moveTo(-60, -150).lineTo(14, 0).stroke({ width: 3, color: hex(K.rubber), alpha: 0.7 });
+    // NO STRING. There used to be one here, `moveTo(-60, -150).lineTo(14, 0)`,
+    // drawn "up to the cradle" back when every bay had a stand for the tag to
+    // hang from. The stand went when the joint law landed and the string stayed,
+    // at a FIXED offset that tracks nothing: the tag sits 150 above the feet, so
+    // the line's far end lands 300 above them and a little inboard, which on
+    // every bay in the garage is the lower half of the robot's own face. It read
+    // as a wire coming out of the robot's mouth, in the one screenshot that
+    // answers "is this thing loveable". The plate keeps its brass eyelet, which
+    // is all a name plate propped in a bay needs.
     t.bg.roundRect(0, 0, w, h, 12).fill(hex(K.paper));
     t.bg.roundRect(0, 0, w, h, 12).stroke({ width: 3, color: 0xcdbf9f });
     t.bg.circle(14, 14, 6).fill(hex(K.brass));
@@ -371,6 +418,7 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     t.dot.position.set(26, 64);
     t.root.visible = true;
     emptyRings[i].visible = tag.dot === "dashed";
+    rigs[i]?.setMood(tag.mood ?? MOOD_OF_DOT[tag.dot]);
   };
 
   // ── the crew (one figure per live strategy) ──────────────────────────────
@@ -508,6 +556,28 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     const r = canvas.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
+
+  /**
+   * EVERY BOT IN THE ROOM WATCHES THE POINTER, and the one under it perks up.
+   * A pointer is one point in scene space and each bay wants it in its OWN rig
+   * units, which is the inverse of the placement three blocks up: subtract the
+   * bay's x and the floor line, divide by the rig's scale. `bay` is 1..5 or 0
+   * for none.
+   */
+  const aimBots = (cssX: number, cssY: number, bay: number) => {
+    const p = toScene(cssX, cssY);
+    for (let i = 0; i < rigs.length; i++) {
+      rigs[i].lookAt({ x: (p.x - BAY_X[i]) / rigScale, y: (p.y - feetY) / rigScale });
+      rigs[i].setNoticed(bay === i + 1);
+    }
+  };
+  const lookAway = () => {
+    for (const r of rigs) {
+      r.lookAt(null);
+      r.setNoticed(false);
+    }
+  };
+
   let down: { x: number; y: number; camX: number; moved: boolean } | null = null;
   const onDown = (e: PointerEvent) => {
     const { x, y } = local(e);
@@ -525,6 +595,7 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     }
     const h = hitAt(x, y);
     canvas.style.cursor = h ? "pointer" : "default";
+    aimBots(x, y, h?.kind === "bay" ? h.bay : 0);
   };
   const onUp = (e: PointerEvent) => {
     const { x, y } = local(e);
@@ -551,8 +622,13 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     if (d.moved) return;
     const h = hitAt(x, y);
     if (!h) return;
-    if (h.kind === "bay") opts.onBayTap?.(h.bay);
-    else if (h.kind === "cork") opts.onCorkboardTap?.();
+    if (h.kind === "bay") {
+      // a touch is the only pointer a phone has, so a tap does the noticing,
+      // and the bot the player picked hops
+      aimBots(x, y, h.bay);
+      rigs[h.bay - 1]?.poke("fit");
+      opts.onBayTap?.(h.bay);
+    } else if (h.kind === "cork") opts.onCorkboardTap?.();
     else if (h.kind === "tools") opts.onToolBoardTap?.();
     else opts.onCrewTap?.(h.who);
   };
@@ -562,6 +638,7 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
       camTarget = camFor(focused);
     }
     down = null;
+    lookAway();
   };
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointermove", onMove);
@@ -612,7 +689,20 @@ export async function buildGarage(canvas: HTMLCanvasElement, opts: GarageOpts): 
     async extractBot(bay) {
       const rig = rigs[bay - 1];
       if (!rig.root.visible) return null;
+      // THE TOY WITH ITS EYES OPEN. The readback lands on whatever frame the
+      // clock is on, and about one load in twelve that is a blink: the "it
+      // woke up when you opened the door" card then carried a half lidded
+      // robot (seen on the 2026-09-05 sleep pass, where a blink's peak now
+      // draws the shut eye's seam). paintStill repaints the rig's own last
+      // frame with the blink, the peek, the snore and the bounce held off and
+      // every ease left where it is (setCalm would snap them, and the first
+      // cut of this used it: a tapped sleeper's eyes popped open under the
+      // sheet). No clock is passed and nothing is put back: the rig keeps its
+      // own, and the next painted frame recomputes every transform from it.
+      // A sleeper's picture is a sleeper: the lid is an eased value, not a
+      // flourish.
       try {
+        rig.paintStill();
         const cv = stage.app.renderer.extract.canvas({ target: rig.root, resolution: 1 }) as HTMLCanvasElement;
         return cv.toDataURL("image/png");
       } catch {
