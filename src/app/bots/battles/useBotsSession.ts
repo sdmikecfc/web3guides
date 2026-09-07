@@ -62,9 +62,9 @@ export interface BotsSessionState {
 }
 
 export function useBotsSession(): BotsSessionState {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, isConnecting } = useAccount();
   const { signMessageAsync } = useSignMessage();
-  const { openConnectModal } = useConnectModal();
+  const { openConnectModal, connectModalOpen } = useConnectModal();
   // read after mount so the server and the first client render agree
   const [token, setToken] = useState("");
   const [ready, setReady] = useState(false);
@@ -74,6 +74,8 @@ export function useBotsSession(): BotsSessionState {
   // the remembered press, in a ref so the effect below reads the live value
   // and does not re-run just because it changed
   const wantsRef = useRef(false);
+  const modalSeenRef = useRef(false);
+  const runningRef = useRef(false);
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
@@ -93,6 +95,8 @@ export function useBotsSession(): BotsSessionState {
   }, [token, address]);
 
   const signOut = useCallback(() => {
+    wantsRef.current = false;
+    setPending(false);
     clearBotsSession();
     setToken("");
     setLast(null);
@@ -101,6 +105,8 @@ export function useBotsSession(): BotsSessionState {
   /** the sign-and-enlist half: everything after a wallet is connected. */
   const run = useCallback(
     async (addr: string): Promise<string | null> => {
+      if (runningRef.current) return null;
+      runningRef.current = true;
       setBusy(true);
       try {
         // 1) the server's nonce. It asks for nothing and refuses nobody: the
@@ -151,17 +157,22 @@ export function useBotsSession(): BotsSessionState {
         setError(/reject|deny|user denied|user rejected/i.test(msg) ? "You said no in your wallet. Press Play to try again." : "Signing did not work. Try again.");
         setBusy(false);
         return null;
+      } finally {
+        runningRef.current = false;
+        setBusy(false);
       }
     },
     [signMessageAsync],
   );
 
   const open = useCallback(async (): Promise<string | null> => {
+    if (runningRef.current || wantsRef.current) return null;
     setError(null);
     if (!isConnected || !address) {
       // remember the press, open the modal, and STOP. The effect below picks
       // the press back up the moment a wallet is actually connected.
       wantsRef.current = true;
+      modalSeenRef.current = false;
       setPending(true);
       if (openConnectModal) openConnectModal();
       else {
@@ -177,11 +188,22 @@ export function useBotsSession(): BotsSessionState {
   // the remembered press, spent once: a wallet finished connecting and the
   // player had already asked to play, so ask for the one signature now
   useEffect(() => {
-    if (!wantsRef.current || !isConnected || !address || token) return;
+    if (!wantsRef.current || !isConnected || !address) return;
     wantsRef.current = false;
     setPending(false);
     void run(address);
-  }, [isConnected, address, token, run]);
+  }, [isConnected, address, run]);
+
+  // Dismissing the picker spends the connect intent too. Otherwise every
+  // Connect button stays disabled and a later unrelated connection signs in.
+  useEffect(() => {
+    if (connectModalOpen) modalSeenRef.current = true;
+    if (!connectModalOpen && modalSeenRef.current && !isConnecting && !isConnected) {
+      modalSeenRef.current = false;
+      wantsRef.current = false;
+      setPending(false);
+    }
+  }, [connectModalOpen, isConnecting, isConnected]);
 
   return { ready, token, open, busy, error, pending, connected: Boolean(isConnected && address), last, signOut };
 }

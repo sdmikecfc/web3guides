@@ -81,12 +81,18 @@ export async function createCombatToy(build: Build, look: BotLook = {}, forceNat
     const entries = SOCKETS.map(socket => {
       const id = artIdentity(combatPart(build, socket).id);
       if (!id || /^empty[.-]/.test(id)) return undefined;
-      const entry = m.parts[id]?.variants.find(v => v.socket === socket);
-      if (!entry) throw new Error("Build uses a mould outside the Blender pilot");
-      return entry;
+      return m.parts[id]?.variants.find(v => v.socket === socket);
     });
     const motion = await asset(m.motion);
-    const loaded = await Promise.all(entries.map(e => e ? asset(detail === "inspection" ? e.inspection : e.file) : undefined));
+    const loaded = await Promise.all(entries.map(e => e ? asset(detail === "inspection" ? e.inspection : e.file).catch(() => undefined) : undefined));
+    const nativeSockets = SOCKETS.filter((socket, i) => {
+      const id = combatPart(build, socket).id;
+      return id && !/^empty[.-]/.test(id) && !loaded[i];
+    });
+    // An unauthored or unavailable part keeps its own native mould. It must
+    // never switch the other six selected pieces to a different art style.
+    const native = nativeSockets.length ? nativeCombatToy(build, look) : null;
+    const nativeMeshes: THREE.Mesh[] = [];
     const root = new THREE.Group(); root.name = "Articulated toy";
     const rig = cloneSkeleton(motion.scene);
     const bones: Record<string, THREE.Object3D> = {};
@@ -130,8 +136,27 @@ export async function createCombatToy(build: Build, look: BotLook = {}, forceNat
         mesh.userData.socket = socket; meshes[socket].push(mesh);
       }
     }
+    if (native) {
+      const boneNames = new Map(Object.entries(native.bones).map(([name, bone]) => [bone, name]));
+      native.root.updateMatrixWorld(true);
+      root.updateMatrixWorld(true);
+      for (const socket of nativeSockets) {
+        const pieces: THREE.Mesh[] = [];
+        native.root.traverse(o => { if (o instanceof THREE.Mesh && o.userData.socket === socket) pieces.push(o); });
+        for (const mesh of pieces) {
+          let parent: THREE.Object3D | null = mesh.parent;
+          while (parent && !boneNames.has(parent)) parent = parent.parent;
+          const bone = bones[parent ? boneNames.get(parent)! : socket];
+          // Preserve the authored rest position, including the hand grip,
+          // then let the shared rig animate this piece with its neighbours.
+          bone.attach(mesh);
+          meshes[socket].push(mesh);
+          nativeMeshes.push(mesh);
+        }
+      }
+    }
     const sockets = Object.fromEntries(SOCKETS.map(s => [s, bones[s]])) as Record<Socket, THREE.Group>;
-    if (look.face === "happy" && entries[0]) {
+    if (look.face === "happy" && loaded[0]) {
       const id = artIdentity(combatPart(build,"head").id);
       const c = document.createElement("canvas"); c.width=512; c.height=128;
       const ctx=c.getContext("2d")!;ctx.strokeStyle="#3b4130";ctx.lineWidth=17;ctx.lineCap="round";
@@ -147,7 +172,7 @@ export async function createCombatToy(build: Build, look: BotLook = {}, forceNat
     }
     // The little name tag is one transparent draw, seated on the chest panel.
     // It remains attached to the body and is captured with it in photographs.
-    if (look.plate != null && entries[1]) {
+    if (look.plate != null && loaded[1]) {
       const c = document.createElement("canvas"); c.width = 256; c.height = 128;
       const ctx = c.getContext("2d")!;
       ctx.fillStyle = "#e9d9b9"; ctx.beginPath(); ctx.roundRect(6,6,244,116,24); ctx.fill();
@@ -166,12 +191,14 @@ export async function createCombatToy(build: Build, look: BotLook = {}, forceNat
     const clips = channelsOf(motion);
     const targetLocal: Record<Socket, V3> = { head: [0,.5,.52], torso:[0,.56,.53], armL:[0,-.7,.2], armR:[0,-.7,.2], legL:[0,-.76,.17], legR:[0,-.76,.17], weapon:[0,.8,0] };
     const tempQ = new THREE.Quaternion();
+    const weaponContact = loaded[6] ? new THREE.Vector3(...(entries[6]?.contact ?? [0,1,0]))
+      : native ? bones.weapon.worldToLocal(native.sockets.weapon.localToWorld(native.weaponContact.clone())) : new THREE.Vector3(0,1,0);
     let disposed = false;
     const toy: CombatToy = {
       root, sockets, bones, height: 3.88, blender: true,
-      movement: [entries[4]?.movement ?? "boot", entries[5]?.movement ?? "boot"],
-      weaponFamily: entries[6]?.attackFamily ?? "blunt",
-      weaponContact: new THREE.Vector3(...(entries[6]?.contact ?? [0,1,0])),
+      movement: [loaded[4] ? entries[4]?.movement ?? "boot" : native?.movement[0] ?? "boot", loaded[5] ? entries[5]?.movement ?? "boot" : native?.movement[1] ?? "boot"],
+      weaponFamily: loaded[6] ? entries[6]?.attackFamily ?? "blunt" : native?.weaponFamily ?? "blunt",
+      weaponContact,
       resetPose() {
         for (const r of rest) { r.b.position.copy(r.p); r.b.quaternion.copy(r.q); r.b.scale.copy(r.s); }
         for (const s of SOCKETS) toy.setVisible(s, true);
@@ -209,7 +236,13 @@ export async function createCombatToy(build: Build, look: BotLook = {}, forceNat
         for (const mesh of frozen.children as THREE.Mesh[]) mesh.geometry.translate(-origin.x,-origin.y,-origin.z);
         frozen.position.copy(origin); return frozen;
       },
-      dispose() { if (disposed) return; disposed=true; materials.forEach(m => m.dispose()); textures.forEach(t=>t.dispose());extraGeometry.forEach(g=>g.dispose());skeletons.forEach(s => s.dispose()); root.removeFromParent(); root.clear(); },
+      dispose() {
+        if (disposed) return; disposed=true;
+        // Native geometry is instance-owned, unlike the shared GLB geometry.
+        // Return the transferred meshes to their owner for one complete cleanup.
+        if (native) { nativeMeshes.forEach(mesh => native.root.add(mesh)); native.dispose(); }
+        materials.forEach(m => m.dispose()); textures.forEach(t=>t.dispose());extraGeometry.forEach(g=>g.dispose());skeletons.forEach(s => s.dispose()); root.removeFromParent(); root.clear();
+      },
     };
     root.userData.toyHeight = toy.height; root.userData.rigVersion = m.version;
     return toy;
