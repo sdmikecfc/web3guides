@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createLabSet } from "./staging";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { createClayRobot, type ClayRobot } from "./robot";
 import { createFightV4, type BuildV4, type EventV4, type Side, type StateV4 } from "./engine";
@@ -13,39 +14,19 @@ export interface LabScene {
 interface Burst { point: THREE.Vector3; start: number; colour: THREE.Color; kind: EventV4["kind"] }
 export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event: EventV4) => void): Promise<LabScene> {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-  renderer.setClearColor(0x182320); renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.13;
+  renderer.setClearColor(0x211810); renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x182320); scene.fog = new THREE.Fog(0x182320, 17, 34);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x211810);
   const camera = new THREE.PerspectiveCamera(35, 1, .1, 60), target = new THREE.Vector3(0, 1.20, 0);
-  const pmrem = new THREE.PMREMGenerator(renderer), room = new RoomEnvironment(), env = pmrem.fromScene(room, .03); scene.environment = env.texture; room.dispose(); pmrem.dispose();
-  scene.add(new THREE.HemisphereLight(0xe9e6c5, 0x29372f, 2.1));
-  const key = new THREE.DirectionalLight(0xffdb9d, 4.1); key.position.set(-4, 8, 5); key.castShadow = true;
-  key.shadow.mapSize.set(1024, 1024); key.shadow.camera.left = key.shadow.camera.bottom = -7; key.shadow.camera.right = key.shadow.camera.top = 7; key.shadow.camera.far = 25; key.shadow.normalBias = .035; key.shadow.bias = -.0002; scene.add(key);
-  const rim = new THREE.DirectionalLight(0x84c8b8, 2.2); rim.position.set(3, 5, -6); scene.add(rim);
-  const fill = new THREE.DirectionalLight(0xffb077, .7); fill.position.set(6, 3, 4); scene.add(fill);
-  const ownedGeometry = new Set<THREE.BufferGeometry>(), ownedMaterial = new Set<THREE.Material>();
-  function material(colour: number, roughness = .82, metalness = 0) { const m = new THREE.MeshStandardMaterial({ color: colour, roughness, metalness }); ownedMaterial.add(m); return m; }
-  function mesh(g: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0) { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.receiveShadow = true; ownedGeometry.add(g); scene.add(o); return o; }
-  const floor = mesh(new THREE.CylinderGeometry(5.7, 5.85, .25, 72), material(0x697362), 0, -.16); floor.castShadow = true;
-  const rimFloor = mesh(new THREE.TorusGeometry(5.46, .028, 8, 96), material(0xe0bc77), 0, -.015); rimFloor.rotation.x = -Math.PI / 2;
-  const centre = mesh(new THREE.RingGeometry(1.0, 1.02, 64), material(0x9a9f81), 0, -.027); centre.rotation.x = -Math.PI / 2;
-  const surround = mesh(new THREE.PlaneGeometry(70, 70), material(0x19231e), 0, -.30); surround.rotation.x = -Math.PI / 2;
-  const panelMat = material(0x283a31), metal = material(0x536050, .5, .35), gold = material(0xae8850, .49, .45);
-  for (let i = 0; i < 12; i++) {
-    if (i < 4 || i > 8) continue;
-    const a = i / 12 * Math.PI * 2, x = Math.sin(a) * 7.6, z = Math.cos(a) * 7.6;
-    const panel = mesh(new THREE.BoxGeometry(3.0, 2.6, .18), panelMat, x, 1, z); panel.rotation.y = a;
-    mesh(new THREE.CylinderGeometry(.075, .075, 3.5, 8), metal, x, 1.4, z);
-    const lamp = mesh(new THREE.BoxGeometry(.36, .1, .34), gold, x, 3.2, z); lamp.rotation.y = a;
-  }
-  // A real floor inscription stays in the miniature set as the camera moves.
-  const sign = document.createElement("canvas"); sign.width = 1024; sign.height = 256;
-  const ctx = sign.getContext("2d")!; ctx.clearRect(0, 0, 1024, 256); ctx.textAlign = "center";
-  ctx.fillStyle = "#c8c4a3"; ctx.font = "900 120px Arial"; ctx.fillText("MODEL KOMBAT", 512, 144); ctx.font = "24px Arial"; ctx.fillText("D O M A   /   C O M B A T   L A B", 512, 200);
-  const signTex = new THREE.CanvasTexture(sign); signTex.colorSpace = THREE.SRGBColorSpace;
-  const signMat = new THREE.MeshBasicMaterial({ map: signTex, transparent: true, opacity: .34, depthWrite: false }); ownedMaterial.add(signMat);
-  const signMesh = mesh(new THREE.PlaneGeometry(4.7, 1.175), signMat, 0, -.022, 3.25); signMesh.rotation.x = -Math.PI / 2;
+  const pmrem = new THREE.PMREMGenerator(renderer), room = new RoomEnvironment(), env = pmrem.fromScene(room, .03); scene.environment = env.texture; scene.environmentIntensity = .36; room.dispose(); pmrem.dispose();
+  const ambient = new THREE.HemisphereLight(0xffefcf, 0x56504a, 1.1); scene.add(ambient);
+  const key = new THREE.DirectionalLight(0xffddb0, 4.1); key.position.set(-3.5, 8, -3.8); key.castShadow = true;
+  key.target.position.set(0, 1.8, 0); scene.add(key.target);
+  key.shadow.mapSize.set(1024, 1024); key.shadow.camera.left = key.shadow.camera.bottom = -7; key.shadow.camera.right = key.shadow.camera.top = 7; key.shadow.camera.far = 25; key.shadow.normalBias = .025; key.shadow.bias = -.0002; key.shadow.radius = 5; scene.add(key);
+  const fill = new THREE.DirectionalLight(0xfff3e2, 2.0); fill.position.set(1.5, 4.5, 7); scene.add(fill);
+  const rim = new THREE.DirectionalLight(0xffce91, 1.9); rim.position.set(4, 5, -2); scene.add(rim);
+  const set = await createLabSet(scene);
   const particleGeometry = new THREE.BufferGeometry(), particlePositions = new Float32Array(96 * 3), particleColours = new Float32Array(96 * 3);
   particleGeometry.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3)); particleGeometry.setAttribute("color", new THREE.BufferAttribute(particleColours, 3));
   const particleMat = new THREE.PointsMaterial({ size: .065, vertexColors: true, transparent: true, depthWrite: false, sizeAttenuation: true });
@@ -81,7 +62,13 @@ export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event:
     render(state, time, showroom, cinematic, reduced) {
       if (!robots || dead) return;
       latest = state; if (state.frame < lastFrame) reset(); lastFrame = state.frame;
-      robots.forEach((r, i) => r.pose(state.fighters[i], state, i as Side, time, showroom));
+      robots.forEach((r, i) => {
+        r.pose(state.fighters[i], state, i as Side, time, showroom);
+        r.root.visible = !showroom || i === 0;
+        if (showroom && i === 0) { r.root.position.x = 0; r.root.rotation.y = -.12; r.root.updateMatrixWorld(true); }
+      });
+      set.update(showroom, width, height, robots.map(r => r.root));
+      ambient.intensity = showroom ? 1.1 : .65; fill.intensity = showroom ? 1.8 : 1.3;
       if (!showroom) while (eventIndex < state.events.length) {
         const e = state.events[eventIndex++];
         if (e.kind === "hit" || e.kind === "block") {
@@ -114,10 +101,10 @@ export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event:
       const aspect = width / height, isPhone = aspect < 1;
       const hit = cinematic && !reduced ? Math.max(0, 1 - (time - cameraHit) / .85) : 0;
       if (showroom) {
-        const angle = cinematic && !reduced ? Math.sin(time * .17) * .72 : .12;
-        const radius = inspectClay ? (isPhone ? 10 : 7) : isPhone ? 14.6 : 11.5;
-        const focus = inspectClay ? -1.6 : 0;
-        camera.position.set(focus + Math.sin(angle) * radius, inspectClay ? 3.5 : 5.0, Math.cos(angle) * radius); target.set(focus, 1.35, 0);
+        const angle = cinematic && !reduced ? Math.sin(time * .17) * .45 + .18 : .30;
+        const radius = inspectClay ? (isPhone ? 7.4 : 6.7) : isPhone ? 8.1 : 7.9;
+        const focus = 0;
+        camera.position.set(focus + Math.sin(angle) * radius, inspectClay ? 3.0 : 3.4, Math.cos(angle) * radius); target.set(focus, 1.40, 0);
       } else {
         const midpoint = new THREE.Vector3((state.fighters[0].x + state.fighters[1].x) / 2000, 1.25, (state.fighters[0].z + state.fighters[1].z) / 2000);
         const spread = Math.hypot(state.fighters[0].x - state.fighters[1].x, state.fighters[0].z - state.fighters[1].z) / 1000;
@@ -132,8 +119,8 @@ export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event:
     resize(w, h) { if (w <= 0 || h <= 0 || dead) return; width = w; height = h; renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, w < 650 ? 1.25 : 1.6)); renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = camera.aspect < .8 ? 43 : 35; camera.updateProjectionMatrix(); },
     metrics() { return { drawCalls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, dents: robots ? robots[0].dents + robots[1].dents : 0 }; },
     dispose() {
-      dead = true; generation++; robots?.forEach(r => r.dispose()); ownedGeometry.forEach(g => g.dispose()); ownedMaterial.forEach(m => m.dispose());
-      particleGeometry.dispose(); particleMat.dispose(); bulletGeo.dispose(); bulletMat.dispose(); indicatorGeo.dispose(); indicatorMat.dispose(); signTex.dispose(); env.texture.dispose(); env.dispose(); renderer.dispose();
+      dead = true; generation++; robots?.forEach(r => r.dispose()); set.dispose();
+      particleGeometry.dispose(); particleMat.dispose(); bulletGeo.dispose(); bulletMat.dispose(); indicatorGeo.dispose(); indicatorMat.dispose(); env.texture.dispose(); env.dispose(); renderer.dispose();
     },
   };
   return api;

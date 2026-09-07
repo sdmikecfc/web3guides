@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { SLOTS, type BuildV4, type Slot, type EventV4, type Fighter, type StateV4, type Side, type Point } from "./engine";
 
-export const COLOURS = { brute: 0xa8623d, hotshot: 0x5d9890, deadeye: 0xc4b280 };
+export const COLOURS = { brute: 0xbb7056, hotshot: 0x689e96, deadeye: 0x65728b };
 const files = new Map<string, Promise<GLTF>>();
 const loader = new GLTFLoader();
 export function loadModule(name: string): Promise<GLTF> {
@@ -59,7 +59,7 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
   const bones: Record<string, THREE.Group> = {};
   function bone(name: string, parent: THREE.Object3D, x: number, y: number, z = 0) { const b = new THREE.Group(); b.name = name; b.position.set(x, y, z); bones[name] = b; parent.add(b); return b; }
   const torso = bone("torso", rig, 0, 1), width = build.parts.torso.family === "brute" ? .87 : .71;
-  bone("head", torso, 0, 1.27);
+  bone("head", torso, 0, 1.27).scale.setScalar(1.18);
   for (const side of ["L", "R"]) {
     const sign = side === "L" ? 1 : -1; // Robot's left is stage-right when facing the camera.
     const arm = bone("arm" + side, torso, sign * width, .97);
@@ -88,14 +88,14 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
       const clay = mesh.userData.clay === true;
       if (clay) {
         mat.color.setHex(COLOURS[build.parts[slot === "weapon" ? "armR" : slot].family]);
-        mat.roughness = .88; mat.metalness = 0; mat.normalMap = texture; mat.normalScale.set(.27, .27);
+        mat.roughness = .82; mat.metalness = 0; mat.normalMap = texture; mat.normalScale.set(.18, .18);
         mesh.geometry = mesh.geometry.clone(); geometries.add(mesh.geometry);
         const p = mesh.geometry.getAttribute("position"), uv = new Float32Array(p.count * 2);
         for (let i = 0; i < p.count; i++) { uv[i * 2] = p.getX(i) * 1.1; uv[i * 2 + 1] = p.getY(i) * 1.1; }
         mesh.geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
         originals.set(mesh, new Float32Array(p.array));
       }
-      mat.envMapIntensity = .48; materials.add(mat); mesh.material = mat;
+      mat.envMapIntensity = clay ? .4 : .8; materials.add(mat); mesh.material = mat;
       mesh.castShadow = true; mesh.receiveShadow = true; mesh.userData.slot = slot; mesh.userData.shield = isShield;
       mesh.updateMatrix(); homes.set(mesh, { parent, matrix: mesh.matrix.clone() }); meshes[slot].push(mesh);
     }

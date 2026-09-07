@@ -100,11 +100,11 @@ export default function LabClient() {
   const labels = ["Your robot", `${FAMILY_LABEL[opponent]} rival`];
   return <main className={css.lab}>
     <header className={css.header}><Link href="/bots" className={css.brand}>MODEL KOMBAT<span>A DOMA GAME</span></Link><div className={css.headerMiddle}><span className={css.liveDot} /> COMBAT LAB <small>Practice workshop</small></div><Link className={css.back} href="/bots">Back to garage ↗</Link></header>
-    <div className={css.intro}><div><p className={css.eyebrow}>HANDMADE MACHINES. UNSCRIPTED TROUBLE.</p><h1>Built different.</h1></div><p>Mix the parts. Watch the consequences.<br /><span>Your practice builds are saved here.</span></p></div>
+    <div className={css.intro}><div><p className={css.eyebrow}>PRACTICE WORKSHOP · SAVED HERE</p><h1>Made by you.</h1></div><p>Mix the parts. Find your fighter.<br /><span>Try a build, then take it into the ring.</span></p></div>
     <div className={css.workspace}>
       <aside className={css.overview} aria-label="Overall robot stats">
         <div className={css.panelHeading}><span className={css.eyebrow}>YOUR MACHINE</span><h2>{pending ? "Try it on." : "Make it yours."}</h2></div>
-        <div className={css.presets} aria-label="Example builds">{FAMILIES.map(family => <button key={family} disabled={view === "fight"} onClick={() => { setBuild(preset(family)); setPending(null); setNotice(""); }}><i style={{ background: { brute: "#bc7c50", hotshot: "#7eb4a6", deadeye: "#d8c899" }[family] }} />{FAMILY_LABEL[family]}</button>)}</div>
+        <div className={css.presets} aria-label="Example builds">{FAMILIES.map(family => <button key={family} disabled={view === "fight"} onClick={() => { setBuild(preset(family)); setPending(null); setNotice(""); }}><i style={{ background: { brute: "#bb7056", hotshot: "#689e96", deadeye: "#8998b1" }[family] }} />{FAMILY_LABEL[family]}</button>)}</div>
         <div className={css.sectionLabel}>OVERALL STATS{pending && <span>With preview part</span>}</div>
         <StatList rows={totalRows} before={pending ? overallRows(build) : undefined} />
         <p className={css.hint}>These are the actual starting combat values. Part loss and control effects change them during a fight.</p>
@@ -113,12 +113,12 @@ export default function LabClient() {
       </aside>
       <section className={css.arenaSection} aria-label="Robot preview and combat arena">
         <div className={css.stage}>
-          <div className={css.stageTop}><span className={css.stageTag}>{view === "build" ? pending ? "PART PREVIEW" : "THE PROVING GROUND" : "PRACTICE FIGHT"}</span><span>{view === "fight" ? `${((readout?.frame ?? 0) / 60).toFixed(1)}s` : "CLAY / STEEL / A LITTLE ATTITUDE"}</span></div>
+          <div className={css.stageTop}><span className={css.stageTag}>{view === "build" ? pending ? "TRYING IT ON" : "YOUR WORKSHOP" : "PRACTICE FIGHT"}</span><span>{view === "fight" ? `${((readout?.frame ?? 0) / 60).toFixed(1)}s` : "CLAY ARMOUR · BRASS BONES"}</span></div>
           <canvas ref={canvas} className={css.canvas} aria-label="3D clay robot preview and deterministic practice combat" />
           {!ready && !error && <div className={css.overlay}><span className={css.spinner} />Assembling the clay machines…</div>}
           {error && <div className={css.overlay} role="alert"><p>{error}</p><button onClick={() => { setError(""); setRetry(v => v + 1); }}>Reload workshop</button></div>}
           {view === "fight" && readout && <div className={css.health}>{readout.fighters.map((f, i) => <div key={i}><strong>{labels[i]}</strong><div className={css.healthTrack}><span style={{ width: `${f.armour[1] / readout.stats[i].armour[1] * 100}%` }} /></div><small>{f.armour[1]} / {readout.stats[i].armour[1]} body armour</small><span className={css.statusLabel}>{f.downUntil > readout.frame ? "KNOCKED DOWN" : f.stunnedUntil > readout.frame ? "STUNNED" : f.dodgeUntil > readout.frame ? "EVADING" : f.immuneUntil > readout.frame ? "RECOVERY PROTECTION" : f.action && !f.action.released ? f.action.kind === "rifle" ? "TAKING AIM" : f.action.kind === "hammer" ? "CHARGING HAMMER" : "WINDING UP" : ""}</span></div>)}</div>}
-          {view === "build" && <div className={css.nameplates}><span>YOUR BUILD</span><span>{FAMILY_LABEL[opponent].toUpperCase()} RIVAL</span></div>}
+          {view === "build" && <div className={css.nameplates}><span>{pending ? "Preview attached" : "Your one-of-a-kind machine"}</span></div>}
           {view === "fight" && readout?.done && <div className={css.result}><span>PRACTICE COMPLETE</span><h2>{readout.winner === 0 ? "Your machine takes it." : "A lesson in the dents."}</h2><p>{labels[readout.winner ?? 0]} wins. Try another combination.</p></div>}
           <div className={css.stageBottom}><span>{pending ? "Preview attached. Fit it to keep the change." : view === "build" ? "Every piece can come from a different family." : feed[0] || "The machines are finding their range."}</span><span>{performanceData.dents} dents</span></div>
         </div>
@@ -143,7 +143,7 @@ export default function LabClient() {
         <div className={css.sectionLabel}>TRY ANOTHER PART</div>
         <div className={css.parts}>{items.map(item => {
           const name = partName(slot, item), active = slot === "weapon" ? display.weapon === item.weapon : JSON.stringify(display.parts[slot]) === JSON.stringify(item.parts[slot]);
-          return <button key={name} aria-pressed={active} disabled={view === "fight"} onClick={() => { setNotice(""); if (slot === "weapon") setPending(item); else chooseModule(item.parts[slot]); }}><i style={{ background: slot === "weapon" ? "#cbb37a" : { brute: "#bc7c50", hotshot: "#7eb4a6", deadeye: "#d8c899" }[item.parts[slot].family] }} /><span>{name}</span><small>{partRows(item, slot).map(r => `${decimal(r.value)} ${r.label.toLowerCase()}`).slice(0, 2).join(" · ")}</small></button>;
+          return <button key={name} aria-pressed={active} disabled={view === "fight"} onClick={() => { setNotice(""); if (slot === "weapon") setPending(item); else chooseModule(item.parts[slot]); }}><i style={{ background: slot === "weapon" ? "#cbb37a" : { brute: "#bb7056", hotshot: "#689e96", deadeye: "#8998b1" }[item.parts[slot].family] }} /><span>{name}</span><small>{partRows(item, slot).map(r => `${decimal(r.value)} ${r.label.toLowerCase()}`).slice(0, 2).join(" · ")}</small></button>;
         })}</div>
       </aside>
     </div>

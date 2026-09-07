@@ -13,8 +13,9 @@ export default function PartInspection({ build, slot }: { build: BuildV4; slot: 
       const renderer = new THREE.WebGLRenderer({ canvas: canvas.current!, antialias: true, alpha: true });
       renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.setPixelRatio(Math.min(devicePixelRatio, 1.4));
       const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(34, 1, .01, 30);
-      scene.add(robot.root, new THREE.HemisphereLight(0xffeed2, 0x374638, 3));
-      const light = new THREE.DirectionalLight(0xffe6c0, 4); light.position.set(3, 5, 4); scene.add(light);
+      scene.add(robot.root, new THREE.HemisphereLight(0xffeed2, 0x594434, 1.5));
+      const light = new THREE.DirectionalLight(0xffe6c0, 3.2); light.position.set(-3, 5, 4); scene.add(light);
+      const rim = new THREE.DirectionalLight(0xffce91, 2); rim.position.set(3, 3, -3); scene.add(rim);
       Object.entries(robot.meshes).forEach(([s, meshes]) => meshes.forEach(m => { m.visible = s === slot; }));
       robot.root.updateMatrixWorld(true);
       const box = new THREE.Box3(); for (const m of robot.meshes[slot]) box.expandByObject(m);

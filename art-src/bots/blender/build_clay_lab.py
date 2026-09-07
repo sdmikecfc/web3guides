@@ -24,7 +24,9 @@ DARK=material('mechanism',(.035,.048,.045),.58,.42)
 BRASS=material('brass',(.48,.30,.11),.75,.35)
 STEEL=material('steel',(.27,.32,.30),.8,.29)
 IVORY=material('ivory',(.83,.76,.56),0,.71)
-LENS=material('lens',(.68,.95,.82),.12,.20,.8)
+LENS=material('lens',(.94,.85,.61),.06,.24)
+PUPIL=material('pupil',(.016,.024,.020),.2,.19)
+GLINT=material('glint',(1,.98,.87),0,.14)
 HOT=material('charge',(.92,.29,.09),.22,.24,1.1)
 RUBBER=material('rubber',(.025,.03,.028),0,.91)
 OBJS=[]
@@ -58,7 +60,7 @@ def shell(name,p,size,bone,power=4,res=14):
         if key in lookup:return lookup[key]
         v=[x/res for x in c];n=sum(abs(x)**power for x in v)**(1/power)
         v=[x/n for x in v]
-        wobble=.006*math.sin(v[0]*19+v[1]*13)*math.sin(v[2]*17-v[1]*9)+.003*math.sin(v[0]*41+v[2]*31)
+        wobble=.0025*math.sin(v[0]*19+v[1]*13)*math.sin(v[2]*17-v[1]*9)+.0015*math.sin(v[0]*41+v[2]*31)
         point=[v[i]*(size[i]*.5+wobble) for i in range(3)]
         idx=len(verts);verts.append(cv(point));lookup[key]=idx;return idx
     for axis in range(3):
@@ -80,22 +82,24 @@ def rivet(x,y,z,bone):
 def eye(p,bone,r=.14,angry=False):
     cylinder('optic housing',(p[0],p[1],p[2]-.05),(p[0],p[1],p[2]+.035),r*1.25,DARK,bone)
     sphere('living lens',(p[0],p[1],p[2]+.045),(r,r*.9,.046),LENS,bone)
+    sphere('pupil',(p[0]-.012,p[1]-.014,p[2]+.085),(r*.38,r*.49,.022),PUPIL,bone)
+    sphere('eye glint',(p[0]-.012-r*.12,p[1]+r*.12,p[2]+.104),(r*.12,r*.14,.008),GLINT,bone)
     ring('optic ring',(p[0],p[1],p[2]+.045),r,.019,BRASS,bone)
     if angry:
-        brow=box('clay brow',(p[0],p[1]+r*.70,p[2]+.10),(r*2.2,.085,.11),CLAY,bone)
-        brow.rotation_euler[1]=-.17 if p[0]>0 else .17
+        brow=box('expressive brow',(p[0],p[1]+r*.78,p[2]+.10),(r*2.2,.068,.10),DARK,bone)
+        brow.rotation_euler[1]=-.25 if p[0]>0 else .25
 
 def head(f,v):
     if f=='brute':
         shell('forged clay helmet',(0,.32,0),(1.02,.73,.74),'head',5 if v==0 else 3)
-        for x in [-.22,.22]:eye((x,.37,.36),'head',.12,True)
+        for x in [-.22,.22]:eye((x,.37,.36),'head',.155,True)
         box('jaw',(0,.04,.25),(.66,.18,.35),DARK,'head')
         for x in [-.2,-.1,0,.1,.2]:box('teeth',(x,.055,.45),(.047,.09,.035),IVORY,'head',.008)
         for x in [-.48,.48]:cylinder('helmet ear',(x,.32,0),(x*1.16,.32,0),.14,BRASS,'head')
         if v:ring('crown hook',(0,.80,0),.11,.025,BRASS,'head',axis='x')
     elif f=='hotshot':
         shell('quick clay mask',(0,.35,0),(.88,.73,.66),'head',3 if v==0 else 6)
-        for x in [-.18,.18]:eye((x,.40,.33),'head',.11)
+        for x in [-.18,.18]:eye((x,.40,.33),'head',.14)
         brow=box('cocked eyebrow',(-.19,.57,.39),(.34,.045,.045),DARK,'head',.012);brow.rotation_euler[1]=-.18
         mouth=box('half smile',(.08,.18,.36),(.25,.04,.045),DARK,'head',.019);mouth.rotation_euler[1]=-.20
         for i in range(3 if v==0 else 1):
@@ -113,6 +117,10 @@ def torso(f,v):
     size={'brute':(1.48,1.22,.91),'hotshot':(.98,1.15,.68),'deadeye':(1.08,1.24,.75)}[f]
     shell('clay breastplate',(0,.52,0),size,'torso',5 if v==0 else 2.8,18)
     z=size[2]/2
+    shell('raised clay service panel',(0,.51,z-.012),(size[0]*.69,.74,.13),'torso',5,14)
+    for x in [-size[0]*.27,size[0]*.27]:
+        for y in [.25,.77]:rivet(x,y,z+.065,'torso')
+    z+=.055
     ring('reactor frame',(0,.56,z+.035),.17,.035,DARK,'torso')
     cylinder('reactor',(0,.56,z),(0,.56,z+.05),.13,BRASS,'torso')
     sphere('reactor light',(0,.56,z+.065),(.075,.075,.02),LENS,'torso')

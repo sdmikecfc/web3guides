@@ -4,7 +4,7 @@ First combat upgrade, implemented 8 September 2026. Practice only; no wallet, se
 
 ## Open or restart the preview
 
-The compiled local preview is at http://127.0.0.1:3000/bots/lab. The existing builder's stat panels are at http://127.0.0.1:3000/bots?view=build.
+The local development preview is at http://127.0.0.1:3000/bots/lab. The existing builder's stat panels are at http://127.0.0.1:3000/bots?view=build.
 
 For development after a reboot, run in PowerShell:
 
@@ -57,6 +57,14 @@ npx tsx --conditions=react-server scripts/bots-game-state-check.ts
 - Observed development-desktop rendering around 58–60 FPS after warm-up, typically 112–115 draws and approximately 94,500 triangles for Brute/Hotshot. These are sampled browser rendering counters, not a GPU benchmark or a physical phone measurement.
 - Compiled production HTTP gate: lab disabled returns 404; enabled local preview returns 200. Build completed with pre-existing optional wallet-package/Browserslist warnings and unrelated dynamic-route logs.
 
+## Visual correction after initial review
+
+The first lab presentation was rejected as a visual regression. The current revision restores the original workshop plate and wooden plinth, presents one larger selected robot, and uses the existing arena audience art behind a physical ring with brass fittings. Warm brown panels and rounded garage typography replace the green presentation. Robots have larger heads, ivory optics with pupils and glints, expressive brows, raised service panels, finer clay variation and distinct coral, teal and blue palettes. Combat rules are unchanged.
+
+Verified this revision with TypeScript, all 28 actual GLB asset/attachment/deformation/replay-cleanup checks, desktop layout at 1440×1000 and mobile layout at 390×844, all three preset designs, a completed fight and return to the workshop, and visible hammer/projectile/blade dents. The showroom sampled 60 FPS, 57 draws and 52,890 triangles on the development desktop; this is not a physical phone measurement. Browser console had no errors. The earlier full build and engine-baseline results above apply to the initial implementation; this visual revision was checked with the development preview and TypeScript.
+
+The clay character designs still need art refinement. Restoring the original setting does not establish that the new models match the original toy catalogue's quality.
+
 ## Remaining limits
 
 - A physical mobile-device performance test is outstanding; the 30 FPS phone target is not certified. Reduced-motion branches disable camera motion/impact slowdown and CSS animation; an OS-level reduced-motion session was not available for live verification.
@@ -67,4 +75,4 @@ npx tsx --conditions=react-server scripts/bots-game-state-check.ts
 
 ## Discord preview post
 
-Model Kombat's Combat Lab is ready for preview: mix Brute, Hotshot and Deadeye parts, try a hammer, shock baton or rifle, and watch shields, stuns and knockdowns leave real dents in the clay. The builder now shows overall stats and part-by-part gains and tradeoffs before you commit. Practice only while we tune the combat.
+Combat Lab visual update: the familiar workshop is back, with a closer robot preview, expressive faces and a warm arena surrounded by the original crowd artwork. Mix parts and inspect their stats, then take your build into a practice fight. Clay dents and the new combat mechanics are still in place. Preview only while we refine the models.
