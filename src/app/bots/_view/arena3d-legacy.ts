@@ -43,7 +43,7 @@ function canvasTexture(w: number, h: number, draw: (ctx: CanvasRenderingContext2
 function studioEnvironment(renderer: THREE.WebGLRenderer) {
   const room = new RoomEnvironment();
   const pmrem = new THREE.PMREMGenerator(renderer);
-  const result = pmrem.fromScene(room,.045);room.dispose();pmrem.dispose();return result;
+  const result = pmrem.fromScene(room,.04);room.dispose();pmrem.dispose();return result;
 }
 
 interface BreakShot { side: Side; socket: Socket; frame: number; key: number; group: THREE.Group; start: THREE.Vector3; rotation: THREE.Quaternion; scale: THREE.Vector3; restY?: number }

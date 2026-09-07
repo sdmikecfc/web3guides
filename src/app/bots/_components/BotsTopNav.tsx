@@ -41,12 +41,18 @@ export function BotsTopNav() {
   // read after mount: the server has no localStorage, and a name rendered on
   // the server would be a different name from the one the browser knows
   const [playerName, setPlayerName] = useState("");
+  const [mounted, setMounted] = useState(false);
   const [gameApex, setGameApex] = useState(false);
   useEffect(() => setPlayerName(readBotsPlayerName()), [path]);
-  useEffect(() => setGameApex(window.location.hostname === "modelkombat.xyz" || window.location.hostname === "www.modelkombat.xyz"), []);
+  useEffect(() => {
+    setMounted(true);
+    setGameApex(window.location.hostname === "modelkombat.xyz" || window.location.hostname === "www.modelkombat.xyz");
+  }, []);
 
   // The garage-first game owns its own persistent controls.
-  if (gameApex || path === "/bots/welcome" || path === "/bots" && workshopEnabled()) return null;
+  // Wait for the browser before choosing: the custom-domain middleware rewrites
+  // / to /bots, so the server and browser intentionally observe different paths.
+  if (!mounted || gameApex || path === "/bots/welcome" || path === "/bots" && workshopEnabled()) return null;
 
   const nav = [
     { t: t.garage, href: "/bots/garage", icon: <IconGarage size={22} /> },

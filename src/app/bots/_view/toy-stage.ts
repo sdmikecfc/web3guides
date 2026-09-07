@@ -35,7 +35,7 @@ export function createToyStage(canvas: HTMLCanvasElement, variant: ToyStageVaria
   camera.lookAt(0,2.08,0);
   const pmrem = new THREE.PMREMGenerator(renderer);
   const room = new RoomEnvironment();
-  const environment = pmrem.fromScene(room,0.045);
+  const environment = pmrem.fromScene(room,0.04);
   scene.environment = environment.texture;
   scene.environmentIntensity = 0.36;
   room.dispose();
