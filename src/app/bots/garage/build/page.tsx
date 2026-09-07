@@ -1,19 +1,13 @@
-/**
- * /bots/garage/build?bay=1..5: the Build screen (screens doc 2). The client
- * reads the bay number from the query, so it sits under a Suspense boundary
- * (Next 14 requires one around useSearchParams for the static shell).
- */
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { workshopEnabled } from "@/lib/bots/rollout";
 import BuildClient from "./BuildClient";
 
-export const metadata = {
-  title: "Build | Clanker Cup",
-};
-
-export default function BuildPage() {
-  return (
-    <Suspense fallback={null}>
-      <BuildClient />
-    </Suspense>
-  );
+export const metadata = { title: "Build | Clanker Cup" };
+export default function Page({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  if (workshopEnabled()) {
+    const bay = typeof searchParams.bay === "string" && /^[1-5]$/.test(searchParams.bay) ? searchParams.bay : null;
+    redirect("/bots?view=build" + (bay ? "&bay=" + bay : ""));
+  }
+  return <Suspense fallback={null}><BuildClient /></Suspense>;
 }

@@ -64,10 +64,8 @@ import {
   type BrandId,
 } from "@/lib/bots/naming";
 import { SCREEN_WORDS, STAT_NAME_OF, fillWords } from "@/lib/bots/naming-screens";
-import { buildBay, type BayHandle, type RingState } from "../../_view/bay";
-import { bodyTintOf, rigLookOf } from "../../_view/look-view";
-import { ART_OF_SOCKET, type PartArt } from "../../_view/rig";
-import { loadPartArt } from "../../_view/part-art";
+import { ToyDisplay, PartDisplay, type ToyDisplayHandle } from "../../_components/ToyDisplay";
+import { rigLookOf } from "../../_view/look-view";
 import type { EarnedBotView, LookView } from "../../_server/types";
 import {
   BAY_COUNT,
@@ -82,8 +80,8 @@ import {
   botTier,
   botTotal,
   emptySockets,
+  engineBuild,
   nameText,
-  partArt,
   partTotal,
   recycleValue,
   setProgress,
@@ -121,11 +119,6 @@ const SNAP_CSS = 60;
 const DRAG_START_PX = 4;
 const LORE_HOVER_MS = 350;
 const LONG_PRESS_MS = 450;
-
-/** React StrictMode dev-mounts effects twice; two app.init() calls racing on
- * ONE canvas kill each other's shaders (the Battlefield law). Every build AND
- * destroy is chained through this promise. */
-let pixiChain: Promise<void> = Promise.resolve();
 
 /* ── sfx: a trimmed adapted copy of src/app/chef/game/_view/sfx.ts ──────── */
 
@@ -375,33 +368,10 @@ function SetLine({ part }: { part: OwnedPart }) {
  * A part with no colour (every weapon: ADR-0141) draws the clay alone, which
  * is the true answer and the one its line already gives.
  */
-function PartPic({ part, size }: { part: OwnedPart; size: number }) {
-  const art = partArt(part);
-  return (
-    <span style={{ position: "relative", width: size, height: size, display: "block", isolation: "isolate" }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={art.base} alt="" draggable={false} style={{ width: size, height: size, objectFit: "contain", display: "block" }} />
-      {part.paint ? (
-        <span
-          aria-hidden
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: PAINTS[part.paint],
-            mixBlendMode: "multiply",
-            WebkitMaskImage: `url(${art.mask})`,
-            maskImage: `url(${art.mask})`,
-            WebkitMaskSize: "contain",
-            maskSize: "contain",
-            WebkitMaskRepeat: "no-repeat",
-            maskRepeat: "no-repeat",
-            WebkitMaskPosition: "center",
-            maskPosition: "center",
-          }}
-        />
-      ) : null}
-    </span>
-  );
+function PartPic({part,size}:{part:OwnedPart;size:number}){
+  return <span style={{display:"block",width:size,height:size,borderRadius:10,overflow:"hidden",pointerEvents:"none"}}>
+    <PartDisplay part={part} ariaLabel={part.name}/>
+  </span>;
 }
 
 /* ── the tray card (264x88 on desktop, full width in the sheet) ─────────── */
@@ -692,12 +662,8 @@ export default function BuildClient() {
   const [artDone, setArtDone] = useState(false);
   const [small, setSmall] = useState(false);
 
-  const wrapRef = useRef<HTMLDivElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const bayRef = useRef<BayHandle | null>(null);
-  const artCache = useRef(new Map<string, PartArt>());
+  const displayRef = useRef<ToyDisplayHandle | null>(null);
   const sfx = useMemo(() => createSfx(), []);
-  const pendingFlash = useRef<Socket[]>([]);
   const loreTimer = useRef<number | null>(null);
   const dragStart = useRef<{ uid: string; x: number; y: number; moved: boolean } | null>(null);
 
@@ -714,14 +680,6 @@ export default function BuildClient() {
   const complete = empties.length === 0;
   const tier: Tier | null = complete ? botTier(total) : null;
   const partOf = useCallback((uid: string | null) => (uid ? st.parts.find((p) => p.uid === uid) ?? null : null), [st.parts]);
-  const rings = useMemo<Record<Socket, RingState>>(() => {
-    const out = {} as Record<Socket, RingState>;
-    for (const s of SOCKETS) {
-      const p = partOf(socketUid(build, s));
-      out[s] = { filled: !!p, tier: p ? p.tier : null };
-    }
-    return out;
-  }, [build, partOf]);
   // ── what the SERVER says this robot has earned (the ninth law) ──────────
   // The builds on this screen live in the browser, and the browser is not
   // allowed to say what a robot earned, so the wins, the level, the lost
@@ -843,14 +801,6 @@ export default function BuildClient() {
     [build, look, lookEarned, partOf],
   );
 
-  const armingSlot: CardSlot | null = drag
-    ? partOf(drag.uid)?.slot ?? null
-    : selected
-      ? partOf(selected)?.slot ?? null
-      : sheet?.kind === "parts"
-        ? sheet.slot
-        : null;
-
   // ── the saved build, once the store has hydrated ────────────────────────
   // IT WAITS FOR THE SERVER'S ANSWER FIRST. This runs once per spot, so
   // seeding it off the demo garage while the wallet's real robot was still on
@@ -866,143 +816,23 @@ export default function BuildClient() {
     setBuild(saved ? { ...saved, cards: { ...saved.cards } } : starterBuild(bayNo));
   }, [st, bayNo, live.ready]);
 
-  // ── the bay ─────────────────────────────────────────────────────────────
-  const tapRef = useRef<(s: Socket) => void>(() => {});
+  // The studio creates the complete seven-piece model before rendering once.
+  const tapRef = useRef<(socket: Socket) => void>(() => {});
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const wrap = wrapRef.current;
-    if (!canvas || !wrap) return;
-    let dead = false;
-    let raf = 0;
-    let ro: ResizeObserver | null = null;
-    const isSmall = typeof matchMedia !== "undefined" && matchMedia("(max-width: 899px)").matches;
-    setSmall(isSmall);
-    const toyFont =
-      getComputedStyle(wrap).getPropertyValue("--font-bots-toy").trim() || "ui-rounded, Segoe UI, sans-serif";
-    pixiChain = pixiChain
-      .then(async () => {
-        if (dead) return;
-        return buildBay(canvas, {
-          small: isSmall,
-          toyFont,
-          onSocketTap: (s) => tapRef.current(s),
-        });
-      })
-      .then((bay) => {
-        if (!bay) return;
-        if (dead) {
-          bay.destroy();
-          return;
-        }
-        bayRef.current = bay;
-        const fit = () => {
-          const r = wrap.getBoundingClientRect();
-          bay.resize(r.width, r.height, Math.min(2, devicePixelRatio || 1));
-        };
-        fit();
-        ro = new ResizeObserver(fit);
-        ro.observe(wrap);
-        bay.open();
-        sfx.play("hum");
-        const loop = (now: number) => {
-          if (dead) return;
-          bay.render(now);
-          raf = requestAnimationFrame(loop);
-        };
-        raf = requestAnimationFrame(loop);
-        setReady(true);
-      });
-    return () => {
-      dead = true;
-      cancelAnimationFrame(raf);
-      ro?.disconnect();
-      setReady(false);
-      pixiChain = pixiChain.then(() => {
-        bayRef.current?.destroy();
-        bayRef.current = null;
-        artCache.current.clear();
-      });
-    };
-  }, [sfx]);
-
-  // the shared loader, so the lift keeps its bot when public/bots-art is
-  // gone: a missing file falls back to the drawn clay part the Fight Viewer
-  // already used (the house law; see _view/part-art.ts)
-  const loadArt = useCallback(
-    (bay: BayHandle, part: OwnedPart): Promise<PartArt> =>
-      loadPartArt(
-        bay.stage.pixi,
-        bay.stage.app.renderer,
-        ART_OF_SOCKET[SOCKETS_OF[part.slot][0]],
-        part.tier,
-        part.design,
-        artCache.current,
-      ),
-    [],
-  );
-
-  // push the build into the bay whenever it changes (per-part paint included).
-  // artDone is the TRUTH the screenshot harness waits on: false the moment the
-  // build changes, true only when every socket of this build is on the rig.
-  // Before 2026-09-04 only the Garage set this flag, so `--art-ready` was a
-  // no-op here and the first 1440 shot caught a floating head over six empty
-  // sockets while the readout claimed a whole bot.
-  useEffect(() => {
-    const bay = bayRef.current;
-    if (!bay || !ready) return;
-    let cancelled = false;
-    setArtDone(false);
-    (async () => {
-      for (const socket of SOCKETS) {
-        const part = partOf(socketUid(build, socket));
-        const art = part ? await loadArt(bay, part) : null;
-        if (cancelled) return;
-        bay.rig.setArt(socket, art);
-      }
-      // EVERYTHING THAT IS NOT A PART, in one call. setLook carries the seven
-      // socket colours, the face, the sticker in its place, the plate number
-      // and every earned mark, and it takes the WHOLE look every time, so a
-      // field left out is a field turned off and no half of an old look can
-      // survive a rebuild. It replaces the old setPaint plus paintRigSockets
-      // plus setDecal, which between them could only ever show one colour and
-      // one sticker; the weapon now rides the arm, which is what makes a
-      // normal robot read as four colours instead of one.
-      const torso = partOf(build.cards.torso);
-      const rigLook = rigLookOf(lookView, torso?.paint ?? "mint");
-      // the body tint is still set on its own: the one thing left reading it
-      // is the chip a lost limb leaves on the body (rig.ts drawScar)
-      bay.rig.setPaint(bodyTintOf(rigLook));
-      bay.rig.setLook(rigLook);
-      bay.setName(nameText(build.name));
-      bay.setRings(rings);
-      for (const s of pendingFlash.current) bay.flashRing(s);
-      pendingFlash.current = [];
-      setArtDone(true);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [build, ready, rings, partOf, loadArt, lookView]);
-
-  // arming and the ghost preview
-  useEffect(() => {
-    const bay = bayRef.current;
-    if (!bay || !ready) return;
-    bay.setArming(armingSlot);
-    let cancelled = false;
-    (async () => {
-      for (const s of SOCKETS) bay.rig.setGhost(s, null);
-      const part = partOf(selected);
-      if (!part || drag) return;
-      const target = equipmentTarget(build, part.slot, sheet?.kind === "parts" && sheet.slot === part.slot ? sheet.socket : undefined);
-      const art = await loadArt(bay, part);
-      if (cancelled) return;
-      bay.rig.setGhost(target, art);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [armingSlot, selected, drag, build, ready, partOf, loadArt, sheet]);
+    const query = matchMedia("(max-width: 899px)");
+    const resize = () => setSmall(query.matches);
+    resize(); query.addEventListener("change", resize);
+    return () => query.removeEventListener("change", resize);
+  }, []);
+  const previewPart = !drag ? partOf(selected) : null;
+  const previewSocket = previewPart ? equipmentTarget(build, previewPart.slot,
+    sheet?.kind === "parts" && sheet.slot === previewPart.slot ? sheet.socket : undefined) : null;
+  const shownBuild = useMemo(() => previewPart && previewSocket ? fitPart(build, previewPart, previewSocket) : build,
+    [build, previewPart, previewSocket]);
+  const displayBuild = useMemo(() => engineBuild(shownBuild, st.parts), [shownBuild, st.parts]);
+  const displayLook = useMemo(() => rigLookOf({...lookView, paints:equipmentPaints(shownBuild,st.parts)},
+    partOf(shownBuild.cards.torso)?.paint ?? "mint"), [lookView, shownBuild, st.parts, partOf]);
+  const displayReady = useCallback(() => { setReady(true); setArtDone(true); }, []);
 
   // the tier ratchet
   const prevTier = useRef<Tier | null>(tier);
@@ -1022,7 +852,6 @@ export default function BuildClient() {
       if (!part) return;
       const target = equipmentTarget(build, part.slot, socket ?? (sheet?.kind === "parts" && sheet.slot === part.slot ? sheet.socket : undefined));
       setBuild(b => fitPart(b, part, target));
-      pendingFlash.current = [target];
       sfx.play("clunk");
       setSelected(null);
       setSheet(null);
@@ -1101,6 +930,14 @@ export default function BuildClient() {
       }
       ids[slot] = n;
     }
+    const socketIds = {} as Record<Socket,number|null>;
+    for(const socket of EQUIPMENT_SOCKETS){
+      const uid=socketUid(build,socket);
+      if(uid==null){socketIds[socket]=null;continue;}
+      const id=Number(uid);
+      if(!Number.isInteger(id)||id<=0){say(t.ui.tryAgain);return false;}
+      socketIds[socket]=id;
+    }
     setSaving(true);
     const r = await saveBotOnServer({
       bay: bayNo,
@@ -1111,7 +948,7 @@ export default function BuildClient() {
       // handed straight back; leaving them out would reset both on every save
       ...(liveBot ? { paint: liveBot.paint, listed: liveBot.listed } : {}),
       parts: ids,
-      sockets: Object.fromEntries(EQUIPMENT_SOCKETS.map(s => [s, socketUid(build,s) == null ? null : Number(socketUid(build,s))])) as Record<Socket,number|null>,
+      sockets: socketIds,
       look: {
         face: look.face,
         sticker: look.sticker,
@@ -1317,11 +1154,11 @@ export default function BuildClient() {
       dragStart.current = null;
       if (!st0 || !st0.moved) return;
       const part = partOf(st0.uid);
-      const bay = bayRef.current;
-      const canvas = canvasRef.current;
-      if (part && bay && canvas) {
-        const r = canvas.getBoundingClientRect();
-        const hit = bay.hitSocket(e.clientX - r.left, e.clientY - r.top, part.slot, SNAP_CSS);
+      if (part) {
+        const rail = document.elementFromPoint(e.clientX,e.clientY)?.closest<HTMLElement>("[data-build-socket]");
+        const railSocket = rail?.dataset.buildSocket as Socket | undefined;
+        const hit = railSocket && CARD_OF_SOCKET[railSocket] === part.slot ? railSocket
+          : displayRef.current?.hitSocket(e.clientX,e.clientY,part.slot,SNAP_CSS);
         if (hit) {
           equip(st0.uid, hit);
           setDrag(null);
@@ -1333,11 +1170,14 @@ export default function BuildClient() {
       sfx.play("back");
       window.setTimeout(() => setDrag(null), 180);
     };
+    const onCancel=()=>{dragStart.current=null;setDrag(null);};
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel",onCancel);
     return () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel",onCancel);
     };
   }, [equip, partOf, sfx]);
 
@@ -1576,7 +1416,7 @@ export default function BuildClient() {
     <PageShell wide>
       <WorkshopHeading eyebrow="THE WORKBENCH" title="Make it your kind of odd." description="Try a part. Find a favourite. Every piece makes it yours." />
       <div className={uiCss.socketRail} aria-label="Choose a robot part">
-        {EQUIPMENT_SOCKETS.map(socket => { const p=partOf(socketUid(build,socket)); return <button key={socket} onClick={() => { setFilter(EQUIPMENT_KIND[socket]); setSheet({kind:"parts",slot:EQUIPMENT_KIND[socket],socket}); }} aria-label={`Choose ${EQUIPMENT_LABEL[socket].toLowerCase()}`}>
+        {EQUIPMENT_SOCKETS.map(socket => { const p=partOf(socketUid(build,socket)); return <button key={socket} data-build-socket={socket} onClick={() => tapRef.current(socket)} aria-pressed={sheet?.kind === "parts" && sheet.socket === socket} aria-label={`Choose ${EQUIPMENT_LABEL[socket].toLowerCase()}`}>
           <span>{EQUIPMENT_LABEL[socket]}</span><strong>{p ? p.name.replace(/Arms$/, "Arm").replace(/Legs$/, "Leg") : "Pick a part"}</strong><i style={{background:p?.paint ? PAINTS[p.paint] : "transparent"}} />
         </button>; })}
       </div>
@@ -1596,7 +1436,6 @@ export default function BuildClient() {
         {/* ── CENTRE: the bay ──────────────────────────────────────────── */}
         <div className={uiCss.bayColumn}>
           <div
-            ref={wrapRef}
             style={{
               position: "relative",
               width: "100%",
@@ -1604,7 +1443,7 @@ export default function BuildClient() {
               // _view/bay.ts). The two MUST agree or the stage letterboxes,
               // and the desktop pair moved together on 2026-09-06 to get the
               // look picker above the fold on a 900 px tall screen
-              aspectRatio: small ? "390 / 420" : "760 / 530",
+              aspectRatio: small ? "390 / 460" : "760 / 570",
               borderRadius: R.frame,
               border: `1px solid ${M.border}`,
               boxShadow: `inset 0 1px 0 ${M.highlight}`,
@@ -1612,7 +1451,14 @@ export default function BuildClient() {
               overflow: "hidden",
             }}
           >
-            <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
+            {loadedBay.current === bayNo ? <ToyDisplay ref={displayRef} build={displayBuild} look={displayLook}
+              mode="interactive" variant="cream" ariaLabel={nameText(build.name)}
+              selectedSocket={previewSocket ?? (sheet?.kind === "parts" ? sheet.socket : null)}
+              onSocketSelect={socket => tapRef.current(socket)} onReady={displayReady} /> : null}
+            <div style={{position:"absolute",left:22,right:22,bottom:18,display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:12,pointerEvents:"none",color:"#49473b"}}>
+              <span style={{fontFamily:FONT_DISPLAY,fontSize:small?20:25,fontWeight:700}}>{nameText(build.name)}</span>
+              <span style={{fontSize:11,fontFamily:FONT_MONO,letterSpacing:".12em",textTransform:"uppercase"}}>{previewPart ? "Trying a part" : "Made by you"}</span>
+            </div>
           </div>
 
           <div className={uiCss.actionBar}>

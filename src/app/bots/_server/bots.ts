@@ -20,6 +20,7 @@
  *    (the server resolves from the database; house law).
  */
 import { EQUIPMENT_SOCKETS, EQUIPMENT_KIND, type EquipmentIds } from "@/lib/bots/equipment";
+import { gameCard } from "@/lib/bots/beginner-catalog";
 import { modularBuild, equipmentStatsTotal, type CombatBuild, type CombatSocket } from "@/lib/bots/combat-model";
 import { buildTotal } from "../_engine/parts";
 import "server-only";
@@ -165,7 +166,7 @@ export async function loadBot(db: BotsDb, id: number): Promise<BotRow | null> {
 export function partStats(p: PartRow): Stats {
   const s = p.stats?.s;
   if (Array.isArray(s) && s.length === 3) return [Number(s[0]) || 0, Number(s[1]) || 0, Number(s[2]) || 0];
-  const card = CARD_BY_ID[p.part_key];
+  const card = gameCard(p.part_key);
   if (card) return [card.s[0], card.s[1], card.s[2]];
   return [1, 0, 0];
 }
@@ -204,7 +205,7 @@ export function partRecycleValue(p: Pick<PartRow, "list_price" | "stats">): numb
 }
 
 export function partView(p: PartRow): PartView {
-  const card = CARD_BY_ID[p.part_key];
+  const card = gameCard(p.part_key);
   const s = partStats(p);
   const tier = (card?.tier ?? partTier(s[0] + s[1] + s[2])) as Tier;
   const view: PartView = {

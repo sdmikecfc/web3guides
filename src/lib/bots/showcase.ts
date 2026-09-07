@@ -22,6 +22,12 @@ export const SHOWCASE = {
     piece("legs.peeperStilts", "ink"), piece("legs.kettleShins", "cream"),
     piece("weapon.rustySpanner"),
   ),
+  hammer: modularBuild(
+    piece("head.kettleDome", "mint"), piece("torso.kettleChest", "mint"),
+    piece("arms.kettleGrips", "butter"), piece("arms.peeperHooks", "mint"),
+    piece("legs.sprocketPegs", "mint"), piece("legs.sprocketPegs", "cream"),
+    piece("weapon.pistonHammer"),
+  ),
   names: ["Speedy Otter", "Rusty Beetle"] as [string, string],
-  href: "/bots/fight/demo?seed=7&showcase=1",
+  href: "/bots/fight/demo?seed=75&showcase=1",
 };

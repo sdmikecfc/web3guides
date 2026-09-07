@@ -27,6 +27,7 @@ import { STRINGS, fill } from "@/lib/bots/strings";
 import { bestLevel, loadBots, partView, type PartRow } from "@/app/bots/_server/bots";
 import { botsDb, failResponse, readJson, refuse } from "@/app/bots/_server/db";
 import { grant } from "@/app/bots/_server/grants";
+import { loadCoinBalance } from "@/app/bots/_server/onboarding";
 import { coinsOf, displayName, loadPlayer } from "@/app/bots/_server/players";
 import { sessionFromRequest } from "@/app/bots/_server/session";
 import { boughtToday, listingToday, shopProvenance, todayShop } from "@/app/bots/_server/shop";
@@ -66,7 +67,7 @@ export async function POST(req: Request) {
 
     const bots = await loadBots(db, sess.wallet);
     if (bestLevel(bots) < listing.needsLevel) return refuse(403, fill(STRINGS.en.shopUi.needsLevel, { n: listing.needsLevel }));
-    const coins = coinsOf(player);
+    const coins = (await loadCoinBalance(db, sess.wallet, player)).spendable;
     if (listing.price > coins) return refuse(400, fill(STRINGS.en.shop.notEnough, { n: listing.price - coins }));
 
     // the purchase row first: the unique key is the "one per day" gate

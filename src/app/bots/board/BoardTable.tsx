@@ -31,9 +31,11 @@
  */
 import type { CSSProperties } from "react";
 import { WorkshopHeading } from "../_components/WorkshopHeading";
-import { BotPortrait, BotPortraitRow, PORTRAIT_ROW_SHOWN } from "../_components/BotPortrait";
-import { FONT_BODY, FONT_DISPLAY, FONT_MONO, M, R } from "../_ui/tokens";
-import type { Tier } from "../_engine/parts";
+import { BotPortrait, PORTRAIT_ROW_SHOWN } from "../_components/BotPortrait";
+import { BoardToyPortrait } from "./BoardToyPortrait";
+import type { LookView } from "../_server/types";
+import { FONT_BODY, FONT_DISPLAY, FONT_MONO, M, R, TIER_COLOR } from "../_ui/tokens";
+import type { Build, PaintId, Tier } from "../_engine/parts";
 import { starWord, winLossWords } from "@/lib/bots/strings";
 import css from "./board.module.css";
 
@@ -67,6 +69,8 @@ const COPY = {
 export interface BoardBot {
   id: number;
   tier: number;
+  /** Exact appearance supplied by a trusted read; never inferred from the ID. */
+  art?: { build: Build; look: LookView; paint: PaintId };
 }
 
 export interface BoardRow {
@@ -77,6 +81,22 @@ export interface BoardRow {
   battlePoints: number;
   wins: number;
   losses: number;
+}
+
+/** Unknown builds keep their recorded portrait; IDs never select a made-up toy. */
+function BoardPortrait({ bot, size }: { bot: BoardBot; size: number }) {
+  const tier = Math.min(4, Math.max(1, bot.tier)) as Tier;
+  if (!bot.art) return <BotPortrait of={{ bot: bot.id }} size={size} tier={tier} label={`${starWord(bot.tier)} robot`} />;
+  return <div style={{ width: size, height: size, flex: "0 0 auto", overflow: "hidden", borderRadius: Math.max(5, Math.round(size / 6)), border: `1px solid ${TIER_COLOR[tier]}` }}>
+    <BoardToyPortrait art={bot.art} label={`${starWord(bot.tier)} robot`} />
+  </div>;
+}
+
+function BoardRobots({ bots }: { bots: readonly BoardBot[] }) {
+  return <div className={css.robotRow}>
+    <div>{bots.slice(0, PORTRAIT_ROW_SHOWN).map(bot => <BoardPortrait key={bot.id} bot={bot} size={36} />)}</div>
+    {bots.length > PORTRAIT_ROW_SHOWN ? <span>{COPY.andMore.replace("{n}", String(bots.length - PORTRAIT_ROW_SHOWN))}</span> : null}
+  </div>;
 }
 
 /** Fight points step in quarters, so print the quarter and drop a bare .00 */
@@ -100,7 +120,7 @@ export function BoardTable({ rows, unavailable, sample }: { rows: readonly Board
             <div key={`${r.rank}:${r.name}`} className={css.leader} data-rank={r.rank}>
               <span className={css.place}>No. {r.rank}</span>
               <div className={css.leaderBot}>
-                {r.bots[0] ? <BotPortrait of={{ bot: r.bots[0].id }} size={128} tier={Math.min(4, Math.max(1, r.bots[0].tier)) as Tier} /> : <span aria-hidden>✦</span>}
+                {r.bots[0] ? <BoardPortrait bot={r.bots[0]} size={128} /> : <span aria-hidden>✦</span>}
               </div>
               <h2>{r.name}</h2>
               <p><strong>{pointsText(r.battlePoints)}</strong> fight points</p>
@@ -167,16 +187,11 @@ export function BoardTable({ rows, unavailable, sample }: { rows: readonly Board
                           <span style={{ color: M.muted, fontSize: 12.5 }}>{COPY.noBots}</span>
                         ) : (
                           <>
-                            <span className={css.desktopBots}>
-                              <BotPortraitRow
-                                bots={r.bots.map((b) => ({ id: b.id, tier: Math.min(4, Math.max(1, b.tier)) as Tier, label: `${starWord(b.tier)} robot` }))}
-                                moreWord={r.bots.length > PORTRAIT_ROW_SHOWN ? COPY.andMore.replace("{n}", String(r.bots.length - PORTRAIT_ROW_SHOWN)) : null}
-                              />
-                            </span>
-                            <span className={css.mobileBots} aria-label={`${r.bots.length} ${r.bots.length === 1 ? "robot" : "robots"}`}>
-                              <BotPortrait of={{ bot: r.bots[0].id }} size={30} tier={Math.min(4, Math.max(1, r.bots[0].tier)) as Tier} />
+                            <div className={css.desktopBots}><BoardRobots bots={r.bots} /></div>
+                            <div className={css.mobileBots} aria-label={`${r.bots.length} ${r.bots.length === 1 ? "robot" : "robots"}`}>
+                              <BoardPortrait bot={r.bots[0]} size={32} />
                               {r.bots.length > 1 ? <span>+{r.bots.length - 1}</span> : null}
-                            </span>
+                            </div>
                           </>
                         )}
                       </td>

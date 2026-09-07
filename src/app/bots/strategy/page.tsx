@@ -1,20 +1,13 @@
-/**
- * /bots/strategy: SET UP YOUR STRATEGY (screens doc 1 row 2, 7 row 0:30).
- * Two cards: the one button to Doma auto trading (a new tab) and the MCP
- * door (the URL and the three-line prompt, each with Copy), plus the status
- * dot that polls GET /api/bots/me every 30 seconds when that route exists.
- * Never on the critical path: the garage keeps working without a strategy.
- *
- * Server page in the garage's shape (garage/page.tsx): the metadata lives
- * here, the screen is the client component.
- */
-import type { Metadata } from "next";
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { workshopEnabled } from "@/lib/bots/rollout";
 import StrategyClient from "./StrategyClient";
 
-export const metadata: Metadata = {
-  title: "Auto trading | Clanker Cup",
-};
-
-export default function StrategyPage() {
-  return <StrategyClient />;
+export const metadata = { title: "Auto trading | Clanker Cup" };
+export default function Page({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  if (workshopEnabled()) {
+    const bay = typeof searchParams.bay === "string" && /^[1-5]$/.test(searchParams.bay) ? searchParams.bay : null;
+    redirect("/bots?panel=earn" + (bay ? "&bay=" + bay : ""));
+  }
+  return <Suspense fallback={null}><StrategyClient /></Suspense>;
 }

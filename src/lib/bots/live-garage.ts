@@ -319,7 +319,7 @@ export function stateFromMe(me: MeView): GarageState {
 export function withBoughtPart(me: MeView, listingId: string, part: PartView, coins: number): MeView {
   return {
     ...me,
-    player: { ...me.player, coins },
+    player: { ...me.player, coins, spendableCoins: Math.max(0, coins - (me.player.reservedCoins ?? 0)) },
     parts: [...me.parts, part],
     shop: {
       ...me.shop,

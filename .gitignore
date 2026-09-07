@@ -40,7 +40,14 @@ next-env.d.ts
 .comfy_token
 
 # Raw CC0 asset packs (Quaternius/Kenney) - bake sources, never shipped, never committed
-art-src/
+/art-src/*
+!/art-src/bots/
+/art-src/bots/*
+!/art-src/bots/blender/
+/art-src/bots/blender/*
+!/art-src/bots/blender/build_pilot.py
+!/art-src/bots/blender/toy-pilot.blend
+!/art-src/bots/blender/README.md
 
 .dev-captures/
 .dk-preview/

@@ -28,6 +28,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { BotPortrait, PORTRAIT_ON } from "../_components/BotPortrait";
+import { ToyDisplay } from "../_components/ToyDisplay";
+import { rigLookFromBuild } from "../_view/look-view";
+import { SHOWCASE } from "@/lib/bots/showcase";
 import { PageShell } from "../_components/PageShell";
 import { WorkshopHeading } from "../_components/WorkshopHeading";
 import { IconPlay } from "../_ui/icons";
@@ -408,14 +411,19 @@ export default function BattlesClient() {
         {me ? <span className={css.balance}>{me.walletName}<strong>{coins.toLocaleString()} coins</strong></span> : null}
       </div>
 
-      <div className={css.ringside}>
-        <div>
+      <section className={css.ringside} aria-labelledby="ring-showcase-title">
+        <div className={css.ringWelcome}>
           <span className={css.ticket}>A seat for everyone</span>
-          <h2>The lights are on.</h2>
-          <p>Watch a fight. Pick a favourite. No wallet needed.</p>
-          <Link href="/bots/fight/demo?seed=7&showcase=1" className={uiCss.press} style={door(true)}><IconPlay size={16} />&nbsp; Watch the ring</Link>
+          <h2 id="ring-showcase-title">Pick a favourite.<br />Cheer them on.</h2>
+          <p>Two little robots. One big fight.</p>
+          <Link href={SHOWCASE.href} className={uiCss.press} style={door(true)}><IconPlay size={16} />&nbsp; Watch a fight</Link>
         </div>
-      </div>
+        <div className={css.showcasePair} aria-label="The next two robots in the ring">
+          <figure><div><ToyDisplay build={SHOWCASE.a} look={rigLookFromBuild(SHOWCASE.a, "mint")} mode="static" ariaLabel={SHOWCASE.names[0]} /></div><figcaption>{SHOWCASE.names[0]}</figcaption></figure>
+          <span className={css.against}>against</span>
+          <figure><div><ToyDisplay build={SHOWCASE.b} look={rigLookFromBuild(SHOWCASE.b, "coral")} mode="static" rotation={0.12} ariaLabel={SHOWCASE.names[1]} /></div><figcaption>{SHOWCASE.names[1]}</figcaption></figure>
+        </div>
+      </section>
 
       {/* the phone tabs */}
       <div className={css.tabs} role="tablist" aria-label="Fight or watch">

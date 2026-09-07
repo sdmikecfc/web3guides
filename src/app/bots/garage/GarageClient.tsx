@@ -29,10 +29,10 @@ import { PrideNote } from "../_components/Pride";
 import { IconChevron, IconLock, IconPin, IconPlay, IconRecycle, IconStar, STAT_ICON } from "../_ui/icons";
 import { Button, ChipTab, CoinChip, Dot, Panel, Sheet, uiCss } from "../_ui/primitives";
 import { FONT_BODY, FONT_DISPLAY, FONT_MONO, FONT_TOY, K, M, PAINTS, R, TAP, TIER_COLOR } from "../_ui/tokens";
-import { buildGarage, type BayTag, type GarageHandle, type TagDot } from "../_view/garage";
-import { ART_OF_SOCKET, type PartArt } from "../_view/rig";
+import type { TagDot } from "../_view/garage";
+import { ToyDisplay, PartDisplay } from "../_components/ToyDisplay";
+import layout from "./garage.module.css";
 import type { Socket } from "@/lib/bots/fixtures";
-import { loadPartArt } from "../_view/part-art";
 import { buildStreet, type StreetHandle } from "../_view/street";
 import {
   BAY_COUNT,
@@ -47,8 +47,8 @@ import {
   botTier,
   botTotal,
   emptySockets,
+  engineBuild,
   nameText,
-  partArt,
   partTotal,
   recycleValue,
   type Build,
@@ -130,10 +130,6 @@ function todaysDate(now: Date): string {
   return `${DAY_NAMES[now.getDay()]} ${now.getDate()} ${MONTH_NAMES[now.getMonth()]}`;
 }
 
-/** React StrictMode dev-mounts effects twice; two app.init() calls racing on
- * ONE canvas kill each other's shaders (the Battlefield law). Every build AND
- * destroy is chained through this promise. */
-let pixiChain: Promise<void> = Promise.resolve();
 
 /* ── the status chip (canvas tag and DOM chip share the table) ──────────── */
 
@@ -237,7 +233,7 @@ function SpareRow({ part, onClick }: { part: OwnedPart; onClick: () => void }) {
     >
       <span style={{ width: 40, height: 40, borderRadius: 10, border: `2px solid ${color}`, background: K.floor, display: "grid", placeItems: "center", overflow: "hidden" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={partArt(part).base} alt="" style={{ width: 34, height: 34, objectFit: "contain" }} />
+        <PartDisplay part={part} ariaLabel={part.name}/>
       </span>
       <span style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
         <span style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: FONT_DISPLAY, fontSize: 13, fontWeight: 700 }}>
@@ -295,6 +291,11 @@ export default function GarageClient() {
    */
   const demo = useGarage(mountNow.current);
   const live = useLiveGarage();
+  const firstBuildStep = live.me?.onboarding?.step;
+  useEffect(() => {
+    // A paused rollout must not strand the reserved first-build allowance.
+    if (firstBuildStep && firstBuildStep !== "complete") router.replace("/bots/welcome");
+  }, [firstBuildStep, router]);
   const st = useMemo(() => (live.me ? stateFromMe(live.me) : demo), [live.me, demo]);
   /**
    * THIS BROWSER BELONGS TO A SIGNED IN PLAYER.
@@ -328,11 +329,9 @@ export default function GarageClient() {
   const [toast, setToast] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   /** every bay's art is on its rig (the shot harness waits on this) */
-  const [artDone, setArtDone] = useState(false);
-  const [small, setSmall] = useState(false);
+  const [photoKeys,setPhotoKeys] = useState<Record<number,string>>({});
   const [focus, setFocus] = useState(1);
   const [centre, setCentre] = useState<number>(ME.garageNo);
-  const [botImg, setBotImg] = useState<string | null>(null);
   /** the first meeting's portrait: extracted once, and only for a player who
    * has not met their robot yet (_components/FirstMeeting.tsx) */
   const [meetImg, setMeetImg] = useState<string | null>(null);
@@ -397,13 +396,9 @@ export default function GarageClient() {
   const paperDay = paperView?.date ?? paperDate;
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streetWrapRef = useRef<HTMLDivElement | null>(null);
   const streetRef = useRef<HTMLCanvasElement | null>(null);
-  const garageRef = useRef<GarageHandle | null>(null);
   const streetHandle = useRef<StreetHandle | null>(null);
-  const artCache = useRef(new Map<string, PartArt>());
-  const spoke = useRef(false);
 
   const say = useCallback((text: string) => {
     setToast(text);
@@ -473,67 +468,14 @@ export default function GarageClient() {
     [earned],
   );
 
-  // ── the garage canvas ───────────────────────────────────────────────────
-  const openBayRef = useRef<(b: number) => void>(() => {});
-  const sheetRef = useRef<(s: SheetState) => void>(() => {});
-  sheetRef.current = setSheet;
+  // The garage is a gallery of complete photographs. All cards share one
+  // offscreen WebGL renderer, so five bays cannot exhaust browser contexts.
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const wrap = wrapRef.current;
-    if (!canvas || !wrap) return;
-    let dead = false;
-    let raf = 0;
-    let ro: ResizeObserver | null = null;
-    const isSmall = typeof matchMedia !== "undefined" && matchMedia("(max-width: 899px)").matches;
-    setSmall(isSmall);
-    const toyFont = getComputedStyle(wrap).getPropertyValue("--font-bots-toy").trim() || "ui-rounded, Segoe UI, sans-serif";
-    pixiChain = pixiChain
-      .then(async () => {
-        if (dead) return;
-        return buildGarage(canvas, {
-          small: isSmall,
-          toyFont,
-          onBayTap: (b) => openBayRef.current(b),
-          onCorkboardTap: () => sheetRef.current({ kind: "paper" }),
-          onToolBoardTap: () => sheetRef.current({ kind: "tools" }),
-          onCrewTap: (who) => sheetRef.current({ kind: "crew", who }),
-          onFocus: (b) => setFocus(b),
-        });
-      })
-      .then((g) => {
-        if (!g) return;
-        if (dead) {
-          g.destroy();
-          return;
-        }
-        garageRef.current = g;
-        const fit = () => {
-          const r = wrap.getBoundingClientRect();
-          g.resize(r.width, r.height, Math.min(2, devicePixelRatio || 1));
-        };
-        fit();
-        ro = new ResizeObserver(fit);
-        ro.observe(wrap);
-        const loop = (nowMs: number) => {
-          if (dead) return;
-          g.render(nowMs);
-          raf = requestAnimationFrame(loop);
-        };
-        raf = requestAnimationFrame(loop);
-        setReady(true);
-      });
-    return () => {
-      dead = true;
-      cancelAnimationFrame(raf);
-      ro?.disconnect();
-      setReady(false);
-      pixiChain = pixiChain.then(() => {
-        garageRef.current?.destroy();
-        garageRef.current = null;
-        artCache.current.clear();
-      });
-    };
-  }, []);
+    setReady(true);
+  },[]);
+  const photoReady=useCallback((bay:number,key:string)=>{
+    setPhotoKeys(previous=>previous[bay]===key?previous:{...previous,[bay]:key});
+  },[]);
 
   // ── the street strip ────────────────────────────────────────────────────
   useEffect(() => {
@@ -568,76 +510,6 @@ export default function GarageClient() {
   useEffect(() => {
     streetHandle.current?.setCentre(centre);
   }, [centre]);
-
-  // the shared loader, so this screen keeps its bots when public/bots-art is
-  // gone: a missing file falls back to the drawn clay part the Fight Viewer
-  // already used (the house law; see _view/part-art.ts)
-  const loadArt = useCallback(
-    (g: GarageHandle, part: OwnedPart): Promise<PartArt> =>
-      loadPartArt(
-        g.stage.pixi,
-        g.stage.app.renderer,
-        ART_OF_SOCKET[SOCKETS_OF[part.slot][0]],
-        part.tier,
-        part.design,
-        artCache.current,
-      ),
-    [],
-  );
-
-  // push every bay's build into its rig whenever the garage changes. Every
-  // part of every bay loads IN PARALLEL: the first 1440 shot caught the
-  // sequential version still on bay 2 after two seconds (28 textures, one
-  // await each, through the dev server), which read as "two bots, not four"
-  useEffect(() => {
-    const g = garageRef.current;
-    if (!g || !ready) return;
-    let cancelled = false;
-    setArtDone(false);
-    type Loaded = { socket: Socket; part: OwnedPart | null; art: PartArt | null };
-    (async () => {
-      const loaded = await Promise.all(
-        bays.map(async (b) => {
-          const build = st.builds[b];
-          if (!build) return null;
-          const arts: Loaded[] = await Promise.all(
-            SOCKETS.map(async (socket) => {
-              const part = partByUid(st, socketUid(build, socket));
-              // a missing file must never empty the bay: the socket stays bare
-              const art = part ? await loadArt(g, part).catch(() => null) : null;
-              return { socket, part, art };
-            }),
-          );
-          return { b, build, arts };
-        }),
-      );
-      if (cancelled) return;
-      bays.forEach((b, i) => {
-        const r = loaded[i];
-        const rig = g.rigs[b - 1];
-        if (!r) {
-          g.setBotVisible(b, false);
-          return;
-        }
-        for (const { socket, art } of r.arts) rig.setArt(socket, art);
-        // the base colour under everything, then the decal, then the WHOLE
-        // look. The look owns every socket's colour (lookForBay), so it is
-        // pushed HERE rather than only in its own effect below: this pass is
-        // asynchronous, and a paint written after the look had already landed
-        // would put the local colours back over the server's for as long as
-        // the player left the screen alone.
-        const torso = partByUid(st, r.build.cards.torso);
-        rig.setPaint(hexNum(PAINTS[torso?.paint ?? "mint"]));
-        rig.setDecal(r.build.decal);
-        rig.setLook(lookRef.current(b, r.build));
-        g.setBotVisible(b, true);
-      });
-      setArtDone(true);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [st, ready, bays, loadArt]);
 
   /**
    * THE WHOLE LOOK OF ONE SPOT'S ROBOT, in the rig's own units.
@@ -700,66 +572,13 @@ export default function GarageClient() {
     [st, earnedOfBay],
   );
 
-  // read by the art pass above, which must NOT re-run when the server answers
-  // (it would reload every texture to change a face)
-  const lookRef = useRef(lookForBay);
-  lookRef.current = lookForBay;
-
-  // And again on its own, for the answer that arrives after the art. setLook
-  // takes the WHOLE look every time, so a spot that lost its robot, or a
-  // wallet that signed out mid visit, cannot leave a hat behind on the next
-  // robot to stand there.
-  useEffect(() => {
-    const g = garageRef.current;
-    if (!g || !ready) return;
-    for (const b of bays) {
-      const build = st.builds[b];
-      const rig = g.rigs[b - 1];
-      if (!rig) continue;
-      rig.setLook(build ? lookForBay(b, build) : null);
-    }
-  }, [st, ready, bays, artDone, lookForBay]);
-
-  // the tags: name and status, the countdown ticking once a second
-  useEffect(() => {
-    const g = garageRef.current;
-    if (!g || !ready) return;
-    bays.forEach((b, i) => {
-      const build = st.builds[b];
-      const chip = chipOf(statuses[i]);
-      const tag: BayTag = {
-        name: build ? nameText(build.name) : fill(t.ui.bayLabel, { n: b }),
-        status: chip.text,
-        dot: chip.dot,
-        pulse: chip.pulse,
-      };
-      g.setTag(b, tag);
-    });
-  }, [st, statuses, ready, bays]);
-
-  // the day's paper, pinned to the corkboard. The SAME masthead and date the
-  // Morning Paper panel prints a few hundred px below it, so the room and the
-  // panel can never be showing two different days.
-  useEffect(() => {
-    if (!ready) return;
-    garageRef.current?.setNews(t.garage.paper, paperDay);
-  }, [ready, paperDay]);
-
-  // the crew: one figure per live strategy, and the last fill's chip once
-  useEffect(() => {
-    const g = garageRef.current;
-    if (!g || !ready) return;
-    g.setCrew(st.crew.map((c) => c.kind));
-    if (!spoke.current && st.crew.length) {
-      spoke.current = true;
-      const c = st.crew[0];
-      g.speak(c.kind, fill(c.kind === "position" ? t.garageUi.speechAdded : t.garageUi.speech, { n: c.lastFillCoins }));
-    }
-  }, [st.crew, ready]);
-
-  useEffect(() => {
-    garageRef.current?.focusBay(focus);
-  }, [focus]);
+  const gallery=useMemo(()=>Object.fromEntries(bays.map(bay=>{
+    const robot=st.builds[bay];
+    if(!robot)return [bay,null];
+    const build=engineBuild(robot,st.parts),look=lookForBay(bay,robot);
+    return [bay,{build,look,key:JSON.stringify({build,look})}];
+  })),[bays,st.builds,st.parts,lookForBay]);
+  const artDone=bays.every(bay=>!gallery[bay]||photoKeys[bay]===gallery[bay].key);
 
   /** the spot the player's first robot is standing in: the lowest numbered
    * one that has a robot in it at all */
@@ -768,34 +587,6 @@ export default function GarageClient() {
   useEffect(() => {
     setMet(hasMet());
   }, []);
-
-  // the first meeting's picture. A returning player never pays for it: the
-  // card would not draw it, so the readback never happens.
-  useEffect(() => {
-    if (!ready || !artDone || meetBay == null || met !== false) return;
-    let live = true;
-    garageRef.current?.extractBot(meetBay).then((url) => {
-      if (live) setMeetImg(url);
-    });
-    return () => {
-      live = false;
-    };
-  }, [ready, artDone, meetBay, met]);
-
-  // the bay sheet's picture: the bot alone, extracted from the stage
-  useEffect(() => {
-    if (sheet?.kind !== "bay") {
-      setBotImg(null);
-      return;
-    }
-    let live = true;
-    garageRef.current?.extractBot(sheet.bay).then((url) => {
-      if (live) setBotImg(url);
-    });
-    return () => {
-      live = false;
-    };
-  }, [sheet]);
 
   // ── actions ─────────────────────────────────────────────────────────────
   const openBay = useCallback(
@@ -808,7 +599,6 @@ export default function GarageClient() {
     },
     [st.builds, router],
   );
-  openBayRef.current = openBay;
 
   /**
    * THE FIRST NAME A PLAYER TYPES.
@@ -842,6 +632,7 @@ export default function GarageClient() {
       paint: bot.paint,
       listed: bot.listed,
       parts: bot.parts,
+      ...(bot.sockets ? { sockets: bot.sockets } : {}),
       look: bot.look,
     });
     if (r.ok) void live.refresh();
@@ -922,12 +713,12 @@ export default function GarageClient() {
       openBay: (b: number) => setSheet({ kind: "bay", bay: b }),
       openRecycle: (b: number) => setSheet({ kind: "recycle", bay: b }),
       openTools: () => setSheet({ kind: "tools" }),
-      speak: (who: StrategyKind, text?: string) => garageRef.current?.speak(who, text ?? fill(t.garageUi.speech, { n: 14 })),
+      speak: (who: StrategyKind, text?: string) => say(text ?? fill(t.garageUi.speech, { n: 14 })),
       focus: (b: number) => setFocus(b),
       reset: () => resetGarage(Date.now()),
       state: () => ({ coins: st.coins, bays: statuses, spares: spares.length }),
       /** which rigs are on their stands (the beauty gate's three painted bots) */
-      bots: () => garageRef.current?.rigs.map((r) => r.root.visible) ?? [],
+      bots: () => bays.map(b => !!st.builds[b]),
       /** what the SERVER said each robot earned, so a screenshot of the list
        * can be checked against the rows behind it instead of trusted */
       earned: () =>
@@ -1136,38 +927,48 @@ export default function GarageClient() {
           shows exactly one tile: no seam, and the art's own composition. At
           80 and 170 the same band could only have shown roofs and half a
           door, which is what it did. */}
-      <div ref={streetWrapRef} style={{ ...canvasFrame, height: small ? 130 : 190 }}>
+      <div ref={streetWrapRef} className={layout.street} style={canvasFrame}>
         <canvas ref={streetRef} style={{ display: "block", width: "100%", height: "100%" }} />
       </div>
       <GarageCoach state={st} />
       {/* the proud moments: one warm line for the first win, the first time
           all four colours matched, and the first 4 star part. Said once, and
           never in the same breath as meeting the robot for the first time. */}
-      {known && met ? <PrideNote state={st} demo={!isLive} /> : null}
+      {known && met ? <PrideNote state={st} demo={!isLive} lookForBay={lookForBay} /> : null}
 
-      {/* ── THE GARAGE ────────────────────────────────────────────────────── */}
-      <div ref={wrapRef} style={{ ...canvasFrame, marginTop: 16, aspectRatio: small ? "390 / 300" : "1400 / 520" }}>
-        <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
-        {small ? (
-          <>
-            <span style={{ position: "absolute", top: 8, left: 8, background: M.ground, borderRadius: R.pill, boxShadow: "0 2px 8px #0004" }}>
-              <ChipTab onClick={() => setSheet({ kind: "paper" })}>{t.garageUi.paperChip}</ChipTab>
-            </span>
-            <span style={{ position: "absolute", top: 8, right: 8, background: M.ground, borderRadius: R.pill, boxShadow: "0 2px 8px #0004" }}>
-              <ChipTab onClick={() => setSheet({ kind: "tools" })}>{t.garageUi.partsChip}</ChipTab>
-            </span>
-          </>
-        ) : null}
-      </div>
-      {small ? (
-        <div style={{ display: "flex", justifyContent: "center", gap: 2, marginTop: 4 }}>
-          {bays.map((b) => (
-            <button key={b} className={uiCss.press} onClick={() => setFocus(b)} aria-label={fill(t.garageUi.bayDot, { n: b })} aria-pressed={focus === b} style={{ width: TAP, height: TAP, display: "grid", placeItems: "center", background: "transparent", border: "none", cursor: "pointer" }}>
-              <span style={{ width: 7, height: 7, borderRadius: R.pill, background: focus === b ? M.accent : M.border, display: "block" }} />
-            </button>
-          ))}
+      {/* ── THE GARAGE ────────────────────────────────────────────────── */}
+      <div ref={wrapRef} className={layout.collection} style={{marginTop:16,borderRadius:24,background:"#342b23",border:"1px solid #66513b",boxShadow:"0 16px 45px #0003"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:16,color:"#ece1cb"}}>
+          <span style={{fontFamily:FONT_DISPLAY,fontSize:22,fontWeight:700}}>Your little collection</span>
+          <span style={{fontFamily:FONT_MONO,fontSize:11,letterSpacing:".12em"}}>GARAGE {ME.garageNo}</span>
         </div>
-      ) : null}
+        <div className={layout.gallery}>
+          {bays.map((bay,i)=>{
+            const robot=st.builds[bay],photo=gallery[bay];
+            const name=robot?nameText(robot.name):fill(t.ui.bayLabel,{n:bay});
+            return <button key={bay} onClick={()=>{setFocus(bay);openBay(bay);}}
+              aria-label={robot?`Open ${name}`:`Build a robot in spot ${bay}`}
+              style={{display:"block",position:"relative",minWidth:0,padding:0,textAlign:"left",background:"#e9dfcc",color:"#514331",border:focus===bay?"2px solid #d4b475":"2px solid transparent",borderRadius:18,overflow:"hidden",cursor:"pointer",scrollSnapAlign:"center",boxShadow:"0 9px 20px #24170e55"}}>
+              <div className={layout.portrait}>
+                {robot&&photo?<ToyDisplay build={photo.build} look={photo.look}
+                  ariaLabel={name} onReady={()=>photoReady(bay,photo.key)}
+                  onCapture={met===false&&bay===meetBay?setMeetImg:undefined}/>
+                  :<div style={{height:"100%",display:"grid",placeContent:"center",textAlign:"center",gap:14,background:"linear-gradient(145deg,#eae0cd,#dcd1b9)"}}><span style={{fontSize:46,fontWeight:300,color:"#9b947d"}}>+</span><span style={{fontFamily:FONT_DISPLAY,fontSize:18}}>Room for one more.</span></div>}
+                <span style={{position:"absolute",top:12,left:13,fontFamily:FONT_MONO,fontSize:10,letterSpacing:".14em",color:"#817b66"}}>0{bay}</span>
+              </div>
+              <div style={{padding:"14px 14px 16px",borderTop:"1px solid #c9bea466",background:"#e6dcc6"}}>
+                <strong className={layout.robotName} style={{display:"block",fontFamily:FONT_DISPLAY,lineHeight:1.2,marginBottom:7}}>{name}</strong>
+                <span style={{fontFamily:FONT_BODY,fontSize:12,color:"#857259"}}>{chipOf(statuses[i]).text}</span>
+              </div>
+            </button>;
+          })}
+        </div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:16}}>
+          <Button onClick={()=>setSheet({kind:"paper"})}>{t.garageUi.paperChip}</Button>
+          <Button onClick={()=>setSheet({kind:"tools"})}>{t.garageUi.partsChip}</Button>
+          {st.crew.map(crew=><Button key={crew.kind} onClick={()=>setSheet({kind:"crew",who:crew.kind})}>{t.garageUi.strategyKind[crew.kind]}</Button>)}
+        </div>
+      </div>
 
       {/* ── the three panels (desktop) ────────────────────────────────────── */}
       <div className={uiCss.desktopOnly} style={{ marginTop: 16 }}>
@@ -1225,11 +1026,8 @@ export default function GarageClient() {
         <Sheet title={nameText(bayBuild.name)} onClose={() => setSheet(null)} action={<StatusChip chip={chipOf(bayStatusNow)} />}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-              <span style={{ width: 120, height: 120, borderRadius: 14, border: `1px solid ${M.border}`, background: `linear-gradient(180deg, ${K.wall}, ${K.floor})`, display: "grid", placeItems: "center", flex: "0 0 auto", overflow: "hidden" }}>
-                {botImg ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={botImg} alt="" style={{ maxWidth: 104, maxHeight: 104, objectFit: "contain" }} />
-                ) : null}
+              <span className={layout.sheetPortrait} style={{ borderRadius: 14, border: `1px solid ${M.border}`, display:"block", flex:"0 0 auto", overflow:"hidden" }}>
+                <ToyDisplay build={engineBuild(bayBuild,st.parts)} look={lookForBay(sheet.bay,bayBuild)} ariaLabel={nameText(bayBuild.name)}/>
               </span>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.12em" }}>
@@ -1602,7 +1400,7 @@ function SpareLore({
       <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
         <span style={{ width: 96, height: 96, borderRadius: 14, border: `3px solid ${color}`, background: `linear-gradient(180deg, ${K.paper}, ${K.floor})`, display: "grid", placeItems: "center", flex: "0 0 auto" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={partArt(part).base} alt="" style={{ width: 80, height: 80, objectFit: "contain" }} />
+          <PartDisplay part={part} ariaLabel={part.name} style={{borderRadius:10}}/>
         </span>
         <div style={{ minWidth: 0 }}>
           {/* the socket word first: the sheet says which part this is before

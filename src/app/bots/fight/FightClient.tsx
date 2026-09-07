@@ -15,24 +15,27 @@
  * picture. prefers-reduced-motion renders one settled frame.
  *
  * Client shell in the BuildClient shape (garage/build/BuildClient.tsx): owns
- * the rAF, builds the scene through one pixi chain, fits it with a
+ * the rAF, builds a complete physical scene through an owned initialization queue, fits it with a
  * ResizeObserver on the wrapper (never the canvas), keeps every number in
  * the DOM in mono. The HUD silhouettes are DOM (SVG) over the canvas, never
- * on the Pixi stage, so a stage extract can never leak them (the DK postcard
+ * in the rendered scene, so a stage extract can never leak them (the DK postcard
  * law).
  */
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageShell } from "../_components/PageShell";
 import { IconPlay, IconReplay, IconShare, STAT_ICON } from "../_ui/icons";
 import { Button, Dot, Panel } from "../_ui/primitives";
 import { FONT_BODY, FONT_DISPLAY, FONT_MONO, M, TIER_COLOR, type PaintId } from "../_ui/tokens";
-import { buildFightScene, type FightSceneHandle } from "../_view/scene";
-import { SLOWMO_RATE, SLOWMO_S, TELL_F, mkFightFx, resetFightFx, tickFightFx } from "../_view/fightfx";
+import { buildFightScene, type FightSceneHandle } from "../_view/arena3d";
+import { SLOWMO_RATE, SLOWMO_S, mkFightFx, resetFightFx, tickFightFx } from "../_view/fightfx";
 import { koLineUp, scheduleCommentary } from "../_view/commentary-bar";
-import { createBotsSfx, type BotsSfx } from "../_view/sfx";
+import { createBotsSfx, savedBotsSound, type BotsSfx } from "../_view/sfx";
+import { directFight } from "../_view/fight-director";
+import { toyPilotEnabled } from "@/lib/bots/rollout";
+import { combatPart } from "@/lib/bots/combat-model";
 import { NO_ORDERS, PIECE, TIMEOUT_WHY, botTier, buildTotal, type Build, type FightEvent, type Mode, type Orders, type Side } from "../_engine/parts";
 import { createFight, resultOf, runFight, stepFight, type Fight } from "@/lib/bots/combat";
 import { type Aggregates } from "../_engine/derive";
@@ -45,6 +48,7 @@ import type { BotLook } from "../_view/look";
 import { authHeaders, readBotsSession } from "../battles/session";
 import { STRINGS, fightPointWord, fill, winLossWords } from "@/lib/bots/strings";
 import css from "./fight.module.css";
+import { downloadFightPostcard } from "../_view/fight-postcard";
 
 export interface FightIdentity {
   /** the bot's name (two words from the fixed tables) */
@@ -59,6 +63,11 @@ export interface FightIdentity {
 }
 
 export interface FightClientProps {
+  embedded?: boolean;
+  onClose?: () => void;
+  onCloseLabel?: string;
+  onComplete?: () => void;
+  hideShare?: boolean;
   seed: number;
   a: Build;
   b: Build;
@@ -104,7 +113,7 @@ const UI_EVERY_F = 3;
 /** React StrictMode dev-mounts effects twice; two app.init() calls racing on
  * ONE canvas kill each other's shaders (the Battlefield law). Every build AND
  * destroy is chained through this promise. */
-let pixiChain: Promise<void> = Promise.resolve();
+
 
 interface FunGate {
   watchAnother: number;
@@ -134,6 +143,10 @@ function soundOf(e: FightEvent): "bell" | "whoosh" | "clank" | "crunch" | "clang
     default:
       return null;
   }
+}
+
+function FightLayout({ embedded, children }: { embedded?: boolean; children: React.ReactNode }) {
+  return embedded ? <Fragment>{children}</Fragment> : <PageShell wide>{children}</PageShell>;
 }
 
 export default function FightClient(p: FightClientProps) {
@@ -177,6 +190,7 @@ export default function FightClient(p: FightClientProps) {
       stats: [aggregates(p.a, oa), aggregates(p.b, ob)] as [Aggregates, Aggregates],
     };
   }, [p.seed, p.a, p.b, p.mode, oa, ob, names]);
+  const direction = useMemo(() => directFight(full.result.log,[p.a,p.b]),[full.result.log,p.a,p.b]);
   const versionSkew = p.expectedHash !== undefined && (p.expectedHash >>> 0) !== full.result.hash;
 
   // ── refs (the loop never reads React state) ─────────────────────────────
@@ -199,6 +213,8 @@ export default function FightClient(p: FightClientProps) {
 
   // ── state (throttled mirrors of the refs, for the chrome) ───────────────
   const [ready, setReady] = useState(false);
+  const [sceneError, setSceneError] = useState(false);
+  const sceneQueueRef = useRef<Promise<void>>(Promise.resolve());
   const [small, setSmall] = useState(false);
   const [reduced, setReduced] = useState(false);
   const [playing, setPlaying] = useState(true);
@@ -208,6 +224,16 @@ export default function FightClient(p: FightClientProps) {
   const [lineIdx, setLineIdx] = useState(-1);
   const [hudTick, setHudTick] = useState(0);
   const [ended, setEnded] = useState(false);
+  const completionSent = useRef(false);
+  const completeRef = useRef(p.onComplete);
+  completeRef.current = p.onComplete;
+  useEffect(() => {
+    if (ended && !completionSent.current) {
+      completionSent.current = true;
+      completeRef.current?.();
+    }
+  }, [ended]);
+  const [savingPicture,setSavingPicture] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [shareNote, setShareNote] = useState("");
 
@@ -252,14 +278,19 @@ export default function FightClient(p: FightClientProps) {
    * replayed into the fx silently and settled, so the picture is a still. */
   const seekTo = useCallback(
     (target: number) => {
+      sfxRef.current?.stop();
       const scene = sceneRef.current;
       const fx = fxRef.current;
       scene?.reset();
       resetFightFx(fx);
       const f = createFight(p.seed, p.a, p.b, oa, ob, p.mode);
       const want = Math.max(0, Math.min(target, full.result.frames));
-      while (f.st.frame < want && !f.st.done) stepFight(f);
-      if (scene) for (const e of f.st.log) scene.onEvent(e, f.st, fx);
+      while (f.st.frame < want && !f.st.done) {
+        const before = f.st.log.length;
+        stepFight(f);
+        for (let i = before; i < f.st.log.length; i++) scene?.onEvent(f.st.log[i], f.st, fx);
+        tickFightFx(fx, FIXED_DT);
+      }
       fightRef.current = f;
       // a seek that lands on the end is a settled still: past the last
       // queued commentary line, so the closing lines have all been said
@@ -269,7 +300,7 @@ export default function FightClient(p: FightClientProps) {
       accRef.current = 0;
       logLenRef.current = -1;
       syncUi(true);
-      if (scene && reducedRef.current) scene.render(f.st, fx);
+      scene?.render(f.st, fx);
     },
     [p.seed, p.a, p.b, p.mode, oa, ob, full.result.frames, full.disp, syncUi],
   );
@@ -285,20 +316,35 @@ export default function FightClient(p: FightClientProps) {
     for (let i = before; i < f.st.log.length; i++) {
       const e = f.st.log[i];
       scene.onEvent(e, f.st, fx);
-      const s = soundOf(e);
-      if (s) sfxRef.current?.play(s);
+      if(e.t === "hit" || e.t === "block") {
+        const attacker = e.t === "block" ? (e.who === 0 ? 1 : 0) : e.who;
+        const move = direction.attacks.find(a=>a.frame===e.f && a.attacker===attacker)?.move;
+        sfxRef.current?.impact((attacker===0?p.a:p.b).weapon.id,{blocked:e.t==="block",critical:e.t==="hit"&&!!e.crit,side:attacker,move});
+      } else {
+        const s = soundOf(e);
+        if (s) sfxRef.current?.play(s);
+      }
+      if(e.t === "break")sfxRef.current?.crowd("break");
+      if(e.t === "ko")sfxRef.current?.crowd("ko");
     }
     tickFightFx(fx, FIXED_DT);
     if (!f.st.done) {
       for (let side = 0; side < 2; side++) {
         const ss = f.st.sides[side];
-        if (ss.staggerT === 0 && ss.swingT === TELL_F) {
-          sfxRef.current?.play("tick");
+        if(direction.attacks.some(a=>a.attacker===side&&a.begin===f.st.frame)) {
+          sfxRef.current?.windup((side===0?p.a:p.b).weapon.id,side as Side);
           scene.glint(side as Side);
+        }
+        const t=f.st.frame/60, previous=(f.st.frame-1)/60;
+        const step=Math.floor((t*1.45+side*.5)*2),lastStep=Math.floor((previous*1.45+side*.5)*2);
+        const leg=step%2?"legL":"legR",part=step%2?4:5;
+        if(step!==lastStep&&ss.armor[part]>0) {
+          const id=combatPart(side===0?p.a:p.b,leg).id;
+          sfxRef.current?.footstep(side as Side,/peeperStilts/.test(id)?"wheel":/pistonTreads/.test(id)?"track":"boot");
         }
       }
     }
-  }, []);
+  }, [direction,p.a,p.b]);
 
   // ── the scene and the loop ──────────────────────────────────────────────
   useEffect(() => {
@@ -309,6 +355,8 @@ export default function FightClient(p: FightClientProps) {
     let raf = 0;
     let running = false;
     let ro: ResizeObserver | null = null;
+    let ownedScene: FightSceneHandle | null = null;
+    setSceneError(false);
     const isSmall = typeof matchMedia !== "undefined" && matchMedia("(max-width: 899px)").matches;
     const isReduced = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
     setSmall(isSmall);
@@ -348,7 +396,7 @@ export default function FightClient(p: FightClientProps) {
           if (steps >= MAX_SUBSTEPS) accRef.current = 0;
         }
       }
-      scene.render(f.st, fx);
+      if (playingRef.current) scene.render(f.st, fx);
       syncUi(false);
     };
     function start() {
@@ -367,10 +415,14 @@ export default function FightClient(p: FightClientProps) {
       else start();
     };
 
-    pixiChain = pixiChain
+    sceneQueueRef.current = sceneQueueRef.current.catch(() => undefined)
       .then(async () => {
         if (dead) return null;
-        return buildFightScene(canvas, { small: isSmall, fightSeed: p.seed });
+        const legacy = !toyPilotEnabled() || new URLSearchParams(window.location.search).get("renderer") === "legacy";
+        const factory = legacy ? (await import("../_view/arena3d-legacy")).buildFightScene : buildFightScene;
+        const next = await factory(canvas, { small: isSmall, fightSeed: p.seed, ...(!legacy ? { log: full.result.log, reducedMotion: isReduced } : {}) });
+        ownedScene = next;
+        return next;
       })
       .then(async (scene) => {
         if (!scene) return;
@@ -387,6 +439,7 @@ export default function FightClient(p: FightClientProps) {
         const fit = () => {
           const r = wrap.getBoundingClientRect();
           scene.resize(r.width, r.height, Math.min(2, devicePixelRatio || 1));
+          if (fightRef.current) scene.render(fightRef.current.st, fxRef.current);
         };
         fit();
         ro = new ResizeObserver(fit);
@@ -398,6 +451,10 @@ export default function FightClient(p: FightClientProps) {
         document.addEventListener("visibilitychange", onVis);
         if (!document.hidden) start();
         setReady(true);
+      }).catch(() => {
+        ownedScene?.destroy();
+        if (sceneRef.current === ownedScene) sceneRef.current = null;
+        if (!dead) setSceneError(true);
       });
     return () => {
       dead = true;
@@ -405,10 +462,10 @@ export default function FightClient(p: FightClientProps) {
       document.removeEventListener("visibilitychange", onVis);
       ro?.disconnect();
       setReady(false);
-      pixiChain = pixiChain.then(() => {
-        sceneRef.current?.destroy();
-        sceneRef.current = null;
-      });
+      // Shader compilation still owns its resources until initialization settles.
+      const pending = sceneQueueRef.current;
+      void pending.finally(() => ownedScene?.destroy()).catch(() => undefined);
+      if (sceneRef.current === ownedScene) sceneRef.current = null;
     };
     // the fight inputs are stable for the life of the page; the loop effect runs once
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -417,7 +474,8 @@ export default function FightClient(p: FightClientProps) {
   // the speaker: silent until the sound button unmutes it; on unmount the
   // AudioContext closes (Chrome caps contexts per document, the S7 leak audit)
   useEffect(() => {
-    sfxRef.current = createBotsSfx(false);
+    sfxRef.current = createBotsSfx(savedBotsSound());
+    setMuted(sfxRef.current.muted());
     return () => {
       sfxRef.current?.dispose();
       sfxRef.current = null;
@@ -426,11 +484,13 @@ export default function FightClient(p: FightClientProps) {
 
   // ── controls ────────────────────────────────────────────────────────────
   const play = useCallback(() => {
+    sfxRef.current?.unlock();
     if (endedRef.current) seekTo(0);
     playingRef.current = true;
     setPlaying(true);
   }, [seekTo]);
   const pause = useCallback(() => {
+    sfxRef.current?.stop();
     playingRef.current = false;
     setPlaying(false);
   }, []);
@@ -469,6 +529,18 @@ export default function FightClient(p: FightClientProps) {
       setShareNote("Copy the link from the address bar.");
     }
   }, [names, full.result.winner, p.replayUrl]);
+
+  const savePicture = useCallback(async () => {
+    const canvas=canvasRef.current,scene=sceneRef.current,fight=fightRef.current;
+    if(!canvas||!scene||!fight||savingPicture)return;
+    setSavingPicture(true);
+    try {
+      const picture=scene.snapshot(fight.st,fxRef.current);
+      await downloadFightPostcard({canvas:picture,winner:names[full.result.winner],loser:names[full.result.winner===0?1:0],replayUrl:p.replayUrl,hash:full.hashHex});
+      setShareNote("Picture saved.");
+    } catch {setShareNote("The picture could not be saved. Try again.");}
+    finally {setSavingPicture(false);}
+  },[savingPicture,names,full.result.winner,full.hashHex,p.replayUrl]);
 
   const logGate = useCallback((what: "watchAnother" | "buildOne") => {
     const g = funGate.current;
@@ -527,20 +599,21 @@ export default function FightClient(p: FightClientProps) {
 
   if (versionSkew) {
     return (
-      <PageShell wide>
+      <FightLayout embedded={p.embedded}>
         <div className={css.viewer}>
           <Panel title={t.nav.wordmark} style={{ marginTop: 24 }}>
             <p style={{ fontFamily: FONT_DISPLAY, fontSize: 20, margin: "0 0 8px" }}>Please reload the page to watch this fight.</p>
             <p style={{ color: M.lore, margin: 0 }}>{full.chain}</p>
           </Panel>
         </div>
-      </PageShell>
+      </FightLayout>
     );
   }
 
   return (
-    <PageShell wide>
-      <div className={css.viewer}>
+    <FightLayout embedded={p.embedded}>
+      <div className={`${css.viewer} ${p.embedded ? css.embedded : ""}`}>
+        {p.onClose ? <button className={css.backToWorkshop} onClick={p.onClose} type="button">← Garage</button> : null}
         {/* the identity strips */}
         <div className={css.ids}>
           <IdentityStrip id={p.ids[0]} build={p.a} right={false} />
@@ -555,7 +628,7 @@ export default function FightClient(p: FightClientProps) {
 
         {/* THE hairline: the lit pit inside the dark frame */}
         <div ref={wrapRef} className={css.frame} data-hud={hudTick}>
-          <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} aria-label="The ring" />
+          <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} aria-label="The ring" data-renderer="physical-toys" />
           <div className={css.hudBar}>
             <LifeBar name={names[0]} armor={st?.sides[0].armor} armorMax={st?.sides[0].armorMax} right={false} />
             <LifeBar name={names[1]} armor={st?.sides[1].armor} armorMax={st?.sides[1].armorMax} right />
@@ -590,7 +663,7 @@ export default function FightClient(p: FightClientProps) {
                 textTransform: "uppercase",
               }}
             >
-              {t.landingUi.opening}
+              {sceneError ? "Please reload to open the ring." : "Getting the ring ready…"}
             </div>
           ) : null}
         </div>
@@ -667,7 +740,7 @@ export default function FightClient(p: FightClientProps) {
           >
             <SoundGlyph on={!muted} />
           </button>
-          <button
+          {!p.hideShare && <button
             type="button"
             className={css.ctl}
             onClick={share}
@@ -676,14 +749,14 @@ export default function FightClient(p: FightClientProps) {
             title={t.fight.share}
           >
             <IconShare size={20} />
-          </button>
+          </button>}
         </div>
         {reduced ? (
           <p style={{ fontSize: 13, color: M.muted, margin: "2px 4px 0" }}>Moving pictures are turned off on your device. Drag the bar to move through the fight.</p>
         ) : null}
 
         {/* the result card, offered after the KO */}
-        {ended ? (
+        {ended && !p.embedded ? (
           <Panel style={{ marginTop: 14 }}>
             <p
               style={{
@@ -723,14 +796,15 @@ export default function FightClient(p: FightClientProps) {
               </p>
             </details>
             <div className={css.resultActions}>
+              <Button onClick={savePicture} disabled={savingPicture}>{savingPicture ? "Saving…" : "Save a picture"}</Button>
               <Button variant="primary" onClick={play}>
                 <IconReplay size={18} />
                 {t.fight.replay}
               </Button>
-              <Button onClick={share}>
+              {!p.hideShare && <Button onClick={share}>
                 <IconShare size={18} />
                 {t.fight.share}
-              </Button>
+              </Button>}
               <Link
                 href={p.watchAnotherHref}
                 onClick={() => logGate("watchAnother")}
@@ -757,7 +831,8 @@ export default function FightClient(p: FightClientProps) {
         ) : null}
 
         {/* the stat sheet disclosure */}
-        <div style={{ marginTop: 14 }}>
+        {p.embedded && ended ? <div className={css.compactResult}><strong>{winnerName} wins!</strong><span>{p.rewardLines?.[0] ?? "A good fight. Ready for another?"}</span><button className={css.ctl} onClick={play} type="button" aria-label="Replay"><IconReplay size={18} /></button>{p.onClose ? <button className={css.returnButton} onClick={p.onClose}>{p.onCloseLabel ?? "Back to the garage"}</button> : null}</div> : null}
+        {!p.embedded && <div style={{ marginTop: 14 }}>
           <button
             type="button"
             onClick={() => setSheetOpen((o) => !o)}
@@ -772,9 +847,9 @@ export default function FightClient(p: FightClientProps) {
               <StatSheet ids={p.ids} stats={full.stats} builds={[p.a, p.b]} small={small} />
             </Panel>
           ) : null}
-        </div>
+        </div>}
       </div>
-    </PageShell>
+    </FightLayout>
   );
 }
 
@@ -1040,7 +1115,7 @@ export function rewardLinesOf(v: FightView): string[] {
  * private, so the play session rides along when there is one (a 403 says
  * so in plain words). Fail-soft on every other answer.
  */
-export function ServerFight({ id }: { id: string }) {
+export function ServerFight({ id, embedded, onClose, onCloseLabel, onComplete, hideShare }: { id: string; embedded?: boolean; onClose?: () => void; onCloseLabel?: string; onComplete?: () => void; hideShare?: boolean }) {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
 
   useEffect(() => {
@@ -1058,7 +1133,7 @@ export function ServerFight({ id }: { id: string }) {
         }
         const view = j as FightView;
         const age = Date.now() - Date.parse(view.createdAt);
-        const startAt = Number.isFinite(age) && age >= 0 && age < LIVE_MS ? Math.min(view.frames, Math.floor((age * 60) / 1000)) : 0;
+        const startAt = view.mode !== "spar" && !embedded && Number.isFinite(age) && age >= 0 && age < LIVE_MS ? Math.min(view.frames, Math.floor((age * 60) / 1000)) : 0;
         setState({ kind: "ready", view, startAt });
       } catch {
         if (!dead) setState({ kind: "error", status, message: "The fight did not load. Try again." });
@@ -1067,12 +1142,12 @@ export function ServerFight({ id }: { id: string }) {
     return () => {
       dead = true;
     };
-  }, [id]);
+  }, [id, embedded]);
 
   if (state.kind !== "ready") {
     const loading = state.kind === "loading";
     return (
-      <PageShell wide>
+      <FightLayout embedded={embedded}>
         <div className={css.viewer}>
           <Panel title={t.nav.wordmark} style={{ marginTop: 24 }}>
             <p style={{ fontFamily: FONT_DISPLAY, fontSize: 20, margin: "0 0 8px" }}>{loading ? "Opening the fight." : state.message}</p>
@@ -1090,12 +1165,18 @@ export function ServerFight({ id }: { id: string }) {
             ) : null}
           </Panel>
         </div>
-      </PageShell>
+      </FightLayout>
     );
   }
   const v = state.view;
   return (
     <FightClient
+      key={v.id}
+      embedded={embedded}
+      onClose={onClose}
+      onCloseLabel={onCloseLabel}
+      onComplete={onComplete}
+      hideShare={hideShare || v.mode === "spar"}
       seed={v.seed}
       a={v.buildA}
       b={v.buildB}

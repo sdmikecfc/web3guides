@@ -71,7 +71,8 @@ export default function FightDemoPage({ searchParams }: { searchParams: Query })
   const robotRaw = one(searchParams, "robot", "");
   const personal = robotRaw ? readPracticeRobot(robotRaw) : null;
   const showcase = !robotRaw && one(searchParams, "showcase", "") === "1";
-  const A = personal ?? (robotRaw ? null : showcase ? { build: SHOWCASE.a, name: SHOWCASE.names[0] } : parseFighter(aRaw));
+  const hammer = showcase && one(searchParams,"loadout","") === "hammer";
+  const A = personal ?? (robotRaw ? null : showcase ? { build: hammer ? SHOWCASE.hammer : SHOWCASE.a, name: hammer ? "Hammer Biscuit" : SHOWCASE.names[0] } : parseFighter(aRaw));
   const B = personal ? {build:scaleShape(SHAPES.find(s=>s.name === "Kettle") ?? SHAPES[0],buildTotal(personal.build)),name:"Copper Biscuit"} : showcase ? { build: SHOWCASE.b, name: SHOWCASE.names[1] } : parseFighter(bRaw);
   if (!A || !B) {
     return (
@@ -90,12 +91,12 @@ export default function FightDemoPage({ searchParams }: { searchParams: Query })
     nameB = `${nameB} B`;
   }
   const ids: [FightIdentity, FightIdentity] = [
-    { name: nameA, wallet: "Brass Otter 41", wins: 8, losses: 2, strategy: "Buy Low Sell High", paint: "mint" },
-    { name: nameB, wallet: "Copper Hare 7", wins: 5, losses: 4, strategy: "Build a Position", paint: "coral" },
+    { name: nameA, wallet: "Practice robot", wins: 0, losses: 0, strategy: "Practice", paint: "mint" },
+    { name: nameB, wallet: "Practice robot", wins: 0, losses: 0, strategy: "Practice", paint: "coral" },
   ];
   const nextSeed = (seed + 1) >>> 0;
   const orders: [Orders, Orders] = [order(searchParams,"A"),order(searchParams,"B")];
-  const link = (n:number) => demoReplayLink(n, personal ? {robot:robotRaw} : showcase ? {showcase:true} : {a:aRaw,b:bRaw}, orders);
+  const link = (n:number) => demoReplayLink(n, personal ? {robot:robotRaw} : showcase ? {showcase:true,...(hammer?{loadout:"hammer" as const}:{})} : {a:aRaw,b:bRaw}, orders);
   return (
     <FightClient
       seed={seed}

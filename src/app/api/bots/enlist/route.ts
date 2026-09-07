@@ -53,6 +53,7 @@ import { getAddress, isAddress } from "viem";
 import { verifyOwnership } from "@/lib/s7/server";
 import { botsDb, devTestFlag, failResponse, readJson } from "@/app/bots/_server/db";
 import { coinsOf, displayName, enlistPlayer, loadPlayer } from "@/app/bots/_server/players";
+import { campaignEnrollment } from "@/app/bots/_server/campaign-enrollment";
 import { mintSession } from "@/app/bots/_server/session";
 import type { EnlistView } from "@/app/bots/_server/types";
 import { burnNonce, nonceInMessage } from "./nonce-store";
@@ -90,6 +91,7 @@ export async function POST(req: Request) {
 
     // the seat, the starter kit and the robot in bay 1, all idempotent
     const { player, joined } = await enlistPlayer(db, wallet, devTestFlag(req));
+    await campaignEnrollment(db, wallet, true, !!player.is_test);
     const view: EnlistView = {
       ok: true,
       joined,

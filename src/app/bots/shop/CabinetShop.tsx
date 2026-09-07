@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
+import { PartDisplay } from "../_components/ToyDisplay";
 import { PageShell } from "../_components/PageShell";
 import { PAINTS, type PaintId } from "../_ui/tokens";
-import { CARD_SLOTS, SLOT_STATS, partArt, type CardSlot } from "@/lib/bots/fixtures";
+import { CARD_SLOTS, SLOT_STATS, type CardSlot } from "@/lib/bots/fixtures";
 import { PALETTE, t4Calendar, type Listing, type Shipment } from "@/lib/bots/shipment";
 import { boughtToday, type GarageState } from "@/lib/bots/garage-state";
 import { STRINGS, fill } from "@/lib/bots/strings";
 import { BODY_BRANDS, WEAPON_BRANDS, BRAND_INDEX, BRAND_OF_FAMILY, BRAND_OF_WEAPON, STAT_MEANING, leadStat, type BrandId } from "@/lib/bots/naming";
 import { SCREEN_WORDS, STAT_NAME_OF, fillWords } from "@/lib/bots/naming-screens";
 import css from "./cabinet.module.css";
-import bounds from "./part-bounds.json";
 
 const t = STRINGS.en;
 const BRANDS = [...BODY_BRANDS, ...WEAPON_BRANDS];
@@ -37,34 +37,20 @@ function Stars({ n }: { n: number }) {
 }
 function Coin() { return <span className={css.coin} aria-hidden>●</span>; }
 
-/** Same base/mask composite as the rig. Paired cards show two copies, never two purchases. */
-function PartArt({ listing }: { listing: Listing }) {
-  const art = partArt(listing.card);
-  const maskId = useId().replace(/:/g, "");
-  const geometry = (bounds as Record<string, { size: number[]; bounds: number[] }>)[art.base.replace("/bots-art/parts/", "")];
-  const [w, h] = geometry?.size ?? [456, 384];
-  const [x, y, right, bottom] = geometry?.bounds ?? [0, 0, w, h];
-  const [failed, setFailed] = useState(false);
-  const pair = false;
-  return <span className={`${css.art} ${pair ? css.pair : ""}`} data-slot={listing.slot}>
-    {failed ? <span className={css.artFallback} style={{ background: listing.color ? PAINTS[listing.color] : "#d0af76" }}>{t.ui.card[listing.slot]}</span> :
-      Array.from({ length: pair ? 2 : 1 }, (_, i) => <span className={css.piece} key={i}>
-        <svg viewBox={`${x} ${y} ${right - x} ${bottom - y}`} preserveAspectRatio="xMidYMax meet" width="100%" height="100%" aria-hidden style={{ overflow: "visible", isolation: "isolate" }}>
-          <defs><mask id={`${maskId}-${i}`} maskUnits="userSpaceOnUse" x="0" y="0" width={w} height={h} style={{ maskType: "alpha" }}><image href={art.mask} width={w} height={h} /></mask></defs>
-          <image href={art.base} width={w} height={h} onError={() => setFailed(true)} />
-          {listing.color ? <rect width={w} height={h} fill={PAINTS[listing.color]} mask={`url(#${maskId}-${i})`} opacity="0.88" style={{ mixBlendMode: "multiply" }} /> : null}
-        </svg>
-      </span>)}
-  </span>;
+/** Every shelf piece is the same physical geometry worn in the workbench. */
+function PartArt({listing}:{listing:Listing}){
+  return <span className={css.art} data-slot={listing.slot}><PartDisplay part={listing.card} paint={listing.color} ariaLabel={listing.card.name}/></span>;
 }
 
 type Props = {
   shipment: Shipment | null; st: GarageState; day: string; initialSlot: CardSlot | null;
   leftMs: number | null; tomorrow: string; returns: string; toast: string | null;
   onBuy: (listing: Listing) => Promise<void>;
+  embedded?: boolean;
+  browseOnly?: { label: string; message: string; onAction: () => void };
 };
 
-export default function CabinetShop({ shipment, st, day, initialSlot, leftMs, tomorrow, returns, toast, onBuy }: Props) {
+export default function CabinetShop({ shipment, st, day, initialSlot, leftMs, tomorrow, returns, toast, onBuy, embedded = false, browseOnly }: Props) {
   const [slot, setSlot] = useState<CardSlot | null>(initialSlot);
   const [color, setColor] = useState<PaintId | null>(null);
   const [brand, setBrand] = useState<BrandId | null>(null);
@@ -106,17 +92,17 @@ export default function CabinetShop({ shipment, st, day, initialSlot, leftMs, to
         {brandId ? <p className={css.character}>{BRAND_INDEX[brandId].character}</p> : null}
         <dl className={css.stats}>{SLOT_STATS[l.slot].map((key, index) => <div key={key}><dt>{t.ui.stat[key]}</dt><dd>{l.card.s[index]}</dd></div>)}</dl>
         <p className={css.statMeaning}><strong>{t.ui.stat[SLOT_STATS[l.slot][Math.max(0, SLOT_STATS[l.slot].findIndex(k => STAT_NAME_OF[k] === lead.name))]]}:</strong> {STAT_MEANING[lead.name]}</p>
-        <button className={css.buy} disabled={disabled} onClick={() => void purchase(l)}>
-          {pending ? words.buying : bought ? `✓ ${words.owned}` : <>{words.buy} <Coin /> {l.price.toLocaleString("en-US")} <span>coins</span></>}
+        <button className={css.buy} disabled={!browseOnly && disabled} onClick={() => { if (browseOnly) { dialog.current?.close(); browseOnly.onAction(); } else void purchase(l); }}>
+          {browseOnly ? browseOnly.label : pending ? words.buying : bought ? `✓ ${words.owned}` : <>{words.buy} <Coin /> {l.price.toLocaleString("en-US")} <span>coins</span></>}
         </button>
-        <p className={css.restriction}>{bought ? t.shopUi.bought : levelBlocked ? fillWords(SCREEN_WORDS.needLevel, { n: l.needsLevel, have: st.level }) : coinsBlocked ? fillWords(SCREEN_WORDS.needCoins, { n: l.price - st.coins }) : t.shopUi.oncePerDay}</p>
+        <p className={css.restriction}>{browseOnly ? browseOnly.message : bought ? t.shopUi.bought : levelBlocked ? fillWords(SCREEN_WORDS.needLevel, { n: l.needsLevel, have: st.level }) : coinsBlocked ? fillWords(SCREEN_WORDS.needCoins, { n: l.price - st.coins }) : t.shopUi.oncePerDay}</p>
         {error ? <p role="alert">{error}</p> : null}
         {l.tier === 4 ? <p className={css.returnNote}>{tomorrow} {returns}</p> : null}
         {mobile ? <button className={css.backButton} onClick={() => dialog.current?.close()}>{words.close}</button> : null}
       </div>
     </>;
   }
-  return <PageShell wide backdrop={{ background: "radial-gradient(ellipse at 16% 0%, #59432c 0%, #29241c 36%, #181b18 80%)" }}>
+  const contents = <>
     <div className={css.store}>
       <header className={css.header}>
         <div><p className={css.eyebrow}><span aria-hidden>✦</span> {words.eyebrow}</p><h1>{words.title}</h1><p className={css.subtitle}>{words.subtitle} <span>{shipment?.name}</span></p></div>
@@ -159,5 +145,6 @@ export default function CabinetShop({ shipment, st, day, initialSlot, leftMs, to
     </div>
     <dialog ref={dialog} aria-label="Inspect part" className={css.dialog} onClick={e => { if (e.target === e.currentTarget) dialog.current?.close(); }}><div>{inspection(true)}</div></dialog>
     {toast ? <div className={css.toast} role="status">✓ {toast}</div> : null}
-  </PageShell>;
+  </>;
+  return embedded ? <div className={css.embedded}>{contents}</div> : <PageShell wide backdrop={{ background: "radial-gradient(ellipse at 16% 0%, #514337 0%, #302921 45%, #211d19 100%)" }}>{contents}</PageShell>;
 }

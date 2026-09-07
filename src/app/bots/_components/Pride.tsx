@@ -41,11 +41,17 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   FIGHTS,
+  engineBuild,
   nameText,
+  type Build,
   type OwnedPart,
 } from "@/lib/bots/fixtures";
-import { earnedOfBuild, bayOfPart, isHydratedState, type GarageState } from "@/lib/bots/garage-state";
-import { faceAllowed } from "@/lib/bots/look";
+import { earnedOfBuild, bayOfPart, isHydratedState, lookOfBay, type GarageState } from "@/lib/bots/garage-state";
+import { faceAllowed, NO_MARKS } from "@/lib/bots/look";
+import { equipmentPaints } from "@/lib/bots/equipment";
+import { ToyDisplay } from "./ToyDisplay";
+import { rigLookOf } from "../_view/look-view";
+import type { BotLook as RigLook } from "../_view/look";
 import { STRINGS, fill } from "@/lib/bots/strings";
 import { uiCss } from "../_ui/primitives";
 import { FONT_BODY, FONT_TOY, M, R, TAP } from "../_ui/tokens";
@@ -55,6 +61,7 @@ const KEY = "bots.proud.";
 
 interface Moment {
   key: string;
+  bay: number;
   line: string;
   action?: { label: string; href: string };
 }
@@ -135,6 +142,7 @@ function momentsOf(st: GarageState, demo: boolean): Moment[] {
     if (name) {
       out.push({
         key: "firstWin",
+        bay,
         line: fill(t.proud.firstWin, { name }),
         action: won ? { label: t.proud.firstWinAction, href: `/bots/fight/${won.id}` } : undefined,
       });
@@ -149,6 +157,7 @@ function momentsOf(st: GarageState, demo: boolean): Moment[] {
     if (name && faceOpen(st, matched.bay, "wink")) {
       out.push({
         key: "firstMatch",
+        bay: matched.bay,
         line: fill(t.proud.firstMatch, { name, color: matched.color }),
         action: { label: t.proud.faceAction, href: buildHref(matched.bay) },
       });
@@ -162,6 +171,7 @@ function momentsOf(st: GarageState, demo: boolean): Moment[] {
     if (name && bay) {
       out.push({
         key: "firstBest",
+        bay,
         line: fill(t.proud.firstBest, { name }),
         // the 4 star part has to be ON the robot for the Stars face to be
         // open, and bestPart finds one on the shelf too, so the button only
@@ -175,7 +185,12 @@ function momentsOf(st: GarageState, demo: boolean): Moment[] {
 }
 
 /** One warm line in the garage: the first proud moment this browser has not seen. */
-export function PrideNote({ state, demo = true }: { state: GarageState; demo?: boolean }) {
+export function PrideNote({ state, demo = true, lookForBay }: {
+  state: GarageState;
+  demo?: boolean;
+  /** The garage may provide its exact server-backed marks and chosen look. */
+  lookForBay?: (bay: number, build: Build) => RigLook;
+}) {
   const [seen, setSeen] = useState<Record<string, boolean> | null>(null);
   const moments = isHydratedState(state) ? momentsOf(state, demo) : [];
 
@@ -189,6 +204,11 @@ export function PrideNote({ state, demo = true }: { state: GarageState; demo?: b
   if (seen === null) return null;
   const moment = moments.find((m) => !seen[m.key]);
   if (!moment) return null;
+  const build = state.builds[moment.bay];
+  const paints = build ? equipmentPaints(build, state.parts) : null;
+  const look = build && paints ? lookForBay?.(moment.bay, build) ?? rigLookOf({
+    paints, look: lookOfBay(state, moment.bay), marks: NO_MARKS, wins: 0,
+  }, paints.torso ?? paints.head ?? "cream") : undefined;
 
   return (
     <div
@@ -199,17 +219,20 @@ export function PrideNote({ state, demo = true }: { state: GarageState; demo?: b
         display: "flex",
         flexWrap: "wrap",
         alignItems: "center",
-        gap: 10,
-        marginTop: 12,
-        padding: "10px 12px 10px 16px",
+        gap: 16,
+        marginTop: 16,
+        padding: "14px 18px 14px 14px",
         borderRadius: R.card,
-        border: `1px solid ${M.good}`,
+        border: `1px solid ${M.border}`,
         background: M.surface,
         color: M.text,
         fontFamily: FONT_BODY,
       }}
     >
-      <div style={{ flex: "1 1 240px", minWidth: 0, fontFamily: FONT_TOY, fontSize: 17, fontWeight: 800, lineHeight: 1.3 }}>
+      {build ? <div style={{ width: 72, height: 82, flex: "0 0 72px", borderRadius: 12, overflow: "hidden" }}>
+        <ToyDisplay build={engineBuild(build, state.parts)} look={look} mode="static" ariaLabel={nameText(build.name)} />
+      </div> : null}
+      <div style={{ flex: "1 1 220px", minWidth: 0, fontFamily: FONT_TOY, fontSize: 18, fontWeight: 700, lineHeight: 1.35 }}>
         {moment.line}
       </div>
       <div style={{ display: "flex", gap: 8, flex: "0 0 auto" }}>

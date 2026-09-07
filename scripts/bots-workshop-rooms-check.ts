@@ -1,0 +1,41 @@
+import assert from "node:assert/strict";
+import { cabinetShipment } from "../src/lib/bots/workshop-views";
+import { shipmentFor } from "../src/lib/bots/shipment";
+import { BEGINNER_ORDER, BEGINNER_OFFERS } from "../src/lib/bots/beginner-catalog";
+import { freshGameDemo, demoWelcome, demoBuy, demoComplete, demoCreateBay, demoSave, readGameDemo } from "../src/lib/bots/game-demo";
+import { EQUIPMENT_KIND, socketsOf, withSockets, fitPart } from "../src/lib/bots/equipment";
+import { seedState } from "../src/lib/bots/garage-state";
+import type { ShopView } from "../src/app/bots/_server/types";
+
+const source=shipmentFor("2026-09-07");
+const shop: ShopView={...source,day:source.dayKey,weekday:"Monday",listings:source.listings.map(l=>({...l,name:l.card.name,bought:false,price:l.price+17}))};
+const before=JSON.stringify(shop),cabinet=cabinetShipment(shop);
+assert.equal(JSON.stringify(shop),before);
+assert.equal(cabinet.dayKey,"2026-09-07");
+assert.equal(cabinet.listings.length,16);
+for(const listing of cabinet.listings){const original=shop.listings.find(l=>l.id===listing.id)!;assert.equal(listing.price,original.price);assert.equal(listing.color,original.color);assert.equal(listing.partKey,original.partKey);assert.equal(listing.needsLevel,original.needsLevel);}
+assert.deepEqual(Object.values(cabinet.rows).flat().map(l=>l.id),cabinet.listings.map(l=>l.id));
+console.log("Cabinet preserves the server day, all 16 listing identities, prices, colours and eligibility.");
+
+let state=freshGameDemo();
+assert.equal(demoCreateBay(state,3),state,"new bays cannot bypass onboarding");
+const allowance=JSON.stringify(state);
+seedState(0);cabinetShipment(shop);
+assert.equal(JSON.stringify(state),allowance,"browsing samples never grants or spends practice funds");
+state=demoWelcome(state);
+for(const socket of BEGINNER_ORDER)state=demoBuy(state,socket,BEGINNER_OFFERS.find(o=>o.part.slot===EQUIPMENT_KIND[socket])!.id);
+state=demoComplete(state);
+const identities=state.parts.map(p=>p.uid);
+for(const bay of [3,4,5])state=demoCreateBay(state,bay);
+assert.equal(state.coins,0);assert.equal(state.builds.length,5);assert.deepEqual(state.parts.map(p=>p.uid),identities);
+assert.equal(demoCreateBay(state,5),state);assert.equal(demoCreateBay(state,6),state);assert.equal(demoCreateBay(state,-1),state);
+const arm=state.parts.find(p=>p.uid===socketsOf(state.builds[0]).armR)!;
+const moved=fitPart(state.builds[2],arm,"armR");
+assert.equal(demoSave(state,moved),state,"an item on another robot cannot be duplicated");
+state=demoSave(state,withSockets(state.builds[0],{...socketsOf(state.builds[0]),armR:null}));
+state=demoSave(state,moved);
+const restored=readGameDemo(JSON.stringify(state));
+assert.equal(restored.builds.length,5);assert.equal(socketsOf(restored.builds[2]).armR,arm.uid);assert.equal(socketsOf(restored.builds[0]).armR,null);
+assert.equal(restored.coins,0);assert.deepEqual(restored.parts.map(p=>p.uid),identities);
+assert.equal(restored.onboarding.step,"complete");
+console.log("Five practice bays survive reload; an independent arm moves without duplication, new grants or changed onboarding.");

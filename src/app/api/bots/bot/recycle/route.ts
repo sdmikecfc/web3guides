@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { loadBot, loadPartsOfBot, nameTextOf, partRecycleValue } from "@/app/bots/_server/bots";
 import { botsDb, failResponse, intIn, readJson, refuse } from "@/app/bots/_server/db";
+import { assertOnboardingUnlocked } from "@/app/bots/_server/onboarding";
 import { grant } from "@/app/bots/_server/grants";
 import { displayName, loadPlayer } from "@/app/bots/_server/players";
 import { sessionFromRequest } from "@/app/bots/_server/session";
@@ -29,6 +30,7 @@ export async function POST(req: Request) {
     const bot = await loadBot(db, botId);
     if (!bot || bot.wallet !== sess.wallet) return refuse(404, "That bot is not in your garage.");
 
+    await assertOnboardingUnlocked(db, sess.wallet, bot.id);
     const parts = await loadPartsOfBot(db, bot.id);
     let coins = 0;
     for (const p of parts) coins += partRecycleValue(p);

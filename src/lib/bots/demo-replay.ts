@@ -1,4 +1,5 @@
 import { CARD_BY_ID, nameText, type Build, type OwnedPart } from "./fixtures";
+import { gameCard } from "./beginner-catalog";
 import { EQUIPMENT_KIND, EQUIPMENT_SOCKETS, socketUid } from "./equipment";
 import { modularBuild, combatPart, combatPaints, type CombatBuild } from "./combat-model";
 import { isPaintId, NO_ORDERS, type Orders } from "@/app/bots/_engine/parts";
@@ -7,9 +8,9 @@ import { NO_LOOK, NO_MARKS, findsOf, normalizeLook, toHatWon, type BotLookRaw } 
 import type { LookView } from "@/app/bots/_server/types";
 
 /** Every public practice link carries the orders which produced that fight. */
-export function demoReplayLink(seed: number, subject: { robot?: string; showcase?: boolean; a?: string; b?: string }, orders: readonly [Orders, Orders] = [NO_ORDERS, NO_ORDERS]): string {
+export function demoReplayLink(seed: number, subject: { robot?: string; showcase?: boolean; loadout?: "hammer"; a?: string; b?: string }, orders: readonly [Orders, Orders] = [NO_ORDERS, NO_ORDERS]): string {
   const fighters: Record<string, string> = subject.robot ? { robot: subject.robot }
-    : subject.showcase ? { showcase: "1" } : { a: subject.a ?? "T2", b: subject.b ?? "T2" };
+    : subject.showcase ? { showcase: "1", ...(subject.loadout ? {loadout:subject.loadout} : {}) } : { a: subject.a ?? "T2", b: subject.b ?? "T2" };
   const q = new URLSearchParams({seed:String(seed >>> 0), ...fighters,
     stanceA:String(orders[0].stance),stanceB:String(orders[1].stance),
     focusA:String(orders[0].focus),focusB:String(orders[1].focus)});
@@ -34,7 +35,7 @@ function capturedLook(build: CombatBuild, raw: unknown): LookView {
   const earned = findsOf({
     wins: 0, losses: 0, level: 1, champion: false, bodyCount: 6,
     bodyPaints: EQUIPMENT_SOCKETS.filter(s => s !== "weapon").map(s => paints[s]).filter(isPaintId),
-    partStars: EQUIPMENT_SOCKETS.map(s => CARD_BY_ID[combatPart(build,s).id]?.tier ?? 0),
+    partStars: EQUIPMENT_SOCKETS.map(s => gameCard(combatPart(build,s).id)?.tier ?? 0),
     // A known hat in this unsigned practice picture is decoration only. It
     // never enters inventory, grants or earned marks on a player's account.
     hats: hat ? [hat] : [], plateNumber,
@@ -67,7 +68,7 @@ export function readPracticeRobot(raw: string): {name:string;build:CombatBuild;l
     if (!value || typeof value.name !== "string" || value.name.length > 60 || !Array.isArray(value.pieces) || value.pieces.length !== 7) return null;
     const parts: Part[] = value.pieces.map((p:unknown,i:number) => {
       if (!Array.isArray(p) || p.length !== 2 || typeof p[0] !== "string") throw new Error("part");
-      const card = CARD_BY_ID[p[0]];
+      const card = gameCard(p[0]);
       if (!card || card.slot !== EQUIPMENT_KIND[EQUIPMENT_SOCKETS[i]]) throw new Error("slot");
       if (p[1] !== null && !isPaintId(p[1])) throw new Error("colour");
       return {id:card.id,s:[...card.s],...(card.slot !== "weapon" && isPaintId(p[1]) ? {paint:p[1]} : {})};

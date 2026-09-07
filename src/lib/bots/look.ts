@@ -810,7 +810,7 @@ export interface HatRow {
 
 /** Hats have ONE way in, and every row says so. Never on the shelf, never
  * bought, and recycle refuses them. */
-export const HAT_EARN = "Won from beating a bigger robot.";
+export const HAT_EARN = "Earned through fights and small milestones.";
 
 export const HATS: readonly HatRow[] = [
   { id: "bow", name: "Bow", earn: HAT_EARN },

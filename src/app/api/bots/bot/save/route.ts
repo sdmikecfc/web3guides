@@ -31,9 +31,11 @@ import {
   loadHats,
   loadParts,
   partStats,
+  socketIdsOf,
   type BuildJson,
 } from "@/app/bots/_server/bots";
 import { botsDb, dayKey, failResponse, intIn, nowIso, readJson, refuse } from "@/app/bots/_server/db";
+import { loadOnboarding } from "@/app/bots/_server/onboarding";
 import { loadPlayer } from "@/app/bots/_server/players";
 import { sessionFromRequest } from "@/app/bots/_server/session";
 import type { BotName } from "@/app/bots/_server/types";
@@ -128,7 +130,14 @@ export async function POST(req: Request) {
       Object.assign(ids,{head:sockets.head,torso:sockets.torso,arms:sockets.armL,legs:sockets.legL,weapon:sockets.weapon});
     }
     const complete = filled === (sockets ? EQUIPMENT_SOCKETS.length : SLOTS.length);
-    const listed = complete && body.listed !== false;
+    const onboarding = await loadOnboarding(db, sess.wallet);
+    const protectedBot = !!onboarding && !onboarding.completed_at && !!existing &&
+      (existing.id === onboarding.welcome_bot_id || existing.id === onboarding.draft_bot_id);
+    if (protectedBot && existing) {
+      const current = socketIdsOf(existing);
+      if (!sockets || EQUIPMENT_SOCKETS.some(s => sockets![s] !== current[s])) return refuse(409, "Choose these parts in your beginner shop first.");
+    }
+    const listed = !protectedBot && complete && body.listed !== false;
 
     // ── THE LOOK, checked against the rows and nothing else ──────────────
     // The server is the truth (the joint law): a face, a sticker colour and

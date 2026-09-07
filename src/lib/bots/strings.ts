@@ -689,7 +689,7 @@ const en = {
     noHat: "No hat",
     /** the first time a hat is ever there, above the row. It says what the
      * ROBOT did, and it says the one rule, so nobody goes looking for a shop */
-    foundHat: "Your robot found a hat. Hats are won in fights. They are never for sale.",
+    foundHat: "Your robot found a hat. Hats are earned. They are never for sale.",
     /** said back when one goes on */
     hatOn: "{hat}. Your robot is wearing it.",
     /** the three buttons under the rows */
@@ -802,7 +802,7 @@ const en = {
     patches: "{name} has {n} new stitched patches.",
     /** a hat is the only thing on this list that arrives from ONE fight and
      * cannot be worked towards, so the paper says which one turned up */
-    hat: "{name} beat the biggest robot and found a {hat}.",
+    hat: "{name} found a {hat}.",
   },
 } as const;
 

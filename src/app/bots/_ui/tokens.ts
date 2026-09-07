@@ -48,35 +48,35 @@ export const FONT_MONO = '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
  */
 export const M = {
   /** the page behind everything */
-  ground: "#1b211d",
+  ground: "#191612",
   /** panels, sheets, cards */
-  surface: "#252c25",
+  surface: "#252019",
   /** inset wells, hover rows, the active chip fill */
-  surface2: "#30372e",
+  surface2: "#322a22",
   /** hairline borders, and THE hairline around every canvas */
-  border: "#495044",
+  border: "#514435",
   /** primary text */
-  text: "#f4ecd8",
+  text: "#f2e8d7",
   /** secondary text, labels, disabled */
-  muted: "#b3b5a2",
+  muted: "#b3a795",
   /** lore lines: one step lighter than muted so it reads as a whisper */
-  lore: "#c9cbbb",
+  lore: "#cbbda8",
   /** THE accent. Active state and links only. */
-  accent: "#e5bd79",
+  accent: "#e5bd83",
 
   /** semantic, shared with the clay layer so a status dot and an HP bar agree */
-  good: "#b4d497",
-  warn: "#ffd166",
-  bad: "#ff8a7a",
+  good: "#a9c8af",
+  warn: "#ecc17e",
+  bad: "#e99179",
 
   /** the scrim behind an open sheet */
-  overlay: "rgba(15,19,15,0.76)",
+  overlay: "rgba(20,16,12,0.78)",
   /** a chip that sits over a canvas: translucent surface */
-  panel: "rgba(37,44,37,0.96)",
+  panel: "rgba(37,30,24,0.97)",
   /** the one hairline's inner top highlight */
-  highlight: "rgba(255,255,255,0.04)",
+  highlight: "rgba(255,255,255,0.045)",
   /** "you get coins back" affordances (the DK sell tone) */
-  sell: "#a98d6a",
+  sell: "#a98b6c",
 } as const;
 
 /** Tier colours (the standing tier law: a dot and a label, never a pill). */

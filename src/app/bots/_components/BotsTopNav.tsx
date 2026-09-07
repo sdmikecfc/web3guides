@@ -28,6 +28,7 @@ import { FONT_BODY, FONT_DISPLAY, M } from "../_ui/tokens";
 import { DockButton, NameChip } from "../_ui/primitives";
 import { IconGarage, IconPegboard, IconStar, IconWeapon, IconWrench } from "../_ui/icons";
 import { STRINGS } from "@/lib/bots/strings";
+import { workshopEnabled } from "@/lib/bots/rollout";
 import { readBotsPlayerName } from "../battles/session";
 import css from "../_ui/ui.module.css";
 
@@ -41,6 +42,9 @@ export function BotsTopNav() {
   // the server would be a different name from the one the browser knows
   const [playerName, setPlayerName] = useState("");
   useEffect(() => setPlayerName(readBotsPlayerName()), [path]);
+
+  // The garage-first game owns its own persistent controls.
+  if (path === "/bots/welcome" || path === "/bots" && workshopEnabled()) return null;
 
   const nav = [
     { t: t.garage, href: "/bots/garage", icon: <IconGarage size={22} /> },
@@ -68,7 +72,7 @@ export function BotsTopNav() {
           alignItems: "center",
           gap: 12,
           padding: "0 20px",
-          background: "rgba(27,33,29,0.96)",
+          background: "rgba(29,23,18,0.96)",
           backdropFilter: "blur(10px)",
           WebkitBackdropFilter: "blur(10px)",
           borderBottom: `1px solid ${M.border}`,
@@ -166,7 +170,7 @@ export function BotsTopNav() {
           alignItems: "center",
           justifyContent: "space-around",
           padding: "0 4px env(safe-area-inset-bottom, 0px)",
-          background: "rgba(27,33,29,0.98)",
+          background: "rgba(29,23,18,0.96)",
           backdropFilter: "blur(10px)",
           WebkitBackdropFilter: "blur(10px)",
           borderTop: `1px solid ${M.border}`,

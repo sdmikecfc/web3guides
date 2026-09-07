@@ -81,6 +81,7 @@ import {
 import { mintFirstWinCard, type CardPayload } from "./cards";
 import { type BotsDb, dayKey, dayNumber, fightSalt, isProduction, nowIso, refuse } from "./db";
 import { battleCoinsToday, grant } from "./grants";
+import { assertOnboardingUnlocked, loadCoinBalance } from "./onboarding";
 import { coinsOf, displayName, loadPlayer } from "./players";
 import type { BotsSession } from "./session";
 import type { FightIdentityView, FightRewardsView, LookView } from "./types";
@@ -217,6 +218,7 @@ export async function startFight(db: BotsDb, sess: BotsSession, input: StartFigh
 
   const player = await loadPlayer(db, wallet);
   if (!player) return refuse(401, "Sign in first.");
+  await assertOnboardingUnlocked(db, wallet);
   const isTest = !!player.is_test;
   const myName = displayName(player);
 
@@ -225,7 +227,7 @@ export async function startFight(db: BotsDb, sess: BotsSession, input: StartFigh
   if (!bot) return refuse(404, "That robot is not in your garage.");
   const parts = await loadParts(db, wallet);
   const buildA = engineBuildOf(bot, parts);
-  if (!buildA) return refuse(400, `${nameTextOf(bot)} needs more parts. Put on all five.`);
+  if (!buildA) return refuse(400, `${nameTextOf(bot)} needs more parts. Put on all seven.`);
   const totalA = buildTotal(buildA);
   if (mode !== "spar" && inShop(bot, now)) return refuse(409, `${nameTextOf(bot)} is being fixed. Ready in ${leftWords(bot.broken_until, now)}.`);
   const oa = parseOrders(input.orders);
@@ -262,7 +264,7 @@ export async function startFight(db: BotsDb, sess: BotsSession, input: StartFigh
       return refuse(400, "You can put in 25 to 500 coins.");
     }
     stake = stakeIn;
-    const coins = coinsOf(player);
+    const coins = (await loadCoinBalance(db, wallet, player)).spendable;
     if (coins < stake) return refuse(400, `You need ${stake - coins} more coins.`);
     const totalB = buildTotal(buildB);
     classGap = weightClassIndex(totalB) - weightClassIndex(totalA);

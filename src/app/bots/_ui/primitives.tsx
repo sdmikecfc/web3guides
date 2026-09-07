@@ -170,7 +170,7 @@ export function Panel({
   return (
     <div
       style={{
-        background: `linear-gradient(140deg, #333b30, ${M.surface})`,
+        background: `linear-gradient(140deg, #3a3026, ${M.surface})`,
         boxShadow: "inset 0 1px 0 #f9e9bd0d, 0 8px 24px #0000001a",
         border: `1px solid ${M.border}`,
         borderRadius: R.card,

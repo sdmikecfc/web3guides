@@ -1,21 +1,13 @@
-/**
- * /bots/battles: the Battles page (screens doc 4.1). The client reads the
- * query string (?bot=) and the clock, so it is a client component under a
- * Suspense boundary (the Garage route's shape, ../garage/page.tsx).
- */
-import type { Metadata } from "next";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { workshopEnabled } from "@/lib/bots/rollout";
 import BattlesClient from "./BattlesClient";
 
-export const metadata: Metadata = {
-  title: "Fights | Clanker Cup",
-  description: "Pick your robot, fight a game robot or another player, and watch every fight again.",
-};
-
-export default function BattlesPage() {
-  return (
-    <Suspense fallback={null}>
-      <BattlesClient />
-    </Suspense>
-  );
+export const metadata = { title: "Fights | Clanker Cup" };
+export default function Page({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  if (workshopEnabled()) {
+    const bay = typeof searchParams.bay === "string" && /^[1-5]$/.test(searchParams.bay) ? searchParams.bay : null;
+    redirect("/bots?view=fight" + (bay ? "&bay=" + bay : ""));
+  }
+  return <Suspense fallback={null}><BattlesClient /></Suspense>;
 }

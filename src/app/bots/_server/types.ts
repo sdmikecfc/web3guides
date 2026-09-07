@@ -8,6 +8,8 @@ import type { Build, Mode, Orders, PaintId, Slot, Stats, Tier } from "../_engine
 import type { Difficulty, WeightClass } from "../_engine/rewards";
 import type { DecalId, Socket } from "@/lib/bots/fixtures";
 import type { BotLook, HatWon, LookEarned, LookMarks, SocketPaints } from "@/lib/bots/look";
+import type { OnboardingView, CampaignEnrollmentView } from "@/lib/bots/onboarding-types";
+export type { OnboardingView, CoinBalance, CampaignEnrollmentView } from "@/lib/bots/onboarding-types";
 
 /**
  * A ROBOT'S WHOLE LOOK, the way every surface that draws one reads it.
@@ -129,6 +131,8 @@ export interface ShopView {
 export interface PlayerView {
   walletName: string;
   coins: number;
+  reservedCoins?: number;
+  spendableCoins?: number;
   battlePoints: number;
   /** the wallet's best bot level (the shop's tier gate reads this) */
   level: number;
@@ -143,6 +147,8 @@ export interface MeView {
   bots: BotView[];
   parts: PartView[];
   shop: ShopView;
+  onboarding?: OnboardingView | null;
+  campaignEnrollment?: CampaignEnrollmentView;
 }
 
 export interface FightIdentityView {
