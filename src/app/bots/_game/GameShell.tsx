@@ -31,6 +31,7 @@ import { CampaignPanel, EarningPanel, GameDrawer, HelpPanel } from "./GamePanels
 import { ProgressPanel } from "./ProgressPanel";
 import type { ProgressView } from "@/lib/bots/progress-view";
 import css from "./game.module.css";
+import { OverallStats, PartNumbers, PartStats, previewOffer } from "./BuildStats";
 
 const FightClient = dynamic(() => import("../fight/FightClient"), { ssr: false, loading: () => <div className={css.loading}><p>Opening the ring…</p></div> });
 const ServerFight = dynamic(() => import("../fight/FightClient").then(m => m.ServerFight), { ssr: false, loading: () => <div className={css.loading}><p>Opening the ring…</p></div> });
@@ -152,8 +153,6 @@ export default function GameShell() {
     const actual = me?.bots.find(v => v.bay === b.bay);
     return { paints: equipmentPaints(b, parts), look: { ...(b.look ?? NO_LOOK), plateNumber: b.name.num }, marks: signedIn && actual ? actual.marks : NO_MARKS, wins: signedIn && actual ? actual.wins : 0 };
   }, [me?.bots, parts, signedIn]);
-  const robot = useMemo(() => build ? engineBuild(build, parts) : null, [build, parts]);
-  const look = useMemo(() => build ? rigLookOf(liveLook(build), row?.paint ?? "mint") : undefined, [build, liveLook, row?.paint]);
   const incomplete = build ? emptySockets(build).length : 7;
   const worn = EQUIPMENT_SOCKETS.map(s => parts.find(p => p.uid === (build ? socketsOf(build)[s] : null))).filter((p): p is OwnedPart => !!p);
   const colours = Array.from(new Set(worn.filter(p => p.slot !== "weapon").map(p => p.paint).filter((p): p is PaintId => !!p)));
@@ -294,6 +293,11 @@ export default function GameShell() {
   const introPractice = intro && onboarding?.step === "practice";
   const showChoice = mode === "parts" && !introWelcome || mode === "build" && !intro;
   const fullRoom = (!intro || exploring) && (mode === "garage" || mode === "parts");
+  const showStats = !feed && !fullRoom && (mode === "build" && !intro || mode === "parts" && chooseIntro);
+  const trial = useMemo(() => build ? previewOffer(build, parts, socket, showStats && chooseIntro ? pickedOffer : undefined) : null, [build, parts, socket, showStats, chooseIntro, pickedOffer]);
+  const robot = useMemo(() => trial ? engineBuild(trial.build, trial.parts) : null, [trial]);
+  const look = useMemo(() => trial ? rigLookOf({ ...liveLook(trial.build), paints: equipmentPaints(trial.build, trial.parts) }, row?.paint ?? "mint") : undefined, [trial, liveLook, row?.paint]);
+  const inspectedPart = trial?.parts.find(p => p.uid === socketsOf(trial.build)[socket]);
   const sample = exploring && !signedIn;
   const collectionLook = useCallback((b: Build) => rigLookOf(liveLook(b), me?.bots.find(v => v.bay === b.bay)?.paint ?? "mint"), [liveLook, me?.bots]);
   const allWorn = new Set(builds.flatMap(b => Object.values(socketsOf(b))));
@@ -308,7 +312,7 @@ export default function GameShell() {
         {signedIn ? <button className={css.quiet} onClick={() => setDrawer("help")}>Help</button> : <button className={css.quiet} disabled={session.busy || session.pending} onClick={connect}>{session.busy || session.pending ? "Connecting…" : "Connect"}</button>}
       </div>
     </header>
-    <main className={`${css.workspace} ${fullRoom && !feed ? css.fullRoom : ""}`} data-mode={mode} aria-label={`${mode === "parts" ? "Parts shop" : mode === "build" ? "Build your robot" : mode === "fight" ? "Fight room" : "Your garage"}`}>
+    <main className={`${css.workspace} ${fullRoom && !feed ? css.fullRoom : ""} ${showStats ? css.withStats : ""}`} data-mode={mode} aria-label={`${mode === "parts" ? "Parts shop" : mode === "build" ? "Build your robot" : mode === "fight" ? "Fight room" : "Your garage"}`}>
       {!ready ? <div className={css.loading}><div><h1 className={css.title}>{signedIn && loadState === "expired" ? "Welcome back." : signedIn && loadState === "failed" ? "Your garage is safe." : "Opening your workshop…"}</h1><p className={css.body}>{signedIn && loadState === "expired" ? "Sign in again to open your saved garage. Your robots are still yours." : signedIn && loadState === "failed" ? "We could not load your saved robot. Please try again." : "Your robot and its parts belong together."}</p>{signedIn && loadState === "expired" && <button className={css.primary} disabled={session.busy || session.pending} onClick={connect}>{session.busy || session.pending ? "Connecting…" : "Open my saved garage"}</button>}{signedIn && loadState === "failed" && <button className={css.primary} onClick={() => { setLoadState("loading"); void refresh(); }}>Try again</button>}</div></div> : feed ? <div className={css.fightHost}>
         {feed.kind === "server" ? <ServerFight key={feed.id} id={feed.id} embedded onClose={closeFight} onCloseLabel={feed.tutorial ? "What comes next?" : undefined} onComplete={fightComplete} hideShare={feed.tutorial} /> : <FightClient key={`${feed.props.seed}-${feed.props.ids[0].name}-${feed.tutorial}`} {...feed.props} embedded onClose={closeFight} onCloseLabel={feed.tutorial ? "What comes next?" : undefined} onComplete={fightComplete} hideShare={feed.tutorial || feed.props.replayUrl === "/bots"} />}
       </div> : fullRoom ? <div className={css.roomHost}>
@@ -319,6 +323,7 @@ export default function GameShell() {
           onName={() => setDrawer("name")} onFight={sample ? watchShowcase : () => go("fight")} onParts={() => go("parts")} onTools={sample ? () => go("parts") : () => setDrawer("tools")} onEarn={() => setDrawer("earn")} onProgress={() => setDrawer("help")}
           onExplore={!signedIn && !exploring ? () => explore(true) : undefined} nudge={!(nudgeHidden || !signedIn && demo.nudgeDismissed)} onDismiss={dismissNudge} />}
       </div> : <>
+        {showStats && trial && saved && <OverallStats build={trial.build} parts={trial.parts} before={saved} beforeParts={parts} preview={!!pickedOffer || !!edit} />}
         <section className={css.stageColumn} aria-label="Your robot">
           <div className={css.stage}><div className={css.stageTop}><p className={css.eyebrow}>{signedIn ? "Your garage" : "Practice garage · saved here"}</p><h1 className={css.title}>{stageTitle}</h1></div>
             {robot && <ToyDisplay build={robot} look={look} mode="interactive" variant="workshop" rotation={-.15} selectedSocket={mode === "build" ? socket : undefined} onSocketSelect={mode === "build" && !intro ? s => { setSocket(s); setSelection(null); } : undefined} className={css.toy} ariaLabel={`${nameText(build!.name)} with its chosen parts`} />}
@@ -333,6 +338,7 @@ export default function GameShell() {
             {intro && <div className={css.progress} aria-label={`${onboarding!.purchasedCount} of seven parts chosen`}>{BEGINNER_ORDER.map((s, i) => <span key={s} data-done={i < onboarding!.purchasedCount} />)}</div>}
           </div>
           <div className={css.scroll}>
+            {showStats && saved && <PartStats part={inspectedPart} before={parts} build={saved} socket={socket} />}
             {introWelcome ? <><Guide>This one is yours, for free. Now let’s build a friend for it.</Guide><p className={css.body}>You have 250 coins set aside for seven parts. Pick the shapes you love. Every first part is equally strong.</p><button className={css.primary} style={{ marginTop: 18 }} disabled={busy} onClick={() => void introAction("welcome")}>Choose my first part →</button><button className={css.secondary} onClick={() => explore(true)}>Look around the workshop</button><p className={css.fine}>{signedIn ? "Your robot and choices save to your account." : "Try it here. Connect any time to open your real garage."}</p></> : chooseIntro ? <>
               {mode !== "parts" ? <><Guide>Let’s finish your new robot, one part at a time.</Guide><button className={css.primary} onClick={() => go("parts")}>Choose {EQUIPMENT_LABEL[socket].toLowerCase()}</button></> : <><p className={css.body} style={{ marginBottom: 13 }}>{socket === "armR" || socket === "legR" ? "This side can look different. Pick any one you like." : "Same three stats: 1, 1, 1. Which shape feels like yours?"}</p><div className={css.partGrid}>{currentOffers.map(o => <PartChoice key={o.id} part={o.part} paint={o.color} selected={selection === o.id} onClick={() => setSelection(o.id)} caption={`${o.price} coins`} />)}</div></>}
             </> : introPractice ? <><Guide>All seven parts fit. Let’s see them move.</Guide><p className={css.body}>Your new robot will face your welcome robot. This is practice. No parts, coins, or progress can be lost.</p><button className={css.primary} style={{ marginTop: 18 }} disabled={busy || !!edit} onClick={() => void introAction("practice")}>{busy ? "Opening the ring…" : "Watch my first fight →"}</button><p className={css.fine}>You watch. Your robot does the rest.</p></> : mode === "garage" ? <>
@@ -366,7 +372,5 @@ export default function GameShell() {
 }
 
 function PartChoice({ part, paint, selected, onClick, caption, bought }: { part: PartCard; paint?: BeginnerOffer["color"]; selected: boolean; onClick: () => void; caption: string; bought?: boolean }) {
-  return <button className={css.part} aria-pressed={selected} onClick={onClick} aria-label={`${part.name}. ${caption}`}><div className={css.partArt}><PartDisplay part={part} paint={paint} ariaLabel={part.name} /></div>{bought && <span className={css.partBought}>Yours</span>}<span className={css.partLabel}><strong>{part.name}</strong><small>{caption}</small></span></button>;
+  return <button className={css.part} aria-pressed={selected} onClick={onClick} aria-label={`${part.name}. ${caption}`}><div className={css.partArt}><PartDisplay part={part} paint={paint} ariaLabel={part.name} /></div>{bought && <span className={css.partBought}>Yours</span>}<span className={css.partLabel}><strong>{part.name}</strong><small>{caption}</small><PartNumbers part={part} /></span></button>;
 }
-
-function PartNumbers({ part }: { part: PartCard }) { const names: Record<string, string> = { speed: "Speed", strength: "Strength", dodge: "Dodge", damage: "Damage", block: "Block", health: "Health", luck: "Luck", accuracy: "Aim", attackSpeed: "Hit speed" }; return <div className={css.stats}>{SLOT_STATS[part.slot].map((key, index) => <span key={key}>{names[key]} <strong>{part.s[index]}</strong></span>)}</div>; }

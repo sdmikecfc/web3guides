@@ -48,6 +48,8 @@ next-env.d.ts
 !/art-src/bots/blender/build_pilot.py
 !/art-src/bots/blender/toy-pilot.blend
 !/art-src/bots/blender/README.md
+!/art-src/bots/blender/build_clay_lab.py
+!/art-src/bots/blender/clay-lab-source.blend
 
 .dev-captures/
 .dk-preview/

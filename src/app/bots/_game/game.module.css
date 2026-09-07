@@ -118,7 +118,27 @@
 @media(prefers-reduced-motion:reduce){.shell *{scroll-behavior:auto!important;transition:none!important;animation:none!important}.part[aria-pressed=true],.primary:active{transform:none}}
 /* Full rooms share the same fixed shell; only their inventory surface scrolls. */
 .workspace.fullRoom{display:block;padding:0;overflow:hidden}
+.workspace.withStats{grid-template-columns:180px minmax(0,1fr) minmax(310px,380px);gap:14px}
+.overallStats{min-height:0;overflow:auto;border:1px solid #5b4632;background:#30271dd9;border-radius:22px;padding:22px 16px}
+.overallStats h2{font-size:20px;color:#f4ddb5;margin:6px 0 20px}
+.overallStats dl,.partComparison dl{margin:0}
+.overallStats dl>div,.partComparison dl>div{display:flex;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid #8f745032;font-size:12px}
+.overallStats dt,.partComparison dt{color:#c9b99e}
+.overallStats dd,.partComparison dd{margin:0;color:#ffe6be;font-weight:800;white-space:nowrap}
+.statPlus,.statMinus,.statSame{font-style:normal;margin-left:10px;font-size:11px;display:inline-block;min-width:20px;text-align:right}
+.statPlus{color:#a3d3a1}.statMinus{color:#ffa89b}.statSame{color:#b6a386}
+.statHint{font-size:10px;line-height:1.6;color:#beaa8b;margin:14px 0}
+.partComparison{display:grid;grid-template-columns:110px minmax(0,1fr);gap:13px;align-items:center;padding:12px 0 17px;border-bottom:1px solid #8f745055;margin-bottom:16px}
+.partComparison h3{font-size:17px;margin:0 0 6px;color:#f4ddb5}
+.partComparison dl>div{padding:5px 0;font-size:11px}.partComparison .statHint{margin:8px 0 0;font-size:9px}
+.inspectedPart{height:136px;background:#f2eadb;border-radius:13px;overflow:hidden}
+.partNumbers{display:grid;gap:3px;margin-top:8px;color:#755b3f;font-size:10px}
+.partNumbers>span{display:flex;justify-content:space-between;gap:3px}.partNumbers b{font-weight:800;color:#443221}
+@media(min-width:1500px){.workspace.withStats{grid-template-columns:200px minmax(0,1fr) 400px}}
+@media(max-width:1050px) and (min-width:621px){.workspace.withStats{grid-template-columns:minmax(0,1fr) 310px;grid-template-rows:auto minmax(0,1fr)}.overallStats{grid-column:1/-1;overflow:visible;padding:10px 15px;border-radius:15px;display:flex;align-items:center;gap:16px}.overallStats>.eyebrow,.overallStats>.statHint{display:none}.overallStats h2{font-size:14px;margin:0;white-space:nowrap}.overallStats dl{display:flex;flex:1;gap:12px;justify-content:space-between}.overallStats dl>div{border:0;padding:0;display:block;font-size:10px}.overallStats dd{margin-top:3px}.overallStats .statPlus,.overallStats .statMinus,.overallStats .statSame{margin-left:3px;min-width:0}}
+@media(max-width:620px){.workspace.withStats{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 245px minmax(390px,1fr);overflow:auto;display:grid}.withStats .aside{min-height:390px}.overallStats{padding:11px 14px;overflow:visible;border-radius:16px}.overallStats>.eyebrow,.overallStats>.statHint{display:none}.overallStats h2{font-size:14px;margin:0 0 8px}.overallStats dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 14px}.overallStats dl>div{padding:0;border:0;font-size:10px}.overallStats .statPlus,.overallStats .statMinus,.overallStats .statSame{margin-left:4px;min-width:0;font-size:9px}.partComparison{grid-template-columns:100px minmax(0,1fr)}.withStats .partGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.withStats .partArt{height:95px}.partNumbers{font-size:9px}}
 .roomHost{height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+@media(max-width:620px){.workspace.withStats{grid-template-rows:130px 245px minmax(390px,1fr)}}
 .roomHost>section,.roomHost>div:last-child{flex:1;min-height:0}
 .tourBar{flex:none!important;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#4b3825;color:#e9cea2;padding:8px clamp(16px,2.5vw,38px);border-bottom:1px solid #92724766;font-size:11px}
 .tourBar button{min-height:36px;background:none;border:1px solid #bc955a88;border-radius:9px;padding:6px 12px;color:#fae0b7;font-size:11px;font-weight:800;white-space:nowrap}
