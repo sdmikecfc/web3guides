@@ -60,9 +60,10 @@ export function PageShell({
 /** Plain <a>, not next/link: these leave the game tree (S7 law). */
 function LegalFooter() {
   const links: Array<[string, string]> = [
-    ["/privacy", "Privacy"],
-    ["/terms", "Terms"],
-    ["/disclaimer", "Disclaimer"],
+    ["/bots/rules", "Rules"],
+    ["/bots/privacy", "Privacy"],
+    ["/bots/terms", "Terms"],
+    ["/bots/disclaimer", "Disclaimer"],
   ];
   return (
     <footer

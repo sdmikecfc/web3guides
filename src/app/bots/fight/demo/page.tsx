@@ -19,7 +19,7 @@ import { PageShell } from "@/app/bots/_components/PageShell";
 import { FONT_MONO, M } from "@/app/bots/_ui/tokens";
 
 export const metadata: Metadata = {
-  title: "Fight demo | Clanker Cup",
+  title: "Fight demo | Model Kombat",
 };
 
 export const dynamic = "force-dynamic";

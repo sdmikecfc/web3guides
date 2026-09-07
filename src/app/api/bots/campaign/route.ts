@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     const c = campaignRead.data;
     if (!c) return reply(emptyCampaign(period, "available"));
     const out = emptyCampaign(period, "available");
-    out.campaign = { id: String(c.id), title: typeof c.title === "string" ? c.title.slice(0, 80) : "Clanker Cup", status: ["draft", "active", "closed", "frozen"].includes(c.status) ? c.status : "draft", startsAt: dateOrNull(c.starts_at), endsAt: dateOrNull(c.ends_at) };
+    out.campaign = { id: String(c.id), title: typeof c.title === "string" ? c.title.slice(0, 80) : "Model Kombat", status: ["draft", "active", "closed", "frozen"].includes(c.status) ? c.status : "draft", startsAt: dateOrNull(c.starts_at), endsAt: dateOrNull(c.ends_at) };
     const [snapshotRead, enrollmentRead] = await Promise.all([
       db.from("battle_bots_campaign_snapshots").select("payload,as_of,frozen").eq("campaign_id", c.id).eq("period_key", period).order("as_of", { ascending: false }).limit(1).maybeSingle(),
       sess ? db.from("battle_bots_campaign_enrollments").select("snapshot_status,credit_from_at").eq("campaign_id", c.id).eq("wallet", sess.wallet).maybeSingle() : Promise.resolve({ data: null, error: null }),

@@ -216,7 +216,7 @@ const en = {
     record: "{w} wins. {l} losses.",
     /** {updown} is already the words: up a lot, up a little, same, down a
      * little, down a lot. There is no per cent sign anywhere in the game. */
-    tradingStrip: "Trade points {score}. Money {updown}. {trades} trades in 30 days.",
+    tradingStrip: "Trade points {score}. Money {updown}. {trades} trades in 14 days.",
   },
   card: {
     shareText: "{winner} knocked out {loser}. Watch: {url}",
@@ -226,7 +226,7 @@ const en = {
     beat: "It knocked out {loser}.",
     stoodUp: "It was still standing when the time ran out.",
   },
-  legal: "The people who made this game pay the prizes. Nothing here is promised.",
+  legal: "Prizes depend on eligibility and final verification.",
 
   /** the prize rules, in five sentences. Never a money amount, never "win $".
    * "Groups" replaces every earlier attempt at the word bracket: both readers
@@ -274,7 +274,7 @@ const en = {
 
   /* ── week-1 additions (the Build screen chrome; not in the starter pack) ─ */
   nav: {
-    wordmark: "CLANKER CUP",
+    wordmark: "MODEL KOMBAT",
     garage: "Garage",
     build: "Build",
     shop: "Parts",

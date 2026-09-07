@@ -12,7 +12,7 @@ import type { Build, FightEvent, Side } from "../_engine/parts";
 import type { FightState } from "../_engine/resolve";
 import type { BotLook } from "./look";
 import type { Socket } from "@/lib/bots/fixtures";
-import { settleFightFx, tumbleKey, type FightFx } from "./fightfx";
+import { CRIT_CAMERA_S, HIT_STOP_S, SHAKE_S, settleFightFx, tumbleKey, type FightFx } from "./fightfx";
 
 export interface FightSceneOpts { small: boolean; fightSeed: number; showroom?: boolean; log?: readonly FightEvent[]; reducedMotion?: boolean }
 export interface FightSceneHandle {
@@ -68,6 +68,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
   const camera = new THREE.PerspectiveCamera(34, 16 / 9, .1, 65);
   const target = new THREE.Vector3(0, 1.10, 0);
   camera.position.set(0, 3.90, 14.5); camera.lookAt(target);
+  let baseCameraY=3.90,baseCameraZ=14.5;
 
   const hemi = new THREE.HemisphereLight(0xe8dac3, 0x4c3222, .20); scene.add(hemi);
   const key = new THREE.DirectionalLight(0xffd99b, 4.5); key.position.set(-3, 7, -4);
@@ -227,7 +228,11 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     if(opts.showroom)return;
     if(e.t==="hit"){
       const victim=e.who===0?1:0;fx.sides[victim].recoil=0;fx.sides[victim].recoilPiece=e.part;
+      fx.sides[victim].recoilPower=e.crit?2.35:1;
       fx.sides[e.who].recover=0;fx.sides[e.who].overRotate=0;
+      fx.hitStop=Math.max(fx.hitStop,e.crit?HIT_STOP_S:.045);
+      fx.shake=Math.max(fx.shake,e.crit?SHAKE_S*1.65:.055);fx.shakeAmp=e.crit?3.2:1.05;
+      if(e.crit){fx.critical=0;fx.criticalSide=victim as Side;}
       pose(st,fx);
       impacts.push({frame:e.f,side:victim as Side,point:toys[victim].target(SOCKETS[e.part],new THREE.Vector3()),strong:!!e.crit});
     }else if(e.t==="miss"){
@@ -339,7 +344,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
           toy.applyClip("slip",u,1,["torso","head"]);toy.root.position.z+=.48*k;toy.root.position.x-=dir*.17*k;toy.root.position.y-=.08*k;
         }else toy.applyClip("block",u,1,armMask,incoming.part===3);
       }
-      const recoil=pulse(v.recoil,.24);toy.root.position.x-=dir*recoil*.10;toy.bones.torso.rotation.z+=dir*recoil*.10;
+      const recoil=pulse(v.recoil,.24),recoilPower=v.recoilPower;toy.root.position.x-=dir*recoil*.12*recoilPower;toy.root.position.z+=recoil*.035*recoilPower;toy.bones.torso.rotation.z+=dir*recoil*.11*recoilPower;
       if(lostLegs===1){
         toy.root.position.y-=.07;toy.root.rotation.z+=s.armor[4]<=0?-.09:.09;
         const remaining=s.armor[4]>0?"L":"R";toy.bones["leg"+remaining].rotation.x+=Math.sin(now*7)*.09;
@@ -437,10 +442,17 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
         s.scale.setScalar((p.strong?1.5:1)*(1-age/.25));
       }
     }
-    const emphasis=opts.reducedMotion?0:Math.max(pulse(fx.ko,.8),pulse(fx.sides[0].crack,.45),pulse(fx.sides[1].crack,.45));
+    const critical=opts.reducedMotion?0:pulse(fx.critical,CRIT_CAMERA_S);
+    const emphasis=opts.reducedMotion?0:Math.max(pulse(fx.ko,.8),pulse(fx.sides[0].crack,.45),pulse(fx.sides[1].crack,.45),critical*1.35);
     const midpoint=(toys[0].root.position.x+toys[1].root.position.x)*.5;
-    camera.position.x=opts.reducedMotion?0:midpoint*.16;
-    camera.zoom=1+emphasis*.065;camera.updateProjectionMatrix();camera.lookAt(target);renderer.render(scene,camera);
+    const shake=opts.reducedMotion||fx.shake<=0?0:Math.min(1,fx.shake/SHAKE_S)*fx.shakeAmp;
+    const phase=fx.time*74+opts.fightSeed*.017;
+    const focus=critical*toys[fx.criticalSide].root.position.x*.09;
+    camera.position.x=opts.reducedMotion?0:midpoint*.16+focus+Math.sin(phase*2.17)*shake*.012;
+    camera.position.y=baseCameraY+Math.cos(phase*2.83)*shake*.009;
+    camera.position.z=baseCameraZ;
+    target.x=focus*.42;
+    camera.zoom=1+emphasis*.068;camera.updateProjectionMatrix();camera.lookAt(target);renderer.render(scene,camera);
     if(process.env.NODE_ENV!=="production"){
       renderTotal+=performance.now()-drawStart;renderSamples++;
       if(renderSamples>=30){
@@ -478,7 +490,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     settle(fx){settleFightFx(fx);},
     glint(){ /* The enamel catches the real light as the hand turns. */ },
     render,
-    resize(w,h,dpr){if(dead||w<=0||h<=0)return;phone=w/h<1.35;renderer.setPixelRatio(Math.min(dpr,phone?1.35:1.75));renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=phone?Math.max(32,2*Math.atan(3.05/(12.5*camera.aspect))*180/Math.PI):30;camera.position.set(0,phone?3.45:3.9,phone?12.5:14.5);target.y=1.10;camera.lookAt(target);camera.updateProjectionMatrix();},
+    resize(w,h,dpr){if(dead||w<=0||h<=0)return;phone=w/h<1.35;renderer.setPixelRatio(Math.min(dpr,phone?1.35:1.75));renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=phone?Math.max(32,2*Math.atan(3.05/(12.5*camera.aspect))*180/Math.PI):30;baseCameraY=phone?3.45:3.9;baseCameraZ=phone?12.5:14.5;camera.position.set(0,baseCameraY,baseCameraZ);target.set(0,1.10,0);camera.lookAt(target);camera.updateProjectionMatrix();},
     destroy(){
       if(dead)return;dead=true;cleanDebris();for(const t of toys){scene.remove(t.root);t.dispose();}toys=[];
       const geometries=new Set<THREE.BufferGeometry>(),materials=new Set<THREE.Material>();

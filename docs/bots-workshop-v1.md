@@ -17,7 +17,7 @@ The presentation director maps recorded hits, misses and blocks to movement, inc
 
 The shell starts in a warm garage. New versioned onboarding atomically provisions a welcome robot, 250 reserved coins and durable progress. Seven independently owned beginner pieces use neutral identities and `[1,1,1]` base stats. Purchases resume and retry without another grant. Practice consumes no coins, daily fights, XP, prize points or repair time. Completed practice leads to a short earning explanation. Trading setup remains an explicit action; unavailable verification is reported honestly.
 
-The reporter checkout at `C:/Users/Mike/Desktop/trading-bot/doma-reporter` contains the 30-day campaign ledger, realized FIFO profit and capital accounting, authenticated execution verification, tied-prize splits, reviewed/frozen exports, cumulative visit milestones and operator measurements. The four categories each allocate $500 across four weekly podiums and the monthly final: $2,000 over 60 scheduled award slots. No transfer runs automatically.
+The reporter checkout at `C:/Users/Mike/Desktop/trading-bot/doma-reporter` contains the campaign ledger, realized FIFO profit and capital accounting, authenticated execution verification, tied-prize splits, reviewed/frozen exports, cumulative visit milestones and operator measurements. Model Kombat runs for two weeks with three prize categories: $800 for ROI percentage, $800 for realized profit in USD, and $400 for battle points. Each category pays five places in Week 1, Week 2, and the two-week final, for $2,000 over 45 scheduled award slots. Trading volume is not a cash-prize category. No transfer runs automatically.
 
 ## Local verification
 

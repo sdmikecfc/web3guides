@@ -47,7 +47,7 @@ export function DesignClient() {
         ctx.fillStyle="#334a3b";ctx.font="17px Arial";ctx.fillText(toy.arms,x+146,y+487,216);ctx.fillText(toy.legs,x+146,y+518,216);
         ctx.fillStyle="#78806c";ctx.font="15px Arial";ctx.fillText("120 px at left",x+146,y+551);
       }
-      const link=document.createElement("a");link.download="clanker-cup-3d-toy-line.png";link.href=canvas.toDataURL("image/png");link.click();setMessage("Proof sheet downloaded.");
+      const link=document.createElement("a");link.download="model-kombat-3d-toy-line.png";link.href=canvas.toDataURL("image/png");link.click();setMessage("Proof sheet downloaded.");
     } catch(error) {setMessage(error instanceof Error?error.message:"Could not export the sheet.");}
     finally {setExporting(false);}
   };

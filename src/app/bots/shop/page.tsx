@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { workshopEnabled } from "@/lib/bots/rollout";
 import ShopClient from "./ShopClient";
 
-export const metadata = { title: "Parts | Clanker Cup" };
+export const metadata = { title: "Parts | Model Kombat" };
 export default function Page({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   if (workshopEnabled()) {
     const bay = typeof searchParams.bay === "string" && /^[1-5]$/.test(searchParams.bay) ? searchParams.bay : null;

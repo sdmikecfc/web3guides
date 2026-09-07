@@ -11,8 +11,8 @@ import { BotsTopNav } from "./_components/BotsTopNav";
 import { M } from "./_ui/tokens";
 
 export const metadata = {
-  title: "Clanker Cup",
-  description: "Build a robot. Watch it fight.",
+  title: "Model Kombat",
+  description: "Build your robot, enter the ring, and compete in the Doma trading challenge.",
 };
 
 /**

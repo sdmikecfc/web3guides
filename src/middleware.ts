@@ -70,6 +70,16 @@ export function middleware(request: NextRequest) {
   // Strip port so "eth.localhost:3000" → "eth.localhost"
   const hostClean = hostname.split(":")[0];
 
+  // Model Kombat has its own apex while sharing the /bots application. Clean
+  // root paths such as /rules and /privacy stay inside the game on this host.
+  if (hostClean === "modelkombat.xyz" || hostClean === "www.modelkombat.xyz") {
+    const gameUrl = request.nextUrl.clone();
+    gameUrl.pathname = pathname.startsWith("/bots")
+      ? pathname
+      : `/bots${pathname === "/" ? "" : pathname}`;
+    return withRef(NextResponse.rewrite(gameUrl));
+  }
+
   // ── THE LEGAL PAGES BELONG TO EVERY HOST ─────────────────────────────────
   // Every season host below rewrites the WHOLE path into its own tree, so
   // uprising.web3guides.com/privacy asked for /s6/privacy, which does not

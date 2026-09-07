@@ -39,7 +39,7 @@ import { SAMPLE_ROWS } from "./sample";
 
 
 export const metadata: Metadata = {
-  title: "Leaders | Clanker Cup",
+  title: "Leaders | Model Kombat",
   description: "Every player on Sprocket Row, best fight points first. Player names only.",
 };
 

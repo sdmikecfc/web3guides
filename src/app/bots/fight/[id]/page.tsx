@@ -34,18 +34,18 @@ import type { FightIdentityView, LookView } from "@/app/bots/_server/types";
 /** A replay is a stored row read per request, never a prerender. */
 export const dynamic = "force-dynamic";
 
-const TITLE = "Fight | Clanker Cup";
+const TITLE = "Fight | Model Kombat";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const id = String(params.id || "");
   if (!id || id.startsWith("demo-")) return { title: TITLE };
-  if (fixturePractice(id)) return { title: "Demo practice | Clanker Cup", description: "A sample fight using the display robots." };
+  if (fixturePractice(id)) return { title: "Demo practice | Model Kombat", description: "A sample fight using the display robots." };
   const image = `/api/bots/card/ko?f=${encodeURIComponent(id)}&art=${ART_VERSION}`;
   try {
     const row = await loadBattle(botsDb(), id);
     const s = row && row.mode !== "spar" ? fightSummary(row) : null;
     if (s) {
-      const title = `${s.winnerName} beat ${s.loserName} | Clanker Cup`;
+      const title = `${s.winnerName} beat ${s.loserName} | Model Kombat`;
       return {
         title,
         description: s.chain,

@@ -27,7 +27,7 @@ import { PIECE, PIECE_COUNT, type Piece, type Side } from "../_engine/parts";
 export const TELL_F = 14; // swingT 14..1 is the tell: lean back, glint, tick
 export const LUNGE_F = 6; // swingT 6..1: the hop-lunge, impact at 0
 export const RECOVER_S = 0.2; // 12 frames hopping back
-export const RECOIL_S = 0.12; // 6 px away from the hit, eased back
+export const RECOIL_S = 0.24; // a readable knockback, then an eased return
 export const LEAN_S = 0.25; // the dodge lean
 export const BLOCK_S = 0.3; // the arm across
 export const CRUMB_S = 0.4;
@@ -40,6 +40,9 @@ export const SIT_S = 0.4; // the loser sits
 export const ARMS_UP_S = 0.6; // the winner's arms up
 export const SLOWMO_S = 1.5;
 export const SLOWMO_RATE = 0.3;
+export const CRIT_SLOW_S = 0.18;
+export const CRIT_SLOW_RATE = 0.38;
+export const CRIT_CAMERA_S = 0.48;
 export const KO_PUNCH_S = 0.3; // camera 1.04 on the KO
 export const BLINK_S = 0.8; // the bulbs blink twice
 export const CHEER_S = 0.9; // the stands throw arms up
@@ -71,6 +74,8 @@ export interface SideFx {
   /** seconds since a hit landed on us; negative = idle */
   recoil: number;
   recoilPiece: number;
+  /** 1 for an ordinary hit, larger for a critical knockback */
+  recoilPower: number;
   /** seconds since we dodged; negative = idle */
   lean: number;
   /** seconds since we blocked; negative = idle */
@@ -94,6 +99,7 @@ function mkSide(): SideFx {
     overRotate: 0,
     recoil: -1,
     recoilPiece: 0,
+    recoilPower: 1,
     lean: -1,
     block: -1,
     blockArm: PIECE.ARM_R,
@@ -167,6 +173,9 @@ export interface FightFx {
   /** seconds of shake left */
   shake: number;
   shakeAmp: number;
+  /** presentation seconds since a critical hit; negative = none */
+  critical: number;
+  criticalSide: Side;
   /** seconds since the KO; negative = the fight is on */
   ko: number;
   /** seconds since the timeout call; negative = not called */
@@ -198,6 +207,8 @@ export function mkFightFx(): FightFx {
     hitStop: 0,
     shake: 0,
     shakeAmp: 0,
+    critical: -1,
+    criticalSide: 0,
     ko: -1,
     timeout: -1,
     cheer: 0,
@@ -216,6 +227,8 @@ export function resetFightFx(fx: FightFx): void {
   fx.hitStop = 0;
   fx.shake = 0;
   fx.shakeAmp = 0;
+  fx.critical = -1;
+  fx.criticalSide = 0;
   fx.ko = -1;
   fx.timeout = -1;
   fx.cheer = 0;
@@ -399,6 +412,7 @@ export function tickFightFx(fx: FightFx, dt: number): void {
   fx.time += dt;
   if (fx.shake > 0) fx.shake = Math.max(0, fx.shake - dt);
   if (fx.cheer > 0) fx.cheer = Math.max(0, fx.cheer - dt);
+  if (fx.critical >= 0) fx.critical += dt;
   if (fx.ko >= 0) fx.ko += dt;
   if (fx.timeout >= 0) fx.timeout += dt;
   for (const s of fx.sides) {
@@ -443,6 +457,7 @@ export function tickFightFx(fx: FightFx, dt: number): void {
 export function settleFightFx(fx: FightFx): void {
   fx.hitStop = 0;
   fx.shake = 0;
+  fx.critical = -1;
   fx.cheer = 0;
   if (fx.ko >= 0) fx.ko = Math.max(fx.ko, SLOWMO_S + SHARE_AFTER_S + 1);
   for (const s of fx.sides) {

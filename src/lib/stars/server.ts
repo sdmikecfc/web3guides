@@ -36,6 +36,8 @@ const ALLOWED_DOMAINS = new Set(
     "www.domainkitchen.xyz",
     "domagaming.com", // DOMA GAMING: the studio home, and the robot game's own house
     "www.domagaming.com",
+    "modelkombat.xyz", // MODEL KOMBAT: the robot game's own apex
+    "www.modelkombat.xyz",
     process.env.WALLET_LINK_DOMAIN_OVERRIDE || "",
   ].filter(Boolean),
 );

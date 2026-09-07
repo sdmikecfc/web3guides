@@ -48,7 +48,7 @@ const CREAM = "#f3e9d2";
 const ACCENT = "#e5bd79";
 const CORAL = "#ff8a7a";
 const GOLD = "#f0b340";
-const WORDMARK = "CLANKER CUP";
+const WORDMARK = "MODEL KOMBAT";
 const BACKGROUND = "linear-gradient(135deg, #414735 0%, #222a22 52%, #141b17 100%)";
 
 const FONT_BODY = "Aktiv, sans-serif";

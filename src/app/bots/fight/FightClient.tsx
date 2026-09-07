@@ -30,7 +30,7 @@ import { IconPlay, IconReplay, IconShare, STAT_ICON } from "../_ui/icons";
 import { Button, Dot, Panel } from "../_ui/primitives";
 import { FONT_BODY, FONT_DISPLAY, FONT_MONO, M, TIER_COLOR, type PaintId } from "../_ui/tokens";
 import { buildFightScene, type FightSceneHandle } from "../_view/arena3d";
-import { SLOWMO_RATE, SLOWMO_S, mkFightFx, resetFightFx, tickFightFx } from "../_view/fightfx";
+import { CRIT_SLOW_RATE, CRIT_SLOW_S, SLOWMO_RATE, SLOWMO_S, mkFightFx, resetFightFx, tickFightFx } from "../_view/fightfx";
 import { koLineUp, scheduleCommentary } from "../_view/commentary-bar";
 import { createBotsSfx, savedBotsSound, type BotsSfx } from "../_view/sfx";
 import { directFight } from "../_view/fight-director";
@@ -381,7 +381,7 @@ export default function FightClient(p: FightClientProps) {
           // the whole scene freezes: nothing accumulates, the stop counts down in wall time
           fx.hitStop = Math.max(0, fx.hitStop - frameDt);
         } else {
-          const slow = fx.ko >= 0 && fx.ko < KO_SLOW_FX ? SLOWMO_RATE : 1;
+          const slow = fx.ko >= 0 && fx.ko < KO_SLOW_FX ? SLOWMO_RATE : fx.critical >= 0 && fx.critical < CRIT_SLOW_S ? CRIT_SLOW_RATE : 1;
           accRef.current += frameDt * speedRef.current * slow;
           let steps = 0;
           while (accRef.current >= FIXED_DT && steps < MAX_SUBSTEPS) {
