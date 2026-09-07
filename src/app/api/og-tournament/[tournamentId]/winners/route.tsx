@@ -44,6 +44,30 @@ export async function GET(
   const { data: t } = await db.from("og_tournaments").select("*").eq("tournament_id", tid).maybeSingle();
   if (!t) return new Response("Tournament not found", { status: 404 });
 
+  // CN edition renders Chinese chrome (winners data identical). EN byte-identical.
+  const cn = t.edition === "cn";
+  const L = cn
+    ? {
+        suffix:    " OG锦标赛",
+        heading:   "🏆  新晋 OG",
+        subtitle:  "社区已经做出选择。欢迎加入 OG 行列。",
+        noWinners: "暂无获胜者记录。",
+        champion:  "冠军",
+        newOgTag:  "新晋 OG",
+        footL:     "OG 身份将在月底前发放",
+        footR:     "感谢全部 16 位候选人 · 下一届下月开启",
+      }
+    : {
+        suffix:    " OG Tournament",
+        heading:   "🏆  New OGs",
+        subtitle:  "The community has spoken. Welcome to the OG ranks.",
+        noWinners: "No winners on record yet.",
+        champion:  "CHAMPION",
+        newOgTag:  "New OG",
+        footL:     "OG roles granted before month end",
+        footR:     "GG to all 16 candidates · next round next month",
+      };
+
   // Pull SF matches to get the 2 winners
   const { data: sfMatches } = await db
     .from("og_bracket_matches")
@@ -100,13 +124,13 @@ export async function GET(
         {/* Header */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 40, zIndex: 1 }}>
           <span style={{ fontSize: 14, color: C.amber, letterSpacing: 6, textTransform: "uppercase", fontWeight: 700 }}>
-            {t.display_name} OG Tournament
+            {t.display_name}{L.suffix}
           </span>
           <span style={{ fontSize: 64, color: C.white, fontWeight: 900, letterSpacing: -2, marginTop: 8, lineHeight: 1 }}>
-            🏆  New OGs
+            {L.heading}
           </span>
           <span style={{ fontSize: 20, color: C.muted, marginTop: 14 }}>
-            The community has spoken. Welcome to the OG ranks.
+            {L.subtitle}
           </span>
         </div>
 
@@ -114,7 +138,7 @@ export async function GET(
         <div style={{ display: "flex", justifyContent: "center", gap: 40, flex: 1, alignItems: "center", zIndex: 1 }}>
           {winners.length === 0 && (
             <div style={{ display: "flex", fontSize: 28, color: C.muted, fontStyle: "italic" }}>
-              No winners on record yet.
+              {L.noWinners}
             </div>
           )}
           {winners.map((winnerId, i) => {
@@ -149,14 +173,14 @@ export async function GET(
                     display: "flex",
                   }}
                 >
-                  CHAMPION
+                  {L.champion}
                 </div>
                 <span style={{ fontSize: 80, marginTop: 12 }}>👑</span>
                 <span style={{ fontSize: 32, color: C.white, fontWeight: 800, marginTop: 18, textAlign: "center" }}>
                   {name}
                 </span>
                 <span style={{ fontSize: 13, color: C.muted, letterSpacing: 2, marginTop: 10, textTransform: "uppercase" }}>
-                  New OG · {t.display_name}
+                  {L.newOgTag} · {t.display_name}
                 </span>
               </div>
             );
@@ -165,8 +189,8 @@ export async function GET(
 
         {/* Footer */}
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 36, paddingTop: 20, borderTop: `1px solid ${C.amber}44`, fontSize: 14, color: C.muted, letterSpacing: 1, zIndex: 1 }}>
-          <span style={{ display: "flex" }}>OG roles granted before month end</span>
-          <span style={{ display: "flex" }}>GG to all 16 candidates · next round next month</span>
+          <span style={{ display: "flex" }}>{L.footL}</span>
+          <span style={{ display: "flex" }}>{L.footR}</span>
         </div>
       </div>
     ),

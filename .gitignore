@@ -35,3 +35,23 @@ yarn-error.log*
 next-env.d.ts
 
 .env*.local
+
+# Vast ComfyUI jupyter_token. Credential, never commit.
+.comfy_token
+
+# Raw CC0 asset packs (Quaternius/Kenney) - bake sources, never shipped, never committed
+/art-src/*
+!/art-src/bots/
+/art-src/bots/*
+!/art-src/bots/blender/
+/art-src/bots/blender/*
+!/art-src/bots/blender/build_pilot.py
+!/art-src/bots/blender/toy-pilot.blend
+!/art-src/bots/blender/README.md
+
+.dev-captures/
+.dk-preview/
+.crypt-v1-backup
+
+# Battle Bots art factory scratch (renders, decision sheets, gate sandboxes)
+.bots-preview/

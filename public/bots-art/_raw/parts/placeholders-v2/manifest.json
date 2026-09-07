@@ -1,0 +1,186 @@
+{
+ "mode": "v2",
+ "note": "Ruler tree for the ControlNet lane. target/ is ON TARGET (condition on this: a ControlNet does not carry the unconditioned generator's bias); every pivot lands on ink, every ratio sits inside the contract band, no ink reaches a canvas edge. plate/ is PRE-COMPENSATED with the bake's PRE table, for the img2img lane that reads _raw/parts/placeholders; like the v1 rulers its arm is wider than the band and its foot pivot sits below the shortened leg, by design. Neither is shipped; the game never reads this folder. Canvases and pivots are the frozen contract in src/app/bots/_view/rig-points.ts, unchanged.",
+ "canvases": {
+  "head": {
+   "w": 456,
+   "h": 384
+  },
+  "torso": {
+   "w": 288,
+   "h": 264
+  },
+  "arm": {
+   "w": 128,
+   "h": 280
+  },
+  "leg": {
+   "w": 192,
+   "h": 280
+  },
+  "weapon": {
+   "w": 240,
+   "h": 136
+  }
+ },
+ "pivots": {
+  "head": {
+   "neck": [
+    228,
+    315
+   ]
+  },
+  "torso": {
+   "neck": [
+    144,
+    64
+   ],
+   "shoulderL": [
+    -23,
+    81
+   ],
+   "shoulderR": [
+    311,
+    81
+   ],
+   "hipL": [
+    94,
+    218
+   ],
+   "hipR": [
+    194,
+    218
+   ],
+   "decal": [
+    144,
+    148
+   ]
+  },
+  "arm": {
+   "shoulder": [
+    64,
+    63
+   ],
+   "hand": [
+    64,
+    184
+   ]
+  },
+  "leg": {
+   "hip": [
+    70,
+    63
+   ],
+   "foot": [
+    70,
+    181
+   ]
+  },
+  "weapon": {
+   "grip": [
+    38,
+    68
+   ]
+  }
+ },
+ "pre": {
+  "armW": 1.1904761904761905,
+  "armL": 0.8470588235294118,
+  "legH": 0.89,
+  "footH": 0.89,
+  "footW": 1.1
+ },
+ "preSlots": [
+  "arm",
+  "leg"
+ ],
+ "features": {
+  "head": "design 1 unchanged (headParts as is); design 2 redrawn TWO-EYED (headPartsV2): two lamp eyes in the design-1 size band, level, wide apart, mirrored, pupils, smooth blank forehead, mouth grille low on the centre line, ear cups on the eye row at the full width, character in the crown silhouette only: t1 peeper crown bump + round cup ears, t2 lantern flat cap rim, t3 piston squared crown + banded cylinder ears, t4 anvil wide flat top to the full width",
+  "torso": "panel groove (two nested outlines), corner rivets (2 at T1, 4 from T2, 6 from T3), key seat (clay bezel + dark socket under the stem); design 2 panel taller so the seat sits inside it",
+  "arm": "shoulder cap, upper tube, elbow ball wider than the tube with a band (T3+ adds an upper band), forearm tube, wrist cuff; design 1 = mitt with thumb (T2+ knuckle ridge, T4 studs), design 2 = two-finger claw (T2+ palm boss)",
+  "leg": "THE DOME BOOT (lane B, 2026-09-05): a rounded cap a little wider than a 0.6-width shaft, ONE short cylinder ankle (wider and taller with each tier), the boot body as one polygon (a steep heel arc, a wide toe arc that rounds more with each tier, short straight sides, 0.90 of the contract's foot width with the toe edge where the stance solve puts it), and ONE CORAL SOLE block moulded under it (the one coral material on the ruler, 0.42 of the foot height, the same width as the boot and never wider, a straight top edge, rounded bottom corners, so the control maps carry it as its own block); design 1 = plain dome, design 2 = two small recessed CLAY side pods low on the boot's sides, bulldozer (t4-1) = one band around the dome's middle; one distinct picture per family",
+  "weapon": "design 1 = mallet: grip, handle, collar, head with a band at each end, one small brass bolt (T3+ strike face cap, T4 collar stud); design 2 = wrench: grip, handle, boss (T2+ stud, T3+ handle band), open C jaw with a real transparent gap and hole"
+ },
+ "files": [
+  "target/head-t1-1.png",
+  "plate/head-t1-1.png",
+  "target/head-t1-2.png",
+  "plate/head-t1-2.png",
+  "target/head-t2-1.png",
+  "plate/head-t2-1.png",
+  "target/head-t2-2.png",
+  "plate/head-t2-2.png",
+  "target/head-t3-1.png",
+  "plate/head-t3-1.png",
+  "target/head-t3-2.png",
+  "plate/head-t3-2.png",
+  "target/head-t4-1.png",
+  "plate/head-t4-1.png",
+  "target/head-t4-2.png",
+  "plate/head-t4-2.png",
+  "target/torso-t1-1.png",
+  "plate/torso-t1-1.png",
+  "target/torso-t1-2.png",
+  "plate/torso-t1-2.png",
+  "target/torso-t2-1.png",
+  "plate/torso-t2-1.png",
+  "target/torso-t2-2.png",
+  "plate/torso-t2-2.png",
+  "target/torso-t3-1.png",
+  "plate/torso-t3-1.png",
+  "target/torso-t3-2.png",
+  "plate/torso-t3-2.png",
+  "target/torso-t4-1.png",
+  "plate/torso-t4-1.png",
+  "target/torso-t4-2.png",
+  "plate/torso-t4-2.png",
+  "target/arms-t1-1.png",
+  "plate/arms-t1-1.png",
+  "target/arms-t1-2.png",
+  "plate/arms-t1-2.png",
+  "target/arms-t2-1.png",
+  "plate/arms-t2-1.png",
+  "target/arms-t2-2.png",
+  "plate/arms-t2-2.png",
+  "target/arms-t3-1.png",
+  "plate/arms-t3-1.png",
+  "target/arms-t3-2.png",
+  "plate/arms-t3-2.png",
+  "target/arms-t4-1.png",
+  "plate/arms-t4-1.png",
+  "target/arms-t4-2.png",
+  "plate/arms-t4-2.png",
+  "target/legs-t1-1.png",
+  "plate/legs-t1-1.png",
+  "target/legs-t1-2.png",
+  "plate/legs-t1-2.png",
+  "target/legs-t2-1.png",
+  "plate/legs-t2-1.png",
+  "target/legs-t2-2.png",
+  "plate/legs-t2-2.png",
+  "target/legs-t3-1.png",
+  "plate/legs-t3-1.png",
+  "target/legs-t3-2.png",
+  "plate/legs-t3-2.png",
+  "target/legs-t4-1.png",
+  "plate/legs-t4-1.png",
+  "target/legs-t4-2.png",
+  "plate/legs-t4-2.png",
+  "target/weapon-t1-1.png",
+  "plate/weapon-t1-1.png",
+  "target/weapon-t1-2.png",
+  "plate/weapon-t1-2.png",
+  "target/weapon-t2-1.png",
+  "plate/weapon-t2-1.png",
+  "target/weapon-t2-2.png",
+  "plate/weapon-t2-2.png",
+  "target/weapon-t3-1.png",
+  "plate/weapon-t3-1.png",
+  "target/weapon-t3-2.png",
+  "plate/weapon-t3-2.png",
+  "target/weapon-t4-1.png",
+  "plate/weapon-t4-1.png",
+  "target/weapon-t4-2.png",
+  "plate/weapon-t4-2.png"
+ ]
+}

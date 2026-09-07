@@ -1,0 +1,1132 @@
+{
+  "season": "Season 2",
+  "winningFleet": "warriors.xyz",
+  "generatedAt": "2026-07-18T15:11:29.214Z",
+  "pendingPayment": false,
+  "paymentWindow": "the week of July 6th",
+  "totals": {
+    "participants": 139,
+    "winners": 39,
+    "byStatus": {
+      "Paid (2nd place crew)": 12,
+      "Paid (1st place crew)": 18,
+      "Paid (3rd place crew)": 9,
+      "Under the $5 minimum": 25,
+      "Participated": 75
+    }
+  },
+  "rows": [
+    {
+      "name": "ØG.crypto {🐳} | DOMA",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 3844,
+      "bossContribution": 121,
+      "status": "Paid (2nd place crew)"
+    },
+    {
+      "name": "Saurav Anand || Doma",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 3523,
+      "bossContribution": 101,
+      "status": "Paid (2nd place crew)"
+    },
+    {
+      "name": "TDL Zaky.Doma",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 2964,
+      "bossContribution": 10,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "Indra_3 - Daddy Dopaminter",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 2941,
+      "bossContribution": 11,
+      "status": "Paid (2nd place crew)"
+    },
+    {
+      "name": "Ryder ( domainfi arc )",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 2003,
+      "bossContribution": 17,
+      "status": "Paid (2nd place crew)"
+    },
+    {
+      "name": "Herozen",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1835,
+      "bossContribution": 6,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "Julia457",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1571,
+      "bossContribution": 17,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "rendy | Doma",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1568,
+      "bossContribution": 7,
+      "status": "Paid (2nd place crew)"
+    },
+    {
+      "name": "Richman",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1554,
+      "bossContribution": 5,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "Snowman",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1454,
+      "bossContribution": 11,
+      "status": "Paid (2nd place crew)"
+    },
+    {
+      "name": "breeze",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1415,
+      "bossContribution": 11,
+      "status": "Paid (2nd place crew)"
+    },
+    {
+      "name": "crisstalay",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1353,
+      "bossContribution": 9,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "Kuaraiab",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1219,
+      "bossContribution": 7,
+      "status": "Paid (2nd place crew)"
+    },
+    {
+      "name": "Stranik ./",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1203,
+      "bossContribution": 5,
+      "status": "Paid (2nd place crew)"
+    },
+    {
+      "name": "Medvejonok",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1134,
+      "bossContribution": 5,
+      "status": "Paid (2nd place crew)"
+    },
+    {
+      "name": "marginla",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1086,
+      "bossContribution": 10,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "gidranakramas",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1057,
+      "bossContribution": 6,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "piramidon",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1054,
+      "bossContribution": 5,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "dilijans",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1020,
+      "bossContribution": 6,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "Tantontum",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1008,
+      "bossContribution": 7,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "etheralname",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1007,
+      "bossContribution": 7,
+      "status": "Paid (3rd place crew)"
+    },
+    {
+      "name": "TaxaStar",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 1002,
+      "bossContribution": 5,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "Nik199",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 994,
+      "bossContribution": 7,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "flaytchramires",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 961,
+      "bossContribution": 5,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "Asuninha",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 951,
+      "bossContribution": 6,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "Brann",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 952,
+      "bossContribution": 3,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "Abbagigo (✱,✱)",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 929,
+      "bossContribution": 7,
+      "status": "Paid (2nd place crew)"
+    },
+    {
+      "name": "Gallezkaaa | DOMA",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 922,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "xartkamnevart",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 917,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "twistagain1",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 895,
+      "bossContribution": 10,
+      "status": "Paid (3rd place crew)"
+    },
+    {
+      "name": "andrydavid",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 875,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "jambu (❖,❖)",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 853,
+      "bossContribution": 13,
+      "status": "Paid (3rd place crew)"
+    },
+    {
+      "name": "duythanh892002",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 850,
+      "bossContribution": 5,
+      "status": "Paid (2nd place crew)"
+    },
+    {
+      "name": "lisva11",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 845,
+      "bossContribution": 5,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "Luinka",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 845,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "myshkin_gomy",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 837,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "user_rekil",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 835,
+      "bossContribution": 5,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "ScrubCakeJake",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 833,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "samuraigena",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 833,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "saveliizavdv",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 823,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "teqilakek",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 822,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "balkazhan",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 818,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "vodota34",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 817,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "not_bot_me",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 817,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "pionerer",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 813,
+      "bossContribution": 5,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "MeowyMeister",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 814,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "evgeniilotus",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 813,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "Cut Hardz",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 800,
+      "bossContribution": 9,
+      "status": "Paid (3rd place crew)"
+    },
+    {
+      "name": "morphlnk",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 802,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "KaWin",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 783,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "crystallkirym",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 782,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "annkarpova1987",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 782,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "teemo",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 766,
+      "bossContribution": 14,
+      "status": "Paid (1st place crew)"
+    },
+    {
+      "name": "zachemtik",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 774,
+      "bossContribution": 3,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "wolftype",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 719,
+      "bossContribution": 5,
+      "status": "Paid (3rd place crew)"
+    },
+    {
+      "name": "Noob GSN",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 563,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "james",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 492,
+      "bossContribution": 8,
+      "status": "Paid (3rd place crew)"
+    },
+    {
+      "name": "Rodan 🐯",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 498,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "vanwallsen",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 467,
+      "bossContribution": 7,
+      "status": "Paid (3rd place crew)"
+    },
+    {
+      "name": "Ro-ro-ro",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 461,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "atupabi",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 450,
+      "bossContribution": 6,
+      "status": "Paid (3rd place crew)"
+    },
+    {
+      "name": "tomnicols",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 437,
+      "bossContribution": 5,
+      "status": "Paid (3rd place crew)"
+    },
+    {
+      "name": "clearyjob",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 416,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "kukojkirillov",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 393,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "Vag",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 389,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Mercurt",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 383,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "lenovo36",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 377,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "robotdoltoet",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 377,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "ganginthisbbeach",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 349,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "fitryeryanty",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 319,
+      "bossContribution": 4,
+      "status": "Under the $5 minimum"
+    },
+    {
+      "name": "Laohac234 (❖,❖)",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 310,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Juggernaut | DOMA szn.",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 226,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Olli | DOMA",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 217,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "𝐑𝐀𝐉𝐀_𝐅𝐗",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 207,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Mojito",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 180,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "babyplayer6936",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 141,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "𝐈ᴛᴏꜱʜɪ ◕ ‿ ◕",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 105,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Huymoi18",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 95,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "AQCCapital ♾",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 67,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "NetSle Sweating.Doma",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 63,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "HASSAN",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 57,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "forever young",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 45,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "alexxx",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 43,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "hannieieieieie",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 35,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "DavidTình",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 35,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Tung",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 32,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "TBAapb (❖,❖)",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 20,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Ahmadfc",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 20,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "hodl.esf.eth",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 20,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "DL",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 20,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "ycc123.DOMA",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 18,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Lil Niyo  ♊",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 18,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "𝐓𝐞𝐦𝐮 𝐤𝐚𝐫𝐭𝐡𝐢𝐤𝟐𝟑𝟐",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 18,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "mhsen50",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 16,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "SYED🙌🏻",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 13,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "MimiLuv0496393",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 11,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Temu Clowes",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 10,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "R ᴀ ɴ ᴀ ! 🦇",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 10,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Anatole",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 10,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "ALTER",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 10,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "ᑌᒍᗩᑎG ᖇᗩᗰᗷO",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 8,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "ThanhCao",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 5,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "I'm skylover",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 2,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Nihent",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Edward",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Kazeem/ Freebnk",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "meox",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "darmayudaairdrop | OSHIT",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "INVESTOR MIRACLE!",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Ken",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Thuỳ Trang",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Al3x",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Alex.crypto",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Rock star ✨",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "harshana   Dilan",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "TUANPHAM",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Mahdi_Ace",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Strange Sound 🧟",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "!Ayaan09",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Gabriel",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "MaxVit 24/7",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Mr.Scoot",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "pasha123321",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Rain",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "酷三六.DOMA",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Humanion yanok",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "e tiến nhẹ nhàng VN",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "xinul",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "waterfall_4",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "G4",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "cool ☰ D3",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Smiley",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "rahul123🪁",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "снуп додик",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Cloud ☁️",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Bili Dz 24/7",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "sunsomo",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "Emmy_SB",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    },
+    {
+      "name": "seven321",
+      "isFounder": false,
+      "joined": null,
+      "fleetPoints": 0,
+      "bossContribution": 0,
+      "status": "Participated"
+    }
+  ]
+}

@@ -1,0 +1,220 @@
+{
+ "mode": "v3",
+ "slot": "torso",
+ "shapes": [
+  "barrel",
+  "toolbox",
+  "teapot",
+  "engine"
+ ],
+ "note": "The TORSO shape table drawn. ON TARGET only: PRE_SLOTS is arms and legs, so the torso carries no measured generator bias and a plate would be a second name for the same bytes. Nothing here is shipped and the game never reads this folder. Every shape hangs on the frozen pivots in src/app/bots/_view/rig-points.ts, starts its ink at the neck row less FIGURE.skirt so the head's own overlap covers it, and carries clay under the neck, both hips and the decal anchor.",
+ "key": "THE ONE BRASS PIECE, at the CONTRACT anchor on all four, because scripts/bots-import-parts.py draw_key puts it there on every cut torso from the contract's own bodyW and bodyH whatever shape the torso is. Each ruler is checked on its rendered pixels to carry clay under the whole key box; a shape that did not reach it would ship a ruler and an importer that disagree.",
+ "keyAnchor": {
+  "x": 201.6,
+  "y": 129.52,
+  "r": 12.48
+ },
+ "canvas": {
+  "w": 288,
+  "h": 264
+ },
+ "pivots": {
+  "neck": [
+   144,
+   64
+  ],
+  "hipL": [
+   94,
+   218
+  ],
+  "hipR": [
+   194,
+   218
+  ],
+  "decal": [
+   144,
+   148
+  ]
+ },
+ "geometry": {
+  "toolbox": {
+   "lid": [
+    20,
+    8,
+    248,
+    90,
+    8
+   ],
+   "case": [
+    64,
+    82,
+    160,
+    158,
+    12
+   ]
+  },
+  "engine": {
+   "block": [
+    13,
+    8,
+    262,
+    240,
+    14
+   ]
+  },
+  "teapot": {
+   "botY": 240,
+   "topHw": 46,
+   "maxHw": 108,
+   "maxY": 196,
+   "botHw": 84,
+   "swell": 0.85,
+   "tuck": 1.6
+  }
+ },
+ "formPhrase": "a rounded barrel, half again wider than it is tall, shoulders rounded off, no neck",
+ "shapeRows": [
+  {
+   "shape": "barrel",
+   "name": "Barrel",
+   "prompt": "a rounded barrel body, straight sides and big soft rounded corners, half again wider than it is tall, shoulders rounded off, no neck",
+   "notes": "the shipped outline, and the only one of the four that is not new. It is in the table as the comparison ruler every other shape is read against: a table with the live shape missing cannot say what changed. Drawn by torsoPartsV2 at tier one, design one, so it is today's barrel and not a redrawing of it.",
+   "live": true,
+   "box": [
+    23,
+    7,
+    264,
+    220
+   ],
+   "ratios": {
+    "bodyW": 0.4321,
+    "bodyH": 0.2804,
+    "bodyWOverH": 1.541
+   },
+   "pivots": {
+    "neck": "ink",
+    "shoulderL": "offCanvas",
+    "shoulderR": "offCanvas",
+    "hipL": "ink",
+    "hipR": "ink",
+    "decal": "ink"
+   },
+   "margin": 7,
+   "blobs": 1,
+   "keyBox": [
+    182,
+    114,
+    221,
+    162
+   ]
+  },
+  {
+   "shape": "toolbox",
+   "name": "Toolbox",
+   "prompt": "a squared toolbox body with a wide flat lid across the top that overhangs a much narrower case below it, a seam where the lid meets the case, corners softened but not round, no neck",
+   "notes": "the only shape in the table that steps IN as it goes down, and the step is a real edge in the silhouette rather than a groove drawn on a barrel. Its case is the narrowest waist in the table, which is what makes the lid read as a lid and not as a shoulder.",
+   "live": false,
+   "box": [
+    19,
+    7,
+    268,
+    240
+   ],
+   "ratios": {
+    "bodyW": 0.4464,
+    "bodyH": 0.3161,
+    "bodyWOverH": 1.4122
+   },
+   "pivots": {
+    "neck": "ink",
+    "shoulderL": "offCanvas",
+    "shoulderR": "offCanvas",
+    "hipL": "ink",
+    "hipR": "ink",
+    "decal": "ink"
+   },
+   "margin": 7,
+   "blobs": 1,
+   "keyBox": [
+    182,
+    114,
+    221,
+    162
+   ]
+  },
+  {
+   "shape": "teapot",
+   "name": "Teapot",
+   "prompt": "a rounded teapot body, narrow at the shoulders and swelling out to a low rounded belly, tucked in to a flat base, with one small spout stub low on its left side, no neck",
+   "notes": "the only shape with no straight side anywhere: its widest row sits low, below the middle, where every other shape in the table is widest at the top or the same all the way down. The spout is a STUB, a short nub off the belly and never a handle loop, because an enclosed hole is see-through and the clay law forbids it.",
+   "live": false,
+   "box": [
+    11,
+    7,
+    252,
+    240
+   ],
+   "ratios": {
+    "bodyW": 0.4321,
+    "bodyH": 0.3161,
+    "bodyWOverH": 1.367
+   },
+   "pivots": {
+    "neck": "ink",
+    "shoulderL": "offCanvas",
+    "shoulderR": "offCanvas",
+    "hipL": "ink",
+    "hipR": "ink",
+    "decal": "ink"
+   },
+   "margin": 7,
+   "blobs": 1,
+   "keyBox": [
+    182,
+    114,
+    221,
+    162
+   ]
+  },
+  {
+   "shape": "engine",
+   "name": "Engine",
+   "prompt": "a squared engine block body, a big flat-sided casting with square shoulders and softly bevelled corners, a raised cover panel across the chest and three ribs below it, the same width all the way down, no neck",
+   "notes": "the biggest and squarest thing in the table, at the top of the width band and near the top of the height band, and the only one whose width never changes from shoulder to base. It carries the table's distance the cheap way, by area: every other shape sits inside it.",
+   "live": false,
+   "box": [
+    12,
+    7,
+    275,
+    248
+   ],
+   "ratios": {
+    "bodyW": 0.4714,
+    "bodyH": 0.3304,
+    "bodyWOverH": 1.4268
+   },
+   "pivots": {
+    "neck": "ink",
+    "shoulderL": "offCanvas",
+    "shoulderR": "offCanvas",
+    "hipL": "ink",
+    "hipR": "ink",
+    "decal": "ink"
+   },
+   "margin": 7,
+   "blobs": 1,
+   "keyBox": [
+    182,
+    114,
+    221,
+    162
+   ]
+  }
+ ],
+ "files": [
+  "target/torso-barrel.png",
+  "target/torso-toolbox.png",
+  "target/torso-teapot.png",
+  "target/torso-engine.png"
+ ]
+}

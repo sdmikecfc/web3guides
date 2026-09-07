@@ -8,8 +8,9 @@
  * bond progress only — never a pilot wallet, balance, or any dollar holding.
  */
 import "server-only";
+import { unstable_noStore as noStore } from "next/cache";
 import { starsDb } from "./server";
-import { STARS, CREWS, type StarStatus, type StarSize } from "./stars";
+import { STARS, CREWS, ALIENS, type StarStatus, type StarSize } from "./stars";
 
 const SEASON_KEY = "s3";
 
@@ -30,7 +31,7 @@ export type SectorStar = {
 // One pilot on a crew roster. PUBLIC-SAFE: a display name (callsign, or a
 // shortened wallet — never the full address), the hull rank (1..12 → ship sprite),
 // and Starlight (the public score). NEVER hull_usd or any dollar holding.
-export type RosterPilot = { name: string; rank: number; starlight: number };
+export type RosterPilot = { name: string; rank: number; starlight: number; legendary?: string | null };
 
 export type SectorCrew = {
   key: string;
@@ -41,9 +42,28 @@ export type SectorCrew = {
   roster: RosterPilot[]; // top pilots by Starlight (capped)
 };
 
+// W2 invasion: one enemy alien on the map. PUBLIC-SAFE: shields %, bounty (publicly
+// announced), attacker COUNT — never a wallet or a dollar holding.
+export type SectorAlien = {
+  domain: string;
+  key: string; // art basename: alien-<key>.png
+  name: string;
+  bounty: number;
+  launchAt: string;
+  pos: { x: number; y: number };
+  size: number;
+  arrived: boolean;
+  hpPct: number | null; // null = arrived but not tracked/listed yet
+  killed: boolean;
+  preBonded: boolean;
+  expired: boolean;
+  attackers: number;
+};
+
 export type Sector = {
   stars: SectorStar[];
   crews: SectorCrew[];
+  aliens: SectorAlien[];
   totals: { lit: number; live: number; total: number; pilots: number };
   nowMs: number; // server timestamp, so client-side countdowns don't drift on hydration
 };
@@ -60,6 +80,10 @@ function pilotLabel(displayName: string | null, callsign: string | null): string
 }
 
 export async function getSectorSnapshot(): Promise<Sector> {
+  // Belt-and-suspenders with the route's fetchCache="force-no-store": guarantee the
+  // reads below (stars/crews/s3_aliens) are never served from Next's Data Cache, so
+  // the map reflects the bot's config the instant it changes (alien shields, kills).
+  noStore();
   const db = starsDb();
 
   // Live on-chain state per star (best-effort; a missing row falls back to pending).
@@ -75,8 +99,13 @@ export async function getSectorSnapshot(): Promise<Sector> {
   const now = Date.now();
   const stars: SectorStar[] = STARS.map((meta) => {
     const row = byDomain.get(meta.domain.toLowerCase());
-    const status = ((row?.status as StarStatus) || "pending") as StarStatus;
     const launched = now >= new Date(meta.launchAt).getTime();
+    const progress = Math.max(0, Math.min(1, Number(row?.normalized_progress) || 0));
+    // A star that has LISTED (launch time passed) or shows any on-chain bond progress is at
+    // least "live" — never show "Standby" on a planet that is already trading or terraforming.
+    // (bonded / failed always win; only pending gets promoted.) Fixes the "60% lit but Standby" bug.
+    let status = ((row?.status as StarStatus) || "pending") as StarStatus;
+    if (status === "pending" && (launched || progress > 0)) status = "live";
     return {
       domain: meta.domain,
       name: meta.name,
@@ -86,7 +115,7 @@ export async function getSectorSnapshot(): Promise<Sector> {
       tag: meta.tag,
       relist: meta.relist,
       status,
-      progress: Math.max(0, Math.min(1, Number(row?.normalized_progress) || 0)),
+      progress,
       launchAt: meta.launchAt,
       launched,
     };
@@ -96,7 +125,7 @@ export async function getSectorSnapshot(): Promise<Sector> {
   // roster is already a leaderboard. No wallets / no dollars leave the server.
   const { data: prows } = await db
     .from("launch_wars_s3_pilots")
-    .select("crew, display_name, callsign, rank, starlight")
+    .select("crew, display_name, callsign, rank, starlight, legendary")
     .eq("season_key", SEASON_KEY)
     .eq("is_test", false)
     .not("crew", "is", null)
@@ -110,7 +139,7 @@ export async function getSectorSnapshot(): Promise<Sector> {
     const sl = Math.round(Number(p.starlight) || 0);
     const list = rosterByCrew.get(crew) || [];
     if (list.length < ROSTER_CAP) {
-      list.push({ name: pilotLabel(p.display_name, p.callsign), rank: Number(p.rank) || 1, starlight: sl });
+      list.push({ name: pilotLabel(p.display_name, p.callsign), rank: Number(p.rank) || 1, starlight: sl, legendary: (p.legendary as string) || null });
     }
     rosterByCrew.set(crew, list);
     starlightByCrew.set(crew, (starlightByCrew.get(crew) || 0) + sl);
@@ -136,5 +165,31 @@ export async function getSectorSnapshot(): Promise<Sector> {
     pilots,
   };
 
-  return { stars, crews, totals, nowMs: now };
+  // W2 aliens: static meta merged with the bot's s3_aliens state k/v (best-effort —
+  // a missing/malformed config just renders the aliens as untracked, never crashes).
+  let alienState: Record<string, { hpPct?: number; killed?: boolean; preBonded?: boolean; expired?: boolean; payouts?: unknown[] }> = {};
+  try {
+    const { data: acfg } = await db
+      .from("launch_wars_boss_config")
+      .select("value")
+      .eq("key", "s3_aliens")
+      .maybeSingle();
+    alienState = JSON.parse(acfg?.value || "{}") || {};
+  } catch {
+    alienState = {};
+  }
+  const aliens: SectorAlien[] = ALIENS.map((a) => {
+    const s = alienState[a.domain] || {};
+    return {
+      ...a,
+      arrived: now >= new Date(a.launchAt).getTime(),
+      hpPct: typeof s.hpPct === "number" ? s.hpPct : null,
+      killed: !!s.killed,
+      preBonded: !!s.preBonded,
+      expired: !!s.expired,
+      attackers: Array.isArray(s.payouts) ? s.payouts.length : 0,
+    };
+  });
+
+  return { stars, crews, aliens, totals, nowMs: now };
 }

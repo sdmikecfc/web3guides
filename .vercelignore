@@ -1,0 +1,5 @@
+# Battle Bots art factory: source rulers, renders and decision sheets never ship
+.bots-preview/
+art-src/
+public/bots-art/_raw/
+.crypt-v1-backup/

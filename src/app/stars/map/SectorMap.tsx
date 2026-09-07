@@ -19,26 +19,49 @@ const GOLD = "#f0b340";
 const SIZE_PCT: Record<SectorStar["size"], number> = { giant: 15, mid: 10.5 };
 const RENDER_CAP = 80; // most ships drawn per crew (flag-count still shows the true total)
 
-// Per-crew formation: the swarm/flagship center, grid columns (left+right lanes are
-// tall/narrow, the bottom lane is wide), and which way the side-profile ships face
-// (nose toward the singularity). Tuned to sit in the gaps the planets leave clear.
-const FLEETS: Record<string, { x: number; y: number; cols: number; faceRight: boolean }> = {
-  nebula: { x: 0.115, y: 0.5, cols: 4, faceRight: true },
-  pulsar: { x: 0.885, y: 0.54, cols: 4, faceRight: false },
-  vanguard: { x: 0.5, y: 0.85, cols: 11, faceRight: false },
+// Per-crew formation: an elliptical swarm (center x/y + radii rx/ry) staged in the open gap
+// its lane leaves clear (left + right lanes are tall/narrow, the bottom lane is wide), and
+// which way the side-profile ships face (nose toward the singularity). Ships are placed by a
+// phyllotaxis (golden-angle) spiral, so ANY pilot count fills the ellipse evenly and no two
+// ships ever land on the same coordinate — every ship stays hoverable/clickable. (The old
+// fixed grid clamped overflow ships into the border and stacked them, burying most of them.)
+// BATTLEFIELD LAYOUT (Mike 2026-07-08): all three crews mass in the LEFT column (one third
+// each, top->bottom: Vanguard / Nebula / Pulsar — fixed zones so ships don't reshuffle with
+// standings), every nose pointed RIGHT at the singularity and the invasion beyond it.
+const FLEETS: Record<string, { x: number; y: number; rx: number; ry: number; faceRight: boolean }> = {
+  vanguard: { x: 0.115, y: 0.18, rx: 0.095, ry: 0.125, faceRight: true },
+  nebula:   { x: 0.115, y: 0.50, rx: 0.095, ry: 0.125, faceRight: true },
+  pulsar:   { x: 0.115, y: 0.82, rx: 0.095, ry: 0.125, faceRight: true },
 };
-const SHIP_DX = 0.04;
-const SHIP_DY = 0.052;
+const GOLDEN = Math.PI * (3 - Math.sqrt(5)); // golden angle — even, gap-free spiral fill
+// ship draw size shrinks as the crew grows so a big roster still fits its lane without overlap
+const shipSizePct = (n: number, rx: number, ry: number) =>
+  clamp(1.7 * Math.sqrt((rx * ry) / Math.max(6, n)), 0.015, 0.04) * 100;
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
-const hullArt = (rank: number) => `/stars-art/hull-${String(clamp(rank || 1, 1, 12)).padStart(2, "0")}.png`;
+// hull rank 1..12 -> visual tier 1..6 (two ranks per tier); each tier is painted in the crew
+// color, so a ship reads as BOTH its tier (grandeur) and its crew (color) at a glance.
+const tierOf = (rank: number) => clamp(Math.ceil(clamp(rank || 1, 1, 12) / 2), 1, 6);
+const hullArt = (crew: string, rank: number) => `/stars-art/hull-${crew}-t${tierOf(rank)}.png`;
+// Legendary feat-hulls (earned by feats): when a pilot has one, their ship IS the legend
+// sprite (gold-foil showpiece) instead of the crew/tier hull, plus a badge on the roster.
+const LEGEND_KEYS = new Set(["sector-champion", "final-blow", "galaxy-mvp", "the-underdog", "star-lighter", "recruiter", "battle-champion"]);
+const isLegend = (l?: string | null): l is string => !!l && LEGEND_KEYS.has(l);
+const shipArt = (crew: string, rank: number, legendary?: string | null) =>
+  isLegend(legendary) ? `/stars-art/legend-${legendary}.png` : hullArt(crew, rank);
+// Rank 1..12 -> hull title (matches the bot's RANK_NAMES). Shown on the pilot card.
+const RANK_NAMES = ["Recruit", "Cadet", "Ensign", "Pilot", "Lieutenant", "Wing Commander", "Squadron Leader", "Captain", "Commodore", "Vice Admiral", "Admiral", "Fleet Admiral"];
+const rankName = (r: number) => RANK_NAMES[clamp(r || 1, 1, 12) - 1];
+const LEGEND_NAMES: Record<string, string> = { "sector-champion": "Sector Champion", "final-blow": "Final Blow", "galaxy-mvp": "Galaxy MVP", "the-underdog": "The Underdog", "star-lighter": "Star-Lighter", "recruiter": "Recruiter", "battle-champion": "Battle Champion" };
+// Season end (UTC), shown on the map + crew board. S3 is a two-week season launched 06-29 (Mike, confirmed).
+const SEASON_END = "2026-07-13T17:00:00Z";
 const ordinal = (n: number) => (n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`);
 
 const STATUS: Record<
   SectorStar["status"],
   { label: string; fg: string; bg: string; glow: string }
 > = {
-  pending: { label: "Standby", fg: "#aab8e0", bg: "rgba(124,160,255,0.14)", glow: "rgba(124,160,255,0.22)" },
+  pending: { label: "Standby", fg: "#aab8e0", bg: "rgba(124,160,255,0.14)", glow: "rgba(150,160,185,0.13)" },
   live: { label: "Terraforming", fg: "#f0b340", bg: "rgba(240,179,64,0.18)", glow: "rgba(240,179,64,0.42)" },
   bonded: { label: "Terraformed", fg: "#86f0c4", bg: "rgba(94,234,212,0.16)", glow: "rgba(120,240,190,0.6)" },
   failed: { label: "Lost", fg: "#ff8a8a", bg: "rgba(255,90,90,0.13)", glow: "rgba(255,90,90,0.16)" },
@@ -59,11 +82,40 @@ function relLaunch(iso: string, now: number): string {
   const hours = Math.max(1, Math.floor(diff / 3600000));
   return `in ${hours} hour${hours === 1 ? "" : "s"}`;
 }
+// Season end label for the header + board (e.g. "Season ends Jul 13 · 4d 6h left").
+function fmtSeasonEnd(iso: string, now: number): string {
+  const d = new Date(iso);
+  const date = `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
+  const diff = d.getTime() - now;
+  if (diff <= 0) return `Season ended ${date}`;
+  const days = Math.floor(diff / 86400000), hours = Math.floor((diff % 86400000) / 3600000);
+  return `Season ends ${date} · ${days >= 1 ? `${days}d ${hours}h` : `${Math.max(1, hours)}h`} left`;
+}
+
+type ShipCard = { name: string; rank: number; starlight: number; legendary?: string | null; crewKey: string; crewName: string; accent: string };
 
 export function SectorMap({ sector }: { sector: Sector }) {
   const { stars, crews, totals, nowMs } = sector;
+  const aliens = sector.aliens ?? []; // W2 invasion (tolerate a stale cached snapshot without the field)
+  const [alienArtFail, setAlienArtFail] = useState<Record<string, boolean>>({}); // vector fallback until plates land
+  // Bond-to-win pool: the $1,000 prize UNLOCKS as stars bond (each bonded star adds a share).
+  // Shown loud so "stars that don't bond = a smaller prize for everyone" is obvious, not buried.
+  const prizePerStar = Math.round(1000 / (totals.total || 5));
+  const prizeUnlocked = prizePerStar * totals.lit;
   const [open, setOpen] = useState<string | null>(null); // planet domain
   const [panel, setPanel] = useState<string | null>(null); // crew leaderboard
+  const [ship, setShip] = useState<ShipCard | null>(null); // tapped pilot's shareable card
+  const [shared, setShared] = useState(false);
+
+  const shareShip = async (s: ShipCard) => {
+    const base = typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}` : "https://stars.web3guides.com/map";
+    const hull = isLegend(s.legendary) ? `the ${LEGEND_NAMES[s.legendary!]} legendary hull` : `a ${rankName(s.rank)}`;
+    const text = `${s.name} is flying ${hull} for ${s.crewName} with ${s.starlight.toLocaleString()} Starlight in Launch Wars: Starfall. ${base}`;
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) { await navigator.share({ title: "Starfall Sector Map", text, url: base }); return; }
+    } catch { /* share sheet dismissed */ }
+    try { await navigator.clipboard.writeText(text); setShared(true); setTimeout(() => setShared(false), 1800); } catch { /* clipboard blocked */ }
+  };
 
   // Crew standings: sort by Starlight (then size) for the rank shown on every surface.
   const ranked = [...crews].sort((a, b) => b.starlight - a.starlight || b.pilots - a.pilots);
@@ -74,9 +126,24 @@ export function SectorMap({ sector }: { sector: Sector }) {
   // left rail — like the seas map, so a player can track their personal rank. Built from the
   // per-crew rosters already in the snapshot (names only, never wallets/dollars). Top 20.
   const captains = crews
-    .flatMap((c) => c.roster.map((p) => ({ name: p.name, rank: p.rank, starlight: p.starlight, crew: c.key, accent: c.accent })))
+    .flatMap((c) => c.roster.map((p) => ({ name: p.name, rank: p.rank, starlight: p.starlight, crew: c.key, crewName: c.name, accent: c.accent, legendary: p.legendary })))
     .sort((a, b) => b.starlight - a.starlight)
     .slice(0, 20);
+
+  // Live "current holder" title — moves with the standings, locks at settlement (distinct from the
+  // permanent ✦ legendary hulls). Top Starlight pilot = current Galaxy MVP. Sector Champion and The
+  // Underdog are now MINTED rotating legendary hulls the bot awards (most mini-game points / most
+  // Starlight per dollar), so they show as the SHIP itself, not a client-side badge. (Auto-balanced
+  // crews made a "smallest crew" underdog meaningless.) Top recruiter needs referral data not here.
+  const mvpName = captains[0]?.name || null;
+  const liveTitle = (name?: string | null): { icon: string; label: string } | null => {
+    if (name && name === mvpName) return { icon: "👑", label: "Galaxy MVP" };
+    return null;
+  };
+  const renderTitle = (name?: string | null) => {
+    const t = liveTitle(name);
+    return t ? <span className="sf-title" title={`${t.label} (current)`}>{t.icon}</span> : null;
+  };
 
   return (
     <main className="sf-map">
@@ -102,22 +169,29 @@ export function SectorMap({ sector }: { sector: Sector }) {
           </div>
         </header>
 
+        <div className="sf-season">{fmtSeasonEnd(SEASON_END, nowMs)}</div>
+        <div className="sf-season" style={{ marginTop: 3 }}>
+          Prize pool: <b style={{ color: "#f0b340" }}>${prizeUnlocked.toLocaleString()}</b> of $1,000 unlocked
+          {totals.lit < totals.total ? <> · each star that bonds adds ${prizePerStar} for everyone</> : <> · all {totals.total} lit, full prize in play</>}
+        </div>
+
         <div className="sf-stage">
           <aside className="sf-rail" aria-label="Top captains">
             <div className="sf-rail-head">
               <span className="sf-rail-title">Top Captains</span>
               <span className="sf-rail-sub">by Starlight</span>
             </div>
+            <div className="sf-rail-season">{fmtSeasonEnd(SEASON_END, nowMs)}</div>
             {captains.length === 0 ? (
               <p className="sf-rail-empty">No pilots yet. Be the first to fly.</p>
             ) : (
               <ol className="sf-rail-list">
                 {captains.map((c, i) => (
                   <li key={i}>
-                    <button type="button" className="sf-rail-row" onClick={() => setPanel(c.crew)} title={`${c.name} — ${c.starlight} Starlight`}>
+                    <button type="button" className="sf-rail-row" onClick={() => setShip({ name: c.name, rank: c.rank, starlight: c.starlight, legendary: c.legendary, crewKey: c.crew, crewName: c.crewName, accent: c.accent })} title={`${c.name} — ${c.starlight} Starlight`}>
                       <span className="sf-rail-pos">{i + 1}</span>
                       <span className="sf-rail-flag" style={{ background: c.accent, color: c.accent }} />
-                      <span className="sf-rail-name">{c.name}</span>
+                      <span className="sf-rail-name">{c.name}{isLegend(c.legendary) ? <span className="sf-legend" title="Legendary">✦</span> : null}{renderTitle(c.name)}</span>
                       <span className="sf-rail-sl">{c.starlight.toLocaleString()}</span>
                     </button>
                   </li>
@@ -129,6 +203,14 @@ export function SectorMap({ sector }: { sector: Sector }) {
 
           <section className="sf-sector" aria-label="The sector" onClick={() => setOpen(null)}>
           <div className="sf-sector-bg" />
+
+          {/* Battlefield glow zones: ONE continuous formation aura down the whole left column
+              (the three crew colors intertwine INSIDE the single glow — one army, not three
+              blobs); the right column smolders crimson under the invasion. */}
+          <div className="sf-zones" aria-hidden>
+            <span className="sf-zone sf-zone--fleet" />
+            <span className="sf-zone sf-zone--alien" />
+          </div>
 
           {stars.map((s) => {
             const st = STATUS[s.status];
@@ -153,7 +235,7 @@ export function SectorMap({ sector }: { sector: Sector }) {
                 >
                   <span className="sf-glow" style={{ background: `radial-gradient(circle, ${st.glow} 0%, transparent 68%)` }} />
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={planetArt(s.domain, s.status)} alt="" className="sf-planet-img" />
+                  <img src={planetArt(s.domain, s.status, s.progress)} alt="" className="sf-planet-img" />
                 </button>
 
                 {!isOpen && (
@@ -201,6 +283,101 @@ export function SectorMap({ sector }: { sector: Sector }) {
             );
           })}
 
+          {/* W2 ALIEN INVASION: enemy ships between the planets (the Mothership rides the
+              black hole itself). Shields fall as the crowd buys; killed aliens linger as
+              faded wrecks for the week's story. Art alien-<key>.png, vector orb fallback. */}
+          {aliens.filter((a) => !a.expired).map((a) => {
+            const isOpen = open === a.domain;
+            const live = a.arrived && !a.killed && a.hpPct != null;
+            const incoming = !a.arrived;
+            const label = a.killed ? "DESTROYED" : incoming ? `incoming ${relLaunch(a.launchAt, nowMs)}` : a.hpPct != null ? `shields ${a.hpPct}%` : "approaching";
+            return (
+              <div
+                key={a.domain}
+                className={`sf-alien${a.killed ? " is-dead" : ""}${incoming ? " is-incoming" : ""}`}
+                style={{ left: `${a.pos.x * 100}%`, top: `${a.pos.y * 100}%`, width: `${10.5 * a.size}%` }}
+              >
+                <button
+                  type="button"
+                  className={`sf-planet-btn${isOpen ? " is-open" : ""}`}
+                  aria-label={`${a.name} — ${label}`}
+                  aria-expanded={isOpen}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpen(isOpen ? null : a.domain);
+                  }}
+                >
+                  <span className="sf-glow" style={{ background: "radial-gradient(circle, rgba(255,64,64,0.38) 0%, transparent 68%)" }} />
+                  {alienArtFail[a.key] ? (
+                    <span className="sf-alien-orb" />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/stars-art/alien-${a.key}.png`}
+                      alt=""
+                      className="sf-alien-img"
+                      // A 404 that resolves BEFORE hydration never fires onError (the event is
+                      // gone by the time React attaches it) — the ref catches an already-broken
+                      // image at mount so the orb fallback still kicks in.
+                      ref={(el) => {
+                        if (el && el.complete && el.naturalWidth === 0 && !alienArtFail[a.key]) {
+                          setAlienArtFail((m) => (m[a.key] ? m : { ...m, [a.key]: true }));
+                        }
+                      }}
+                      onError={() => setAlienArtFail((m) => (m[a.key] ? m : { ...m, [a.key]: true }))}
+                    />
+                  )}
+                </button>
+
+                {!isOpen && (
+                  <span className="sf-pname sf-aname">
+                    {a.name} · ${a.bounty}
+                    {live ? (
+                      <span className="sf-atrack"><span className="sf-afill" style={{ width: `${Math.max(3, a.hpPct ?? 0)}%` }} /></span>
+                    ) : (
+                      <span className="sf-asub">{label}</span>
+                    )}
+                  </span>
+                )}
+
+                {isOpen && (
+                  <div className="sf-card" onClick={(e) => e.stopPropagation()}>
+                    <div className="sf-card-top">
+                      <span className="sf-name">{a.name}</span>
+                      <span className="sf-tag sf-tag--alien">${a.bounty} bounty</span>
+                    </div>
+                    <span className="sf-domain">{a.domain}</span>
+                    {a.killed ? (
+                      <span className="sf-sub">
+                        {a.preBonded
+                          ? "Arrived already bonded. No fight, bounty not paid."
+                          : a.attackers > 0
+                            ? `Destroyed. $${a.bounty} split among ${a.attackers} attackers by damage.`
+                            : "Destroyed. Bounty unclaimed (no $5+ attackers at the kill)."}
+                      </span>
+                    ) : incoming ? (
+                      <span className="sf-sub">Enemy ship incoming {relLaunch(a.launchAt, nowMs)}.</span>
+                    ) : (
+                      <>
+                        {a.hpPct != null ? (
+                          <>
+                            <span className="sf-track"><span className="sf-fill" style={{ width: `${Math.max(3, a.hpPct)}%`, background: "#ff5252" }} /></span>
+                            <span className="sf-sub">Shields at {a.hpPct}%. Every dollar held burns them down.</span>
+                          </>
+                        ) : (
+                          <span className="sf-sub">Approaching. Not listed yet.</span>
+                        )}
+                        <span className="sf-sub sf-sub--dim">
+                          Buy and hold ${"5"}+ of {a.domain} to deal damage. When it bonds, the ${a.bounty} bounty splits by damage dealt. Your crew race and Starlight do not change.
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
           {/* The 3 crew fleets: a flagship + a non-overlapping formation of the real
               hull sprites (one per pilot, sized by rank). Hover a ship to zoom in;
               tap a ship or the flagship to open that crew's leaderboard. */}
@@ -208,7 +385,10 @@ export function SectorMap({ sector }: { sector: Sector }) {
             const f = FLEETS[c.key];
             if (!f) return null;
             const ships = c.roster.slice(0, RENDER_CAP);
-            const rows = Math.max(1, Math.ceil(ships.length / f.cols));
+            const n = ships.length;
+            const sw = shipSizePct(n, f.rx, f.ry);
+            const maxSl = Math.max(40, ships[0]?.starlight || 1); // roster is sorted desc by Starlight
+            const sizeMul = (sl: number) => 0.8 + 0.55 * Math.sqrt(Math.min(1, (sl || 0) / maxSl)); // bigger ship = more Starlight
             return (
               <div key={c.key} className="sf-fleet">
                 <span
@@ -220,27 +400,30 @@ export function SectorMap({ sector }: { sector: Sector }) {
                   }}
                 />
                 {ships.map((p, i) => {
-                  const col = i % f.cols;
-                  const row = Math.floor(i / f.cols);
-                  const px = clamp(f.x + (col - (f.cols - 1) / 2) * SHIP_DX, 0.035, 0.965);
-                  const py = clamp(f.y + (row - (rows - 1) / 2) * SHIP_DY, 0.05, 0.96);
+                  // phyllotaxis: ring out from the flagship (inner 0.46 keeps the flagship sprite
+                  // clear so its clicks never steal a ship's tap), golden-angle spiral, no clones.
+                  const radial = 0.46 + 0.54 * Math.sqrt((i + 0.5) / n);
+                  const ang = i * GOLDEN;
+                  const px = clamp(f.x + Math.cos(ang) * radial * f.rx, 0.03, 0.97);
+                  const py = clamp(f.y + Math.sin(ang) * radial * f.ry, 0.04, 0.97);
                   return (
                     <button
                       key={i}
                       type="button"
                       className="sf-pship"
-                      style={{ left: `${px * 100}%`, top: `${py * 100}%` }}
-                      aria-label={`${p.name} — rank ${p.rank}, ${p.starlight} Starlight`}
+                      style={{ left: `${px * 100}%`, top: `${py * 100}%`, width: `${(sw * sizeMul(p.starlight)).toFixed(2)}%` }}
+                      aria-label={`${p.name} — ${rankName(p.rank)}, ${p.starlight} Starlight`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setPanel(c.key);
+                        setShip({ name: p.name, rank: p.rank, starlight: p.starlight, legendary: p.legendary, crewKey: c.key, crewName: c.name, accent: c.accent });
                       }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={hullArt(p.rank)}
+                        src={shipArt(c.key, p.rank, p.legendary)}
                         alt=""
                         className={`sf-pship-img${f.faceRight ? " flip" : ""}`}
+                        style={{ filter: `drop-shadow(0 0 ${isLegend(p.legendary) ? 6 : 3}px ${isLegend(p.legendary) ? "#ffd680" : c.accent}) drop-shadow(0 2px 5px rgba(0,0,0,0.6))` }}
                       />
                       <span className="sf-pship-tip">
                         <b>{p.name}</b>
@@ -262,7 +445,9 @@ export function SectorMap({ sector }: { sector: Sector }) {
                   }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/stars-art/flagship-${c.key}.png`} alt="" className="sf-flag-img" />
+                  {/* Flagship art noses LEFT by default; flip it with its fleet so the whole
+                      formation faces the singularity + the invasion (attack posture). */}
+                  <img src={`/stars-art/flagship-${c.key}.png`} alt="" className={`sf-flag-img${FLEETS[c.key]?.faceRight ? " flip" : ""}`} />
                   <span className="sf-flag-label" style={{ color: c.accent }}>
                     {c.name} <span className="sf-flag-n">{c.pilots}</span>
                   </span>
@@ -284,7 +469,7 @@ export function SectorMap({ sector }: { sector: Sector }) {
             return (
               <li key={s.domain} className="sf-srow">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={planetArt(s.domain, s.status)} alt="" className="sf-srow-img" />
+                <img src={planetArt(s.domain, s.status, s.progress)} alt="" className="sf-srow-img" />
                 <div className="sf-srow-body">
                   <span className="sf-srow-top">
                     <span className="sf-srow-name">{s.name}</span>
@@ -325,6 +510,7 @@ export function SectorMap({ sector }: { sector: Sector }) {
               <div className="sf-crew-body">
                 <span className="sf-crew-name" style={{ color: c.accent }}>
                   {c.name}
+                  {rankOf.get(c.key) === 1 ? <span className="sf-title" title="Sector Champion (current)">👑</span> : null}
                 </span>
                 <span className="sf-crew-count">
                   {c.pilots} {c.pilots === 1 ? "pilot" : "pilots"}
@@ -388,11 +574,15 @@ export function SectorMap({ sector }: { sector: Sector }) {
             ) : (
               <ol className="sf-board-list">
                 {panelCrew.roster.map((p, i) => (
-                  <li key={i} className="sf-board-row">
+                  <li key={i} className="sf-board-row sf-board-row--tap" onClick={() => setShip({ name: p.name, rank: p.rank, starlight: p.starlight, legendary: p.legendary, crewKey: panelCrew.key, crewName: panelCrew.name, accent: panelCrew.accent })}>
                     <span className="sf-board-pos">{i + 1}</span>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={hullArt(p.rank)} alt="" className="sf-board-ship" />
-                    <span className="sf-board-pname">{p.name}</span>
+                    <img src={shipArt(panelCrew.key, p.rank, p.legendary)} alt="" className="sf-board-ship" />
+                    <span className="sf-board-pname">
+                      {p.name}
+                      {isLegend(p.legendary) ? <span className="sf-legend" title="Legendary hull">✦</span> : null}
+                      {renderTitle(p.name)}
+                    </span>
                     <span className="sf-board-prank">R{p.rank}</span>
                     <span className="sf-board-sl">{p.starlight} ✦</span>
                   </li>
@@ -403,6 +593,38 @@ export function SectorMap({ sector }: { sector: Sector }) {
               Starlight comes from holding the star tokens and playing. It sets your share if your crew’s stars
               bond.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Tapped-pilot card — the ship + their Starlight + hull title, shareable (S2 parity). */}
+      {ship && (
+        <div className="sf-modal" onClick={() => setShip(null)}>
+          <div className="sf-shipcard" onClick={(e) => e.stopPropagation()} style={{ borderColor: `${ship.accent}66` }}>
+            <button className="sf-board-x" onClick={() => setShip(null)} aria-label="Close">×</button>
+            <div className="sf-sc-art" style={{ background: `radial-gradient(circle at 50% 42%, ${ship.accent}33 0%, transparent 70%)` }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={shipArt(ship.crewKey, ship.rank, ship.legendary)} alt="" className="sf-sc-ship" />
+            </div>
+            <div className="sf-sc-name">
+              {ship.name}
+              {isLegend(ship.legendary) ? <span className="sf-legend" title="Legendary hull">✦</span> : null}
+              {renderTitle(ship.name)}
+            </div>
+            <div className="sf-sc-crew" style={{ color: ship.accent }}>{ship.crewName} crew</div>
+            <div className="sf-sc-stats">
+              <div className="sf-sc-stat">
+                <span className="sf-sc-v">{ship.starlight.toLocaleString()}</span>
+                <span className="sf-sc-l">Starlight</span>
+              </div>
+              <div className="sf-sc-stat">
+                <span className="sf-sc-v" style={isLegend(ship.legendary) ? { color: "#ffd680" } : undefined}>
+                  {isLegend(ship.legendary) ? LEGEND_NAMES[ship.legendary!] : rankName(ship.rank)}
+                </span>
+                <span className="sf-sc-l">{isLegend(ship.legendary) ? "Legendary hull" : `Rank ${ship.rank} hull`}</span>
+              </div>
+            </div>
+            <button className="sf-sc-share" onClick={() => shareShip(ship)}>{shared ? "Copied to clipboard ✓" : "Share this pilot"}</button>
           </div>
         </div>
       )}
@@ -429,6 +651,8 @@ const CSS = `
 .sf-tally-num{font-size:30px;font-weight:800;color:#fff;}
 .sf-tally-slash{color:#6b7690;font-weight:700;font-size:20px;}
 .sf-tally-lbl{display:block;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#8b95ad;margin-top:3px;}
+.sf-season{text-align:center;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:${GOLD};margin:0 0 12px;}
+.sf-rail-season{font-size:10.5px;font-weight:700;letter-spacing:.03em;color:${GOLD};text-align:center;padding:5px 0 1px;opacity:.92;}
 
 /* Stage = the left TOP CAPTAINS rail + the sector, side by side (like the seas map). */
 .sf-stage{display:grid;grid-template-columns:236px 1fr;gap:18px;align-items:start;margin:6px 0 18px;}
@@ -474,6 +698,51 @@ const CSS = `
   font-size:12px;font-weight:600;color:#dfe5f2;text-shadow:0 1px 6px rgba(0,0,0,0.9);}
 .sf-pdot{width:6px;height:6px;border-radius:50%;box-shadow:0 0 8px currentColor;}
 
+/* ── Battlefield glow zones: crew smoke on the left, menace on the right ── */
+.sf-zones{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden;border-radius:22px;}
+.sf-zone{position:absolute;display:block;filter:blur(34px);mix-blend-mode:screen;}
+/* One element, four stacked gradients: gold / violet / teal blend continuously inside a
+   single aura (the faint pale backbone ties them into one army formation, not three blobs). */
+.sf-zone--fleet{left:-8%;top:-4%;width:34%;height:108%;
+  background:
+    radial-gradient(ellipse 75% 30% at 42% 15%, rgba(240,179,64,0.32), transparent 72%),
+    radial-gradient(ellipse 80% 34% at 30% 50%, rgba(124,106,255,0.30), transparent 72%),
+    radial-gradient(ellipse 75% 30% at 42% 85%, rgba(94,234,212,0.32), transparent 72%),
+    radial-gradient(ellipse 52% 92% at 22% 50%, rgba(210,200,255,0.12), transparent 82%);
+  animation:sf-smoke 12s ease-in-out infinite;}
+.sf-zone--alien{right:-9%;top:-4%;width:30%;height:108%;
+  background:radial-gradient(ellipse 60% 55% at 62% 50%, rgba(255,64,64,0.26), rgba(255,64,64,0.08) 55%, transparent 78%);
+  animation:sf-smoke 13s ease-in-out infinite reverse;}
+@keyframes sf-smoke{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(2.5%,-2%) scale(1.12);}}
+
+/* ── W2 alien invasion (crimson: the one color the sector map never uses,
+      so hostiles read instantly against the navy/gold/teal — Mike 2026-07-08) ── */
+.sf-alien{position:absolute;transform:translate(-50%,-50%);z-index:2;}
+/* Visibility (Mike 2026-07-08): a WHITE-HOT rim hugging the creature's silhouette + a wide
+   crimson bloom (layered drop-shadows track the sprite alpha = a true outline glow), and the
+   halo behind it breathes. Nothing else on the map glows white+red, so hostiles pop. */
+.sf-alien-img{position:relative;z-index:1;width:100%;height:auto;display:block;
+  animation:sf-alien-drift 9s ease-in-out infinite;
+  filter:drop-shadow(0 0 5px rgba(255,255,255,0.85)) drop-shadow(0 0 16px rgba(255,64,64,0.8)) drop-shadow(0 0 34px rgba(255,48,48,0.45));}
+.sf-alien .sf-glow{opacity:1;animation:sf-alien-pulse 3.2s ease-in-out infinite;}
+.sf-alien.is-dead .sf-alien-img,.sf-alien.is-dead .sf-alien-orb{filter:grayscale(1) brightness(0.5) drop-shadow(0 0 8px rgba(255,255,255,0.25));opacity:.55;animation:none;}
+.sf-alien.is-dead .sf-glow{animation:none;opacity:.25;}
+.sf-alien.is-incoming .sf-alien-img,.sf-alien.is-incoming .sf-alien-orb{opacity:.6;
+  filter:brightness(0.7) saturate(0.7) drop-shadow(0 0 6px rgba(255,255,255,0.5)) drop-shadow(0 0 14px rgba(255,64,64,0.4));}
+@keyframes sf-alien-pulse{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.65;}50%{transform:translate(-50%,-50%) scale(1.3);opacity:1;}}
+.sf-alien-orb{position:relative;z-index:1;display:block;width:100%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle at 38% 34%, rgba(255,120,110,0.9), rgba(150,26,26,0.92) 55%, rgba(30,6,8,0.95) 100%);
+  box-shadow:0 0 24px rgba(255,64,64,0.45), inset 0 0 18px rgba(0,0,0,0.6);
+  animation:sf-alien-drift 9s ease-in-out infinite;}
+/* Two-line plate (Mike 2026-07-08): "Name · $bounty" on top, the shields bar or the
+   status word (DESTROYED / incoming) UNDERNEATH, so the plate never runs long. */
+.sf-aname{color:#ffb0a8;flex-direction:column;gap:3px;}
+.sf-atrack{display:block;width:74px;height:5px;border-radius:999px;background:rgba(255,82,82,0.18);overflow:hidden;}
+.sf-afill{display:block;height:100%;border-radius:999px;background:#ff5252;box-shadow:0 0 8px rgba(255,82,82,0.75);}
+.sf-asub{font-size:10px;font-weight:600;color:#e09a93;}
+.sf-tag--alien{color:#ff6b6b;background:rgba(255,82,82,0.12);border-color:rgba(255,82,82,0.32);}
+@keyframes sf-alien-drift{0%,100%{transform:translateY(0) rotate(-1.5deg);}50%{transform:translateY(-6px) rotate(1.5deg);}}
+
 .sf-card{position:absolute;left:50%;top:calc(100% + 8px);transform:translateX(-50%);
   width:max-content;max-width:200px;display:flex;flex-direction:column;align-items:center;gap:4px;
   padding:9px 13px;border-radius:12px;background:rgba(9,12,22,0.86);backdrop-filter:blur(8px);
@@ -496,8 +765,9 @@ const CSS = `
 /* Fleets — the container passes clicks through; only ships + flagships are interactive */
 .sf-fleet{position:absolute;inset:0;pointer-events:none;z-index:1;}
 .sf-fleet-zone{position:absolute;width:28%;height:34%;transform:translate(-50%,-50%);border-radius:50%;}
-.sf-pship{position:absolute;width:3.4%;min-width:18px;transform:translate(-50%,-50%);padding:0;border:0;
+.sf-pship{position:absolute;width:3.4%;min-width:12px;transform:translate(-50%,-50%);padding:0;border:0;
   background:none;cursor:pointer;pointer-events:auto;z-index:3;-webkit-tap-highlight-color:transparent;}
+.sf-pship::before{content:"";position:absolute;inset:-28%;border-radius:50%;}/* roomier tap/hover target */
 .sf-pship-img{width:100%;height:auto;display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.65));
   transition:transform .15s ease-out;}
 .sf-pship-img.flip{transform:scaleX(-1);}            /* nose toward the singularity */
@@ -516,7 +786,11 @@ const CSS = `
   -webkit-tap-highlight-color:transparent;}
 .sf-flag-img{width:100%;height:auto;display:block;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.6));
   animation:sf-bob 6s ease-in-out infinite;transition:transform .2s;}
-.sf-flag:hover .sf-flag-img{transform:scale(1.08);}
+/* The bob ANIMATION owns the transform, so a plain scaleX(-1) on the class gets stomped;
+   flipped flagships need their own keyframes with the mirror baked into every frame. */
+.sf-flag-img.flip{transform:scaleX(-1);animation-name:sf-bob-flip;}
+.sf-flag:hover .sf-flag-img{transform:scale(1.08);animation:none;}
+.sf-flag:hover .sf-flag-img.flip{transform:scaleX(-1) scale(1.08);animation:none;}
 .sf-flag-label{margin-top:3px;display:inline-flex;align-items:center;gap:5px;
   font-size:11px;font-weight:700;white-space:nowrap;text-shadow:0 1px 6px rgba(0,0,0,0.95);}
 .sf-flag-n{padding:0 6px;border-radius:999px;background:rgba(255,255,255,0.16);
@@ -577,15 +851,35 @@ const CSS = `
 .sf-board-ship{width:46px;height:30px;object-fit:contain;flex:0 0 auto;}
 .sf-board-pname{flex:1 1 auto;min-width:0;font-weight:600;font-size:14px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .sf-board-prank{font-size:11px;color:#8b95ad;flex:0 0 auto;}
+.sf-legend{color:#ffd680;font-size:11px;margin-left:4px;text-shadow:0 0 6px rgba(255,214,128,0.85);}
+.sf-title{margin-left:4px;font-size:11px;line-height:1;filter:drop-shadow(0 0 4px rgba(240,179,64,0.6));}
 .sf-board-sl{font-size:13px;font-weight:700;color:${GOLD};flex:0 0 auto;min-width:58px;text-align:right;}
 .sf-board-foot{margin:14px 0 0;font-size:11.5px;color:#7a849c;line-height:1.5;text-align:center;}
+.sf-board-row--tap{cursor:pointer;transition:background .12s;}
+.sf-board-row--tap:hover{background:rgba(255,255,255,0.09);}
+.sf-shipcard{position:relative;width:min(360px,100%);background:rgba(10,13,24,0.97);
+  border:1px solid rgba(240,179,64,0.4);border-radius:20px;padding:22px;text-align:center;
+  box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:sf-rise .18s ease-out;}
+.sf-sc-art{display:flex;align-items:center;justify-content:center;height:150px;margin:6px 0 6px;border-radius:14px;}
+.sf-sc-ship{max-width:94%;max-height:140px;object-fit:contain;filter:drop-shadow(0 6px 18px rgba(0,0,0,0.6));}
+.sf-sc-name{font-size:20px;font-weight:800;color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:2px;}
+.sf-sc-crew{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:2px;}
+.sf-sc-stats{display:flex;gap:12px;margin:16px 0 2px;}
+.sf-sc-stat{flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);
+  border-radius:12px;padding:11px 8px;display:flex;flex-direction:column;gap:3px;}
+.sf-sc-v{font-size:17px;font-weight:800;color:#fff;line-height:1.15;}
+.sf-sc-l{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#8b95ad;}
+.sf-sc-share{margin-top:14px;width:100%;padding:12px;border:0;border-radius:12px;cursor:pointer;
+  background:${GOLD};color:#1a1205;font-weight:700;font-size:14px;}
+.sf-sc-share:hover{filter:brightness(1.06);}
 
 @keyframes sf-bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+@keyframes sf-bob-flip{0%,100%{transform:scaleX(-1) translateY(0);}50%{transform:scaleX(-1) translateY(-6px);}}
 @keyframes sf-pop{from{opacity:0;transform:translateX(-50%) scale(.92);}to{opacity:1;transform:translateX(-50%) scale(1);}}
 @keyframes sf-fade{from{opacity:0;}to{opacity:1;}}
 @keyframes sf-rise{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
 @media (prefers-reduced-motion: reduce){
-  .sf-planet-img,.sf-flag-img{animation:none !important;}
+  .sf-planet-img,.sf-flag-img,.sf-alien-img,.sf-alien-orb,.sf-alien .sf-glow,.sf-zone{animation:none !important;}
   .sf-card,.sf-modal,.sf-board{animation:none !important;}
 }
 @media (max-width:680px){

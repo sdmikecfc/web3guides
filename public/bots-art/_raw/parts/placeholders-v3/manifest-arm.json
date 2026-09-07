@@ -1,0 +1,149 @@
+{
+ "mode": "v3",
+ "slot": "arm",
+ "shapes": [
+  "mitts",
+  "claws",
+  "pincers",
+  "tube"
+ ],
+ "note": "The ARM shape table drawn. target/ is ON TARGET (condition a ControlNet on this: it does not carry the unconditioned generator's bias); plate/ is PRE-COMPENSATED with the bake's PRE table for the img2img lane. Neither is shipped and the game never reads this folder. Every shape's cap is the same circle centred on the shoulder pivot, so BURIAL reads 0.50 on all four, and every shape carries ink under the hand pivot: on the claw and the pincer the palm and the stem reach past that row on purpose, so the fork can open below it without putting the pivot in air.",
+ "canvas": {
+  "w": 128,
+  "h": 280
+ },
+ "pivots": {
+  "shoulder": [
+   64,
+   63
+  ],
+  "hand": [
+   64,
+   184
+  ]
+ },
+ "pre": {
+  "armW": 1.1904761904761905,
+  "armL": 0.8470588235294118,
+  "legH": 0.89,
+  "footH": 0.89,
+  "footW": 1.1
+ },
+ "formPhrase": "a stubby vertical limb, straight up and down, three times as long as it is wide, a plain rounded cap at the top end and a simple rounded mitt hand at the bottom, perfectly symmetric left to right",
+ "shapeRows": [
+  {
+   "shape": "mitts",
+   "name": "Mitts",
+   "prompt": "a stubby vertical limb, straight up and down, a plain rounded cap at the top end, a rounded elbow ball with a band across it, a wrist cuff, and a round mitt hand with a thumb at the bottom",
+   "notes": "the live arm's family, redrawn. It is NOT the v2 ruler: that one measures armL 0.268 against a band that stops at 0.263, so carrying it would put an out-of-band shape in a table whose whole claim is that no rule moves for it. The fist is pulled up the shaft until the band is met, and nothing else about the family changes.",
+   "box": [
+    17,
+    20,
+    108,
+    206
+   ],
+   "ratios": {
+    "armW": 0.1643,
+    "armL": 0.2554,
+    "armLOverW": 1.5545
+   },
+   "pivots": {
+    "shoulder": "ink",
+    "hand": "ink"
+   },
+   "margin": 17,
+   "plateMargin": 8,
+   "burial": 0.5,
+   "pivotRow": 86,
+   "blobs": 1
+  },
+  {
+   "shape": "claws",
+   "name": "Claws",
+   "prompt": "a plain vertical tube limb with a rounded cap at the top end, no elbow, a shallow collar at the wrist, and a two-finger gripper hand at the bottom whose thick fingers spread outward and then curl back in toward each other",
+   "notes": "the fingers CLOSE. Two that only spread read as a trolley on the contact sheet; two that come back toward each other read as a claw. The arm itself is a plain tube, because the mitt's character is its stack of mouldings and the claw's is the absence of them. The palm is a round boss and the hand pivot sits inside it, so the fingers can open below that row without the pivot landing in air.",
+   "box": [
+    13,
+    31,
+    114,
+    204
+   ],
+   "ratios": {
+    "armW": 0.1821,
+    "armL": 0.2518,
+    "armLOverW": 1.3828
+   },
+   "pivots": {
+    "shoulder": "ink",
+    "hand": "ink"
+   },
+   "margin": 13,
+   "plateMargin": 9,
+   "burial": 0.5,
+   "pivotRow": 64,
+   "blobs": 1
+  },
+  {
+   "shape": "pincers",
+   "name": "Pincers",
+   "prompt": "a thin vertical stick limb, much slimmer than a normal arm, a small rounded cap at the top end, one narrow band at the elbow and one at the wrist, ending in two long straight thin prongs that open into a wide fork",
+   "notes": "the thin one, and its point is how little ink it has: at ring size it reads as a stick with a fork on the end and never as a limb with a hand. The widest row on it is the OPEN FORK and not the shoulder cap, because a cap sized to the contract's armW on a shaft this thin is a lollipop, which is what the first cut drew.",
+   "box": [
+    23,
+    40,
+    104,
+    205
+   ],
+   "ratios": {
+    "armW": 0.1464,
+    "armL": 0.2536,
+    "armLOverW": 1.7322
+   },
+   "pivots": {
+    "shoulder": "ink",
+    "hand": "ink"
+   },
+   "margin": 23,
+   "plateMargin": 15,
+   "burial": 0.5,
+   "pivotRow": 46,
+   "blobs": 1
+  },
+  {
+   "shape": "tube",
+   "name": "Tube",
+   "prompt": "a chunky concertina bellows limb, a stack of soft rings of two alternating widths so the edge is scalloped, no elbow, no wrist and no fingers, ending in a plain rounded stub",
+   "notes": "no hand at all, which is the one thing no other arm in the table does. It is also the widest and the shortest, so the two arms with a hand blob at the bottom cannot be confused with it. The rings overlap so the part stays one blob with no enclosed hole.",
+   "box": [
+    13,
+    12,
+    114,
+    187
+   ],
+   "ratios": {
+    "armW": 0.1821,
+    "armL": 0.2214,
+    "armLOverW": 1.2158
+   },
+   "pivots": {
+    "shoulder": "ink",
+    "hand": "ink"
+   },
+   "margin": 12,
+   "plateMargin": 2,
+   "burial": 0.5,
+   "pivotRow": 102,
+   "blobs": 1
+  }
+ ],
+ "files": [
+  "target/arms-mitts.png",
+  "plate/arms-mitts.png",
+  "target/arms-claws.png",
+  "plate/arms-claws.png",
+  "target/arms-pincers.png",
+  "plate/arms-pincers.png",
+  "target/arms-tube.png",
+  "plate/arms-tube.png"
+ ]
+}
