@@ -15,7 +15,7 @@ import css from "./cabinet.module.css";
 const t = STRINGS.en;
 const BRANDS = [...BODY_BRANDS, ...WEAPON_BRANDS];
 const words = {
-  eyebrow: "THE DAILY SHIPMENT", title: "Little parts. Big personality.",
+  eyebrow: "THE PARTS SHOP", title: "Little parts. Big personality.",
   subtitle: "Find the next piece of your robot.", shelf: "On the shelves",
   inspect: "Pick a part to take a closer look.", special: "TODAY’S SPECIAL", selected: "ON THE COUNTER",
   buy: "Buy for", buying: "Adding to your parts…", owned: "In your collection",
@@ -39,7 +39,7 @@ function Coin() { return <span className={css.coin} aria-hidden>●</span>; }
 
 /** Every shelf piece is the same physical geometry worn in the workbench. */
 function PartArt({listing}:{listing:Listing}){
-  return <span className={css.art} data-slot={listing.slot}><PartDisplay part={listing.card} paint={listing.color} ariaLabel={listing.card.name}/></span>;
+  return <span className={css.art} data-slot={listing.slot}><PartDisplay part={listing.card} paint={listing.color} variant="cutout" ariaLabel={listing.card.name}/></span>;
 }
 
 type Props = {
@@ -88,22 +88,25 @@ export default function CabinetShop({ shipment, st, day, initialSlot, leftMs, to
       <div className={css.paper}>
         <div className={css.partMeta}>{t.ui.card[l.slot]}<span>{l.color ? <><i style={{ background: PAINTS[l.color] }} />{t.paintName[l.color]}</> : SCREEN_WORDS.noColor}</span></div>
         <h2>{l.card.name}</h2>
-        <p className={css.pairNote}>{l.slot === "arms" || l.slot === "legs" ? words.pair : words.single}</p>
-        {brandId ? <p className={css.character}>{BRAND_INDEX[brandId].character}</p> : null}
         <dl className={css.stats}>{SLOT_STATS[l.slot].map((key, index) => <div key={key}><dt>{t.ui.stat[key]}</dt><dd>{l.card.s[index]}</dd></div>)}</dl>
-        <p className={css.statMeaning}><strong>{t.ui.stat[SLOT_STATS[l.slot][Math.max(0, SLOT_STATS[l.slot].findIndex(k => STAT_NAME_OF[k] === lead.name))]]}:</strong> {STAT_MEANING[lead.name]}</p>
         <button className={css.buy} disabled={!browseOnly && disabled} onClick={() => { if (browseOnly) { dialog.current?.close(); browseOnly.onAction(); } else void purchase(l); }}>
           {browseOnly ? browseOnly.label : pending ? words.buying : bought ? `✓ ${words.owned}` : <>{words.buy} <Coin /> {l.price.toLocaleString("en-US")} <span>coins</span></>}
         </button>
         <p className={css.restriction}>{browseOnly ? browseOnly.message : bought ? t.shopUi.bought : levelBlocked ? fillWords(SCREEN_WORDS.needLevel, { n: l.needsLevel, have: st.level }) : coinsBlocked ? fillWords(SCREEN_WORDS.needCoins, { n: l.price - st.coins }) : t.shopUi.oncePerDay}</p>
         {error ? <p role="alert">{error}</p> : null}
-        {l.tier === 4 ? <p className={css.returnNote}>{tomorrow} {returns}</p> : null}
+        <details className={css.partDetails}><summary>About this part</summary>
+          <p className={css.pairNote}>{l.slot === "arms" || l.slot === "legs" ? words.pair : words.single}</p>
+          {brandId ? <p className={css.character}>{BRAND_INDEX[brandId].character}</p> : null}
+          <p className={css.statMeaning}><strong>{t.ui.stat[SLOT_STATS[l.slot][Math.max(0, SLOT_STATS[l.slot].findIndex(k => STAT_NAME_OF[k] === lead.name))]]}:</strong> {STAT_MEANING[lead.name]}</p>
+          {l.tier === 4 ? <p className={css.returnNote}>{tomorrow} {returns}</p> : null}
+        </details>
         {mobile ? <button className={css.backButton} onClick={() => dialog.current?.close()}>{words.close}</button> : null}
       </div>
     </>;
   }
   const contents = <>
-    <div className={css.store}>
+    <div className={css.store} data-room="parts-shop">
+      <div className={css.roomArt} aria-hidden />
       <header className={css.header}>
         <div><p className={css.eyebrow}><span aria-hidden>✦</span> {words.eyebrow}</p><h1>{words.title}</h1><p className={css.subtitle}>{words.subtitle} <span>{shipment?.name}</span></p></div>
         <div className={css.purse}><span className={css.purseLabel}>YOUR COINS</span><strong><Coin /> {st.coins.toLocaleString("en-US")}</strong><small>{fill(t.shopUi.yourLevel, { n: st.level })}</small></div>
@@ -123,6 +126,7 @@ export default function CabinetShop({ shipment, st, day, initialSlot, leftMs, to
           </div>
           <div className={css.cabinet}>
             <div className={css.cabinetCrown}><span className={css.screw} aria-hidden /><span>{t.shopUi.title}</span><span className={css.screw} aria-hidden /></div>
+            <div className={css.shelfViewport} tabIndex={0} role="region" aria-label="Browse the parts shelves">
             {!shipment ? <div className={css.empty}>{words.loading}</div> : !ordered.length ? <div className={css.empty}><span aria-hidden>⌕</span><h2>{words.empty}</h2><button onClick={reset}>{words.clear}</button></div> : rows.map((row, i) => <div className={css.shelf} key={i}>
               {row.map(l => {
                 const bought = boughtToday(st, day, l.id);
@@ -133,6 +137,7 @@ export default function CabinetShop({ shipment, st, day, initialSlot, leftMs, to
                 </button>;
               })}
             </div>)}
+            </div>
             <div className={css.cabinetFoot}><span>{words.receipt}</span><span>✦</span></div>
           </div>
           <p className={css.shelfNote}>{t.shopUi.samePlace}</p>
@@ -140,7 +145,7 @@ export default function CabinetShop({ shipment, st, day, initialSlot, leftMs, to
         <aside className={css.counter} aria-label="Selected part">{inspection()}</aside>
       </div>
 
-      <section className={css.calendar} aria-label={words.calendar}><div><p className={css.eyebrow}>A LITTLE SOMETHING TO COME BACK FOR</p><h2>{words.calendar}</h2><p>{t.shopUi.comesBack}</p></div><div className={css.days}>{shipment ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((name, wd) => { const c = t4Calendar(shipment.t4.week, wd); return <div className={wd === shipment.t4.weekday ? css.today : ""} key={name}><span>{wd === shipment.t4.weekday ? t.shopUi.today : name}</span><strong>{t.ui.card[c.slot]}</strong><i style={{ background: c.color ? PAINTS[c.color] : "#bc9b63" }} /><small>★★★★</small></div>; }) : null}</div></section>
+      <details className={css.calendar}><summary>{words.calendar}<span>Weekly delivery board</span></summary><div className={css.calendarContents}><p>{t.shopUi.comesBack}</p><div className={css.days}>{shipment ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((name, wd) => { const c = t4Calendar(shipment.t4.week, wd); return <div className={wd === shipment.t4.weekday ? css.today : ""} key={name}><span>{wd === shipment.t4.weekday ? t.shopUi.today : name}</span><strong>{t.ui.card[c.slot]}</strong><i style={{ background: c.color ? PAINTS[c.color] : "#bc9b63" }} /><small>★★★★</small></div>; }) : null}</div></div></details>
       <p className={css.footerNote}>{t.shopUi.keepsColor}</p>
     </div>
     <dialog ref={dialog} aria-label="Inspect part" className={css.dialog} onClick={e => { if (e.target === e.currentTarget) dialog.current?.close(); }}><div>{inspection(true)}</div></dialog>

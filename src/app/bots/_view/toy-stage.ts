@@ -9,7 +9,7 @@ import type { BotLook } from "./look";
 import { createCombatToy, type CombatToy } from "./combat-toy";
 import { ART_VERSION } from "./art-version";
 
-export type ToyStageVariant = "cream" | "dark" | "workshop";
+export type ToyStageVariant = "cream" | "dark" | "workshop" | "cutout" | "workbench";
 export interface ToyStage {
   /** False means a newer request or disposal superseded this load. */
   setToy(build: Build, look: BotLook, selected?: Socket | null, rotation?: number, partSocket?: Socket, variant?: ToyStageVariant): Promise<boolean>;
@@ -23,7 +23,8 @@ export interface ToyStage {
 
 /** One quiet product studio, shared by the workbench and gallery photographs. */
 export function createToyStage(canvas: HTMLCanvasElement, variant: ToyStageVariant = "cream"): ToyStage {
-  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false, powerPreference:"low-power"});
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:"low-power"});
+  renderer.setClearColor(0x000000,0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.18;
@@ -172,7 +173,7 @@ export function createToyStage(canvas: HTMLCanvasElement, variant: ToyStageVaria
   };
   const fit=()=>{
     const aspect=width/height;
-    let vertical=isolated?4.25:activeVariant==="workshop"?6.1:5.6;
+    let vertical=isolated?4.25:activeVariant==="workshop"||activeVariant==="workbench"?6.1:5.6;
     if(toy){
       visibleBounds(toy.root,isolatedSocket);
       const size=bounds.getSize(new THREE.Vector3());
@@ -184,11 +185,15 @@ export function createToyStage(canvas: HTMLCanvasElement, variant: ToyStageVaria
   };
   const setVariant=(next:ToyStageVariant)=>{
     activeVariant=next;
-    const dark=next==="dark",workshop=next==="workshop";
+    const dark=next==="dark",workshop=next==="workshop"||next==="workbench",cutout=next==="cutout"||next==="workbench";
     const color=workshop?0x4d3826:dark?0x302a26:0xece3d3;
-    scene.background=workshop&&workshopTexture?workshopTexture:new THREE.Color(color);
-    scene.fog=workshop&&workshopTexture?null:new THREE.Fog(color,20,55);
-    floor.material=workshop&&workshopTexture?roomShadowMaterial:floorMaterial;
+    scene.background=cutout?null:workshop&&workshopTexture?workshopTexture:new THREE.Color(color);
+    scene.fog=cutout||workshop&&workshopTexture?null:new THREE.Fog(color,20,55);
+    floor.material=cutout||workshop&&workshopTexture?roomShadowMaterial:floorMaterial;
+    plinth.visible=trim.visible=next!=="cutout";
+    const lowest=next==="cutout"&&toy?visibleBounds(toy.root).min.y:NaN;
+    floor.position.y=Number.isFinite(lowest)?lowest-.015:-.24;
+    contact.position.y=next==="cutout"?floor.position.y+.005:.004;
     floorMaterial.color.setHex(workshop?0x786049:dark?0x3b332c:0xebe1cf);
     plinth.geometry=workshop?timberPlinth:roundPlinth;trim.geometry=workshop?timberTrim:roundTrim;
     plinthMaterial.map=workshop?woodTexture:null;plinthMaterial.needsUpdate=true;
@@ -237,11 +242,11 @@ export function createToyStage(canvas: HTMLCanvasElement, variant: ToyStageVaria
         next.root.scale.setScalar(scale);
         next.root.position.set(-center.x*scale,-bounds.min.y*scale+0.025,-center.z*scale);
       }
-      setVariant(nextVariant);
       // Selection belongs to the DOM socket rail. Never recolour a shared
       // material here: doing so would change other parts wearing that paint.
       const previous=toy;
       scene.add(next.root);toy=next;
+      setVariant(nextVariant);
       idleRest={head:next.sockets.head.quaternion.clone(),torso:next.sockets.torso.quaternion.clone()};
       if(previous){scene.remove(previous.root);previous.dispose();}
       scene.updateMatrixWorld(true);fit();

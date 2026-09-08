@@ -46,7 +46,7 @@ export const ToyDisplay=forwardRef<ToyDisplayHandle,ToyDisplayProps>(function To
   const sceneKey=JSON.stringify({build,look,variant,partSocket,rotation});
   const requestedKey=useRef("");requestedKey.current=mode+"|"+sceneKey;
   const currentPicture=readyKey===requestedKey.current;
-  const backdrop=variant==="workshop"?"#4d3826":variant==="dark"?"#302a26":"#ece3d3";
+  const backdrop=variant==="cutout"||variant==="workbench"?"transparent":variant==="workshop"?"#4d3826":variant==="dark"?"#302a26":"#ece3d3";
   const lightCopy=variant!=="cream";
   useImperativeHandle(ref,()=>({
     hitSocket(clientX,clientY,kind,radius){
@@ -168,7 +168,7 @@ export const ToyDisplay=forwardRef<ToyDisplayHandle,ToyDisplayProps>(function To
   useEffect(()=>{captureRef.current();},[onCapture]);
 
   return <div ref={wrap} className={className} data-art-ready={!loading&&!failed&&currentPicture?"true":"false"} style={{position:"relative",width:"100%",height:"100%",overflow:"hidden",background:backdrop,...style}}>
-    <canvas key={mode} ref={canvas} role="img" aria-label={ariaLabel} aria-busy={loading||!currentPicture} style={{display:"block",width:"100%",height:"100%",cursor:onSocketSelect?"pointer":"default"}}
+    <canvas key={mode} ref={canvas} role="img" aria-label={ariaLabel} aria-busy={loading||!currentPicture} style={{display:"block",width:"100%",height:"100%",visibility:loading||!currentPicture||failed?"hidden":"visible",cursor:onSocketSelect?"pointer":"default"}}
       onClick={event=>{
         if(!readyRef.current||completedKey.current!==requestedKey.current)return;
         const rect=event.currentTarget.getBoundingClientRect();

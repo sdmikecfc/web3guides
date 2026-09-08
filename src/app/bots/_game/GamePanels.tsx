@@ -5,7 +5,7 @@ import { CAMPAIGN_CATEGORIES, CAMPAIGN_LABEL, CAMPAIGN_PERIODS, CAMPAIGN_PRIZES,
 import { STRATEGY_LINKS } from "@/lib/bots/strings";
 import css from "./game.module.css";
 
-export function GameDrawer({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function GameDrawer({ title, onClose, children, room = "workshop" }: { title: string; onClose: () => void; children: ReactNode; room?: "workshop" | "street" | "arena" | "cabinet" }) {
   const box = useRef<HTMLDivElement>(null), close = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose); onCloseRef.current = onClose;
   useEffect(() => {
@@ -14,7 +14,7 @@ export function GameDrawer({ title, onClose, children }: { title: string; onClos
     const key = (event: KeyboardEvent) => {
       if (event.key === "Escape") { event.preventDefault(); onCloseRef.current(); }
       if (event.key !== "Tab") return;
-      const targets = Array.from(box.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], select, input, textarea, [tabindex="0"]') ?? []).filter(el => el.getClientRects().length);
+      const targets = Array.from(box.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], select, input, textarea, summary, [tabindex="0"]') ?? []).filter(el => el.getClientRects().length);
       const first = targets[0], last = targets[targets.length - 1];
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
@@ -22,7 +22,8 @@ export function GameDrawer({ title, onClose, children }: { title: string; onClos
     document.addEventListener("keydown", key);
     return () => { document.removeEventListener("keydown", key); if (previous?.isConnected) previous.focus(); };
   }, []);
-  return <div className={css.scrim} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+  return <div className={css.scrim} data-room={room} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className={css.drawerScene} aria-hidden="true"><span className={css.roomSign}>{room === "street" ? "Sprocket Row" : room === "arena" ? "Under the lights" : room === "cabinet" ? "The parts bench" : "Make yourself at home."}</span></div>
     <section ref={box} role="dialog" aria-modal="true" aria-labelledby="game-drawer-title" className={css.drawer}>
       <header className={css.drawerHeader}><h2 id="game-drawer-title">{title}</h2><button ref={close} className={css.close} onClick={onClose} aria-label="Close">×</button></header>
       <div className={css.drawerContent}>{children}</div>

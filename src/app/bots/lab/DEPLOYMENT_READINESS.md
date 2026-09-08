@@ -8,7 +8,7 @@ The site can be released for practice testing separately from launching the priz
 | --- | --- |
 | Vercel project | The repository is linked to `web3guides`. `vercel inspect modelkombat.xyz` resolves to a Ready production deployment, also aliased to `www.modelkombat.xyz` and `domagaming.com`. |
 | Live home | The game renders on ModelKombat.xyz. The garage, room navigation and Help drawer work; Rules, Privacy, Terms and Disclaimer are linked. |
-| One-window rooms | Garage, Parts, Build and Fight switch within the same app shell. The builder has the workshop backdrop, but the collection garage uses a narrow art banner and Parts remains a catalogue grid. Full concept-art room presentation is not complete. Combat Lab is still a separate test screen. |
+| One-window rooms | The subsequent local room revision now uses the full workshop scene for Garage/Build, timber display shelves for Parts, arena art for Fight/Prizes and street/workshop art for Community/Help. See `../_game/ROOMS.md` for verification. This room revision has not been deployed. Combat Lab is still separate. |
 | Latest Lab | Local only. `BOTS_COMBAT_LAB` is absent from Vercel's production environment variable list. The route deliberately returns 404 in ordinary production. |
 | Domain routing | ModelKombat.xyz rewrites `/` to `/bots`, `/lab` to `/bots/lab`, and clean policy routes into the game. Existing `/bots/...` paths also work. |
 | Wallet | The live Connect button opens the wallet chooser. Both ModelKombat domains are in the server's signature-domain allowlist. A real signed login and saved-garage round trip were not performed. |
@@ -35,7 +35,7 @@ The existing production workshop/toy/onboarding feature variables are present. T
 - Restore a usable campaign configuration and reporter snapshot; confirm dates, eligibility, ROI/profit accounting and reviewed prize output against actual data.
 - Complete a real wallet-signature, refresh and saved-garage round trip on the final domain. Configure WalletConnect if mobile QR connection is required.
 - Finish the agreed combat balance and visual review, and test on actual mobile hardware. Charged specials, interacting item effects, drops/salvage and premium tier silhouettes remain later increments.
-- Complete the Garage and Parts room presentation against the approved concept art before calling the full visual redesign finished.
+- The concept-art room implementation is complete locally; review the finished preview as part of the release's visual approval.
 
 ## Verification for this revision
 
