@@ -80,7 +80,7 @@ Checks passed for that revision:
 
 The current assets draw fewer meshes but contain more triangles than the rejected clay catalogue. A full production build and physical-phone performance run have not been repeated for this correction. Visual quality still requires Mike's review; passing the checks does not certify the toy-design standard.
 
-## Rifle push-off and flamethrower increment (latest)
+## Rifle push-off and flamethrower increment
 
 The rifle now answers close pressure with a left-arm shove, a backward dash and a faster aimed follow-up. A clean shove displaces the rival over 12 simulation steps, without adding a stun. A braced shield or a successful dodge prevents displacement. The escape has a shared 4.5-second cooldown. The shove needs the left arm, the dash needs both legs, and the rifle needs the right arm. Losing the left arm still permits a dash without a shove. Muzzle flashes, travelling trails and an on-screen shot count make firing readable. Trails stop when their simulation projectile makes contact or expires.
 
@@ -97,7 +97,19 @@ Latest verification:
 - Desktop browser confirmed the 14-shot reported result, fitted flamethrower with all six body parts preserved, flame burst/cooling/burn indicators and a completed flame match. Sampled rendering with the animated crowd was 60 FPS, roughly 98–102 draws and 205,000–207,000 triangles. These are development-laptop browser counters, not physical-phone measurements.
 - At 390×844, the flame weapon, health/status labels and pause/steady-camera controls fit without horizontal overflow. A completed flame match replayed with restored armour, zero dents and cleared burn state; the asset checks also repeat detachment/reset cleanup 12 times. Browser error logs were empty during this check.
 
-Shoulder-mounted weapons are not part of this increment. Flame is a stylised particle cone with simple body-proxy occlusion, not a fluid simulation or exact mesh collision. Balance, art approval, physical-phone performance and a new full production build remain outstanding. Only the isolated v4 practice lab changes; no production deployment was made.
+Shoulder-mounted weapons are not part of this increment. Flame is a stylised particle cone with simple body-proxy occlusion, not a fluid simulation or exact mesh collision. At this point, balance, art approval, physical-phone performance and a new full production build remained outstanding; the later build check is recorded below. Only the isolated v4 practice lab changes; no production deployment was made.
+
+## Flame visibility and release check (latest, 8 September 2026)
+
+Replaced the tiny polygon particles with a shared soft flame sprite. The stream reaches the weapon's existing range and flares upward at contact; taller flames follow the burning torso during cooling. Warm local lights help the effect read against the toy surfaces. Instancing caps the effect at one flame draw, and its texture and lights are released with the scene. Simulation damage, timing, range and match results are unchanged.
+
+- TypeScript, practice purchase/save/restore and campaign-enrollment checks pass; all eight campaign reporter contract checks pass.
+- Full `npm run build` passes with the production workshop/toy/onboarding switches enabled. Existing optional wallet dependency/Browserslist warnings remain. Eight compiled HTTP checks pass for both domains, the Lab, policy pages and the flamethrower asset.
+- Compiled browser preview completed a match and replay reset health, dents and burning; browser error logs were empty. The user's mixed Heavy head 2/precision body/flamethrower build sampled 60 FPS, 99–100 draws and approximately 212,000 triangles with the animated crowd. No physical-phone or OS reduced-motion run was added.
+- ModelKombat.xyz and domagaming.com already point to the linked Vercel project. The new Lab is local and needs its production flag. The live competition feed reports unavailable data; signed wallet persistence is not verified. See [deployment readiness](./DEPLOYMENT_READINESS.md) for the exact command and launch gaps.
+- Main Garage, Parts, Build and Fight navigation stays in one app shell. Full concept-art room presentation remains incomplete: the builder has the workshop backdrop, Garage uses an art banner above its collection, and Parts is a catalogue grid. Combat Lab remains separate.
+
+The fire is still a stylised sprite effect with approximate body occlusion. This revision does not certify final art quality or competitive balance. No production deployment was performed.
 
 ## Remaining limits
 
@@ -109,4 +121,4 @@ Shoulder-mounted weapons are not part of this increment. Flame is a stylised par
 
 ## Discord preview post
 
-Combat Lab preview update: rifle builds can shove, dash back and fire a quick follow-up, with clear muzzle flashes and a shot counter. There is also a new flamethrower on the parts bench: short bursts, lingering burns, scorch marks and a cooling window. Shields and limb loss matter. Practice only while we refine balance and visuals.
+Combat Lab preview update: flamethrower bursts now have softer, longer flames, a flare where they hit and visible lingering fire while the weapon cools. Combat stats and timing are unchanged. Practice only while we refine balance and visuals.

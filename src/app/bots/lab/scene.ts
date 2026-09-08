@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { createLabSet } from "./staging";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { createClayRobot, type ClayRobot } from "./robot";
-import { COMBAT_RENDER_SCALE, FLAME, createFightV4, type BuildV4, type EventV4, type Side, type StateV4 } from "./engine";
+import { flameTexture } from "./fire";
+import { COMBAT_RENDER_SCALE, FLAME, WEAPON, createFightV4, type BuildV4, type EventV4, type Side, type StateV4 } from "./engine";
 
 export interface LabScene {
   builds(a: BuildV4, b: BuildV4): Promise<void>;
@@ -36,9 +37,9 @@ export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event:
   const bullets = new THREE.InstancedMesh(bulletGeo, bulletMat, 24); bullets.frustumCulled = false; scene.add(bullets);
   const tracerGeo = new THREE.CylinderGeometry(.013, .013, 1, 6), tracerMat = new THREE.MeshBasicMaterial({ color: 0xffd98e, transparent: true, opacity: .82, depthWrite: false });
   const tracers = new THREE.InstancedMesh(tracerGeo, tracerMat, 12); tracers.frustumCulled = false; scene.add(tracers);
-  const flameGeo = new THREE.IcosahedronGeometry(1, 0), flameMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: .82, depthWrite: false });
-  const flames = new THREE.InstancedMesh(flameGeo, flameMat, 128); flames.frustumCulled = false; scene.add(flames);
-  flames.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(128 * 3), 3);
+  const fireMap = flameTexture(), flameGeo = new THREE.PlaneGeometry(1, 1), flameMat = new THREE.MeshBasicMaterial({ map: fireMap, transparent: true, opacity: .88, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+  const flames = new THREE.InstancedMesh(flameGeo, flameMat, 192); flames.frustumCulled = false; scene.add(flames);
+  const fireLights = [0, 1].map(() => { const light = new THREE.PointLight(0xff9c35, 0, 3.2, 2); scene.add(light); return light; });
   const flashes = [0, 1].map(() => { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(.20, 0), new THREE.MeshBasicMaterial({ color: 0xffefaf, transparent: true, opacity: .9, depthWrite: false })); scene.add(m); return m; });
   let shots: { event: EventV4; muzzle: THREE.Vector3 }[] = [];
   const indicatorGeo = new THREE.TorusGeometry(.23, .015, 6, 24), indicatorMat = new THREE.MeshBasicMaterial({ color: 0xb2e9dd });
@@ -131,31 +132,50 @@ export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event:
         if (recent) { flash.position.copy(recent.muzzle); flash.scale.setScalar(1 - (state.frame - recent.event.frame) / 7); }
       });
       let flameCount = 0;
+      function tongue(position: THREE.Vector3, w: number, h: number, rotation = 0) {
+        dummy.position.copy(position); dummy.quaternion.copy(camera.quaternion); dummy.rotateZ(rotation);
+        dummy.scale.set(w * COMBAT_RENDER_SCALE, h * COMBAT_RENDER_SCALE, 1); dummy.updateMatrix(); flames.setMatrixAt(flameCount++, dummy.matrix);
+      }
       robots.forEach((robot, i) => {
         const f = state.fighters[i], action = f.action, age = action ? state.frame - action.started - action.windup : -1;
         const firing = !showroom && action?.kind === "flamethrower" && action.released && age >= 0 && age < FLAME.duration && f.armour[3] > 0;
+        const burning = !showroom && f.burnUntil > state.frame;
+        fireLights[i].intensity = firing || burning ? (firing ? 3 : 1.8) * (.85 + Math.sin(state.frame * .8) * .15) : 0;
+        fireLights[i].position.copy(burning ? robot.bones.torso.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, .4, .5)) : robot.tip());
         if (firing) {
           const muzzle = robot.tip(), forward = robot.bones.weapon.getWorldDirection(new THREE.Vector3()), right = new THREE.Vector3(forward.z, 0, -forward.x).normalize();
           const rival = state.fighters[1 - i];
           const toRival = new THREE.Vector3(rival.x, 0, rival.z).multiplyScalar(COMBAT_RENDER_SCALE / 1000).sub(muzzle); toRival.y = 0;
           const horizontal = forward.clone().setY(0).normalize(), along = toRival.dot(horizontal);
           const across = toRival.clone().addScaledVector(horizontal, -along).length();
-          const jetLength = along > 0 && across < .6 * COMBAT_RENDER_SCALE ? Math.max(.08, Math.min(1.6 * COMBAT_RENDER_SCALE, along - .32 * COMBAT_RENDER_SCALE)) : 1.6 * COMBAT_RENDER_SCALE;
-          for (let j = 0; j < 40; j++) {
-            const progress = ((j / 40 + state.frame * .065) % 1), spread = .035 + progress * Math.min(.32, jetLength * .24), angle = j * 2.399;
-            dummy.position.copy(muzzle).addScaledVector(forward, progress * jetLength).addScaledVector(right, Math.cos(angle) * spread);
-            dummy.position.y += Math.sin(angle) * spread + progress * .1;
-            dummy.rotation.set(j, state.frame * .1, 0); dummy.scale.setScalar((.065 + progress * .15) * COMBAT_RENDER_SCALE); dummy.updateMatrix(); flames.setMatrixAt(flameCount, dummy.matrix);
-            flames.setColorAt(flameCount++, new THREE.Color().setHSL(.13 - progress * .11, 1, .60 - progress * .29));
+          const fromBody = new THREE.Vector3(f.x, 0, f.z).multiplyScalar(COMBAT_RENDER_SCALE / 1000).sub(muzzle); fromBody.y = 0;
+          const fullLength = Math.max(.2, WEAPON.flamethrower.range / 1000 * COMBAT_RENDER_SCALE + fromBody.dot(horizontal));
+          const contact = along > 0 && along < fullLength + .5 && across < .6 * COMBAT_RENDER_SCALE;
+          const jetLength = contact ? Math.max(.1, Math.min(fullLength, along - .32 * COMBAT_RENDER_SCALE)) : fullLength;
+          const screenDirection = forward.clone().applyQuaternion(camera.quaternion.clone().invert());
+          const rotation = Math.atan2(screenDirection.y, screenDirection.x) - Math.PI / 2;
+          for (let j = 0; j < 42; j++) {
+            const progress = ((j / 42 + state.frame * .037) % 1), spread = .025 + progress * Math.min(.29, jetLength * .22), angle = j * 2.399;
+            const point = muzzle.clone().addScaledVector(forward, progress * jetLength).addScaledVector(right, Math.cos(angle) * spread);
+            point.y += Math.sin(angle) * spread;
+            tongue(point, .18 + progress * .36, .38 + progress * .5, rotation + Math.sin(j + state.frame * .4) * .15);
+          }
+          // The stream splashes up the surface at contact; it does not extend through the body.
+          if (contact) for (let j = 0; j < 12; j++) {
+            const rise = (state.frame * .045 + j / 12) % 1;
+            const point = muzzle.clone().addScaledVector(horizontal, jetLength).addScaledVector(right, Math.sin(j * 2.399) * (.20 + rise * .32));
+            point.y += rise * .65;
+            tongue(point, .30 * (1 - rise * .5), .62 * (1 - rise * .35), Math.sin(j) * .5);
           }
         }
-        if (!showroom && f.burnUntil > state.frame) for (let j = 0; j < 20; j++) {
-          const rise = (state.frame * .023 + j / 20) % 1, angle = j * 2.399;
-          dummy.position.copy(robot.root.position).add(new THREE.Vector3(Math.cos(angle) * .39, .8 + rise * 1.2, Math.sin(angle) * .37).multiplyScalar(COMBAT_RENDER_SCALE));
-          dummy.rotation.set(0, j, 0); dummy.scale.setScalar(.13 * (1 - rise)); dummy.updateMatrix(); flames.setMatrixAt(flameCount, dummy.matrix); flames.setColorAt(flameCount++, new THREE.Color(0xff6b16));
+        if (burning) for (let j = 0; j < 18; j++) {
+          const rise = (state.frame * .021 + j / 18) % 1, angle = j * 2.399;
+          const point = new THREE.Vector3(Math.cos(angle) * .58, .05 + rise * .95, Math.sin(angle) * .53);
+          robot.bones.torso.localToWorld(point);
+          tongue(point, .30 * (1 - rise * .45), .65 * (1 - rise * .35), Math.sin(j + state.frame * .07) * .22);
         }
       });
-      flames.count = flameCount; flames.instanceMatrix.needsUpdate = true; if (flames.instanceColor) flames.instanceColor.needsUpdate = true;
+      flames.count = flameCount; flames.instanceMatrix.needsUpdate = true;
       indicators.forEach((m, i) => {
         const f = state.fighters[i]; m.visible = !showroom && (f.stunnedUntil > state.frame || f.immuneUntil > state.frame);
         m.position.set(f.x / 1000 * COMBAT_RENDER_SCALE, (f.downUntil > state.frame ? 1.25 : 3.2) * COMBAT_RENDER_SCALE, f.z / 1000 * COMBAT_RENDER_SCALE); m.rotation.set(Math.PI / 2, time * 2, 0); m.scale.setScalar(f.stunnedUntil > state.frame ? 1 : .6);
@@ -190,7 +210,7 @@ export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event:
     dispose() {
       dead = true; generation++; robots?.forEach(r => r.dispose()); set.dispose();
       particleGeometry.dispose(); particleMat.dispose(); bulletGeo.dispose(); bulletMat.dispose(); indicatorGeo.dispose(); indicatorMat.dispose(); env.texture.dispose(); env.dispose(); renderer.dispose();
-      tracerGeo.dispose(); tracerMat.dispose(); flameGeo.dispose(); flameMat.dispose(); flashes.forEach(f => { f.geometry.dispose(); (f.material as THREE.Material).dispose(); f.removeFromParent(); });
+      tracerGeo.dispose(); tracerMat.dispose(); flameGeo.dispose(); flameMat.dispose(); fireMap.dispose(); fireLights.forEach(light => light.removeFromParent()); flashes.forEach(f => { f.geometry.dispose(); (f.material as THREE.Material).dispose(); f.removeFromParent(); });
     },
   };
   return api;
