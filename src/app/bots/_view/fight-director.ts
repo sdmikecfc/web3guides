@@ -33,7 +33,7 @@ export function directFight(log: readonly FightEvent[], builds: readonly [Build,
     else if(canKick&&(part===1||part>=4)&&kickChances[attacker]++%3===0)move="kick";
     else if(idx%7===2&&alive(2)&&part<=3)move="punch";
     else if(soundsLikeThrust(build.weapon.id))move=(["thrust","rising-thrust","braced-thrust"] as const)[idx%3];
-    else if(/cleaver|saw|axe|blade|hook/i.test(build.weapon.id))move=(["diagonal-cut","rising-cut","low-cut"] as const)[idx%3];
+    else if(/cleaver|saw|axe|blade|hook|ironWrench/i.test(build.weapon.id))move=(["diagonal-cut","rising-cut","low-cut"] as const)[idx%3];
     else move=(["horizontal","overhead","backhand"] as const)[idx%3];
     if(move==="kick"&&part===4)mirror=true;
     // Short combinations borrow preparation time from their own previous

@@ -7,6 +7,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
 import { TOY_BIND, type Toy3D } from "./toy3d";
 import { createCombatToy, type CombatToy } from "./combat-toy";
+import { createWeaponContactSolver } from "./weapon-surface";
 import { directFight, activeAttack, actionTime, ringPosition, type FightDirection, type DirectedAttack } from "./fight-director";
 import type { Build, FightEvent, Side } from "../_engine/parts";
 import type { FightState } from "../_engine/resolve";
@@ -254,6 +255,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
   const worldQ=new THREE.Quaternion(),parentQ=new THREE.Quaternion(),deltaQ=new THREE.Quaternion();
   const fallAxis=new THREE.Vector3(0,0,1),fallQ=new THREE.Quaternion();
   const reachA=new THREE.Vector3(),reachB=new THREE.Vector3(),reachC=new THREE.Vector3();
+  const solveWeaponContact=createWeaponContactSolver();
   function approachContact(toy:CombatToy,action:DirectedAttack,victim:CombatToy,amount:number){
     if(amount<=0||action.move==="shove")return;
     const kick=action.move==="kick",side=action.move==="punch"?"L":kick&&action.mirror?"L":"R";
@@ -279,6 +281,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
       // The weapon crosses the space the defender just left, visibly clear.
       hitTarget.z-=.55;hitTarget.y+=action.index%2?.16:-.16;
     }
+    if(!kick && action.move!=="punch" && solveWeaponContact(toy,hitTarget,amount))return;
     const end=()=>kick?tipPos.set(0,-.10,.28).applyMatrix4(toy.bones["ankle"+side].matrixWorld):action.move==="punch"?toy.hand("L",tipPos):toy.tip(tipPos);
     for(let pass=0;pass<18;pass++)for(const name of chain){
       const bone=toy.bones[name];if(!bone)continue;
@@ -401,7 +404,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
           const side=a.mirror?"L":"R";
           const end=a.move==="kick"?tipPos.set(0,-.10,.28).applyMatrix4(toy.bones["ankle"+side].matrixWorld):a.move==="punch"?toy.hand("L",tipPos):toy.tip(tipPos);
           victim.target(SOCKETS[a.part],hitTarget);
-          const report={frame,move:a.move,error:+end.distanceTo(hitTarget).toFixed(4)};
+          const report={frame,move:a.move,side:i,weaponFace:!!toy.weaponFace,error:+end.distanceTo(hitTarget).toFixed(4)};
           canvas.parentElement?.setAttribute("data-contact",JSON.stringify(report));
           if(!reportedContacts.has(a.index)){reportedContacts.add(a.index);console.info("[toy-contact]",JSON.stringify(report));}
         }

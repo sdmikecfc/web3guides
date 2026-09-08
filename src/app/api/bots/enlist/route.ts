@@ -51,12 +51,13 @@
 import { NextResponse } from "next/server";
 import { getAddress, isAddress } from "viem";
 import { verifyOwnership } from "@/lib/s7/server";
-import { botsDb, devTestFlag, failResponse, readJson } from "@/app/bots/_server/db";
+import { botsDb, devTestFlag, readJson } from "@/app/bots/_server/db";
 import { coinsOf, displayName, enlistPlayer, loadPlayer } from "@/app/bots/_server/players";
 import { campaignEnrollment } from "@/app/bots/_server/campaign-enrollment";
 import { mintSession } from "@/app/bots/_server/session";
 import type { EnlistView } from "@/app/bots/_server/types";
 import { burnNonce, nonceInMessage } from "./nonce-store";
+import { requireSignInConfiguration, signInFailure } from "./sign-in";
 
 export const runtime = "nodejs";
 
@@ -66,6 +67,7 @@ export async function POST(req: Request) {
     const { address, message, signature } = body || {};
     if (!address || !isAddress(address)) return NextResponse.json({ ok: false, error: "Connect a wallet first." }, { status: 400 });
     const wallet = getAddress(address).toLowerCase();
+    requireSignInConfiguration();
     const db = botsDb();
 
     if (!message || !signature) {
@@ -102,6 +104,6 @@ export async function POST(req: Request) {
     };
     return NextResponse.json(view);
   } catch (e) {
-    return failResponse(e);
+    return signInFailure(e);
   }
 }

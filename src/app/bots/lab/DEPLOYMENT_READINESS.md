@@ -11,7 +11,7 @@ The site can be released for practice testing separately from launching the priz
 | One-window rooms | The subsequent local room revision now uses the full workshop scene for Garage/Build, timber display shelves for Parts, arena art for Fight/Prizes and street/workshop art for Community/Help. See `../_game/ROOMS.md` for verification. This room revision has not been deployed. Combat Lab is still separate. |
 | Latest Lab | Local only. `BOTS_COMBAT_LAB` is absent from Vercel's production environment variable list. The route deliberately returns 404 in ordinary production. |
 | Domain routing | ModelKombat.xyz rewrites `/` to `/bots`, `/lab` to `/bots/lab`, and clean policy routes into the game. Existing `/bots/...` paths also work. |
-| Wallet | The live Connect button opens the wallet chooser. Both ModelKombat domains are in the server's signature-domain allowlist. A real signed login and saved-garage round trip were not performed. |
+| Wallet | The live Connect button opens the wallet chooser. A later 8 September check confirmed that Production lacked both session-signing keys, causing the reported 500 when minting a play session. A fresh sensitive `BB_SESSION_SECRET` has now been added to Vercel Production; it takes effect on the next deployment. Both ModelKombat domains are in the signature-domain allowlist. A real signed login and saved-garage round trip were not performed. |
 | Mobile wallet QR | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is absent from Vercel's variable list. The provider therefore omits WalletConnect/Rainbow QR options. Injected browser wallets remain offered. |
 | Competition | The public live `/api/bots/campaign` returns `source: unavailable`, `campaign: null`, no standings and `domaMcp: pending`. The response does not identify whether configuration, schema or the reporter is missing. This does not certify a running prize competition. |
 | Current rules pages | Two weeks; $800 ROI percentage, $800 realized profit and $400 battle points. No cash prizes ranked by volume. This check verifies the implemented content, not legal approval. |
@@ -26,9 +26,19 @@ cd C:\Users\Mike\Desktop\web3guides
 vercel --prod --yes --env BOTS_COMBAT_LAB=1
 ```
 
-The home is `https://modelkombat.xyz/`. The new combat is at `https://modelkombat.xyz/lab` (also `/bots/lab`) and `https://domagaming.com/bots/lab`. The CLI confirms `--env` is a runtime environment override. For later deployments without that override, add `BOTS_COMBAT_LAB=1` to the Vercel project's Production environment settings. No Vercel environment setting or deployment was changed during this check.
+The home is `https://modelkombat.xyz/`. The new combat is at `https://modelkombat.xyz/lab` (also `/bots/lab`) and `https://domagaming.com/bots/lab`. The CLI confirms `--env` is a runtime environment override. For later deployments without that override, add `BOTS_COMBAT_LAB=1` to the Vercel project's Production environment settings. The original build/domain check changed no Vercel configuration or deployment. The later wallet follow-up below added one missing environment variable; no deployment was performed.
 
 The existing production workshop/toy/onboarding feature variables are present. The local production build is run with those three switches enabled, matching the observed live workshop. Prize campaigns, rewards and wallet requirements are not enabled by the Lab flag.
+
+## Wallet sign-in follow-up — 8 September 2026
+
+Read-only Vercel inspection confirmed that Production had neither `BB_SESSION_SECRET` nor its supported fallback, `BB_CARD_SECRET`. Production session creation therefore threw after wallet signing instead of returning a playable session. The nonce table and required player columns were confirmed present through zero-row database reads.
+
+A fresh cryptographically random `BB_SESSION_SECRET` was added as a sensitive Vercel Production variable using stdin. Its presence was verified by name only. No existing secret was replaced and no deployment was performed; the new value applies to the next production deployment.
+
+The local nonce and enlist endpoints now check signing configuration before issuing a nonce or changing a garage. Missing configuration and backend failures return clear, safe 503 messages. `npx tsx scripts/bots-sign-in-check.ts` passes: both endpoints refuse missing configuration before database access, configured keys mint verifiable sessions, tampered sessions remain rejected, and existing refusal responses are preserved. This focused result does not claim a new full production build.
+
+The browser wallet chooser opens, but a real user-wallet signature and saved-garage round trip remain unverified. `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is still absent, so mobile QR connection remains unavailable.
 
 ## Before a prize launch
 

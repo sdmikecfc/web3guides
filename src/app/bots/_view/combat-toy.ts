@@ -11,6 +11,8 @@ import { PAINTS } from "../_ui/tokens";
 import type { Build } from "../_engine/parts";
 import type { BotLook } from "./look";
 import { toyPilotEnabled } from "@/lib/bots/rollout";
+import { hasStrikingFace, nativeWeaponContact, weaponGripYaw } from "./weapon-surface";
+import { attachToyCosmetics } from "./toy-cosmetics";
 
 const SOCKETS: Socket[] = ["head", "torso", "armL", "armR", "legL", "legR", "weapon"];
 type V3 = [number, number, number];
@@ -22,6 +24,7 @@ export interface CombatToy extends Toy3D {
   movement: readonly [string, string];
   weaponFamily: string;
   weaponContact: THREE.Vector3;
+  weaponFace?: THREE.Vector3;
   setVisible(socket: Socket, visible: boolean): void;
   applyClip(name: string, time: number, weight?: number, mask?: readonly string[], mirror?: boolean): void;
   target(socket: Socket, out: THREE.Vector3): THREE.Vector3;
@@ -71,10 +74,8 @@ export async function createCombatToy(build: Build, look: BotLook = {}, forceNat
   // A disabled pilot never requests a Blender model, motion clip or manifest.
   if (!toyPilotEnabled()) return nativeCombatToy(build, look);
   const fallback = async () => nativeCombatToy(build, look, await asset("toy-motion-v1.glb").catch(() => undefined));
-  // Historical cosmetics keep their complete original appearance until their
-  // Blender equivalents are authored. The choice is made before revealing it.
-  if (forceNative || look.hat || look.sticker || (look.face && !["calm", "happy"].includes(look.face)) ||
-    (look.earned?.wins ?? 0)>0 || (look.earned?.repairs ?? 0)>0 || (look.earned?.level ?? 0)>=5 || look.earned?.crown) return fallback();
+  // A look changes decorations, never which moulds the player selected.
+  if (forceNative) return fallback();
   try {
     const m = await manifest();
     if (m.version !== "toy-rig-v1") throw new Error("Unsupported toy rig");
@@ -101,8 +102,6 @@ export async function createCombatToy(build: Build, look: BotLook = {}, forceNat
     witness.forEach(o => o.removeFromParent()); root.add(rig); root.updateMatrixWorld(true);
     const meshes = {} as Record<Socket, THREE.Mesh[]>;
     const materials = new Set<THREE.Material>();
-    const extraGeometry = new Set<THREE.BufferGeometry>();
-    const textures = new Set<THREE.Texture>();
     const skeletons = new Set<THREE.Skeleton>();
     for (let i = 0; i < entries.length; i++) {
       const socket = SOCKETS[i];
@@ -156,37 +155,12 @@ export async function createCombatToy(build: Build, look: BotLook = {}, forceNat
       }
     }
     const sockets = Object.fromEntries(SOCKETS.map(s => [s, bones[s]])) as Record<Socket, THREE.Group>;
-    if (look.face === "happy" && loaded[0]) {
-      const id = artIdentity(combatPart(build,"head").id);
-      const c = document.createElement("canvas"); c.width=512; c.height=128;
-      const ctx=c.getContext("2d")!;ctx.strokeStyle="#3b4130";ctx.lineWidth=17;ctx.lineCap="round";
-      const single=id.includes("peeper"),spread=id.includes("kettle")?.33:id.includes("piston")?.32:.29;
-      for(const x of single?[256]:[256-spread/1.5*512,256+spread/1.5*512]){
-        ctx.beginPath();ctx.moveTo(x-34,86);ctx.quadraticCurveTo(x,25,x+34,86);ctx.stroke();
-      }
-      const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;textures.add(texture);
-      const material=new THREE.MeshStandardMaterial({map:texture,transparent:true,roughness:.7,depthWrite:false});materials.add(material);
-      const geometry=new THREE.PlaneGeometry(1.5,.24);extraGeometry.add(geometry);
-      const smile=new THREE.Mesh(geometry,material);smile.position.set(0,single?.80:.77,id.includes("sprocket")?.54:id.includes("lantern")?.55:.59);
-      smile.userData.socket="head";bones.head.add(smile);meshes.head.push(smile);
-    }
-    // The little name tag is one transparent draw, seated on the chest panel.
-    // It remains attached to the body and is captured with it in photographs.
-    if (look.plate != null && loaded[1]) {
-      const c = document.createElement("canvas"); c.width = 256; c.height = 128;
-      const ctx = c.getContext("2d")!;
-      ctx.fillStyle = "#e9d9b9"; ctx.beginPath(); ctx.roundRect(6,6,244,116,24); ctx.fill();
-      ctx.strokeStyle = "#ac8752"; ctx.lineWidth = 7; ctx.stroke();
-      ctx.fillStyle = "#343b30"; ctx.font = "bold 83px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(String(look.plate),128,70,215);
-      const texture = new THREE.CanvasTexture(c); texture.colorSpace = THREE.SRGBColorSpace; textures.add(texture);
-      const material = new THREE.MeshStandardMaterial({map:texture,transparent:true,roughness:.62,depthWrite:false}); materials.add(material);
-      const geometry = new THREE.PlaneGeometry(.36,.18); extraGeometry.add(geometry);
-      const tag = new THREE.Mesh(geometry,material);
-      const bodyId = artIdentity(combatPart(build,"torso").id);
-      const front = bodyId.includes("sprocket") ? .44 : bodyId.includes("lantern") ? .51 : bodyId.includes("kettle") ? .52 : .50;
-      tag.position.set(0,.26,front+.082); tag.userData.socket="torso"; bones.torso.add(tag); meshes.torso.push(tag);
-    }
+    root.updateMatrixWorld(true);
+    const cosmetics = attachToyCosmetics(look, bones, meshes, new Set(SOCKETS.filter((_, i) => !!loaded[i])));
+    const weaponCard=CARD_BY_ID[artIdentity(build.weapon.id)];
+    const weaponVariant=weaponCard?(weaponCard.tier-1)*2+weaponCard.design-1:0;
+    if(loaded[6])bones.weapon.rotateY(weaponGripYaw(weaponVariant));
+    root.updateMatrixWorld(true);
     const rest = Object.values(bones).map(b => ({ b, p: b.position.clone(), q: b.quaternion.clone(), s: b.scale.clone() }));
     const clips = channelsOf(motion);
     const targetLocal: Record<Socket, V3> = { head: [0,.5,.52], torso:[0,.56,.53], armL:[0,-.7,.2], armR:[0,-.7,.2], legL:[0,-.76,.17], legR:[0,-.76,.17], weapon:[0,.8,0] };
@@ -199,6 +173,8 @@ export async function createCombatToy(build: Build, look: BotLook = {}, forceNat
       movement: [loaded[4] ? entries[4]?.movement ?? "boot" : native?.movement[0] ?? "boot", loaded[5] ? entries[5]?.movement ?? "boot" : native?.movement[1] ?? "boot"],
       weaponFamily: loaded[6] ? entries[6]?.attackFamily ?? "blunt" : native?.weaponFamily ?? "blunt",
       weaponContact,
+      weaponFace: loaded[6] ? (hasStrikingFace(weaponVariant)?new THREE.Vector3(1,0,0):undefined)
+        : native?.weaponFace?.clone().transformDirection(native.sockets.weapon.matrixWorld).transformDirection(bones.weapon.matrixWorld.clone().invert()),
       resetPose() {
         for (const r of rest) { r.b.position.copy(r.p); r.b.quaternion.copy(r.q); r.b.scale.copy(r.s); }
         for (const s of SOCKETS) toy.setVisible(s, true);
@@ -241,7 +217,7 @@ export async function createCombatToy(build: Build, look: BotLook = {}, forceNat
         // Native geometry is instance-owned, unlike the shared GLB geometry.
         // Return the transferred meshes to their owner for one complete cleanup.
         if (native) { nativeMeshes.forEach(mesh => native.root.add(mesh)); native.dispose(); }
-        materials.forEach(m => m.dispose()); textures.forEach(t=>t.dispose());extraGeometry.forEach(g=>g.dispose());skeletons.forEach(s => s.dispose()); root.removeFromParent(); root.clear();
+        cosmetics.dispose(); materials.forEach(m => m.dispose()); skeletons.forEach(s => s.dispose()); root.removeFromParent(); root.clear();
       },
     };
     root.userData.toyHeight = toy.height; root.userData.rigVersion = m.version;
@@ -261,7 +237,10 @@ function nativeCombatToy(build: Build, look: BotLook, motion?: GLTF): CombatToy 
     bones["elbow"+side]=elbow;bones["wrist"+side]=wrist;root.updateMatrixWorld(true);
     const p=new THREE.Vector3();
     for (const mesh of leaves) {mesh.getWorldPosition(p);arm.worldToLocal(p);if(p.y<-.91)wrist.attach(mesh);else if(p.y<-.56)elbow.attach(mesh);}
-    if(side==="R"){wrist.attach(base.sockets.weapon);base.sockets.weapon.position.set(0,0,.37);base.sockets.weapon.rotation.set(0,0,0);}
+    if(side==="R"){
+      const card=CARD_BY_ID[artIdentity(build.weapon.id)],v=card?(card.tier-1)*2+card.design-1:0;
+      wrist.attach(base.sockets.weapon);base.sockets.weapon.position.set(0,0,.37);base.sockets.weapon.rotation.set(0,weaponGripYaw(v),0);
+    }
     bones["knee"+side]=base.sockets[("leg"+side) as Socket];
     const ankle=new THREE.Group();ankle.position.set(0,-1.22,.12);base.sockets[("leg"+side) as Socket].add(ankle);bones["ankle"+side]=ankle;
   }
@@ -270,7 +249,7 @@ function nativeCombatToy(build: Build, look: BotLook, motion?: GLTF): CombatToy 
   const clips = channelsOf(motion);
   const q=new THREE.Quaternion();
   const movement=(s:Socket)=>variant(s)===1?"wheel":variant(s)===5?"track":variant(s)===2?"spring":"boot";
-  const toy: CombatToy={...base,bones,blender:false,movement:[movement("legL"),movement("legR")],weaponFamily:[3,5].includes(variant("weapon"))?"thrust":"blunt",weaponContact:new THREE.Vector3(0,1.12,0),
+  const toy: CombatToy={...base,bones,blender:false,movement:[movement("legL"),movement("legR")],weaponFamily:[3,5].includes(variant("weapon"))?"thrust":"blunt",weaponContact:nativeWeaponContact(variant("weapon")),weaponFace:hasStrikingFace(variant("weapon"))?new THREE.Vector3(1,0,0):undefined,
     resetPose(){base.resetPose();for(const r of rest){r.o.position.copy(r.p);r.o.quaternion.copy(r.q);r.o.scale.copy(r.s);}for(const s of SOCKETS)toy.setVisible(s,true);},
     setVisible(s,v){root.traverse(o=>{if(o instanceof THREE.Mesh && o.userData.socket===s)o.visible=v;});base.sockets[s].userData.visible=v;},
     applyClip(name,time,weight=1,mask,mirror=false){for(const ch of clips?.get(name)??[]){let node=ch.node;if(mirror)node=node.endsWith("L")?node.slice(0,-1)+"R":node.endsWith("R")?node.slice(0,-1)+"L":node;if(mask&&!mask.includes(node))continue;const b=bones[node];if(!b||ch.property!=="quaternion")continue;const v=ch.sample(Math.max(0,Math.min(1,time)));q.set(v[0],mirror?-v[1]:v[1],mirror?-v[2]:v[2],v[3]);b.quaternion.slerp(q,weight);}},

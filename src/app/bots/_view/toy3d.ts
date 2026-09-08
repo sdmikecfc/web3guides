@@ -8,6 +8,7 @@ import { CARD_BY_ID, type Socket } from "@/lib/bots/fixtures";
 import { beginnerArtKey } from "@/lib/bots/beginner-catalog";
 import { PAINTS } from "../_ui/tokens";
 import { marksOf, type BotLook } from "./look";
+import { weaponGripYaw } from "./weapon-surface";
 
 /** World units: floor at zero, front +Z. These joints belong to the 3D art;
  * the frozen deterministic engine and 2D registration contract are untouched. */
@@ -117,7 +118,7 @@ export function createToy(build: Build, look: BotLook = {}): Toy3D {
     sockets[name] = g;
     if (name === "torso") g.scale.y = 1.12;
     if (name === "legL" || name === "legR") g.scale.set(1.08, 1.08 / 1.40, 1.04);
-    if (name === "weapon") { sockets.armR.add(g); g.rotation.z = -0.30; }
+    if (name === "weapon") { sockets.armR.add(g); g.rotation.z = -0.30; g.rotateY(weaponGripYaw(variant("weapon"))); }
     else root.add(g);
     const p = source(name);
     const colorId = p?.paint ?? CARD_BY_ID[p?.id]?.color;

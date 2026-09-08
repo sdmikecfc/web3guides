@@ -20,8 +20,9 @@
  */
 import { NextResponse } from "next/server";
 import { getAddress, isAddress } from "viem";
-import { botsDb, devTestFlag, failResponse, readJson } from "@/app/bots/_server/db";
+import { botsDb, devTestFlag, readJson } from "@/app/bots/_server/db";
 import { issueNonce, requestNonceTtlMs } from "../nonce-store";
+import { requireSignInConfiguration, signInFailure } from "../sign-in";
 
 export const runtime = "nodejs";
 
@@ -33,10 +34,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Connect a wallet first." }, { status: 400 });
     }
     const wallet = getAddress(address).toLowerCase();
+    requireSignInConfiguration();
     const db = botsDb();
     const issued = await issueNonce(db, wallet, devTestFlag(req), requestNonceTtlMs(req));
     return NextResponse.json({ ok: true, nonce: issued.nonce, expiresAt: issued.expiresAtIso });
   } catch (e) {
-    return failResponse(e);
+    return signInFailure(e);
   }
 }

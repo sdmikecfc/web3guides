@@ -127,7 +127,7 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
     proxy.userData.sourceMesh = mesh; proxies.set(mesh, proxy);
   }
   const raycaster = new THREE.Raycaster(), p = new THREE.Vector3(), n = new THREE.Vector3();
-  const tipLocal = build.weapon === "rifle" ? new THREE.Vector3(0, .15, 1.18) : build.weapon === "flamethrower" ? new THREE.Vector3(0, .16, .81) : new THREE.Vector3(0, .9, 0);
+  const tipLocal = build.weapon === "rifle" ? new THREE.Vector3(0, .15, 1.18) : build.weapon === "flamethrower" ? new THREE.Vector3(0, .16, .81) : build.weapon === "hammer" ? new THREE.Vector3(.51, .84, 0) : new THREE.Vector3(0, .9, 0);
   const robot: ClayRobot = {
     root, motion, bones, meshes, build, dents: 0,
     reset() {
@@ -149,6 +149,9 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
       bones.armL.rotation.z = -.10; bones.armR.rotation.z = .10;
       bones.armL.rotation.x = -.17; bones.elbowL.rotation.x = .05;
       bones.armR.rotation.x = -.12; bones.elbowR.rotation.x = -.12;
+      // The exported hammer's shaft is +Y and its brass striking faces are
+      // +/-X. Turn it in the grip so a face, not the broad side, leads the YZ swing.
+      if (build.weapon === "hammer") bones.weapon.rotation.y = -Math.PI / 2;
       const distance = Math.hypot(f.x - other.x, f.z - other.z);
       const moving = !showroom && !controlledPose(f, state.frame) && Math.hypot(f.moveX, f.moveZ) > 2;
       if (moving) for (const [i, leg] of [[0, "L"], [1, "R"]] as const) {
@@ -178,12 +181,20 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
           bones.armR.rotation.x = -.35; bones.elbowR.rotation.x = .7; bones.handR.rotation.x = -1.6;
           bones.torso.rotation.y = -.15 * strike; bones.torso.rotation.x = .12 * strike;
         } else if (action.kind === "hammer") {
-          const swing = age < action.windup - 10 ? 0 : Math.min(1, (age - action.windup + 10) / 10);
-          bones.armR.rotation.x = (1.75 * prep * (1 - swing) - 1.4 * swing) * (1 - recovery);
-          bones.elbowR.rotation.x = -.4 * prep * (1 - swing) + .25 * swing;
-          bones.weapon.rotation.x = swing * 1.3;
-          bones.torso.rotation.y = -.22 * prep * (1 - swing) + .22 * swing;
-          bones.torso.rotation.x = .13 * prep; bones.legL.rotation.x = -.12 * prep;
+          const swingStart = Math.max(1, action.windup - 10), lift = Math.min(1, age / swingStart);
+          const swing = THREE.MathUtils.clamp((age - swingStart) / Math.max(1, action.windup - swingStart), 0, 1);
+          const settle = THREE.MathUtils.smoothstep(recovery, 0, 1);
+          const shoulder = THREE.MathUtils.lerp(THREE.MathUtils.lerp(-.12, -2.35, lift), -.65, swing);
+          const elbow = THREE.MathUtils.lerp(THREE.MathUtils.lerp(-.12, .30, lift), -.20, swing);
+          bones.armR.rotation.x = THREE.MathUtils.lerp(shoulder, -.12, settle);
+          bones.elbowR.rotation.x = THREE.MathUtils.lerp(elbow, -.12, settle);
+          // Raise the head overhead, then deliver the brass face downwards.
+          // Keeping its pitch relative to the torso avoids the old cancellation
+          // between shoulder and wrist that lifted the head at the contact frame.
+          const headPitch = THREE.MathUtils.lerp(THREE.MathUtils.lerp(-.24, -.50, lift), 1.35, swing);
+          bones.weapon.rotation.x = THREE.MathUtils.lerp(headPitch, -.24, settle) - bones.armR.rotation.x - bones.elbowR.rotation.x;
+          bones.torso.rotation.y = (-.22 * lift * (1 - swing) + .22 * swing) * (1 - settle);
+          bones.torso.rotation.x = .13 * lift * (1 - settle); bones.legL.rotation.x = -.12 * lift * (1 - settle);
         } else if (action.kind === "baton" || action.kind === "punch") {
           const u = age < action.windup - 8 ? 0 : Math.min(1, (age - action.windup + 8) / 8);
           bones.armR.rotation.x = -.25 - 1.35 * u * (1 - recovery); bones.armR.rotation.z = .4 * (1 - u);
