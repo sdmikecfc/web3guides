@@ -127,7 +127,7 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
     proxy.userData.sourceMesh = mesh; proxies.set(mesh, proxy);
   }
   const raycaster = new THREE.Raycaster(), p = new THREE.Vector3(), n = new THREE.Vector3();
-  const tipLocal = build.weapon === "rifle" ? new THREE.Vector3(0, .15, 1.18) : new THREE.Vector3(0, .9, 0);
+  const tipLocal = build.weapon === "rifle" ? new THREE.Vector3(0, .15, 1.18) : build.weapon === "flamethrower" ? new THREE.Vector3(0, .16, .81) : new THREE.Vector3(0, .9, 0);
   const robot: ClayRobot = {
     root, motion, bones, meshes, build, dents: 0,
     reset() {
@@ -156,18 +156,28 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
         bones["leg" + leg].rotation.x = step * .25; bones["knee" + leg].rotation.x = Math.max(0, -step) * .42;
         bones["arm" + leg].rotation.x -= step * .18;
       }
-      if (build.weapon === "rifle" && f.armour[3] > 0) {
+      if ((build.weapon === "rifle" || build.weapon === "flamethrower") && f.armour[3] > 0) {
         // Bend the elbows back towards the body. The old outstretched pose
         // added almost a metre ahead of an already long barrel.
-        const tucked = showroom ? 0 : THREE.MathUtils.smoothstep(RIFLE.minimumRange - distance, 0, 650);
+        const tucked = showroom || build.weapon === "flamethrower" ? 0 : THREE.MathUtils.smoothstep(RIFLE.minimumRange - distance, 0, 650);
         bones.armR.rotation.x = -1.1 + tucked * .65; bones.elbowR.rotation.x = 1.5 - tucked * .8; bones.handR.rotation.x = -.4 - tucked * 1.45;
+        if (!showroom && build.weapon === "flamethrower") {
+          // Draw the compact nozzle back to the hip without pointing the jet up.
+          const close = THREE.MathUtils.smoothstep(1800 - distance, 0, 700);
+          bones.armR.rotation.x += close * .7; bones.handR.rotation.x -= close * .7;
+        }
         bones.armL.rotation.x = -.85 + tucked * .45; bones.elbowL.rotation.x = .8 - tucked * .45; bones.armL.rotation.z = -.35;
-        bones.weapon.rotation.y = tucked * -.15;
+        bones.weapon.rotation.y = (showroom ? .12 : Math.atan2(width, Math.max(.5, distance / 1000 - .4))) * (1 - tucked) - tucked * .15;
       }
       const action = f.action;
       if (action && !controlledPose(f, state.frame)) {
         const age = frame - action.started, prep = Math.max(0, Math.min(1, age / action.windup)), recovery = Math.max(0, (age - action.windup) / action.recovery);
-        if (action.kind === "hammer") {
+        if (action.kind === "shove") {
+          const strike = Math.min(1, prep * prep * 1.2) * (1 - Math.min(1, recovery));
+          bones.armL.rotation.x = -.25 - strike * 1.2; bones.elbowL.rotation.x = -.1;
+          bones.armR.rotation.x = -.35; bones.elbowR.rotation.x = .7; bones.handR.rotation.x = -1.6;
+          bones.torso.rotation.y = -.15 * strike; bones.torso.rotation.x = .12 * strike;
+        } else if (action.kind === "hammer") {
           const swing = age < action.windup - 10 ? 0 : Math.min(1, (age - action.windup + 10) / 10);
           bones.armR.rotation.x = (1.75 * prep * (1 - swing) - 1.4 * swing) * (1 - recovery);
           bones.elbowR.rotation.x = -.4 * prep * (1 - swing) + .25 * swing;
@@ -204,11 +214,12 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
       }
       if (f.dodgeUntil > state.frame) {
         const u = (23 - f.dodgeUntil + state.frame) / 23, roll = Math.sin(u * Math.PI);
-        const fast = build.parts.legL.family === "hotshot" && build.parts.legR.family === "hotshot";
+        const fast = !f.dash && build.parts.legL.family === "hotshot" && build.parts.legR.family === "hotshot";
         const wheels = build.parts.legL.design === 1 || build.parts.legR.design === 1;
         motion.rotation.z = roll * (fast && !wheels ? 2.8 : .32) * (f.dodgeX > 0 ? 1 : -1);
         motion.position.y = fast && !wheels ? 1.2 - roll * .30 : 1.2;
         bones.legL.rotation.x = -.8 * roll; bones.kneeL.rotation.x = 1.3 * roll; bones.legR.rotation.x = -.75 * roll; bones.kneeR.rotation.x = 1.3 * roll;
+        if (f.dash) { motion.rotation.z = 0; motion.rotation.x = .18 * roll; bones.legL.rotation.x = .35 * roll; bones.legR.rotation.x = -.5 * roll; bones.armR.rotation.x = -.4; bones.elbowR.rotation.x = .7; bones.handR.rotation.x = -1.5; }
       }
       if (f.armour[4] === 0 || f.armour[5] === 0) { motion.position.y -= .2; motion.rotation.z += f.armour[4] === 0 ? -.13 : .13; }
       if (f.armour[4] === 0 && f.armour[5] === 0) motion.position.y -= .46;
@@ -237,8 +248,9 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
       const localPoint = proxy.worldToLocal(hit.point.clone());
       const normal = n.clone().transformDirection(proxy.matrixWorld.clone().invert());
       const kind = event.weapon === "rifle" ? "projectile" : event.weapon === "baton" ? "blade" : "hammer";
-      const radius = kind === "hammer" ? .44 : kind === "projectile" ? .23 : .35;
-      const count = dentGeometry(mesh.geometry, { point: localPoint, normal, radius, depth: kind === "hammer" ? .19 : kind === "projectile" ? .15 : .13, kind }, original);
+      const heat = event.weapon === "flamethrower", light = event.weapon === "shove" || event.weapon === "punch";
+      const radius = heat ? .28 : light ? .20 : kind === "hammer" ? .44 : kind === "projectile" ? .23 : .35;
+      const count = heat ? 1 : dentGeometry(mesh.geometry, { point: localPoint, normal, radius, depth: light ? .045 : kind === "hammer" ? .19 : kind === "projectile" ? .15 : .13, kind }, original);
       // Subtle cavity darkening complements real displaced geometry at fight
       // distance. It belongs to this mesh and resets with the vertices.
       if (count) {
@@ -248,12 +260,12 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
           delta.set(original[i * 3], original[i * 3 + 1], original[i * 3 + 2]).sub(localPoint);
           if (Math.abs(delta.dot(normal)) > radius * .78) continue;
           const u = (kind === "blade" ? Math.hypot(delta.dot(tangent) * .42, delta.dot(bitangent) * 2.5) : Math.hypot(delta.dot(tangent), delta.dot(bitangent))) / radius;
-          const shade = 1 - .38 * Math.pow(Math.max(0, 1 - u * u), 2);
+          const shade = 1 - (heat ? .72 : .38) * Math.pow(Math.max(0, 1 - u * u), 2);
           const value = Math.min(colour.getX(i), shade); colour.setXYZ(i, value, value, value);
         }
         colour.needsUpdate = true;
       }
-      if (count) robot.dents++; return mesh.localToWorld(localPoint);
+      if (count && !heat) robot.dents++; return mesh.localToWorld(localPoint);
     },
     detach(slot, scene, frame) {
       const group = new THREE.Group(); scene.add(group);

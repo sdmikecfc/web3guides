@@ -11,7 +11,7 @@ const parse = new GLTFLoader(), originalLoad = GLTFLoader.prototype.loadAsync;
 GLTFLoader.prototype.loadAsync = async function(url) { const bytes = readFileSync(folder + url.split("/").pop()); return this.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer, ""); };
 async function main() {
   const manifest = JSON.parse(readFileSync(folder + "manifest.json", "utf8"));
-  assert.equal(Object.keys(manifest.parts).length, 28);
+  assert.equal(Object.keys(manifest.parts).length, 29);
   let totalBytes = 0, meshes = 0;
   for (const entry of Object.values(manifest.parts) as { file: string; bytes: number; sha256: string }[]) {
     const bytes = readFileSync(folder + entry.file); assert.equal(digest(bytes), entry.sha256); assert.equal(bytes.length, entry.bytes); totalBytes += bytes.length;
@@ -22,9 +22,9 @@ async function main() {
       const p = o.geometry.getAttribute("position"); assert(Array.from(p.array).every(Number.isFinite));
       if (o.userData.clay) { clay++; assert(p.count > 150); const mat = o.material as THREE.MeshStandardMaterial; assert(mat.roughness >= .8 && mat.metalness === 0); }
     });
-    if (!/^(hammer|baton|rifle)\./.test(entry.file)) assert(clay > 0);
+    if (!/^(hammer|baton|rifle|flamethrower)\./.test(entry.file)) assert(clay > 0);
   }
-  console.log(`PASS 28 GLBs: ${totalBytes} bytes, ${meshes} meshes, verified hashes, materials and attachment labels`);
+  console.log(`PASS 29 GLBs: ${totalBytes} bytes, ${meshes} meshes, verified hashes, materials and attachment labels`);
   const b = preset("brute"), a = await createClayRobot(b), other = await createClayRobot(b), scene = new THREE.Scene(); scene.add(a.root, other.root);
   const state = createFightV4(9, b, b); a.pose(state.fighters[0], state, 0, 0, true); other.pose(state.fighters[1], state, 1, 0, true);
   const positions = (robot: typeof a) => Object.fromEntries([...SLOTS, "weapon" as const].map(s => [s, robot.meshes[s].map(m => digest(m.geometry.getAttribute("position").array))]));
@@ -43,6 +43,15 @@ async function main() {
   const dented = positions(a).torso; a.detach("torso", scene, 30); a.debris(65); assert.deepEqual(positions(a).torso, dented);
   a.reset(); assert.deepEqual(positions(a), baseline); assert.equal(a.dents, 0);
   assert.deepEqual(colours(a), originalColours, "reset restores clay colour");
+  const heat: EventV4 = { id: 4, frame: 0, kind: "hit", who: 1, target: 0, slot: "torso", weapon: "flamethrower", point: [0, 550, 500], normal: [0, 0, 1000] };
+  a.impact(heat);
+  const scorched = colours(a);
+  assert.notDeepEqual(scorched, originalColours, "heat leaves a visible surface scorch");
+  assert.deepEqual(positions(a), baseline, "heat marks do not punch fake geometry craters");
+  assert.equal(a.dents, 0); assert.deepEqual(colours(other), otherColours);
+  a.detach("torso", scene, 30); a.debris(65); assert.deepEqual(colours(a), scorched);
+  a.reset(); assert.deepEqual(colours(a), originalColours); a.impact(heat); assert.deepEqual(colours(a), scorched);
+  a.reset();
   // Reconstruct the same ordered impacts twice, including detached pieces.
   const fight = runFightV4(2048, b, preset("hotshot", 1));
   const replay = (cadence: number) => { a.reset(); for (const e of fight.events) { state.frame = Math.floor(e.frame / cadence) * cadence; a.pose(state.fighters[0], state, 0, state.frame / 60); if ((e.kind === "hit" || e.kind === "block") && e.target === 0) a.impact(e); if (e.kind === "break" && e.who === 0 && e.slot) a.detach(e.slot, scene, e.frame); } return positions(a); };
@@ -57,7 +66,7 @@ async function main() {
   for (let i = 0; i < 50; i++) dentGeometry(geo, { point: p, normal: new THREE.Vector3(0, 0, 1), radius: .4, depth: .2, kind: "hammer" }, rest);
   const attr = geo.getAttribute("position"); for (let i = 0; i < attr.count; i++) assert(Math.hypot(attr.getX(i) - rest[i * 3], attr.getY(i) - rest[i * 3 + 1], attr.getZ(i) - rest[i * 3 + 2]) <= .190001);
   a.dispose(); other.dispose(); assert.equal(scene.children.length, 0);
-  console.log("PASS geometry dents, protected hardware, isolation, detachment, deterministic damage reconstruction, reset, deformation limits and disposal");
+  console.log("PASS geometry dents and heat scorch, protected hardware, isolation, detachment, deterministic damage reconstruction, reset, deformation limits and disposal");
   for (const f of ["brute", "hotshot", "deadeye"] as const) {
     const build = preset(f, 1); build.parts.armR = { family: "brute", design: 1 }; build.parts.legL = { family: "hotshot", design: 0 };
     const bot = await createClayRobot(build); bot.pose(createFightV4(1, build, b).fighters[0], state, 0, 0, true);
@@ -65,18 +74,18 @@ async function main() {
     bot.dispose();
   }
   console.log("PASS all family assemblies with bulky mixed attachments");
-  for (const family of ["brute", "hotshot", "deadeye"] as const) for (const design of [0, 1] as const) {
-    const build = preset(family, design); build.weapon = "rifle";
+  for (const family of ["brute", "hotshot", "deadeye"] as const) for (const design of [0, 1] as const) for (const weapon of ["rifle", "flamethrower"] as const) {
+    const build = preset(family, design); build.weapon = weapon;
     const bot = await createClayRobot(build), fight = createFightV4(2, build, b);
     fight.fighters[0].x = fight.fighters[0].z = fight.fighters[0].yaw = 0;
     for (const distance of [1110, 1300, 1550, 1800, 2000, 2150, 2400, 3000]) {
       fight.fighters[1].x = 0; fight.fighters[1].z = distance;
       bot.pose(fight.fighters[0], fight, 0, 0);
       const tip = bot.tip();
-      assert(tip.z < (distance / 1000 - .42) * COMBAT_RENDER_SCALE, `${family} ${design} rifle muzzle enters opponent at ${distance} mm: ${tip.z}`);
+      assert(tip.z < (distance / 1000 - .42) * COMBAT_RENDER_SCALE, `${family} ${design} ${weapon} muzzle enters opponent at ${distance} mm: ${tip.z}`);
     }
     bot.dispose();
   }
-  console.log("PASS rifle muzzle clearance on all six family/design assemblies from body contact to firing distance");
+  console.log("PASS rifle and flame muzzle clearance on all six family/design assemblies from body contact to firing distance");
 }
 main().catch(e => { console.error(e); process.exitCode = 1; }).finally(() => { GLTFLoader.prototype.loadAsync = originalLoad; });

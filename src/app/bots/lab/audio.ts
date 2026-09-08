@@ -16,6 +16,8 @@ export function labAudio() {
       if (e.kind === "windup" && e.weapon === "hammer") tone(70, 230, .75, .022, "sawtooth");
       if (e.kind === "windup" && e.weapon === "rifle") tone(300, 1000, .55, .012, "triangle");
       if (e.kind === "shot") tone(1000, 95, .14, .055, "sawtooth");
+      if (e.kind === "flame") { tone(115, 62, .8, .05, "sawtooth"); tone(260, 85, .75, .022, "triangle"); }
+      if (e.kind === "dodge" && e.weapon === "rifle") tone(210, 75, .18, .025, "triangle");
       if (e.kind === "hit") { tone(e.weapon === "hammer" ? 90 : 165, 35, .22, .11); tone(370, 90, .12, .025, "triangle"); }
       if (e.kind === "block") { tone(970, 740, .25, .038, "triangle"); tone(1530, 1470, .18, .014); }
       if (e.kind === "stun") tone(740, 180, .30, .035, "square");

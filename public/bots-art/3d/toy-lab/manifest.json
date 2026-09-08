@@ -177,6 +177,14 @@
       "sha256": "80f26f292c06a5d6edb6384d8989b96fc108672dec4788834589de7df8f7440d",
       "claySurfaces": 1,
       "vertices": 2218
+    },
+    "flamethrower": {
+      "file": "flamethrower.glb",
+      "bytes": 104752,
+      "sha256": "a4a4a5dbe8e650459b0875a09f3a1aa2a645ddfed80f2c0e6cc3d72ba7d2fc2c",
+      "claySurfaces": 0,
+      "vertices": 1850,
+      "source": "art-src/bots/blender/build_lab_flamethrower.py"
     }
   }
 }

@@ -105,7 +105,9 @@ async function main() {
   }
   const weapons = JSON.parse(readFileSync("public/bots-art/3d/clay-lab/manifest.json", "utf8"));
   for (const kind of ["hammer", "baton", "rifle", "shield"]) { const bytes = readFileSync(`public/bots-art/3d/clay-lab/${kind}.glb`); writeFileSync(`${folder}/${kind}.glb`, bytes); manifest.parts[kind] = weapons.parts[kind]; }
+  const flame = readFileSync(`${folder}/flamethrower.glb`);
+  manifest.parts.flamethrower = { file: "flamethrower.glb", bytes: flame.length, sha256: createHash("sha256").update(flame).digest("hex"), source: "art-src/bots/blender/build_lab_flamethrower.py" };
   writeFileSync(`${folder}/manifest.json`, JSON.stringify(manifest, null, 2));
-  console.log("Exported 24 original toy modules and 4 lab weapon/shield modules.");
+  console.log("Exported 24 original toy modules and 5 lab weapon/shield modules.");
 }
 void main().catch(e => { console.error(e); process.exitCode = 1; });

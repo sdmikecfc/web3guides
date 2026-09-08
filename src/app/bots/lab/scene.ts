@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { createLabSet } from "./staging";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { createClayRobot, type ClayRobot } from "./robot";
-import { COMBAT_RENDER_SCALE, createFightV4, type BuildV4, type EventV4, type Side, type StateV4 } from "./engine";
+import { COMBAT_RENDER_SCALE, FLAME, createFightV4, type BuildV4, type EventV4, type Side, type StateV4 } from "./engine";
 
 export interface LabScene {
   builds(a: BuildV4, b: BuildV4): Promise<void>;
@@ -34,13 +34,20 @@ export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event:
   const particles = new THREE.Points(particleGeometry, particleMat); particles.frustumCulled = false; scene.add(particles);
   const bulletGeo = new THREE.SphereGeometry(.052, 8, 6), bulletMat = new THREE.MeshBasicMaterial({ color: 0xffe6ab });
   const bullets = new THREE.InstancedMesh(bulletGeo, bulletMat, 24); bullets.frustumCulled = false; scene.add(bullets);
+  const tracerGeo = new THREE.CylinderGeometry(.013, .013, 1, 6), tracerMat = new THREE.MeshBasicMaterial({ color: 0xffd98e, transparent: true, opacity: .82, depthWrite: false });
+  const tracers = new THREE.InstancedMesh(tracerGeo, tracerMat, 12); tracers.frustumCulled = false; scene.add(tracers);
+  const flameGeo = new THREE.IcosahedronGeometry(1, 0), flameMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: .82, depthWrite: false });
+  const flames = new THREE.InstancedMesh(flameGeo, flameMat, 128); flames.frustumCulled = false; scene.add(flames);
+  flames.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(128 * 3), 3);
+  const flashes = [0, 1].map(() => { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(.20, 0), new THREE.MeshBasicMaterial({ color: 0xffefaf, transparent: true, opacity: .9, depthWrite: false })); scene.add(m); return m; });
+  let shots: { event: EventV4; muzzle: THREE.Vector3 }[] = [];
   const indicatorGeo = new THREE.TorusGeometry(.23, .015, 6, 24), indicatorMat = new THREE.MeshBasicMaterial({ color: 0xb2e9dd });
   const indicators = [0, 1].map(() => { const m = new THREE.Mesh(indicatorGeo, indicatorMat); scene.add(m); return m; });
   let robots: [ClayRobot, ClayRobot] | null = null, generation = 0, dead = false, eventIndex = 0, lastFrame = 0, latest: StateV4 | null = null;
   let burst: Burst[] = [], cameraHit = -100, cameraSide: Side = 0, damageIndex = 0, width = 1000, height = 600, inspectClay = false, shadowTick = -1;
   let fightAngle = .12, cameraTime = 0;
   const dummy = new THREE.Object3D();
-  function reset() { robots?.forEach(r => r.reset()); eventIndex = 0; lastFrame = 0; burst = []; cameraHit = -100; damageIndex = 0; inspectClay = false; shadowTick = -1; }
+  function reset() { robots?.forEach(r => r.reset()); eventIndex = 0; lastFrame = 0; burst = []; shots = []; cameraHit = -100; damageIndex = 0; inspectClay = false; shadowTick = -1; }
   const api: LabScene = {
     async builds(a, b) {
       const epoch = ++generation; const results = await Promise.allSettled([createClayRobot(a), createClayRobot(b)]);
@@ -82,6 +89,7 @@ export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event:
       ambient.intensity = showroom ? 1.1 : .65; fill.intensity = showroom ? 1.8 : 1.3;
       if (!showroom) while (eventIndex < state.events.length) {
         const e = state.events[eventIndex++];
+        if (e.kind === "shot") shots.push({ event: e, muzzle: robots[e.who].tip() });
         if (e.kind === "hit" || e.kind === "block") {
           const point = robots[e.target].impact(e);
           burst.push({ point, start: state.frame / 60, colour: new THREE.Color(e.kind === "block" ? 0xe6d49a : e.weapon === "baton" ? 0x9ef1de : 0xc9996d), kind: e.kind });
@@ -105,6 +113,49 @@ export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event:
       particleGeometry.setDrawRange(0, index); (particleGeometry.getAttribute("position") as THREE.BufferAttribute).needsUpdate = true; (particleGeometry.getAttribute("color") as THREE.BufferAttribute).needsUpdate = true;
       bullets.count = Math.min(24, showroom ? 0 : state.projectiles.length);
       state.projectiles.slice(0, 24).forEach((p, i) => { dummy.position.set(p.x / 1000 * COMBAT_RENDER_SCALE, 1.5 * COMBAT_RENDER_SCALE, p.z / 1000 * COMBAT_RENDER_SCALE); dummy.scale.set(1, 1, 2.6); dummy.rotation.y = Math.atan2(p.vx, p.vz); dummy.updateMatrix(); bullets.setMatrixAt(i, dummy.matrix); }); bullets.instanceMatrix.needsUpdate = true;
+      shots = shots.filter(shot => state.frame - shot.event.frame < 14);
+      // End a trail when its simulation projectile makes contact or expires.
+      // Muzzle flashes live separately, including shots that hit in this step.
+      const flyingShots = shots.filter(shot => state.projectiles.some(p => p.id === shot.event.id)).slice(-12);
+      tracers.count = showroom ? 0 : flyingShots.length;
+      const axis = new THREE.Vector3(0, 1, 0);
+      flyingShots.forEach((shot, i) => {
+        const projectile = state.projectiles.find(p => p.id === shot.event.id)!;
+        const endpoint = new THREE.Vector3(projectile.x, 1500, projectile.z).multiplyScalar(COMBAT_RENDER_SCALE / 1000);
+        const travel = endpoint.distanceTo(shot.muzzle), dir = endpoint.sub(shot.muzzle).normalize(), length = Math.min(1.5, travel);
+        dummy.position.copy(shot.muzzle).addScaledVector(dir, travel - length / 2); dummy.quaternion.setFromUnitVectors(axis, dir); dummy.scale.set(1, length, 1); dummy.updateMatrix(); tracers.setMatrixAt(i, dummy.matrix);
+      }); tracers.instanceMatrix.needsUpdate = true;
+      flashes.forEach((flash, i) => {
+        const recent = shots.findLast(shot => shot.event.who === i && state.frame - shot.event.frame < 6);
+        flash.visible = !showroom && !!recent;
+        if (recent) { flash.position.copy(recent.muzzle); flash.scale.setScalar(1 - (state.frame - recent.event.frame) / 7); }
+      });
+      let flameCount = 0;
+      robots.forEach((robot, i) => {
+        const f = state.fighters[i], action = f.action, age = action ? state.frame - action.started - action.windup : -1;
+        const firing = !showroom && action?.kind === "flamethrower" && action.released && age >= 0 && age < FLAME.duration && f.armour[3] > 0;
+        if (firing) {
+          const muzzle = robot.tip(), forward = robot.bones.weapon.getWorldDirection(new THREE.Vector3()), right = new THREE.Vector3(forward.z, 0, -forward.x).normalize();
+          const rival = state.fighters[1 - i];
+          const toRival = new THREE.Vector3(rival.x, 0, rival.z).multiplyScalar(COMBAT_RENDER_SCALE / 1000).sub(muzzle); toRival.y = 0;
+          const horizontal = forward.clone().setY(0).normalize(), along = toRival.dot(horizontal);
+          const across = toRival.clone().addScaledVector(horizontal, -along).length();
+          const jetLength = along > 0 && across < .6 * COMBAT_RENDER_SCALE ? Math.max(.08, Math.min(1.6 * COMBAT_RENDER_SCALE, along - .32 * COMBAT_RENDER_SCALE)) : 1.6 * COMBAT_RENDER_SCALE;
+          for (let j = 0; j < 40; j++) {
+            const progress = ((j / 40 + state.frame * .065) % 1), spread = .035 + progress * Math.min(.32, jetLength * .24), angle = j * 2.399;
+            dummy.position.copy(muzzle).addScaledVector(forward, progress * jetLength).addScaledVector(right, Math.cos(angle) * spread);
+            dummy.position.y += Math.sin(angle) * spread + progress * .1;
+            dummy.rotation.set(j, state.frame * .1, 0); dummy.scale.setScalar((.065 + progress * .15) * COMBAT_RENDER_SCALE); dummy.updateMatrix(); flames.setMatrixAt(flameCount, dummy.matrix);
+            flames.setColorAt(flameCount++, new THREE.Color().setHSL(.13 - progress * .11, 1, .60 - progress * .29));
+          }
+        }
+        if (!showroom && f.burnUntil > state.frame) for (let j = 0; j < 20; j++) {
+          const rise = (state.frame * .023 + j / 20) % 1, angle = j * 2.399;
+          dummy.position.copy(robot.root.position).add(new THREE.Vector3(Math.cos(angle) * .39, .8 + rise * 1.2, Math.sin(angle) * .37).multiplyScalar(COMBAT_RENDER_SCALE));
+          dummy.rotation.set(0, j, 0); dummy.scale.setScalar(.13 * (1 - rise)); dummy.updateMatrix(); flames.setMatrixAt(flameCount, dummy.matrix); flames.setColorAt(flameCount++, new THREE.Color(0xff6b16));
+        }
+      });
+      flames.count = flameCount; flames.instanceMatrix.needsUpdate = true; if (flames.instanceColor) flames.instanceColor.needsUpdate = true;
       indicators.forEach((m, i) => {
         const f = state.fighters[i]; m.visible = !showroom && (f.stunnedUntil > state.frame || f.immuneUntil > state.frame);
         m.position.set(f.x / 1000 * COMBAT_RENDER_SCALE, (f.downUntil > state.frame ? 1.25 : 3.2) * COMBAT_RENDER_SCALE, f.z / 1000 * COMBAT_RENDER_SCALE); m.rotation.set(Math.PI / 2, time * 2, 0); m.scale.setScalar(f.stunnedUntil > state.frame ? 1 : .6);
@@ -139,6 +190,7 @@ export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event:
     dispose() {
       dead = true; generation++; robots?.forEach(r => r.dispose()); set.dispose();
       particleGeometry.dispose(); particleMat.dispose(); bulletGeo.dispose(); bulletMat.dispose(); indicatorGeo.dispose(); indicatorMat.dispose(); env.texture.dispose(); env.dispose(); renderer.dispose();
+      tracerGeo.dispose(); tracerMat.dispose(); flameGeo.dispose(); flameMat.dispose(); flashes.forEach(f => { f.geometry.dispose(); (f.material as THREE.Material).dispose(); f.removeFromParent(); });
     },
   };
   return api;

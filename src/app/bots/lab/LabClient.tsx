@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createFightV4, FAMILIES, preset, SLOTS, stepFightV4, validBuild, WEAPONS, type BuildV4, type EventV4, type Family, type Module, type Slot, type StateV4 } from "./engine";
-import { FAMILY_LABEL, FAMILY_DESCRIPTION, FAMILY_SHORT, overallRows, partDescription, partName, partRows, SLOT_LABEL, type StatRow } from "./stats";
+import { FAMILY_LABEL, FAMILY_DESCRIPTION, FAMILY_SHORT, WEAPON_LABEL, overallRows, partDescription, partName, partRows, SLOT_LABEL, type StatRow } from "./stats";
 import { labAudio } from "./audio";
 import type { LabScene } from "./scene";
 import PartInspection from "./PartInspection";
@@ -19,13 +19,17 @@ function StatList({ rows, before, compact = false }: { rows: StatRow[]; before?:
 }
 const describe = (e: EventV4) => {
   const who = e.who === 0 ? "Your robot" : "Rival";
+  if (e.kind === "shot") return `${who} fires`;
+  if (e.kind === "flame") return `${who} fires a flame burst`;
+  if (e.kind === "burn") return `${e.target === 0 ? "Your robot" : "Rival"} takes ${e.damage} burn damage`;
+  if (e.kind === "hit" && e.weapon === "shove") return `${who} shoves for space`;
   if (e.kind === "hit") return `${who}: ${e.damage} damage to ${SLOT_LABEL[e.slot ?? "torso"].toLowerCase()}`;
   if (e.kind === "block") return `${e.target === 0 ? "Your shield" : "Rival shield"} absorbs the hit`;
   if (e.kind === "stun") return `${who} lands a stunning combination`;
   if (e.kind === "knockdown") return `${who} lands a knockdown`;
   if (e.kind === "interrupt") return `${who}'s attack was interrupted`;
   if (e.kind === "break") return `${who} loses ${SLOT_LABEL[e.slot ?? "torso"].toLowerCase()}`;
-  if (e.kind === "dodge") return `${who} evades the incoming attack`;
+  if (e.kind === "dodge") return `${who} ${e.weapon === "rifle" ? "dashes back for a shot" : "evades the incoming attack"}`;
   if (e.kind === "ko" || e.kind === "timeout") return `${who} wins${e.kind === "timeout" ? " on remaining body armour" : " by knockout"}`;
   return "";
 };
@@ -93,6 +97,7 @@ export default function LabClient() {
   const start = useCallback(() => {
     if (!scene.current || !ready || !validSeed || pending) return;
     audio.current?.stop(); audio.current?.enable(sound); scene.current.reset(); setFeed([]); setNotice(""); setInspectingDamage(false);
+    setPerformanceData(previous => ({ ...previous, dents: 0 }));
     state.current = createFightV4(seed, build, enemy); setView("fight"); setPlaying(true); running.current = true; setReadout(state.current);
   }, [ready, validSeed, seed, pending, build, enemy, sound]);
   function edit() { setInspectingDamage(false); running.current = false; setPlaying(false); setView("build"); audio.current?.stop(); scene.current?.reset(); state.current = createFightV4(validSeed ? seed : 2048, display, enemy); setFeed([]); }
@@ -111,7 +116,7 @@ export default function LabClient() {
         <StatList rows={totalRows} before={pending ? overallRows(build) : undefined} />
         <p className={css.hint}>These are the actual starting combat values. Part loss and control effects change them during a fight.</p>
         <div className={css.sectionLabel}>FITTED PARTS</div>
-        <div className={css.fitted}>{[...SLOTS, "weapon" as const].map(s => <button key={s} disabled={view === "fight"} aria-pressed={slot === s} onClick={() => { setSlot(s); setPending(null); }}><span>{SLOT_LABEL[s]}</span><strong>{s === "weapon" ? { hammer: "Hammer", baton: "Baton", rifle: "Rifle" }[build.weapon] : `${FAMILY_SHORT[build.parts[s].family]} ${build.parts[s].design + 1}`}</strong></button>)}</div>
+        <div className={css.fitted}>{[...SLOTS, "weapon" as const].map(s => <button key={s} disabled={view === "fight"} aria-pressed={slot === s} onClick={() => { setSlot(s); setPending(null); }}><span>{SLOT_LABEL[s]}</span><strong>{s === "weapon" ? WEAPON_LABEL[build.weapon] : `${FAMILY_SHORT[build.parts[s].family]} ${build.parts[s].design + 1}`}</strong></button>)}</div>
       </aside>
       <section className={css.arenaSection} aria-label="Robot preview and combat arena">
         <div className={css.stage}>
@@ -119,7 +124,7 @@ export default function LabClient() {
           <canvas ref={canvas} className={css.canvas} aria-label="3D clay robot preview and deterministic practice combat" />
           {!ready && !error && <div className={css.overlay}><span className={css.spinner} />Assembling the clay machines…</div>}
           {error && <div className={css.overlay} role="alert"><p>{error}</p><button onClick={() => { setError(""); setRetry(v => v + 1); }}>Reload workshop</button></div>}
-          {view === "fight" && readout && <div className={css.health}>{readout.fighters.map((f, i) => <div key={i}><strong>{labels[i]}</strong><div className={css.healthTrack}><span style={{ width: `${f.armour[1] / readout.stats[i].armour[1] * 100}%` }} /></div><small>{f.armour[1]} / {readout.stats[i].armour[1]} body armour</small><span className={css.statusLabel}>{f.downUntil > readout.frame ? "KNOCKED DOWN" : f.stunnedUntil > readout.frame ? "STUNNED" : f.dodgeUntil > readout.frame ? "EVADING" : f.immuneUntil > readout.frame ? "RECOVERY PROTECTION" : f.action && !f.action.released ? f.action.kind === "rifle" ? "TAKING AIM" : f.action.kind === "hammer" ? "CHARGING HAMMER" : "WINDING UP" : ""}</span></div>)}</div>}
+          {view === "fight" && readout && <div className={css.health}>{readout.fighters.map((f, i) => <div key={i}><strong>{labels[i]}</strong><div className={css.healthTrack}><span style={{ width: `${f.armour[1] / readout.stats[i].armour[1] * 100}%` }} /></div><small>{f.armour[1]} / {readout.stats[i].armour[1]} body armour{readout.builds[i].weapon === "rifle" && ` · ${f.shots} shots`}</small><span className={css.statusLabel}>{f.downUntil > readout.frame ? "KNOCKED DOWN" : f.stunnedUntil > readout.frame ? "STUNNED" : f.dodgeUntil > readout.frame ? f.dash ? "DASHING BACK" : "EVADING" : f.burnUntil > readout.frame ? "BURNING" : f.immuneUntil > readout.frame ? "RECOVERY PROTECTION" : f.action && !f.action.released ? f.action.kind === "shove" ? "PUSHING OFF" : f.action.kind === "rifle" ? "TAKING AIM" : f.action.kind === "hammer" ? "CHARGING HAMMER" : "WINDING UP" : f.action?.kind === "flamethrower" ? readout.frame - f.action.started < f.action.windup + 48 ? "FLAME BURST" : "COOLING" : ""}</span></div>)}</div>}
           {view === "build" && <div className={css.nameplates}><span>{pending ? "Preview attached" : "Your one-of-a-kind machine"}</span></div>}
           {view === "fight" && readout?.done && <div className={css.result}><span>PRACTICE COMPLETE</span><h2>{readout.winner === 0 ? "Your machine takes it." : "A lesson in the dents."}</h2><p>{labels[readout.winner ?? 0]} wins. Try another combination.</p></div>}
           <div className={css.stageBottom}><span>{pending ? "Preview attached. Fit it to keep the change." : view === "build" ? "Every piece can come from a different family." : feed[0] || "The machines are finding their range."}</span><span>{performanceData.dents} dents</span></div>

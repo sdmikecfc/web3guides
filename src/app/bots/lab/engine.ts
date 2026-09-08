@@ -8,22 +8,25 @@ export const COMBAT_RENDER_SCALE = .88;
 export const SLOTS = ["head", "torso", "armL", "armR", "legL", "legR"] as const;
 export type Slot = typeof SLOTS[number];
 export type Family = "brute" | "hotshot" | "deadeye";
-export type Weapon = "hammer" | "baton" | "rifle";
+export type Weapon = "hammer" | "baton" | "rifle" | "flamethrower";
 export type Side = 0 | 1;
 export type Point = [number, number, number];
 export interface Module { family: Family; design: 0 | 1 }
 export interface BuildV4 { version: 4; parts: Record<Slot, Module>; weapon: Weapon }
 export interface Stats { armour: number[]; speed: number; accuracy: number; dodge: number; force: number; shield: number }
-export interface Action { kind: Weapon | "punch"; started: number; windup: number; recovery: number; released: boolean }
+export interface Action { kind: Weapon | "punch" | "shove"; started: number; windup: number; recovery: number; released: boolean }
 export interface Fighter {
   x: number; z: number; yaw: number; moveX: number; moveZ: number; armour: number[]; guard: number; guardRegenAt: number; action: Action | null;
   stunnedUntil: number; downUntil: number; immuneUntil: number; dodgeUntil: number; dodgeX: number; dodgeZ: number;
   nextDodge: number; combo: number; dealt: number; shots: number; nextAction: number;
+  nextShove: number; followUpUntil: number; dash: boolean; pushX: number; pushZ: number; pushUntil: number;
+  burnUntil: number; nextBurn: number; burnBy: Side;
 }
-export type EventKind = "start" | "windup" | "shot" | "hit" | "block" | "miss" | "dodge" | "stun" | "knockdown" | "interrupt" | "break" | "ko" | "timeout";
+export type EventKind = "start" | "windup" | "shot" | "hit" | "block" | "miss" | "dodge" | "stun" | "knockdown" | "interrupt" | "break" | "ko" | "timeout" | "flame" | "burn";
 export interface EventV4 {
-  id: number; frame: number; kind: EventKind; who: Side; target: Side; weapon?: Weapon | "punch";
+  id: number; frame: number; kind: EventKind; who: Side; target: Side; weapon?: Action["kind"];
   slot?: Slot; damage?: number; point?: Point; normal?: Point; strength?: number;
+  origin?: Point; direction?: Point;
 }
 export interface Projectile { id: number; who: Side; x: number; z: number; vx: number; vz: number; ttl: number }
 export interface StateV4 {
@@ -32,15 +35,18 @@ export interface StateV4 {
 }
 export interface ResultV4 { version: 4; seed: number; builds: [BuildV4, BuildV4]; winner: Side; frames: number; hash: string; events: EventV4[] }
 export const FAMILIES: Family[] = ["brute", "hotshot", "deadeye"];
-export const WEAPONS: Weapon[] = ["hammer", "baton", "rifle"];
+export const WEAPONS: Weapon[] = ["hammer", "baton", "rifle", "flamethrower"];
 export const WEAPON = {
   hammer: { range: 1850, windup: 66, recovery: 51, damage: 24 },
   baton: { range: 1550, windup: 25, recovery: 30, damage: 11 },
   rifle: { range: 6200, windup: 49, recovery: 49, damage: 19 },
+  flamethrower: { range: 2700, windup: 22, recovery: 114, damage: 4 },
   punch: { range: 1250, windup: 24, recovery: 39, damage: 7 },
+  shove: { range: 1850, windup: 14, recovery: 22, damage: 4 },
 } as const;
 /** Centre-to-centre clearances, including the extended arms and rifle barrel. */
-export const RIFLE = { minimumRange: 2150, aimRange: 2350, retreatRange: 3500, escapeRange: 2150, escapeCooldown: 210 } as const;
+export const RIFLE = { minimumRange: 2150, aimRange: 2350, retreatRange: 3500, escapeRange: 2150, escapeCooldown: 270 } as const;
+export const FLAME = { duration: 48, pulse: 12, halfAngle: .48, burnDuration: 150, burnPulse: 30, burnDamage: 2 } as const;
 
 export function preset(family: Family, design: 0 | 1 = 0): BuildV4 {
   return { version: 4, parts: Object.fromEntries(SLOTS.map(s => [s, { family, design: family === "brute" && s === "armL" ? 1 : design }])) as BuildV4["parts"], weapon: family === "brute" ? "hammer" : family === "hotshot" ? "baton" : "rifle" };
@@ -69,7 +75,7 @@ export function statsFor(b: BuildV4): Stats {
   };
 }
 function fighter(stats: Stats, side: Side): Fighter {
-  return { x: side === 0 ? -3000 : 3000, z: side === 0 ? 250 : -250, yaw: side === 0 ? 1571 : -1571, moveX: 0, moveZ: 0, armour: [...stats.armour], guard: stats.shield, guardRegenAt: 0, action: null, stunnedUntil: 0, downUntil: 0, immuneUntil: 0, dodgeUntil: 0, dodgeX: 0, dodgeZ: 0, nextDodge: 70 + side * 19, combo: 0, dealt: 0, shots: 0, nextAction: 25 + side * 8 };
+  return { x: side === 0 ? -3000 : 3000, z: side === 0 ? 250 : -250, yaw: side === 0 ? 1571 : -1571, moveX: 0, moveZ: 0, armour: [...stats.armour], guard: stats.shield, guardRegenAt: 0, action: null, stunnedUntil: 0, downUntil: 0, immuneUntil: 0, dodgeUntil: 0, dodgeX: 0, dodgeZ: 0, nextDodge: 70 + side * 19, combo: 0, dealt: 0, shots: 0, nextAction: 25 + side * 8, nextShove: 0, followUpUntil: 0, dash: false, pushX: 0, pushZ: 0, pushUntil: 0, burnUntil: 0, nextBurn: 0, burnBy: (1 - side) as Side };
 }
 export function createFightV4(seed: number, a: BuildV4, b: BuildV4): StateV4 {
   if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) throw new Error("Seed must be an unsigned 32-bit integer");
@@ -104,9 +110,9 @@ function chooseSlot(s: StateV4, target: Fighter): number {
 export function hit(s: StateV4, who: Side, weapon: Action["kind"], sourceX?: number, sourceZ?: number): void {
   if (s.done) return;
   const victim = (1 - who) as Side, a = s.fighters[who], b = s.fighters[victim], stats = s.stats[who];
-  const airborne = b.dodgeUntil > s.frame;
+  const airborne = b.dodgeUntil > s.frame && (!b.dash || b.dodgeUntil - s.frame > 17);
   if (airborne || roll(s) > Math.max(42, stats.accuracy - (b.armour[0] <= 0 ? 5 : 0) - Math.floor(s.stats[victim].dodge / 2) - (a.armour[0] <= 0 ? 24 : 0))) { emit(s, "miss", who, { weapon }); return; }
-  let damage = Math.round((WEAPON[weapon].damage + stats.force) * (88 + roll(s, 25)) / 100 * (a.armour[2] <= 0 ? .82 : 1));
+  let damage = Math.round((WEAPON[weapon].damage + stats.force * (weapon === "shove" || weapon === "flamethrower" ? .2 : 1)) * (88 + roll(s, 25)) / 100 * (a.armour[2] <= 0 ? .82 : 1));
   let index = chooseSlot(s, b), blocked = false;
   if (hasShield(s, victim) && b.guard >= 12 && !controlled(s, victim) && !b.action && shieldFacing(s, victim, sourceX ?? a.x, sourceZ ?? a.z)) {
     b.guard = Math.max(0, b.guard - damage); damage = Math.max(1, Math.round(damage * .18)); index = 2; blocked = true;
@@ -125,9 +131,19 @@ export function hit(s: StateV4, who: Side, weapon: Action["kind"], sourceX?: num
     applyControl(s, victim, "knockdown", who);
   }
   if (!blocked && weapon === "baton" && ++a.combo % 3 === 0) applyControl(s, victim, "stun", who);
+  if (!blocked && weapon === "shove") {
+    const len = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+    b.pushX = Math.round((b.x - a.x) / len * 70); b.pushZ = Math.round((b.z - a.z) / len * 70); b.pushUntil = s.frame + 12;
+    // Displacement creates room without adding a free stun or overriding immunity.
+  }
+  if (!blocked && weapon === "flamethrower") {
+    if (b.burnUntil <= s.frame) b.nextBurn = s.frame + FLAME.burnPulse;
+    b.burnUntil = s.frame + FLAME.burnDuration; b.burnBy = who;
+  }
   if (b.armour[index] === 0) {
     emit(s, "break", victim, { target: who, slot: SLOTS[index] });
-    if (index === 3 && b.action) { emit(s, "interrupt", victim, { weapon: b.action.kind }); b.action = null; }
+    if (b.action && ((index === 3 && b.action.kind !== "shove") || (index === 2 && b.action.kind === "shove"))) { emit(s, "interrupt", victim, { weapon: b.action.kind }); b.action = null; }
+    if (index === 4 || index === 5) b.dodgeUntil = s.frame;
     if (index === 1) { s.done = true; s.winner = who; emit(s, "ko", who); }
   }
 }
@@ -161,24 +177,31 @@ function updateFighter(s: StateV4, who: Side) {
     bound(f);
   }
   const armedRifle = s.builds[who].weapon === "rifle" && f.armour[3] > 0;
-  if (armedRifle && distance < RIFLE.escapeRange && s.frame >= f.nextDodge && missingLegs === 0) {
-    if (f.action && !f.action.released) emit(s, "interrupt", who, { weapon: f.action.kind });
-    f.action = null;
-    const escapeSpeed = Math.round(speed * 3), direction = retreatVector(escapeSpeed * 23);
+  function dashBack() {
+    const escapeSpeed = Math.round(speed * 3.3), direction = retreatVector(escapeSpeed * 23);
     f.dodgeUntil = s.frame + 23; f.dodgeX = Math.round(direction.x * escapeSpeed); f.dodgeZ = Math.round(direction.z * escapeSpeed);
-    f.nextDodge = s.frame + RIFLE.escapeCooldown; f.nextAction = f.dodgeUntil + 5;
+    f.dash = true; f.nextDodge = s.frame + RIFLE.escapeCooldown; f.nextAction = f.dodgeUntil + 1; f.followUpUntil = f.dodgeUntil + 75;
+    f.nextShove = f.nextDodge;
     emit(s, "dodge", who, { weapon: "rifle" });
+  }
+  if (armedRifle && distance <= WEAPON.shove.range && f.armour[2] > 0 && s.frame >= f.nextShove && s.frame >= f.nextDodge && f.dodgeUntil <= s.frame && f.action?.kind !== "shove") {
+    if (f.action && !f.action.released) emit(s, "interrupt", who, { weapon: f.action.kind });
+    f.action = { kind: "shove", started: s.frame, windup: WEAPON.shove.windup, recovery: WEAPON.shove.recovery, released: false };
+    f.nextShove = s.frame + RIFLE.escapeCooldown; emit(s, "windup", who, { weapon: "shove" });
+  } else if (armedRifle && distance < 1550 && s.frame >= f.nextDodge && missingLegs === 0 && f.action?.kind !== "shove") {
+    if (f.action && !f.action.released) emit(s, "interrupt", who, { weapon: f.action.kind });
+    f.action = null; dashBack();
   }
   const enemyWindup = target.action && !target.action.released && s.frame - target.action.started >= target.action.windup - 19;
   if (!f.action && enemyWindup && s.frame >= f.nextDodge && missingLegs === 0 && stats.dodge >= 12) {
     const sign = roll(s, 2) ? 1 : -1;
-    f.dodgeUntil = s.frame + 23; f.dodgeX = Math.round(-uz * sign * 46); f.dodgeZ = Math.round(ux * sign * 46); f.nextDodge = s.frame + 155;
+    f.dash = false; f.dodgeUntil = s.frame + 23; f.dodgeX = Math.round(-uz * sign * 46); f.dodgeZ = Math.round(ux * sign * 46); f.nextDodge = s.frame + 155;
     emit(s, "dodge", who);
   }
   if (f.dodgeUntil > s.frame) { f.x += f.dodgeX; f.z += f.dodgeZ; bound(f); return; }
   if (f.action) {
     const action = f.action, age = s.frame - action.started;
-    if (action.kind !== "rifle" && !action.released) {
+    if (action.kind !== "rifle" && action.kind !== "flamethrower" && !action.released) {
       // Close with the swing, then make a short, committed step into contact.
       // Retreating can still evade it; preparing an attack must not root the
       // pursuing fighter for its entire windup.
@@ -199,9 +222,20 @@ function updateFighter(s: StateV4, who: Side) {
         const error = (roll(s, 101) - 50) * (101 - stats.accuracy) / 18000;
         const angle = f.yaw / 1000 + error;
         const p: Projectile = { id: s.events.length, who, x: f.x + Math.round(Math.sin(angle) * 1550), z: f.z + Math.round(Math.cos(angle) * 1550), vx: Math.round(Math.sin(angle) * 270), vz: Math.round(Math.cos(angle) * 270), ttl: 32 };
-        s.projectiles.push(p); f.shots++; emit(s, "shot", who, { weapon: "rifle" });
+        s.projectiles.push(p); f.shots++; emit(s, "shot", who, { weapon: "rifle", origin: [p.x, 1500, p.z], direction: [p.vx, 0, p.vz] });
+      } else if (action.kind === "flamethrower") { emit(s, "flame", who, { weapon: "flamethrower" });
       } else if (distance <= WEAPON[action.kind].range + 200 && shieldFacing(s, who, target.x, target.z)) hit(s, who, action.kind);
       else emit(s, "miss", who, { weapon: action.kind });
+      if (action.kind === "shove" && !s.done) {
+        if (missingLegs === 0) { f.action = null; dashBack(); }
+        else f.followUpUntil = s.frame + 75;
+        return;
+      }
+    }
+    if (action.kind === "flamethrower" && action.released && age < action.windup + FLAME.duration && (age - action.windup) % FLAME.pulse === 0) {
+      const facing = (Math.sin(f.yaw / 1000) * dx + Math.cos(f.yaw / 1000) * dz) / distance;
+      if (distance <= WEAPON.flamethrower.range && facing >= Math.cos(FLAME.halfAngle)) hit(s, who, "flamethrower");
+      else emit(s, "miss", who, { weapon: "flamethrower" });
     }
     if (age >= action.windup + action.recovery) { f.action = null; f.nextAction = s.frame + 8; }
     // Track the target while withdrawing, plant for the final ten aim steps,
@@ -219,7 +253,7 @@ function updateFighter(s: StateV4, who: Side) {
   bound(f);
   if ((f.armour[2] > 0 || f.armour[3] > 0) && distance <= range && s.frame >= f.nextAction && (weapon !== "rifle" || distance >= RIFLE.aimRange)) {
     const spec = WEAPON[weapon];
-    f.action = { kind: weapon, started: s.frame, windup: spec.windup + missingLegs * 5, recovery: spec.recovery, released: false };
+    f.action = { kind: weapon, started: s.frame, windup: (weapon === "rifle" && s.frame < f.followUpUntil ? 16 : spec.windup) + missingLegs * 5, recovery: spec.recovery, released: false };
     emit(s, "windup", who, { weapon });
   }
 }
@@ -227,6 +261,16 @@ export function stepFightV4(s: StateV4): void {
   if (s.done) return;
   s.frame++;
   const before = s.fighters.map(f => ({ x: f.x, z: f.z }));
+  for (const f of s.fighters) if (f.pushUntil > s.frame) { f.x += f.pushX; f.z += f.pushZ; bound(f); }
+  for (const side of [0, 1] as const) {
+    const f = s.fighters[side];
+    if (!s.done && f.burnUntil > s.frame && f.nextBurn <= s.frame) {
+      const damage = Math.min(FLAME.burnDamage, f.armour[1]); f.armour[1] -= damage; s.fighters[f.burnBy].dealt += damage; f.nextBurn = s.frame + FLAME.burnPulse;
+      emit(s, "burn", f.burnBy, { target: side, weapon: "flamethrower", slot: "torso", damage });
+      if (f.armour[1] === 0) { s.done = true; s.winner = f.burnBy; emit(s, "ko", f.burnBy); }
+    }
+  }
+  if (s.done) return;
   const first = (s.seed & 1) as Side;
   updateFighter(s, first); if (!s.done) updateFighter(s, (1 - first) as Side);
   if (!s.done) for (let i = s.projectiles.length - 1; i >= 0; i--) {
