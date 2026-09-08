@@ -26,16 +26,16 @@ Run only one server on that port. Development and Vercel preview environments en
 ## Included
 
 - Six independent body sockets and a weapon; three families with two designs for each head, torso, arm, and leg. Brute left arm 2 carries a shield. All families can mix. Parts contribute armour, movement, aim, evasion, impact power and guard.
-- Twenty-eight original GLBs: 24 body designs, hammer, baton, rifle, shield. The complete editable Blender catalogue and its authoring script are in `art-src/bots/blender/`. Asset provenance, byte sizes and SHA-256 hashes are in the GLB folder's manifest.
+- Twenty-eight GLBs in `public/bots-art/3d/toy-lab/`: 24 body modules derived from the original garage moulds, plus the Blender-authored hammer, baton, rifle and shield. `scripts/bots-lab-toy-assets.ts` exports the garage moulds with shared-edge subdivision for dents. The earlier clay catalogue and Blender authoring source remain preserved separately. Each catalogue has a provenance/hash manifest.
 - Separate v4 simulation at 60 fixed steps per second, seeded randomness, planar movement, facing, wind-up, contact, recovery, travelling projectiles, directional shields and consumable guard. The rifle plants to aim and repositions during recovery.
 - Hammer knockdown; every third clean baton hit can stun. Stun is 24 steps (0.4 seconds); knockdown/get-up is 72 (1.2 seconds). Recovery protection lasts another 120 steps (2 seconds), while ordinary damage still applies. Missing weapon arms disable weapon attacks, missing legs disable dodges, and losing both arms disables punches.
 - Per-robot clay geometry, limited craters and grooves, fingerprints, protected machinery, debris retaining its dents, deterministic replay/reset. Impact collision proxies use the bind pose so rendering cadence cannot change the damaged vertices.
-- Stepped 12 FPS posing with smooth camera rendering, impact reactions, camera emphasis, steady camera, procedural sound cues, pause/resume, repeatable seed input, three rival presets, local build storage and preview-before-fitting.
+- Stepped showroom idle poses, smooth combat motion and camera rendering, impact reactions, steady camera, procedural sound cues, pause/resume, repeatable seed input, three rival presets, local build storage and preview-before-fitting.
 - Overall stat totals on the left and an isolated 3D part preview with signed comparison on the right. Also added to the existing tutorial/build screen, with stats on each part card. Starter moulds retain their existing equal 1/1/1 stats. Trying a starter part never purchases it or replaces other selected sockets.
 
-## Verification
+## Initial implementation verification (historical)
 
-All commands below passed:
+These commands passed for the initial implementation. Current-revision checks are recorded separately below; the historical full build is not a build of today's visual revision.
 
 ```powershell
 npx tsc --noEmit
@@ -57,13 +57,28 @@ npx tsx --conditions=react-server scripts/bots-game-state-check.ts
 - Observed development-desktop rendering around 58–60 FPS after warm-up, typically 112–115 draws and approximately 94,500 triangles for Brute/Hotshot. These are sampled browser rendering counters, not a GPU benchmark or a physical phone measurement.
 - Compiled production HTTP gate: lab disabled returns 404; enabled local preview returns 200. Build completed with pre-existing optional wallet-package/Browserslist warnings and unrelated dynamic-route logs.
 
-## Visual correction after initial review
+## Current correction after visual and combat review
 
-The first lab presentation was rejected as a visual regression. The current revision restores the original workshop plate and wooden plinth, presents one larger selected robot, and uses the existing arena audience art behind a physical ring with brass fittings. Warm brown panels and rounded garage typography replace the green presentation. Robots have larger heads, ivory optics with pupils and glints, expressive brows, raised service panels, finer clay variation and distinct coral, teal and blue palettes. Combat rules are unchanged.
+The first clay character designs and their first visual revision were rejected. This revision uses the actual original garage toy moulds, paint colours, faces and winding keys as its foundation. It retains the workshop plate, wooden plinth and warm panels. The original garage renderer and assets are unchanged.
 
-Verified this revision with TypeScript, all 28 actual GLB asset/attachment/deformation/replay-cleanup checks, desktop layout at 1440×1000 and mobile layout at 390×844, all three preset designs, a completed fight and return to the workshop, and visible hammer/projectile/blade dents. The showroom sampled 60 FPS, 57 draws and 52,890 triangles on the development desktop; this is not a physical phone measurement. Browser console had no errors. The earlier full build and engine-baseline results above apply to the initial implementation; this visual revision was checked with the development preview and TypeScript.
+The armour test is directly beneath the preview. It shows a close view of real surface displacement with cavity shading; the rifle is hidden and arms lowered during that inspection. Dents and shading reset together. Shared-edge subdivision prevents the tearing found in the first conversion. These are still bounded surface dents, not volumetric clay.
 
-The clay character designs still need art refinement. Restoring the original setting does not establish that the new models match the original toy catalogue's quality.
+Build examples now say **Heavy hitter**, **Fast fighter**, and **Sharpshooter**, with a plain-language explanation of each. Independent parts still determine the build. Mike's tier 3–4 direction is recorded in `art-src/bots/TOY_ART_DIRECTION.md`: broader premium frames, substantial shoulders and protective, menacing helmets. Premium tier assets and progression are not implemented by this correction.
+
+Fighting robots render at 88% size. The simulation's usable radius increases from 4.45 to 5.10 units, about 15% more space across the ring. All actors, projectiles, camera targets and indicators use the same presentation scale. The rifle bends its elbows and raises its barrel when crowded, cancels aim below 2.15 units, retreats during preparation/recovery and has a leg-dependent escape step with a 3.5-second cooldown. Precision leg mobility is now 26 (1.56 units/s for the matching pair); faster legs remain faster. Melee fighters approach during preparation and commit their final step into a swing. Shield recharge begins three seconds after the last block. These changes apply only to the v4 lab.
+
+The audience now uses an actual Higgsfield-generated loop based on the existing arena image, mapped around a curved backdrop. The locally served H.264 clip is 960×248, 24 FPS, 8.04 seconds and 143,889 bytes. It is muted, pauses in the showroom or hidden tab, uses a still for reduced motion and falls back to the still on autoplay failure. Provenance is in `public/bots-art/video/arena-crowd-loop.json`. Cinematic framing follows the fight angle to keep both robots visible; steady camera remains available.
+
+Current checks passed:
+
+- TypeScript and the development preview.
+- 216 deterministic family/mixed matchups plus 64 additional fully mixed builds, each repeated. All terminate, stay bounded and make contact. 46 of the 216 matchups finish at the time limit; balance and pacing remain unfinished.
+- 51 targeted rifle matchups: 1,249 shots and 429 escape steps. Minimum firing clearance, cancelled close-range aim, retreat during recovery and escape cooldown pass.
+- All 28 actual GLBs: 12,553,960 bytes, 152 meshes, valid hashes and attachment labels. Geometry and colour isolation, reconstruction, reset, hardware protection, capped deformation, repeated detachment cleanup, and six rifle assemblies' muzzle clearance pass.
+- All 200 previous-engine baseline hashes remain unchanged. Existing builder preview/isolation checks pass.
+- Desktop and 390×844 browser layouts, a completed fight, visible crowd playback and advancing video time, and no horizontal mobile overflow. Desktop with animated crowd sampled 60 FPS, around 96–100 draws and 204,000–205,000 triangles. These are browser counters on the development laptop, not certified hardware benchmarks.
+
+The current assets draw fewer meshes but contain more triangles than the rejected clay catalogue. A full production build and physical-phone performance run have not been repeated for this correction. Visual quality still requires Mike's review; passing the checks does not certify the toy-design standard.
 
 ## Remaining limits
 
@@ -75,4 +90,4 @@ The clay character designs still need art refinement. Restoring the original set
 
 ## Discord preview post
 
-Combat Lab visual update: the familiar workshop is back, with a closer robot preview, expressive faces and a warm arena surrounded by the original crowd artwork. Mix parts and inspect their stats, then take your build into a practice fight. Clay dents and the new combat mechanics are still in place. Preview only while we refine the models.
+Combat Lab preview update: the original toy designs are back, with clearer build descriptions and an armour damage close-up. Fighting robots are a little smaller with more room to move, the audience now cheers in an animated loop, and rifle builds retreat and tuck their weapons when crowded. Practice only while we refine combat balance and the visuals.

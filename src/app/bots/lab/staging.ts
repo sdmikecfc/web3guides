@@ -68,16 +68,36 @@ export async function createLabSet(scene: THREE.Scene) {
   const loader = new THREE.TextureLoader();
   const plates = await Promise.allSettled([loader.loadAsync("/bots-art/plates/workshop-interior.png"), loader.loadAsync("/bots-art/plates/arena-evening.png")]);
   let workshopPlate: THREE.Texture | undefined;
+  let audienceMaterial: THREE.MeshBasicMaterial | undefined, audienceStill: THREE.Texture | undefined;
   plates.forEach(p => { if (p.status === "fulfilled") { p.value.colorSpace = THREE.SRGBColorSpace; textures.add(p.value); } });
   if (plates[0].status === "fulfilled") workshopPlate = plates[0].value;
   if (plates[1].status === "fulfilled") {
     const t = plates[1].value; t.repeat.set(1, .46); t.offset.set(0, .54);
-    const audience = mesh(new THREE.PlaneGeometry(34, 8.8), new THREE.MeshBasicMaterial({ map: t, color: 0xa89c88, toneMapped: false }), arena, 0, 3.6, -8.3); audience.receiveShadow = false;
+    audienceStill = t; audienceMaterial = new THREE.MeshBasicMaterial({ map: t, color: 0xa89c88, toneMapped: false, side: THREE.BackSide });
+    const audience = mesh(new THREE.CylinderGeometry(10.8, 10.8, 8.8, 72, 1, true, Math.PI / 2, Math.PI), audienceMaterial, arena, 0, 3.6); audience.receiveShadow = false;
   }
+  // One small, locally served Higgsfield loop. Three updates its video texture
+  // on decoded frames, independently of the camera's render rate.
+  const crowd = document.createElement("video");
+  crowd.src = "/bots-art/video/arena-crowd-loop.mp4"; crowd.muted = true; crowd.defaultMuted = true;
+  crowd.loop = true; crowd.playsInline = true; crowd.preload = "none";
+  const crowdTexture = new THREE.VideoTexture(crowd); crowdTexture.colorSpace = THREE.SRGBColorSpace; textures.add(crowdTexture);
+  let playPending = false, playbackFailed = false, disposed = false;
+  const visibility = () => { if (document.hidden) crowd.pause(); };
+  document.addEventListener("visibilitychange", visibility);
   const dark = new THREE.Color(0x211810);
   return {
-    update(showroom: boolean, width: number, height: number, robots: THREE.Group[]) {
+    update(showroom: boolean, width: number, height: number, robots: THREE.Group[], motion = true) {
       workshop.visible = showroom; arena.visible = !showroom; scene.background = showroom && workshopPlate ? workshopPlate : dark;
+      const animate = !showroom && motion && !document.hidden && !playbackFailed;
+      if (animate && crowd.paused && !playPending) {
+        playPending = true;
+        void crowd.play().catch(() => { if (!disposed) playbackFailed = true; }).finally(() => { playPending = false; if (disposed) crowd.pause(); });
+      } else if (!animate && !crowd.paused) crowd.pause();
+      if (audienceMaterial) {
+        const map = animate && crowd.readyState >= 2 ? crowdTexture : audienceStill;
+        if (audienceMaterial.map !== map) { audienceMaterial.map = map ?? null; audienceMaterial.needsUpdate = true; }
+      }
       if (showroom && workshopPlate) {
         const aspect = width / height, imageAspect = workshopPlate.image.width / workshopPlate.image.height;
         const x = Math.min(1, aspect / imageAspect), y = Math.min(1, imageAspect / aspect);
@@ -85,6 +105,7 @@ export async function createLabSet(scene: THREE.Scene) {
       }
       contacts.forEach((m, i) => { m.visible = !showroom || i === 0; m.position.set(robots[i].position.x, .003, robots[i].position.z); });
     },
-    dispose() { geometry.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); textures.forEach(t => t.dispose()); workshop.removeFromParent(); arena.removeFromParent(); contacts.forEach(m => m.removeFromParent()); },
+    crowdState() { return { playing: !crowd.paused && crowd.readyState >= 2, time: crowd.currentTime, failed: playbackFailed }; },
+    dispose() { disposed = true; document.removeEventListener("visibilitychange", visibility); crowd.pause(); crowd.removeAttribute("src"); crowd.load(); geometry.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); textures.forEach(t => t.dispose()); workshop.removeFromParent(); arena.removeFromParent(); contacts.forEach(m => m.removeFromParent()); },
   };
 }

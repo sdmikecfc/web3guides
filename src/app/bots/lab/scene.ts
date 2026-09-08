@@ -2,12 +2,12 @@ import * as THREE from "three";
 import { createLabSet } from "./staging";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { createClayRobot, type ClayRobot } from "./robot";
-import { createFightV4, type BuildV4, type EventV4, type Side, type StateV4 } from "./engine";
+import { COMBAT_RENDER_SCALE, createFightV4, type BuildV4, type EventV4, type Side, type StateV4 } from "./engine";
 
 export interface LabScene {
   builds(a: BuildV4, b: BuildV4): Promise<void>;
   render(state: StateV4, time: number, showroom: boolean, cinematic: boolean, reduced: boolean): void;
-  reset(): void; damage(kind: "hammer" | "projectile" | "blade"): number;
+  reset(): void; damage(kind: "hammer" | "projectile" | "blade"): number; inspectDamage(enabled: boolean): void;
   resize(width: number, height: number): void; dispose(): void;
   metrics(): { drawCalls: number; triangles: number; geometries: number; dents: number };
 }
@@ -17,6 +17,7 @@ export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event:
   renderer.setClearColor(0x211810); renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.autoUpdate = false;
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0x211810);
   const camera = new THREE.PerspectiveCamera(35, 1, .1, 60), target = new THREE.Vector3(0, 1.20, 0);
   const pmrem = new THREE.PMREMGenerator(renderer), room = new RoomEnvironment(), env = pmrem.fromScene(room, .03); scene.environment = env.texture; scene.environmentIntensity = .36; room.dispose(); pmrem.dispose();
@@ -36,9 +37,10 @@ export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event:
   const indicatorGeo = new THREE.TorusGeometry(.23, .015, 6, 24), indicatorMat = new THREE.MeshBasicMaterial({ color: 0xb2e9dd });
   const indicators = [0, 1].map(() => { const m = new THREE.Mesh(indicatorGeo, indicatorMat); scene.add(m); return m; });
   let robots: [ClayRobot, ClayRobot] | null = null, generation = 0, dead = false, eventIndex = 0, lastFrame = 0, latest: StateV4 | null = null;
-  let burst: Burst[] = [], cameraHit = -100, cameraSide: Side = 0, damageIndex = 0, width = 1000, height = 600, inspectClay = false;
+  let burst: Burst[] = [], cameraHit = -100, cameraSide: Side = 0, damageIndex = 0, width = 1000, height = 600, inspectClay = false, shadowTick = -1;
+  let fightAngle = .12, cameraTime = 0;
   const dummy = new THREE.Object3D();
-  function reset() { robots?.forEach(r => r.reset()); eventIndex = 0; lastFrame = 0; burst = []; cameraHit = -100; damageIndex = 0; inspectClay = false; }
+  function reset() { robots?.forEach(r => r.reset()); eventIndex = 0; lastFrame = 0; burst = []; cameraHit = -100; damageIndex = 0; inspectClay = false; shadowTick = -1; }
   const api: LabScene = {
     async builds(a, b) {
       const epoch = ++generation; const results = await Promise.allSettled([createClayRobot(a), createClayRobot(b)]);
@@ -51,9 +53,11 @@ export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event:
       api.render(latest, 0, true, false, false); await renderer.compileAsync(scene, camera);
     },
     reset,
+    inspectDamage(enabled) { inspectClay = enabled; shadowTick = -1; },
     damage(kind) {
       if (!robots || !latest) return 0;
       inspectClay = true;
+      shadowTick = -1;
       const points = [[-.23, .7, .5], [.21, .40, .5], [0, .57, .5]];
       const e: EventV4 = { id: damageIndex, frame: 0, kind: "hit", who: 1, target: 0, slot: "torso", weapon: kind === "projectile" ? "rifle" : kind === "blade" ? "baton" : "hammer", point: points[damageIndex++ % 3].map(x => x * 1000) as [number, number, number], normal: [0, 0, 1000], damage: 15 };
       const point = robots[0].impact(e); burst.push({ point, start: -1, colour: new THREE.Color(0xe0ad73), kind: "hit" });
@@ -62,12 +66,19 @@ export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event:
     render(state, time, showroom, cinematic, reduced) {
       if (!robots || dead) return;
       latest = state; if (state.frame < lastFrame) reset(); lastFrame = state.frame;
+      const poseTick = Math.floor((showroom ? time : state.frame / 60) * 20), shadowDirty = !showroom || poseTick !== shadowTick;
       robots.forEach((r, i) => {
+        if (showroom && i === 1) { r.root.visible = false; return; }
         r.pose(state.fighters[i], state, i as Side, time, showroom);
         r.root.visible = !showroom || i === 0;
+        r.meshes.weapon.forEach(m => { m.visible = !(showroom && inspectClay); });
+        if (showroom && inspectClay) {
+          r.bones.armL.rotation.set(.05, 0, -.24); r.bones.elbowL.rotation.set(0, 0, 0);
+          r.bones.armR.rotation.set(.05, 0, .24); r.bones.elbowR.rotation.set(0, 0, 0); r.bones.handR.rotation.set(0, 0, 0);
+        }
         if (showroom && i === 0) { r.root.position.x = 0; r.root.rotation.y = -.12; r.root.updateMatrixWorld(true); }
       });
-      set.update(showroom, width, height, robots.map(r => r.root));
+      set.update(showroom, width, height, robots.map(r => r.root), !reduced);
       ambient.intensity = showroom ? 1.1 : .65; fill.intensity = showroom ? 1.8 : 1.3;
       if (!showroom) while (eventIndex < state.events.length) {
         const e = state.events[eventIndex++];
@@ -93,28 +104,35 @@ export async function createLabScene(canvas: HTMLCanvasElement, onEvent: (event:
       }
       particleGeometry.setDrawRange(0, index); (particleGeometry.getAttribute("position") as THREE.BufferAttribute).needsUpdate = true; (particleGeometry.getAttribute("color") as THREE.BufferAttribute).needsUpdate = true;
       bullets.count = Math.min(24, showroom ? 0 : state.projectiles.length);
-      state.projectiles.slice(0, 24).forEach((p, i) => { dummy.position.set(p.x / 1000, 1.73, p.z / 1000); dummy.scale.set(1, 1, 2.6); dummy.rotation.y = Math.atan2(p.vx, p.vz); dummy.updateMatrix(); bullets.setMatrixAt(i, dummy.matrix); }); bullets.instanceMatrix.needsUpdate = true;
+      state.projectiles.slice(0, 24).forEach((p, i) => { dummy.position.set(p.x / 1000 * COMBAT_RENDER_SCALE, 1.5 * COMBAT_RENDER_SCALE, p.z / 1000 * COMBAT_RENDER_SCALE); dummy.scale.set(1, 1, 2.6); dummy.rotation.y = Math.atan2(p.vx, p.vz); dummy.updateMatrix(); bullets.setMatrixAt(i, dummy.matrix); }); bullets.instanceMatrix.needsUpdate = true;
       indicators.forEach((m, i) => {
         const f = state.fighters[i]; m.visible = !showroom && (f.stunnedUntil > state.frame || f.immuneUntil > state.frame);
-        m.position.set(f.x / 1000, f.downUntil > state.frame ? 1.25 : 3.2, f.z / 1000); m.rotation.set(Math.PI / 2, time * 2, 0); m.scale.setScalar(f.stunnedUntil > state.frame ? 1 : .6);
+        m.position.set(f.x / 1000 * COMBAT_RENDER_SCALE, (f.downUntil > state.frame ? 1.25 : 3.2) * COMBAT_RENDER_SCALE, f.z / 1000 * COMBAT_RENDER_SCALE); m.rotation.set(Math.PI / 2, time * 2, 0); m.scale.setScalar(f.stunnedUntil > state.frame ? 1 : .6);
       });
       const aspect = width / height, isPhone = aspect < 1;
       const hit = cinematic && !reduced ? Math.max(0, 1 - (time - cameraHit) / .85) : 0;
       if (showroom) {
+        fightAngle = .12;
         const angle = cinematic && !reduced ? Math.sin(time * .17) * .45 + .18 : .30;
-        const radius = inspectClay ? (isPhone ? 7.4 : 6.7) : isPhone ? 8.1 : 7.9;
+        const radius = inspectClay ? (isPhone ? 3.5 : 3.0) : isPhone ? 8.1 : 7.9;
         const focus = 0;
-        camera.position.set(focus + Math.sin(angle) * radius, inspectClay ? 3.0 : 3.4, Math.cos(angle) * radius); target.set(focus, 1.40, 0);
+        camera.position.set(focus + Math.sin(angle) * radius, inspectClay ? 2.05 : 3.4, Math.cos(angle) * radius); target.set(focus, inspectClay ? 1.67 : 1.40, inspectClay ? .3 : 0);
       } else {
-        const midpoint = new THREE.Vector3((state.fighters[0].x + state.fighters[1].x) / 2000, 1.25, (state.fighters[0].z + state.fighters[1].z) / 2000);
-        const spread = Math.hypot(state.fighters[0].x - state.fighters[1].x, state.fighters[0].z - state.fighters[1].z) / 1000;
+        const midpoint = new THREE.Vector3((state.fighters[0].x + state.fighters[1].x) / 2000 * COMBAT_RENDER_SCALE, 1.15, (state.fighters[0].z + state.fighters[1].z) / 2000 * COMBAT_RENDER_SCALE);
+        const spread = Math.hypot(state.fighters[0].x - state.fighters[1].x, state.fighters[0].z - state.fighters[1].z) / 1000 * COMBAT_RENDER_SCALE;
         const radius = (isPhone ? 16 : 12.6) + Math.max(0, spread - 3) * .65;
-        const angle = cinematic && !reduced ? Math.sin(time * .14) * .4 : .12;
+        let desired = Math.atan2(-(state.fighters[1].z - state.fighters[0].z), state.fighters[1].x - state.fighters[0].x);
+        if (Math.cos(desired) < 0) desired += desired < 0 ? Math.PI : -Math.PI;
+        desired = THREE.MathUtils.clamp(desired, -1.05, 1.05);
+        fightAngle += (desired - fightAngle) * (1 - Math.exp(-Math.min(.05, Math.max(0, time - cameraTime)) * 2));
+        const angle = cinematic && !reduced ? fightAngle : .12;
         target.copy(midpoint); camera.position.set(midpoint.x * .30 + Math.sin(angle) * radius, 5.4 - hit * .4, midpoint.z * .3 + Math.cos(angle) * radius - hit * .5);
-        if (hit > 0) target.x += (state.fighters[cameraSide].x / 1000 - midpoint.x) * .14 * hit;
+        if (hit > 0) target.x += (state.fighters[cameraSide].x / 1000 * COMBAT_RENDER_SCALE - midpoint.x) * .14 * hit;
       }
-      camera.lookAt(target); renderer.render(scene, camera);
+      cameraTime = time;
+      camera.lookAt(target); renderer.shadowMap.needsUpdate = shadowDirty; shadowTick = poseTick; renderer.render(scene, camera);
       canvas.dataset.drawCalls = String(renderer.info.render.calls); canvas.dataset.triangles = String(renderer.info.render.triangles); canvas.dataset.dents = String(robots[0].dents + robots[1].dents); canvas.dataset.frame = String(state.frame);
+      const crowd = set.crowdState(); canvas.dataset.crowdMotion = crowd.playing ? "playing" : crowd.failed ? "unavailable" : "still"; canvas.dataset.crowdTime = crowd.time.toFixed(2);
     },
     resize(w, h) { if (w <= 0 || h <= 0 || dead) return; width = w; height = h; renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, w < 650 ? 1.25 : 1.6)); renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = camera.aspect < .8 ? 43 : 35; camera.updateProjectionMatrix(); },
     metrics() { return { drawCalls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, dents: robots ? robots[0].dents + robots[1].dents : 0 }; },

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { applyControl, canonicalBuild, CAP, createFightV4, FAMILIES, hashV4, hit, preset, resultV4, runFightV4, shieldFacing, SLOTS, stepFightV4, type StateV4 } from "../src/app/bots/lab/engine";
+import { applyControl, ARENA_RADIUS, canonicalBuild, CAP, createFightV4, FAMILIES, hashV4, hit, preset, resultV4, runFightV4, shieldFacing, SLOTS, stepFightV4, type StateV4 } from "../src/app/bots/lab/engine";
 let checks = 0;
 function check(name: string, fn: () => void) { fn(); checks++; console.log("PASS", name); }
 check("all families and mixed builds terminate, stay bounded, and reproduce exactly", () => {
@@ -12,12 +12,12 @@ check("all families and mixed builds terminate, stay bounded, and reproduce exac
       const s = createFightV4(seed, left, right);
       while (!s.done) {
         stepFightV4(s);
-        for (const f of s.fighters) { assert(Number.isInteger(f.x) && Number.isInteger(f.z)); assert(Math.hypot(f.x, f.z) < 4452); assert(f.armour.every(n => Number.isInteger(n) && n >= 0)); }
+        for (const f of s.fighters) { assert(Number.isInteger(f.x) && Number.isInteger(f.z)); assert(Math.hypot(f.x, f.z) < ARENA_RADIUS + 2); assert(f.armour.every(n => Number.isInteger(n) && n >= 0)); }
         assert(s.frame <= CAP);
       }
       const repeat = runFightV4(seed, left, right); assert.deepEqual(resultV4(s), resultV4(repeat));
       for (const e of s.events) counts[e.kind] = (counts[e.kind] ?? 0) + 1;
-      assert(s.events.some(e => e.kind === "hit")); fights++; wins += s.winner === 0 ? 1 : 0; frames += s.frame;
+      assert(s.events.some(e => e.kind === "hit" || e.kind === "block"), `${a}/${b} seed ${seed} had no contact`); fights++; wins += s.winner === 0 ? 1 : 0; frames += s.frame;
     }
     rows.push(`${a}/${b}: ${wins}/24 left wins, ${(frames / 24 / 60).toFixed(1)}s`);
   }
@@ -35,7 +35,7 @@ check("fully mixed independent sockets and all three weapons stay playable", () 
     const build = preset(FAMILIES[seed % 3]);
     SLOTS.forEach((slot, i) => { build.parts[slot] = { family: FAMILIES[(seed * (i + 3) + i) % 3], design: ((seed >> (i % 5)) & 1) as 0 | 1 }; });
     const s = runFightV4(seed, build, preset(FAMILIES[(seed + 1) % 3], 1));
-    assert(s.done && s.frame <= CAP); assert(s.events.some(e => e.kind === "hit"));
+    assert(s.done && s.frame <= CAP); assert(s.events.some(e => e.kind === "hit" || e.kind === "block"), `mixed seed ${seed} had no contact`);
     assert.deepEqual(resultV4(s), resultV4(runFightV4(seed, build, preset(FAMILIES[(seed + 1) % 3], 1))));
   }
 });

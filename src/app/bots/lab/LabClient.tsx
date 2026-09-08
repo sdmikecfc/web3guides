@@ -1,8 +1,8 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { createFightV4, FAMILIES, preset, SLOTS, statsFor, stepFightV4, validBuild, WEAPONS, type BuildV4, type EventV4, type Family, type Module, type Slot, type StateV4 } from "./engine";
-import { FAMILY_LABEL, overallRows, partDescription, partName, partRows, SLOT_LABEL, type StatRow } from "./stats";
+import { createFightV4, FAMILIES, preset, SLOTS, stepFightV4, validBuild, WEAPONS, type BuildV4, type EventV4, type Family, type Module, type Slot, type StateV4 } from "./engine";
+import { FAMILY_LABEL, FAMILY_DESCRIPTION, FAMILY_SHORT, overallRows, partDescription, partName, partRows, SLOT_LABEL, type StatRow } from "./stats";
 import { labAudio } from "./audio";
 import type { LabScene } from "./scene";
 import PartInspection from "./PartInspection";
@@ -40,7 +40,9 @@ export default function LabClient() {
   const [sceneReady, setSceneReady] = useState(0), [retry, setRetry] = useState(0);
   const canvas = useRef<HTMLCanvasElement>(null), scene = useRef<LabScene | null>(null), audio = useRef<ReturnType<typeof labAudio> | null>(null);
   const state = useRef<StateV4 | null>(null), running = useRef(false), slowUntil = useRef(0), buildGeneration = useRef(0);
+  const [inspectingDamage, setInspectingDamage] = useState(false);
   const display = pending ?? build, enemy = useMemo(() => preset(opponent, 1), [opponent]);
+  const example = FAMILIES.find(family => { const p = preset(family); return p.weapon === display.weapon && SLOTS.every(s => p.parts[s].family === display.parts[s].family && p.parts[s].design === display.parts[s].design); });
   const controls = useRef({ view, camera, reduced }); controls.current = { view, camera, reduced };
   const selectionKey = JSON.stringify([display, enemy]);
   const seed = Number(seedText), validSeed = /^\d+$/.test(seedText) && Number.isInteger(seed) && seed >= 0 && seed <= 0xffffffff;
@@ -52,14 +54,14 @@ export default function LabClient() {
   useEffect(() => { if (hydrated) try { localStorage.setItem(STORAGE, JSON.stringify({ build, opponent, camera })); } catch {} }, [build, opponent, camera, hydrated]);
   useEffect(() => {
     if (!canvas.current) return;
-    let gone = false, raf = 0, last = 0, accumulator = 0, renderCount = 0, metricsTime = 0, lastReadout = 0;
+    let gone = false, raf = 0, last = 0, accumulator = 0, renderCount = 0, metricsTime = 0, lastReadout = 0, readoutFrame = -1;
     const voice = labAudio(); audio.current = voice;
     const observer = new ResizeObserver(entries => { const rect = entries[0].contentRect; scene.current?.resize(rect.width, rect.height); }); observer.observe(canvas.current);
     const visibility = () => { last = 0; accumulator = 0; if (document.hidden) voice.stop(); }; document.addEventListener("visibilitychange", visibility);
     void import("./scene").then(async ({ createLabScene }) => {
       const stage = await createLabScene(canvas.current!, e => {
         voice.event(e); const message = describe(e); if (message) setFeed(old => [message, ...old].slice(0, 4));
-        if ((e.kind === "hit" && e.weapon === "hammer" || e.kind === "knockdown") && !controls.current.reduced) slowUntil.current = performance.now() + 160;
+        if (e.kind === "knockdown" && controls.current.camera === "cinematic" && !controls.current.reduced) slowUntil.current = performance.now() + 80;
       });
       if (gone) { stage.dispose(); return; }
       scene.current = stage; const rect = canvas.current!.getBoundingClientRect(); stage.resize(rect.width, rect.height); setSceneReady(v => v + 1);
@@ -75,7 +77,7 @@ export default function LabClient() {
         if (s) stage.render(s, now / 1000, controls.current.view === "build", controls.current.camera === "cinematic", controls.current.reduced);
         renderCount++;
         if (now - metricsTime > 1200) { const fps = metricsTime ? Math.round(renderCount * 1000 / (now - metricsTime)) : 0; setPerformanceData({ ...stage.metrics(), fps }); renderCount = 0; metricsTime = now; }
-        if (s && now - lastReadout > 120) { setReadout({ ...s, fighters: s.fighters.map(f => ({ ...f, armour: [...f.armour] })) as StateV4["fighters"] }); lastReadout = now; }
+        if (s && controls.current.view === "fight" && s.frame !== readoutFrame && now - lastReadout > 160) { setReadout({ ...s, fighters: s.fighters.map(f => ({ ...f, armour: [...f.armour] })) as StateV4["fighters"] }); lastReadout = now; readoutFrame = s.frame; }
       }
       raf = requestAnimationFrame(animate);
     }).catch(e => { if (!gone) setError(e instanceof Error ? e.message : "The 3D workshop could not load."); });
@@ -84,16 +86,16 @@ export default function LabClient() {
   useEffect(() => {
     if (!scene.current || !hydrated) return;
     const generation = ++buildGeneration.current, stage = scene.current;
-    running.current = false; setPlaying(false); setReady(false); setError(""); setFeed([]);
+    running.current = false; setPlaying(false); setReady(false); setError(""); setFeed([]); setInspectingDamage(false);
     const [a, b] = JSON.parse(selectionKey) as [BuildV4, BuildV4]; state.current = createFightV4(2048, a, b);
     void stage.builds(a, b).then(() => { if (generation === buildGeneration.current) { setReady(true); setReadout(state.current); } }).catch(e => { if (generation === buildGeneration.current) setError(e instanceof Error ? e.message : "A clay part could not load. Try again."); });
   }, [selectionKey, sceneReady, hydrated]);
   const start = useCallback(() => {
     if (!scene.current || !ready || !validSeed || pending) return;
-    audio.current?.stop(); audio.current?.enable(sound); scene.current.reset(); setFeed([]); setNotice("");
+    audio.current?.stop(); audio.current?.enable(sound); scene.current.reset(); setFeed([]); setNotice(""); setInspectingDamage(false);
     state.current = createFightV4(seed, build, enemy); setView("fight"); setPlaying(true); running.current = true; setReadout(state.current);
   }, [ready, validSeed, seed, pending, build, enemy, sound]);
-  function edit() { running.current = false; setPlaying(false); setView("build"); audio.current?.stop(); scene.current?.reset(); state.current = createFightV4(validSeed ? seed : 2048, display, enemy); setFeed([]); }
+  function edit() { setInspectingDamage(false); running.current = false; setPlaying(false); setView("build"); audio.current?.stop(); scene.current?.reset(); state.current = createFightV4(validSeed ? seed : 2048, display, enemy); setFeed([]); }
   function chooseModule(module: Module) { if (slot === "weapon") return; setPending({ ...build, parts: { ...build.parts, [slot]: module } }); setNotice(""); }
   const items = slot === "weapon" ? WEAPONS.map(weapon => ({ ...build, weapon })) : FAMILIES.flatMap(family => ([0, 1] as const).map(design => ({ ...build, parts: { ...build.parts, [slot]: { family, design } } })));
   const totalRows = overallRows(display), selectedRows = partRows(display, slot);
@@ -104,16 +106,16 @@ export default function LabClient() {
     <div className={css.workspace}>
       <aside className={css.overview} aria-label="Overall robot stats">
         <div className={css.panelHeading}><span className={css.eyebrow}>YOUR MACHINE</span><h2>{pending ? "Try it on." : "Make it yours."}</h2></div>
-        <div className={css.presets} aria-label="Example builds">{FAMILIES.map(family => <button key={family} disabled={view === "fight"} onClick={() => { setBuild(preset(family)); setPending(null); setNotice(""); }}><i style={{ background: { brute: "#bb7056", hotshot: "#689e96", deadeye: "#8998b1" }[family] }} />{FAMILY_LABEL[family]}</button>)}</div>
-        <div className={css.sectionLabel}>OVERALL STATS{pending && <span>With preview part</span>}</div>
+        <div className={css.presets} aria-label="Example builds">{FAMILIES.map(family => <button key={family} disabled={view === "fight"} aria-pressed={example === family} onClick={() => { setBuild(preset(family)); setPending(null); setNotice(""); }}><i style={{ background: { brute: "#bb7056", hotshot: "#689e96", deadeye: "#8998b1" }[family] }} />{FAMILY_LABEL[family]}</button>)}</div>
+        <p className={css.exampleDescription}>{example ? FAMILY_DESCRIPTION[example] : "Mixed build. Every fitted part contributes its own strengths."}<span>Starting examples, not fixed classes. Mix any parts.</span></p><div className={css.sectionLabel}>OVERALL STATS{pending && <span>With preview part</span>}</div>
         <StatList rows={totalRows} before={pending ? overallRows(build) : undefined} />
         <p className={css.hint}>These are the actual starting combat values. Part loss and control effects change them during a fight.</p>
         <div className={css.sectionLabel}>FITTED PARTS</div>
-        <div className={css.fitted}>{[...SLOTS, "weapon" as const].map(s => <button key={s} disabled={view === "fight"} aria-pressed={slot === s} onClick={() => { setSlot(s); setPending(null); }}><span>{SLOT_LABEL[s]}</span><strong>{s === "weapon" ? { hammer: "Hammer", baton: "Baton", rifle: "Rifle" }[build.weapon] : `${FAMILY_LABEL[build.parts[s].family]} ${build.parts[s].design + 1}`}</strong></button>)}</div>
+        <div className={css.fitted}>{[...SLOTS, "weapon" as const].map(s => <button key={s} disabled={view === "fight"} aria-pressed={slot === s} onClick={() => { setSlot(s); setPending(null); }}><span>{SLOT_LABEL[s]}</span><strong>{s === "weapon" ? { hammer: "Hammer", baton: "Baton", rifle: "Rifle" }[build.weapon] : `${FAMILY_SHORT[build.parts[s].family]} ${build.parts[s].design + 1}`}</strong></button>)}</div>
       </aside>
       <section className={css.arenaSection} aria-label="Robot preview and combat arena">
         <div className={css.stage}>
-          <div className={css.stageTop}><span className={css.stageTag}>{view === "build" ? pending ? "TRYING IT ON" : "YOUR WORKSHOP" : "PRACTICE FIGHT"}</span><span>{view === "fight" ? `${((readout?.frame ?? 0) / 60).toFixed(1)}s` : "CLAY ARMOUR · BRASS BONES"}</span></div>
+          <div className={css.stageTop}><span className={css.stageTag}>{view === "build" ? pending ? "TRYING IT ON" : inspectingDamage ? "DAMAGE CLOSE-UP" : "YOUR WORKSHOP" : "PRACTICE FIGHT"}</span><span>{view === "fight" ? `${((readout?.frame ?? 0) / 60).toFixed(1)}s` : "CLAY ARMOUR · BRASS BONES"}</span></div>
           <canvas ref={canvas} className={css.canvas} aria-label="3D clay robot preview and deterministic practice combat" />
           {!ready && !error && <div className={css.overlay}><span className={css.spinner} />Assembling the clay machines…</div>}
           {error && <div className={css.overlay} role="alert"><p>{error}</p><button onClick={() => { setError(""); setRetry(v => v + 1); }}>Reload workshop</button></div>}
@@ -122,14 +124,14 @@ export default function LabClient() {
           {view === "fight" && readout?.done && <div className={css.result}><span>PRACTICE COMPLETE</span><h2>{readout.winner === 0 ? "Your machine takes it." : "A lesson in the dents."}</h2><p>{labels[readout.winner ?? 0]} wins. Try another combination.</p></div>}
           <div className={css.stageBottom}><span>{pending ? "Preview attached. Fit it to keep the change." : view === "build" ? "Every piece can come from a different family." : feed[0] || "The machines are finding their range."}</span><span>{performanceData.dents} dents</span></div>
         </div>
+        <section className={css.clayProof} aria-label="Clay damage test"><h3>Test the armour</h3><p>Hit the clay to inspect its damage up close. Resets before a fight.</p><div>{(["hammer", "projectile", "blade"] as const).map(kind => <button key={kind} disabled={!ready || view === "fight"} onClick={() => { const n = scene.current?.damage(kind) ?? 0; setInspectingDamage(true); setNotice(`${n} clay ${n === 1 ? "dent" : "dents"}. Watch the light move across the surface.`); }}>{kind === "hammer" ? "Hammer dent" : kind === "projectile" ? "Projectile crater" : "Blade groove"}</button>)}<button disabled={view === "fight"} onClick={() => { scene.current?.reset(); setInspectingDamage(false); setNotice("Clay restored."); }}>Restore clay</button></div></section>
+        {inspectingDamage && view === "build" && <button className={css.damageBack} onClick={() => { scene.current?.inspectDamage(false); setInspectingDamage(false); }}>← Whole robot</button>}{notice && <p className={css.notice} role="status">{notice}</p>}
         <div className={css.controlBar}>
           <div><label>Rival<select value={opponent} disabled={view === "fight"} onChange={e => setOpponent(e.target.value as Family)}>{FAMILIES.map(f => <option key={f} value={f}>{FAMILY_LABEL[f]}</option>)}</select></label><label>Fight seed<input aria-label="Fight seed" inputMode="numeric" value={seedText} onChange={e => setSeedText(e.target.value)} aria-invalid={!validSeed} /></label></div>
           {view === "build" ? <button className={css.primary} disabled={!ready || !!pending || !validSeed} onClick={start}>Watch a fight <span>↗</span></button> : <div className={css.playback}><button onClick={edit}>Edit build</button>{readout?.done ? <button className={css.primary} onClick={start}>Replay fight ↻</button> : <button className={css.primary} onClick={() => { running.current = !running.current; setPlaying(running.current); if (!running.current) audio.current?.stop(); }}>{playing ? "Pause" : "Resume"}</button>}</div>}
         </div>
         {!validSeed && <p className={css.validation}>Use a whole seed number from 0 to 4294967295.</p>}
         <div className={css.utility}><label>Camera<select aria-label="Camera mode" value={camera} disabled={reduced} onChange={e => setCamera(e.target.value as Camera)}><option value="cinematic">Cinematic</option><option value="steady">Steady</option></select></label><button aria-pressed={sound} onClick={() => { setSound(v => !v); audio.current?.enable(!sound); }}>Sound {sound ? "on" : "off"}</button><span>{reduced ? "Reduced motion respected" : "Same build + same seed = same fight"}</span></div>
-        <details className={css.clayProof}><summary>Feel the clay <span>Test a dent, then watch the camera move.</span></summary><p>These demonstration marks are cosmetic and reset before every fight.</p><div>{(["hammer", "projectile", "blade"] as const).map(kind => <button key={kind} disabled={!ready || view === "fight"} onClick={() => { const n = scene.current?.damage(kind) ?? 0; setNotice(`${n} clay ${n === 1 ? "dent" : "dents"}. Watch the light move across the surface.`); }}>{kind === "hammer" ? "Hammer dent" : kind === "projectile" ? "Projectile crater" : "Blade groove"}</button>)}<button disabled={view === "fight"} onClick={() => { scene.current?.reset(); setNotice("Clay restored."); }}>Restore clay</button></div></details>
-        {notice && <p className={css.notice} role="status">{notice}</p>}
         {view === "fight" && <ol className={css.feed} aria-label="Recent combat events">{feed.map((line, i) => <li key={`${line}-${i}`}>{line}</li>)}</ol>}
       </section>
       <aside className={css.inspector} aria-label="Selected part stats and comparison">

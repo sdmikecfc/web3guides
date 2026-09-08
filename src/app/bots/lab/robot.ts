@@ -1,13 +1,18 @@
 import * as THREE from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { SLOTS, type BuildV4, type Slot, type EventV4, type Fighter, type StateV4, type Side, type Point } from "./engine";
+import { COMBAT_RENDER_SCALE, RIFLE, SLOTS, type BuildV4, type Slot, type EventV4, type Fighter, type StateV4, type Side, type Point } from "./engine";
 
-export const COLOURS = { brute: 0xbb7056, hotshot: 0x689e96, deadeye: 0x65728b };
+export const COLOURS = { brute: 0xe0be72, hotshot: 0x87b2a3, deadeye: 0x343943 };
+const TOY_PALETTE = {
+  brute: { head: 0xe8cc7f, torso: 0xd58b73, arm: 0xe9ddbf, leg: 0x94afc0 },
+  hotshot: { head: 0x8cb7a5, torso: 0xd9cba9, arm: 0xe9ddbf, leg: 0x8cb7a5 },
+  deadeye: { head: 0x343943, torso: 0x343943, arm: 0xe9ddbf, leg: 0xada1c0 },
+};
 const files = new Map<string, Promise<GLTF>>();
 const loader = new GLTFLoader();
 export function loadModule(name: string): Promise<GLTF> {
   let p = files.get(name);
-  if (!p) { p = loader.loadAsync(`/bots-art/3d/clay-lab/${name}.glb`); files.set(name, p); p.catch(() => files.delete(name)); }
+  if (!p) { p = loader.loadAsync(`/bots-art/3d/toy-lab/${name}.glb`); files.set(name, p); p.catch(() => files.delete(name)); }
   return p;
 }
 export interface Dent { point: THREE.Vector3; normal: THREE.Vector3; radius: number; depth: number; kind: "hammer" | "projectile" | "blade" }
@@ -25,7 +30,9 @@ export function dentGeometry(geometry: THREE.BufferGeometry, dent: Dent, origina
     const u = distance / dent.radius; if (u > 1.25) continue;
     const crater = Math.pow(Math.max(0, 1 - u * u), 2);
     const rim = Math.exp(-Math.pow((u - .91) * 6.5, 2)) * .26;
-    const depth = dent.depth * (crater - rim) * Math.max(0, 1 - Math.abs(along) / dent.radius);
+    // Move the front skin and its supporting surface together: a thin door
+    // must not disappear into an undeformed shell and hide the crater.
+    const depth = dent.depth * (crater - rim);
     if (Math.abs(depth) < .00001) continue;
     const x = pos.getX(i) - dent.normal.x * depth, y = pos.getY(i) - dent.normal.y * depth, z = pos.getZ(i) - dent.normal.z * depth;
     const ox = original[i * 3], oy = original[i * 3 + 1], oz = original[i * 3 + 2];
@@ -59,7 +66,7 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
   const bones: Record<string, THREE.Group> = {};
   function bone(name: string, parent: THREE.Object3D, x: number, y: number, z = 0) { const b = new THREE.Group(); b.name = name; b.position.set(x, y, z); bones[name] = b; parent.add(b); return b; }
   const torso = bone("torso", rig, 0, 1), width = build.parts.torso.family === "brute" ? .87 : .71;
-  bone("head", torso, 0, 1.27).scale.setScalar(1.18);
+  bone("head", torso, 0, 1.19);
   for (const side of ["L", "R"]) {
     const sign = side === "L" ? 1 : -1; // Robot's left is stage-right when facing the camera.
     const arm = bone("arm" + side, torso, sign * width, .97);
@@ -86,13 +93,17 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
       const transform = mesh.matrixWorld.clone(); parent.add(mesh); transform.decompose(mesh.position, mesh.quaternion, mesh.scale);
       const originalMat = mesh.material as THREE.MeshStandardMaterial, mat = originalMat.clone();
       const clay = mesh.userData.clay === true;
+      if (clay || mesh.userData.paint) {
+        const part = slot === "weapon" ? "armR" : slot, palette = TOY_PALETTE[build.parts[part].family];
+        mat.color.setHex(palette[part.startsWith("arm") ? "arm" : part.startsWith("leg") ? "leg" : part as "head" | "torso"]);
+      }
       if (clay) {
-        mat.color.setHex(COLOURS[build.parts[slot === "weapon" ? "armR" : slot].family]);
-        mat.roughness = .82; mat.metalness = 0; mat.normalMap = texture; mat.normalScale.set(.18, .18);
+        mat.roughness = .61; mat.metalness = 0; mat.normalMap = texture; mat.normalScale.set(.12, .12);
         mesh.geometry = mesh.geometry.clone(); geometries.add(mesh.geometry);
         const p = mesh.geometry.getAttribute("position"), uv = new Float32Array(p.count * 2);
         for (let i = 0; i < p.count; i++) { uv[i * 2] = p.getX(i) * 1.1; uv[i * 2 + 1] = p.getY(i) * 1.1; }
         mesh.geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+        const colour = new Float32Array(p.count * 3).fill(1); mesh.geometry.setAttribute("color", new THREE.BufferAttribute(colour, 3)); mat.vertexColors = true;
         originals.set(mesh, new Float32Array(p.array));
       }
       mat.envMapIntensity = clay ? .4 : .8; materials.add(mat); mesh.material = mat;
@@ -105,6 +116,8 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
   // Collision proxies stay in the slot's bind pose. Render cadence and animated
   // elbows cannot change which clay vertices receive a recorded replay impact.
   root.updateMatrixWorld(true);
+  const feetBounds = new THREE.Box3(); [...meshes.legL, ...meshes.legR].forEach(m => feetBounds.expandByObject(m));
+  const groundedY = -feetBounds.min.y + .006;
   const proxies = new Map<THREE.Mesh, THREE.Mesh>();
   for (const slot of SLOTS) for (const mesh of meshes[slot]) if (originals.has(mesh)) {
     const proxy = new THREE.Mesh(mesh.geometry, mesh.material);
@@ -120,30 +133,36 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
     reset() {
       detached.forEach(d => d.group.removeFromParent()); detached.length = 0;
       homes.forEach((home, mesh) => { home.parent.add(mesh); home.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale); mesh.visible = true; });
-      originals.forEach((original, mesh) => { const attr = mesh.geometry.getAttribute("position") as THREE.BufferAttribute; attr.array.set(original); attr.needsUpdate = true; mesh.geometry.computeVertexNormals(); mesh.geometry.computeBoundingBox(); mesh.geometry.computeBoundingSphere(); });
+      originals.forEach((original, mesh) => { const attr = mesh.geometry.getAttribute("position") as THREE.BufferAttribute; attr.array.set(original); attr.needsUpdate = true; const colour = mesh.geometry.getAttribute("color") as THREE.BufferAttribute; colour.array.fill(1); colour.needsUpdate = true; mesh.geometry.computeVertexNormals(); mesh.geometry.computeBoundingBox(); mesh.geometry.computeBoundingSphere(); });
       robot.dents = 0;
     },
     tip() { root.updateMatrixWorld(true); return bones.weapon.localToWorld(tipLocal.clone()); },
     pose(f, state, side, time, showroom = false) {
-      const frame = Math.floor(state.frame / 5) * 5, other = state.fighters[1 - side];
+      const frame = state.frame, other = state.fighters[1 - side];
       rest.forEach(({ b, p }) => { b.position.copy(p); b.rotation.set(0, 0, 0); b.scale.setScalar(1); });
       motion.rotation.set(0, 0, 0); motion.position.y = 1.2;
-      root.position.set(f.x / 1000, .045, f.z / 1000); root.rotation.y = f.yaw / 1000;
+      const size = showroom ? 1 : COMBAT_RENDER_SCALE;
+      root.scale.setScalar(size); root.position.set(f.x / 1000 * size, groundedY * size, f.z / 1000 * size); root.rotation.y = f.yaw / 1000;
       const tick = showroom ? Math.floor(time * 12) / 12 : frame / 60;
       bones.head.rotation.y = Math.sin(tick * 1.8 + side) * .035;
       bones.torso.position.y += Math.sin(tick * 3) * .012;
       bones.armL.rotation.z = -.10; bones.armR.rotation.z = .10;
       bones.armL.rotation.x = -.17; bones.elbowL.rotation.x = .05;
       bones.armR.rotation.x = -.12; bones.elbowR.rotation.x = -.12;
-      const distance = Math.hypot(f.x - other.x, f.z - other.z), moving = !showroom && !f.action && !controlledPose(f, state.frame) && distance > (build.weapon === "rifle" ? 3700 : 1600);
+      const distance = Math.hypot(f.x - other.x, f.z - other.z);
+      const moving = !showroom && !controlledPose(f, state.frame) && Math.hypot(f.moveX, f.moveZ) > 2;
       if (moving) for (const [i, leg] of [[0, "L"], [1, "R"]] as const) {
         const step = Math.sin(tick * (build.parts[("leg" + leg) as Slot].family === "brute" ? 8 : 13) + i * Math.PI);
         bones["leg" + leg].rotation.x = step * .25; bones["knee" + leg].rotation.x = Math.max(0, -step) * .42;
         bones["arm" + leg].rotation.x -= step * .18;
       }
       if (build.weapon === "rifle" && f.armour[3] > 0) {
-        bones.armR.rotation.x = -1.1; bones.elbowR.rotation.x = -.35; bones.handR.rotation.x = 1.45;
-        bones.armL.rotation.x = -.83; bones.elbowL.rotation.x = -.5; bones.armL.rotation.z = -.4;
+        // Bend the elbows back towards the body. The old outstretched pose
+        // added almost a metre ahead of an already long barrel.
+        const tucked = showroom ? 0 : THREE.MathUtils.smoothstep(RIFLE.minimumRange - distance, 0, 650);
+        bones.armR.rotation.x = -1.1 + tucked * .65; bones.elbowR.rotation.x = 1.5 - tucked * .8; bones.handR.rotation.x = -.4 - tucked * 1.45;
+        bones.armL.rotation.x = -.85 + tucked * .45; bones.elbowL.rotation.x = .8 - tucked * .45; bones.armL.rotation.z = -.35;
+        bones.weapon.rotation.y = tucked * -.15;
       }
       const action = f.action;
       if (action && !controlledPose(f, state.frame)) {
@@ -194,7 +213,7 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
       if (f.armour[4] === 0 || f.armour[5] === 0) { motion.position.y -= .2; motion.rotation.z += f.armour[4] === 0 ? -.13 : .13; }
       if (f.armour[4] === 0 && f.armour[5] === 0) motion.position.y -= .46;
       if (state.done && state.winner !== side) { motion.rotation.x = -1.50; motion.position.y = .49; }
-      if (showroom) { root.position.set(side === 0 ? -1.6 : 1.6, .045, 0); root.rotation.y = side === 0 ? .35 : -.35; }
+      if (showroom) { root.position.set(side === 0 ? -1.6 : 1.6, groundedY, 0); root.rotation.y = side === 0 ? .35 : -.35; }
       root.updateMatrixWorld(true);
     },
     impact(event) {
@@ -216,9 +235,24 @@ export async function createClayRobot(build: BuildV4): Promise<ClayRobot> {
       const hit = intersects[0]; if (!hit) return worldPoint;
       const proxy = hit.object as THREE.Mesh, mesh = proxy.userData.sourceMesh as THREE.Mesh, original = originals.get(mesh)!;
       const localPoint = proxy.worldToLocal(hit.point.clone());
-      const normal = hit.face ? hit.face.normal.clone() : n.clone().transformDirection(proxy.matrixWorld.clone().invert());
+      const normal = n.clone().transformDirection(proxy.matrixWorld.clone().invert());
       const kind = event.weapon === "rifle" ? "projectile" : event.weapon === "baton" ? "blade" : "hammer";
-      const count = dentGeometry(mesh.geometry, { point: localPoint, normal, radius: kind === "hammer" ? .32 : kind === "projectile" ? .15 : .24, depth: kind === "hammer" ? .13 : kind === "projectile" ? .09 : .065, kind }, original);
+      const radius = kind === "hammer" ? .44 : kind === "projectile" ? .23 : .35;
+      const count = dentGeometry(mesh.geometry, { point: localPoint, normal, radius, depth: kind === "hammer" ? .19 : kind === "projectile" ? .15 : .13, kind }, original);
+      // Subtle cavity darkening complements real displaced geometry at fight
+      // distance. It belongs to this mesh and resets with the vertices.
+      if (count) {
+        const pos = mesh.geometry.getAttribute("position"), colour = mesh.geometry.getAttribute("color") as THREE.BufferAttribute, delta = new THREE.Vector3();
+        const tangent = new THREE.Vector3(0, 1, 0).cross(normal).normalize(), bitangent = new THREE.Vector3().crossVectors(normal, tangent);
+        for (let i = 0; i < pos.count; i++) {
+          delta.set(original[i * 3], original[i * 3 + 1], original[i * 3 + 2]).sub(localPoint);
+          if (Math.abs(delta.dot(normal)) > radius * .78) continue;
+          const u = (kind === "blade" ? Math.hypot(delta.dot(tangent) * .42, delta.dot(bitangent) * 2.5) : Math.hypot(delta.dot(tangent), delta.dot(bitangent))) / radius;
+          const shade = 1 - .38 * Math.pow(Math.max(0, 1 - u * u), 2);
+          const value = Math.min(colour.getX(i), shade); colour.setXYZ(i, value, value, value);
+        }
+        colour.needsUpdate = true;
+      }
       if (count) robot.dents++; return mesh.localToWorld(localPoint);
     },
     detach(slot, scene, frame) {
