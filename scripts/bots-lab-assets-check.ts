@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { createClayRobot, dentGeometry } from "../src/app/bots/lab/robot";
-import { COMBAT_RENDER_SCALE, createFightV4, preset, runFightV4, SLOTS, type EventV4 } from "../src/app/bots/lab/engine";
+import { COMBAT_RENDER_SCALE, createFightV4, preset, runFightV4, stepFightV4, SLOTS, type EventV4, type BuildV4, type Side } from "../src/app/bots/lab/engine";
 const folder = "public/bots-art/3d/toy-lab/";
 const digest = (a: ArrayBufferView) => createHash("sha256").update(Buffer.from(a.buffer, a.byteOffset, a.byteLength)).digest("hex");
 const parse = new GLTFLoader(), originalLoad = GLTFLoader.prototype.loadAsync;
@@ -67,6 +67,68 @@ async function main() {
   const attr = geo.getAttribute("position"); for (let i = 0; i < attr.count; i++) assert(Math.hypot(attr.getX(i) - rest[i * 3], attr.getY(i) - rest[i * 3 + 1], attr.getZ(i) - rest[i * 3 + 2]) <= .190001);
   a.dispose(); other.dispose(); assert.equal(scene.children.length, 0);
   console.log("PASS geometry dents and heat scorch, protected hardware, isolation, detachment, deterministic damage reconstruction, reset, deformation limits and disposal");
+  // Replay actual fixed-step fights with the same event batching as scene.render.
+  // Equality alone could pass if neither replay ever changed a vertex.
+  const scenarios: BuildV4[] = [preset("brute"), preset("hotshot"), preset("deadeye"), { ...preset("brute"), weapon: "flamethrower" }];
+  for (const build of scenarios) {
+    const opponent = preset("hotshot", 1), robots = await Promise.all([createClayRobot(build), createClayRobot(opponent)]);
+    const arena = new THREE.Scene(); robots.forEach(robot => arena.add(robot.root));
+    const clean = robots.map(positions);
+    const replayActual = (cadence: number) => {
+      robots.forEach(robot => robot.reset());
+      const fight = createFightV4(2048, build, opponent);
+      let seen = 0;
+      const tally: Record<string, { hits: number; dents: number; vertices: number; scorches: number }> = {};
+      const failed: { frame: number; who: Side; target: Side; slot: string; weapon: string; point: EventV4["point"]; normal: EventV4["normal"] }[] = [];
+      while (!fight.done) {
+        stepFightV4(fight);
+        if (fight.frame % cadence !== 0 && !fight.done) continue;
+        robots.forEach((robot, side) => robot.pose(fight.fighters[side], fight, side as Side, fight.frame / 60));
+        for (const event of fight.events.slice(seen)) {
+          if ((event.kind === "hit" || event.kind === "block") && event.slot) {
+            const target = robots[event.target], clay = target.meshes[event.slot].filter(mesh => mesh.userData.clay);
+            const before = clay.map(mesh => new Float32Array(mesh.geometry.getAttribute("position").array));
+            const beforeColours = clay.map(mesh => digest(mesh.geometry.getAttribute("color").array)), beforeCount = target.dents;
+            const key = `${event.weapon}/${event.slot}`, row = tally[key] ??= { hits: 0, dents: 0, vertices: 0, scorches: 0 };
+            row.hits++; target.impact(event);
+            let changed = 0;
+            clay.forEach((mesh, index) => {
+              const p = mesh.geometry.getAttribute("position"), original = before[index];
+              for (let i = 0; i < p.count; i++) if (Math.hypot(p.getX(i) - original[i * 3], p.getY(i) - original[i * 3 + 1], p.getZ(i) - original[i * 3 + 2]) > 1e-7) changed++;
+            });
+            if (event.weapon === "flamethrower") {
+              assert.equal(changed, 0, "Real flame hits must scorch without geometry dents");
+              assert.equal(target.dents, beforeCount, "Heat cannot inflate the dent counter");
+              if (clay.some((mesh, i) => digest(mesh.geometry.getAttribute("color").array) !== beforeColours[i])) row.scorches++;
+            } else {
+              if (changed > 0) row.dents++;
+              else failed.push({ frame: event.frame, who: event.who, target: event.target, slot: event.slot, weapon: event.weapon ?? "unknown", point: event.point, normal: event.normal });
+              row.vertices += changed;
+              assert.equal(target.dents - beforeCount, changed > 0 ? 1 : 0, "The dent counter must reflect actual vertex movement");
+            }
+          }
+          if (event.kind === "break" && event.slot) robots[event.who].detach(event.slot, arena, fight.frame);
+        }
+        seen = fight.events.length; robots.forEach(robot => robot.debris(fight.frame));
+      }
+      return { tally, failed, positions: robots.map(positions), colours: robots.map(colours), events: fight.events, frames: fight.frame };
+    };
+    const fine = replayActual(1), coarse = replayActual(4);
+    console.log(`ACTUAL ${build.weapon} seed 2048 (${fine.frames} frames): ${JSON.stringify(fine.tally)}`);
+    assert.deepEqual(coarse.events, fine.events, "Presentation cadence cannot change the real fight events");
+    assert.deepEqual(coarse.positions, fine.positions, "Real combat geometry reconstructs at 60 Hz and 15 Hz render cadence");
+    assert.deepEqual(coarse.colours, fine.colours, "Real combat surface damage reconstructs at both cadences");
+    assert.deepEqual(coarse.tally, fine.tally, "Every real impact reaches the same vertices at coarse cadence");
+    assert.notDeepEqual(fine.positions, clean, `${build.weapon} fight must actually dent armour`);
+    assert.deepEqual(fine.failed, [], `Real impacts did not deform their struck slots: ${JSON.stringify(fine.failed)}`);
+    const primary = Object.entries(fine.tally).filter(([key]) => key.startsWith(`${build.weapon}/`)).map(([, row]) => row);
+    assert(primary.reduce((sum, row) => sum + row.hits, 0) > 0, `The ${build.weapon} scenario must actually land that weapon`);
+    if (build.weapon === "flamethrower") assert(primary.some(row => row.scorches > 0), "Real flame contact leaves visible surface colour damage");
+    else assert(primary.some(row => row.dents > 0 && row.vertices > 0), `Real ${build.weapon} contacts must displace armour vertices`);
+    robots.forEach(robot => robot.reset()); assert.deepEqual(robots.map(positions), clean, "Reset removes actual combat damage");
+    robots.forEach(robot => robot.dispose()); assert.equal(arena.children.length, 0, "Real fight replays clean up detached parts");
+  }
+  console.log("PASS actual hammer, baton, rifle and flame fight impacts, per-slot vertex movement, coarse cadence reconstruction and reset");
   for (const f of ["brute", "hotshot", "deadeye"] as const) {
     const build = preset(f, 1); build.parts.armR = { family: "brute", design: 1 }; build.parts.legL = { family: "hotshot", design: 0 };
     const bot = await createClayRobot(build); bot.pose(createFightV4(1, build, b).fighters[0], state, 0, 0, true);
