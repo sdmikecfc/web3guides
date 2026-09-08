@@ -41,13 +41,16 @@ import {
 import { dropColor } from "@/lib/bots/shipment";
 import { SLOTS, botTier, isPaintId, partTier, type Build, type PaintId, type Part, type Slot, type Stats, type Tier } from "../_engine/parts";
 import { ATTACKS_PER_DAY, DEFENCES_PER_DAY, levelForXp, weightClassOf } from "../_engine/rewards";
-import { type BotsDb, nowIso } from "./db";
+import { type BotsDb, nowIso, refuse } from "./db";
 import type { BotName, BotView, PartView } from "./types";
 
 export interface BuildJson {
   parts?: Partial<Record<Slot, number | null>>;
   sockets?: EquipmentIds<number>;
   equipmentVersion?: 2;
+  /** A validated practice appearance was applied once to an unused starter. */
+  practiceImported?: boolean;
+  practiceHandoff?: { fingerprint: string; status: "pending" | "complete" };
   name?: BotName;
   decal?: DecalId | null;
   paint?: PaintId;
@@ -83,6 +86,7 @@ export interface BotRow {
   recycled_at: string | null;
   is_test: boolean;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface PartStatsJson {
@@ -117,7 +121,7 @@ export interface PartRow {
  * shorter list cast into the shape and hoping nothing downstream reads a
  * column it did not ask for. */
 export const BOT_COLS =
-  "id, wallet, slot, name, build, total, tier, weight_class, level, xp, wins, losses, broken_until, attacks_day_key, attacks_today, defenses_today, listed, recycled_at, is_test, created_at";
+  "id, wallet, slot, name, build, total, tier, weight_class, level, xp, wins, losses, broken_until, attacks_day_key, attacks_today, defenses_today, listed, recycled_at, is_test, created_at, updated_at";
 export const PART_COLS = "id, wallet, part_key, slot_kind, tier, stats, bot_id, source, list_price, recycled_at, is_test, created_at";
 
 export const BAY_MIN = 1;
@@ -293,6 +297,10 @@ export function isComplete(b: BotRow, parts: readonly PartRow[]): boolean {
   const ids=socketIdsOf(b);
   if (buildJsonOf(b).sockets && new Set(Object.values(ids).filter(id => id != null)).size !== EQUIPMENT_SOCKETS.length) return false;
   return EQUIPMENT_SOCKETS.every(s=>parts.some(p=>p.id===ids[s] && p.slot_kind===EQUIPMENT_KIND[s] && !p.recycled_at));
+}
+
+export function assertPracticeHandoffReady(bot: BotRow): void {
+  if (buildJsonOf(bot).practiceHandoff?.status === "pending") return refuse(409, "Your chosen robot is still being saved. Refresh this page to finish bringing it into your garage.");
 }
 
 /** The engine's Build from the OWNED rows: id, stats and the painted

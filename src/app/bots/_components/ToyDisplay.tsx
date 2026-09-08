@@ -46,7 +46,7 @@ export const ToyDisplay=forwardRef<ToyDisplayHandle,ToyDisplayProps>(function To
   const sceneKey=JSON.stringify({build,look,variant,partSocket,rotation});
   const requestedKey=useRef("");requestedKey.current=mode+"|"+sceneKey;
   const currentPicture=readyKey===requestedKey.current;
-  const backdrop=variant==="cutout"||variant==="workbench"?"transparent":variant==="workshop"?"#4d3826":variant==="dark"?"#302a26":"#ece3d3";
+  const backdrop=variant==="cutout"||variant==="workbench"||variant==="bay"?"transparent":variant==="workshop"?"#4d3826":variant==="dark"?"#302a26":"#ece3d3";
   const lightCopy=variant!=="cream";
   useImperativeHandle(ref,()=>({
     hitSocket(clientX,clientY,kind,radius){

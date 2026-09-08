@@ -20,9 +20,9 @@ const words = {
   inspect: "Pick a part to take a closer look.", special: "TODAY’S SPECIAL", selected: "ON THE COUNTER",
   buy: "Buy for", buying: "Adding to your parts…", owned: "In your collection",
   pair: "One arm or leg · fits either side", single: "One part · ready for your robot",
-  calendar: "Coming to the special shelf", receipt: "New parts, every morning.",
+  calendar: "This week's special parts", receipt: "New parts, every morning.",
   empty: "Nothing on this shelf matches yet.", clear: "Show all parts", close: "Back to the shelves",
-  unavailable: "Couldn’t add this part. Please try again.", loading: "Unpacking today’s shipment…",
+  unavailable: "Couldn’t add this part. Please try again.", loading: "Setting out today's parts…",
 };
 function brandOf(l: Listing): BrandId | null {
   return l.slot === "weapon" ? BRAND_OF_WEAPON[l.card.id] ?? null : l.card.family ? BRAND_OF_FAMILY[l.card.family] ?? null : null;
@@ -54,12 +54,13 @@ export default function CabinetShop({ shipment, st, day, initialSlot, leftMs, to
   const [slot, setSlot] = useState<CardSlot | null>(initialSlot);
   const [color, setColor] = useState<PaintId | null>(null);
   const [brand, setBrand] = useState<BrandId | null>(null);
+  const [sort, setSort] = useState("tier");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const filtered = (shipment?.listings ?? []).filter(l => (!slot || l.slot === slot) && (!color || l.color === color) && (!brand || brandOf(l) === brand));
-  const ordered = [...filtered].sort((a, b) => b.tier - a.tier);
+  const ordered = [...filtered].sort((a, b) => sort === "price-low" ? a.price - b.price : sort === "price-high" ? b.price - a.price : sort === "name" ? a.card.name.localeCompare(b.card.name) : b.tier - a.tier);
   const selected = ordered.find(l => l.id === selectedId) ?? ordered[0] ?? null;
   const rows: Listing[][] = [];
   for (let i = 0; i < ordered.length; i += 4) rows.push(ordered.slice(i, i + 4));
@@ -116,14 +117,6 @@ export default function CabinetShop({ shipment, st, day, initialSlot, leftMs, to
 
       <div className={css.shopLayout}>
         <section className={css.browse} aria-label={words.shelf}>
-          <div className={css.toolbar}>
-            <div className={css.tabs} role="group" aria-label="Part type"><button aria-pressed={slot == null} onClick={() => setSlot(null)}>All parts</button>{CARD_SLOTS.map(s => <button key={s} aria-pressed={slot === s} onClick={() => setSlot(s)}>{t.ui.card[s]}</button>)}</div>
-            <div className={css.filters}>
-              <label><span>Colour</span><select value={color ?? ""} onChange={e => setColor((e.target.value || null) as PaintId | null)}><option value="">All colours</option>{PALETTE.map(c => <option key={c} value={c}>{t.paintName[c]}</option>)}</select></label>
-              <label><span>Family</span><select value={brand ?? ""} onChange={e => setBrand((e.target.value || null) as BrandId | null)}><option value="">All families</option>{BRANDS.map(b => <option key={b} value={b}>{BRAND_INDEX[b].name}</option>)}</select></label>
-              <span className={css.resultCount} aria-live="polite">{ordered.length} / {shipment?.listings.length ?? 0} parts</span>
-            </div>
-          </div>
           <div className={css.cabinet}>
             <div className={css.cabinetCrown}><span className={css.screw} aria-hidden /><span>{t.shopUi.title}</span><span className={css.screw} aria-hidden /></div>
             <div className={css.shelfViewport} tabIndex={0} role="region" aria-label="Browse the parts shelves">
@@ -144,6 +137,16 @@ export default function CabinetShop({ shipment, st, day, initialSlot, leftMs, to
         </section>
         <aside className={css.counter} aria-label="Selected part">{inspection()}</aside>
       </div>
+
+          <div className={`${css.toolbar} ${css.underShop}`} role="group" aria-label="Sort and filter the shop">
+            <div className={css.tabs} role="group" aria-label="Part type"><button aria-pressed={slot == null} onClick={() => setSlot(null)}>All parts</button>{CARD_SLOTS.map(s => <button key={s} aria-pressed={slot === s} onClick={() => setSlot(s)}>{t.ui.card[s]}</button>)}</div>
+            <div className={css.filters}>
+              <label><span>Colour</span><select value={color ?? ""} onChange={e => setColor((e.target.value || null) as PaintId | null)}><option value="">All colours</option>{PALETTE.map(c => <option key={c} value={c}>{t.paintName[c]}</option>)}</select></label>
+              <label><span>Maker</span><select value={brand ?? ""} onChange={e => setBrand((e.target.value || null) as BrandId | null)}><option value="">All makers</option>{BRANDS.map(b => <option key={b} value={b}>{BRAND_INDEX[b].name}</option>)}</select></label>
+              <label><span>Sort</span><select value={sort} onChange={e => setSort(e.target.value)}><option value="tier">Most stars</option><option value="price-low">Lowest price</option><option value="price-high">Highest price</option><option value="name">Name A to Z</option></select></label>
+              <span className={css.resultCount} aria-live="polite">{ordered.length} / {shipment?.listings.length ?? 0} parts</span>
+            </div>
+          </div>
 
       <details className={css.calendar}><summary>{words.calendar}<span>Weekly delivery board</span></summary><div className={css.calendarContents}><p>{t.shopUi.comesBack}</p><div className={css.days}>{shipment ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((name, wd) => { const c = t4Calendar(shipment.t4.week, wd); return <div className={wd === shipment.t4.weekday ? css.today : ""} key={name}><span>{wd === shipment.t4.weekday ? t.shopUi.today : name}</span><strong>{t.ui.card[c.slot]}</strong><i style={{ background: c.color ? PAINTS[c.color] : "#bc9b63" }} /><small>★★★★</small></div>; }) : null}</div></div></details>
       <p className={css.footerNote}>{t.shopUi.keepsColor}</p>

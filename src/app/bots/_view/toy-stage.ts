@@ -9,7 +9,7 @@ import type { BotLook } from "./look";
 import { createCombatToy, type CombatToy } from "./combat-toy";
 import { ART_VERSION } from "./art-version";
 
-export type ToyStageVariant = "cream" | "dark" | "workshop" | "cutout" | "workbench";
+export type ToyStageVariant = "cream" | "dark" | "workshop" | "cutout" | "workbench" | "bay";
 export interface ToyStage {
   /** False means a newer request or disposal superseded this load. */
   setToy(build: Build, look: BotLook, selected?: Socket | null, rotation?: number, partSocket?: Socket, variant?: ToyStageVariant): Promise<boolean>;
@@ -173,7 +173,7 @@ export function createToyStage(canvas: HTMLCanvasElement, variant: ToyStageVaria
   };
   const fit=()=>{
     const aspect=width/height;
-    let vertical=isolated?4.25:activeVariant==="workshop"||activeVariant==="workbench"?6.1:5.6;
+    let vertical=isolated?4.25:activeVariant==="workshop"||activeVariant==="workbench"||activeVariant==="bay"?6.1:5.6;
     if(toy){
       visibleBounds(toy.root,isolatedSocket);
       const size=bounds.getSize(new THREE.Vector3());
@@ -185,7 +185,7 @@ export function createToyStage(canvas: HTMLCanvasElement, variant: ToyStageVaria
   };
   const setVariant=(next:ToyStageVariant)=>{
     activeVariant=next;
-    const dark=next==="dark",workshop=next==="workshop"||next==="workbench",cutout=next==="cutout"||next==="workbench";
+    const dark=next==="dark",workshop=next==="workshop"||next==="workbench"||next==="bay",cutout=next==="cutout"||next==="workbench"||next==="bay";
     const color=workshop?0x4d3826:dark?0x302a26:0xece3d3;
     scene.background=cutout?null:workshop&&workshopTexture?workshopTexture:new THREE.Color(color);
     scene.fog=cutout||workshop&&workshopTexture?null:new THREE.Fog(color,20,55);
@@ -196,6 +196,9 @@ export function createToyStage(canvas: HTMLCanvasElement, variant: ToyStageVaria
     contact.position.y=next==="cutout"?floor.position.y+.005:.004;
     floorMaterial.color.setHex(workshop?0x786049:dark?0x3b332c:0xebe1cf);
     plinth.geometry=workshop?timberPlinth:roundPlinth;trim.geometry=workshop?timberTrim:roundTrim;
+    // A collection bay has its own small stand. The full workbench remains
+    // unchanged, and shared photograph stages reset this scale on every swap.
+    plinth.scale.set(next==="bay"?.5:1,1,next==="bay"?.55:1);trim.scale.copy(plinth.scale);
     plinthMaterial.map=workshop?woodTexture:null;plinthMaterial.needsUpdate=true;
     plinthMaterial.color.setHex(workshop?0xe5cfb1:dark?0x635444:0xe7ddc9);
     plinthMaterial.roughness=workshop?.86:.7;plinthMaterial.metalness=workshop?0:.08;

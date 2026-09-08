@@ -25,7 +25,10 @@ import {
   BAY_MIN,
   DEFAULT_BOT_PAINT,
   botView,
+  buildJsonOf,
+  assertPracticeHandoffReady,
   earnedFor,
+  isComplete,
   loadBots,
   loadCrownBotIds,
   loadHats,
@@ -85,6 +88,7 @@ export async function POST(req: Request) {
     const bots = await loadBots(db, sess.wallet);
     const parts = await loadParts(db, sess.wallet);
     const existing = bots.find((b) => b.slot === bay) ?? null;
+    if (existing) assertPracticeHandoffReady(existing);
     if (!existing && bots.length >= BAY_MAX) return refuse(409, STRINGS.en.garage.full);
 
     // the build: owned instances of the right slot, not on another bot
@@ -130,6 +134,11 @@ export async function POST(req: Request) {
       Object.assign(ids,{head:sockets.head,torso:sockets.torso,arms:sockets.armL,legs:sockets.legL,weapon:sockets.weapon});
     }
     const complete = filled === (sockets ? EQUIPMENT_SOCKETS.length : SLOTS.length);
+    if (existing && isComplete(existing, parts)) {
+      const current = socketIdsOf(existing);
+      const next = sockets ?? { head: ids.head, torso: ids.torso, armL: ids.arms, armR: ids.arms, legL: ids.legs, legR: ids.legs, weapon: ids.weapon };
+      if (EQUIPMENT_SOCKETS.some(s => current[s] !== next[s])) return refuse(409, "A completed robot keeps its parts. Recycle it to free the stand, or build a new robot.");
+    }
     const onboarding = await loadOnboarding(db, sess.wallet);
     const protectedBot = !!onboarding && !onboarding.completed_at && !!existing &&
       (existing.id === onboarding.welcome_bot_id || existing.id === onboarding.draft_bot_id);
@@ -173,7 +182,7 @@ export async function POST(req: Request) {
       throw e;
     }
 
-    const build: BuildJson = { parts: ids, ...(sockets ? {sockets,equipmentVersion:2 as const} : {}), name, decal, paint, look };
+    const build: BuildJson = { parts: ids, ...(sockets ? {sockets,equipmentVersion:2 as const} : {}), ...(existing && buildJsonOf(existing).practiceImported ? { practiceImported: true, practiceHandoff: buildJsonOf(existing).practiceHandoff } : {}), name, decal, paint, look };
     const row = {
       wallet: sess.wallet,
       slot: bay,
@@ -189,8 +198,9 @@ export async function POST(req: Request) {
 
     let botId: number;
     if (existing) {
-      const { error } = await db.from("battle_bots_bots").update(row).eq("id", existing.id);
+      const { data, error } = await db.from("battle_bots_bots").update(row).eq("id", existing.id).eq("wallet", sess.wallet).eq("updated_at", existing.updated_at).select("id");
       if (error) throw new Error(`bot update: ${error.message}`);
+      if (!data?.length) return refuse(409, "Your robot changed in another window. Refresh your garage before saving.");
       botId = existing.id;
     } else {
       const { data, error } = await db.from("battle_bots_bots").insert(row).select("id").single();

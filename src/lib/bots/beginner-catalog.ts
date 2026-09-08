@@ -6,6 +6,7 @@ import type { PaintId, Slot } from "@/app/bots/_engine/parts";
 export const ONBOARDING_VERSION = 1 as const;
 export const BEGINNER_ALLOWANCE = 250;
 export const BEGINNER_ORDER = ["head", "torso", "armL", "armR", "legL", "legR", "weapon"] as const;
+export const WELCOME_PAINTS: Readonly<Record<Socket, PaintId | null>> = { head: "butter", torso: "mint", armL: "coral", armR: "coral", legL: "ink", legR: "ink", weapon: null };
 export const BEGINNER_PRICE: Readonly<Record<Socket, number>> = { head: 50, torso: 50, armL: 25, armR: 25, legL: 25, legR: 25, weapon: 50 };
 const label: Record<Slot, string> = { head: "Head", torso: "Body", arms: "Arm", legs: "Leg", weapon: "Weapon" };
 export interface BeginnerOffer {
@@ -28,4 +29,3 @@ export const beginnerOffer = (id: unknown) => typeof id === "string" ? BEGINNER_
 export const beginnerArtKey = (id: string | undefined): string | undefined => beginnerOffer(id)?.artKey;
 export const gameCard = (id: string): PartCard | undefined => BEGINNER_CARD_BY_ID[id] ?? CARD_BY_ID[id];
 export const isBeginnerSocket = (v: unknown): v is Socket => typeof v === "string" && (BEGINNER_ORDER as readonly string[]).includes(v);
-

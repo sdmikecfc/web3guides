@@ -168,6 +168,13 @@
 .scrim[data-room=cabinet]{--drawer-art:url('/bots-art/shop/cabinet-bay.png')}
 .drawerScene{flex:1;min-width:0;pointer-events:none;display:flex;align-items:flex-start;justify-content:center;padding:8vh 30px}
 .roomSign{font:800 clamp(24px,3.4vw,50px)/1.1 var(--font-bots-toy),system-ui;color:#fff0d3;text-align:center;text-shadow:0 3px 16px #1e160b,0 1px 3px #1e160b;background:#2d2011bd;border:1px solid #c6a27077;border-radius:5px;padding:18px 28px;box-shadow:0 8px 30px #0003}
+.scrim[data-wide=true]{padding:18px clamp(14px,3vw,45px);justify-content:center}
+.scrim[data-wide=true] .drawerScene{display:none}
+.scrim[data-wide=true] .drawer{width:min(1080px,100%);border:1px solid #a57d4d;border-radius:19px;overflow:hidden;background:#2a2118f5}
+.scrim[data-wide=true] .drawerHeader{min-height:88px;padding:20px 27px 16px;align-items:center;background:linear-gradient(90deg,#2b1d10e8,#3d2b17ce),var(--drawer-art) center 46%/cover}
+.scrim[data-wide=true] .drawerHeader .close{align-self:center}
+.scrim[data-wide=true] .drawerContent{padding:22px 25px 28px}
+@media(max-width:620px){.scrim[data-wide=true]{padding:0}.scrim[data-wide=true] .drawer{border:0;border-radius:0}.scrim[data-wide=true] .drawerHeader{min-height:76px;padding:16px}.scrim[data-wide=true] .drawerHeader h2{font-size:26px}.scrim[data-wide=true] .drawerContent{padding:14px 12px max(22px,env(safe-area-inset-bottom))}}
 .drawer{background:#2a2118f5;border-left:6px solid #7c5a36;box-shadow:-20px 0 60px #180f0866}
 .drawerHeader{background:linear-gradient(180deg,#1c140b25,#24190cef),var(--drawer-art) center 46%/cover;min-height:150px;align-items:flex-end;text-shadow:0 2px 8px #000}
 .drawerHeader .close{align-self:flex-start}

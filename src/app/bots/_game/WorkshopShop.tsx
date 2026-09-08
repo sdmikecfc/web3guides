@@ -21,9 +21,9 @@ export default function WorkshopShop({ me, spendable, introductory, onResume, on
     bought: { [day]: me?.shop.listings.filter(l => l.bought).map(l => l.id) ?? [] },
   }), [spendable, me?.player.level, me?.shop.listings, day]);
   const expired = !!me && !!now && day !== new Date(now).toISOString().slice(0, 10);
-  const browseOnly = expired ? { label: "Unpack the new shipment", message: "A new day has arrived. Refresh the shelf before buying.", onAction: onReload }
+  const browseOnly = expired ? { label: "Refresh today's parts", message: "A new day has arrived. Refresh the shelf before buying.", onAction: onReload }
     : introductory ? { label: "Continue my first build", message: "Your 250 starter coins are kept for the beginner parts. Come back here after your first practice.", onAction: onResume }
-    : !me ? { label: "How to earn more coins", message: "Look around the whole shop. Connect to buy parts with coins from verified trades.", onAction: onEarn } : undefined;
+    : !me ? { label: "How to earn more coins", message: "Look around the whole shop. Connect your wallet to buy parts with your coins.", onAction: onEarn } : undefined;
   return <CabinetShop embedded shipment={shipment} st={state} day={day} initialSlot={null}
     leftMs={now ? msToNextShipment(now) : null} tomorrow="" returns="" toast={null} onBuy={onBuy} browseOnly={browseOnly} />;
 }

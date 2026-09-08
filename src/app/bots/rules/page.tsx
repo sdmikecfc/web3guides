@@ -18,6 +18,19 @@ function PrizeTable({ title, weekly, final }: { title: string; weekly: number[];
 
 export default function RulesPage() {
   return <InfoPage eyebrow="The official competition" title="Two weeks in the ring." intro="Build a robot, put a Doma strategy to work, and compete for $2,000 across trading skill and robot battles." art="/bots-art/plates/arena-evening.png">
+    <h2>Your garage</h2>
+    <p>You can keep up to five robots. Choose a head, a body, two arms, two legs and a weapon for each robot. Once you finish a robot, its parts stay together. Its name, face and stickers can still change.</p>
+    <p>Recycle a robot to make room for a new one. This removes the robot and its parts. You get 40% of each part&apos;s shop value back, rounded down to whole coins. Free starter parts give no coins back. The game shows your exact refund before you choose to recycle.</p>
+
+    <h2 id="coins">How trading earns game coins</h2>
+    <p><strong>Each $1 that counts earns 1 coin.</strong> Completed Doma Strategy trades count after you join. Use the same wallet on Doma and in this game. Direct MCP trades are coming soon and do not earn coins here yet.</p>
+    <p>A positive trading return adds a bonus: twice your return percentage, up to 100% extra. For example, $100 of counted trades earns 100 coins. With a 10% return it earns 120 coins. With a 50% return it earns 200 coins. A loss gives no bonus and does not remove coins you already earned.</p>
+    <p>Your return is your trading profit as a percentage of the funds the game has recorded for you. The coin bonus includes profit from sold tokens and changes in the value of unsold tokens. The cash-prize score below only uses profit from sold tokens. Trade coins and bonus coins are each rounded to the nearest whole coin.</p>
+    <h3>Daily limits</h3>
+    <ul><li>A buy and sell of the same token within 10 minutes count once. Only the larger trade counts.</li><li>Limits use your wallet value recorded when you join, plus funds you add later. This amount is at least $50. Taking funds out does not lower it.</li><li>Each token can count up to 3 times that amount per day. All tokens together can count up to 4 times that amount per day.</li></ul>
+    <p>With a $100 starting amount, one token can count up to $300 a day. The total daily limit is $400. Each day starts at midnight UTC. The game values tokens using average prices.</p>
+    <p>Base coins usually arrive within 10 minutes after a trade is found. The profit bonus is added by the daily update. You can see your totals and battle rewards in <a href="/bots?panel=earn">Feed your robot</a>.</p>
+
     <h2>Prize pool</h2>
     <p>The $2,000 prize pool is divided into three independent categories: <strong>$800 for the best ROI percentage</strong>, <strong>$800 for the most realized profit in USD</strong>, and <strong>$400 for battle points</strong>.</p>
     <PrizeTable title="$800 ROI percentage pot" {...trading} />
@@ -27,15 +40,15 @@ export default function RulesPage() {
 
     <h2>How the three scores work</h2>
     <h3>ROI percentage</h3>
-    <p>ROI is realized trading profit divided by actual starting capital and qualifying added funds, expressed as a percentage. Unsold gains do not count. A score cannot be ranked until the starting-capital snapshot is known and greater than zero.</p>
+    <p>ROI means return on investment. It shows your profit as a percentage of the money you started with, plus any added funds that count. For this prize, only profit from sold tokens counts. We must record your starting funds before we can show your rank.</p>
     <h3>Realized profit in USD</h3>
-    <p>This score is the realized profit from qualifying positions sold during the period, measured in USD. Open-position gains are excluded until realized.</p>
+    <p>This is your profit in dollars from eligible tokens sold during the competition. A rise in the price of a token you still hold does not count yet.</p>
     <h3>Battle points</h3>
     <p>Battle points come from eligible real fights during the period. Practice fights do not add points. Each robot may make up to two attacks per day, subject to repair and other game limits shown in the garage.</p>
 
     <h2>Eligibility</h2>
     <ul>
-      <li>Complete at least one verified automated trade on <strong>three different days</strong> in a week to qualify for that week&apos;s prizes.</li>
+      <li>Complete at least one Doma Strategy trade on <strong>three different days</strong> in a week to qualify for that week&apos;s prizes. Trades count after the game checks them.</li>
       <li>Meet the three-day requirement in both weeks to qualify for the two-week final.</li>
       <li>Only verified activity inside the published competition period counts.</li>
       <li>More trades on the same day do not improve eligibility.</li>
@@ -51,4 +64,3 @@ export default function RulesPage() {
     <p>Robot parts, game coins, decorations, practice results, and other in-game items have no cash value and cannot be redeemed or transferred unless Model Kombat states otherwise in writing.</p>
   </InfoPage>;
 }
-

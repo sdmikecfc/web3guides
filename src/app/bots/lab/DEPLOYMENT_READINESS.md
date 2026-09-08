@@ -40,6 +40,14 @@ The local nonce and enlist endpoints now check signing configuration before issu
 
 The browser wallet chooser opens, but a real user-wallet signature and saved-garage round trip remain unverified. `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is still absent, so mobile QR connection remains unavailable.
 
+## Fight and chosen-robot follow-up — 8 September 2026
+
+Production also lacked `BB_FIGHT_SALT` and `BB_CARD_SECRET`. Fresh sensitive values were added for these two previously absent names; no existing variable was replaced and no deployment was performed. They apply at the next deployment. The resolver now checks its signing dependencies before it can claim a daily fight, hold coins or create a battle row. Normal fights need the salt; player fights also need the card signer. The older missing-salt failure already used the resolver's compensation path to release counters and decline the failed battle.
+
+Connecting a finished practice build now carries validated catalogue choices, socket colours, name and available cosmetics into an unused starter while preserving the account's existing part statistics, prices and balances. A claimed appearance fingerprint prevents competing requests from mixing parts; the same request can resume an interrupted save. Pending saves block fights, edits and recycling. Developed accounts are preserved. An unfinished practice build remains local with an explicit message. Server onboarding purchases use their canonical allowance path when that schema is present.
+
+`battle_bots_onboarding` is still absent from the linked database. Required battle, ledger, card, bot update-time and part colour columns passed zero-row existence checks. No player records or database schema were changed for verification. The new offline `scripts/bots-wallet-fight-check.ts` exercises a real house-fight resolver, permanent-part save guards, authenticated appearance validation, competing/retried/interrupted saves, declined-fight recovery eligibility and recycle ownership. Browser wallet signing and a live rewarded fight still need verification after deployment; these tests use an in-memory service boundary and no network.
+
 ## Before a prize launch
 
 - Restore a usable campaign configuration and reporter snapshot; confirm dates, eligibility, ROI/profit accounting and reviewed prize output against actual data.

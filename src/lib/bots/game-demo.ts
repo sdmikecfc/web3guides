@@ -1,16 +1,16 @@
-/** A visitor's practice garage. This store is never merged into a connected account. */
-import { BEGINNER_ALLOWANCE, BEGINNER_OFFERS, BEGINNER_ORDER, beginnerOffer, gameCard } from "./beginner-catalog";
+/** A visitor's practice garage. Its economy stays local; only validated appearance choices may be copied at sign-in. */
+import { BEGINNER_ALLOWANCE, BEGINNER_OFFERS, BEGINNER_ORDER, WELCOME_PAINTS, beginnerOffer, gameCard } from "./beginner-catalog";
 import { EQUIPMENT_KIND, fitPart, socketsOf, withSockets } from "./equipment";
-import { FIRST_WORDS, SECOND_WORDS, starterBuild, type Build, type OwnedPart, type Socket } from "./fixtures";
+import { FIRST_WORDS, SECOND_WORDS, starterBuild, recycleValue, type Build, type OwnedPart, type Socket } from "./fixtures";
 import { NO_LOOK, findsOf, normalizeLook } from "./look";
 import type { OnboardingView } from "./onboarding-types";
 import type { PaintId } from "@/app/bots/_engine/parts";
 
 export const GAME_DEMO_KEY = "bots.practice.garage.v1";
-export interface GameDemo { version: 1; coins: number; parts: OwnedPart[]; builds: Build[]; onboarding: OnboardingView; nudgeDismissed: boolean }
+export interface GameDemo { version: 1; coins: number; parts: OwnedPart[]; builds: Build[]; onboarding: OnboardingView; nudgeDismissed: boolean; recycled?: { bays: number[]; parts: string[] } }
 const purchases = () => Object.fromEntries(BEGINNER_ORDER.map(s => [s, null])) as OnboardingView["purchases"];
 export function freshGameDemo(): GameDemo {
-  const paints: Record<Socket, PaintId | null> = { head: "butter", torso: "mint", armL: "coral", armR: "coral", legL: "ink", legR: "ink", weapon: null };
+  const paints = WELCOME_PAINTS;
   const parts: OwnedPart[] = [], slots = socketsOf(starterBuild(1));
   for (const socket of BEGINNER_ORDER) {
     const offer = BEGINNER_OFFERS.find(o => o.part.slot === EQUIPMENT_KIND[socket])!;
@@ -46,6 +46,10 @@ export function demoComplete(state: GameDemo): GameDemo {
   return { ...state, onboarding: { ...state.onboarding, step: "complete", practiceFightId: "local-welcome-practice", milestones: { ...state.onboarding.milestones, practiced: true, completed: true } } };
 }
 export function demoSave(state: GameDemo, build: Build): GameDemo {
+  const previous = state.builds.find(b => b.bay === build.bay);
+  if (!previous) return state;
+  const prior = socketsOf(previous), next = socketsOf(build);
+  if (BEGINNER_ORDER.every(s => prior[s] && state.parts.some(p => p.uid === prior[s])) && BEGINNER_ORDER.some(s => prior[s] !== next[s])) return state;
   const valid = new Map(state.parts.map(p => [p.uid, p])), used = new Set<string>();
   const elsewhere = new Set(state.builds.filter(b => b.bay !== build.bay).flatMap(b => Object.values(socketsOf(b)).filter((uid): uid is string => uid !== null)));
   for (const socket of BEGINNER_ORDER) {
@@ -55,10 +59,20 @@ export function demoSave(state: GameDemo, build: Build): GameDemo {
   }
   return { ...state, builds: state.builds.map(b => b.bay === build.bay ? build : b) };
 }
+/** Recycle only real inventory once. Persist tombstones so hydration cannot grant it again. */
+export function demoRecycle(state: GameDemo, bay: number): GameDemo {
+  if (state.onboarding.step !== "complete") return state;
+  const build = state.builds.find(b => b.bay === bay);
+  if (!build) return state;
+  const ids = new Set(Object.values(socketsOf(build)).filter((id): id is string => !!id));
+  const recycled = state.parts.filter(p => ids.has(p.uid));
+  return { ...state, coins: state.coins + recycled.reduce((sum, p) => sum + recycleValue(p), 0), parts: state.parts.filter(p => !ids.has(p.uid)), builds: state.builds.filter(b => b.bay !== bay),
+    recycled: { bays: Array.from(new Set([...(state.recycled?.bays ?? []), bay])), parts: Array.from(new Set([...(state.recycled?.parts ?? []), ...recycled.map(p => p.uid)])) } };
+}
 /** New practice bays have no grant and no parts. The existing inventory is shared. */
 export function demoCreateBay(state: GameDemo, bay: number): GameDemo {
   if (state.onboarding.step !== "complete" || !Number.isInteger(bay) || bay < 1 || bay > 5 || state.builds.some(b => b.bay === bay)) return state;
-  return { ...state, builds: [...state.builds, starterBuild(bay)].sort((a,b) => a.bay-b.bay) };
+  return { ...state, builds: [...state.builds, starterBuild(bay)].sort((a,b) => a.bay-b.bay), ...(state.recycled ? { recycled: { ...state.recycled, bays: state.recycled.bays.filter(b => b !== bay) } } : {}) };
 }
 /** Reconstruct prices, identities and progress from valid choices; never trust persisted claims. */
 export function readGameDemo(raw: string | null): GameDemo {
@@ -71,15 +85,26 @@ export function readGameDemo(raw: string | null): GameDemo {
     for (const s of BEGINNER_ORDER) { const id = value.onboarding?.purchases?.[s]?.offerId; if (typeof id === "string") state = demoBuy(state, s, id); }
     if (value.onboarding?.milestones?.completed) state = demoComplete(state);
     const rawBuilds = Array.isArray(value.builds) ? value.builds : [];
+    if (state.onboarding.step === "complete" && value.recycled) {
+      const retired = new Set(Array.isArray(value.recycled.parts) ? value.recycled.parts.filter(id => typeof id === "string" && state.parts.some(p => p.uid === id)) : []);
+      const bays = Array.isArray(value.recycled.bays) ? Array.from(new Set(value.recycled.bays.filter(b => Number.isInteger(b) && b >= 1 && b <= 5))) : [];
+      const credit = state.parts.filter(p => retired.has(p.uid)).reduce((sum, p) => sum + recycleValue(p), 0);
+      state = { ...state, coins: state.coins + credit, parts: state.parts.filter(p => !retired.has(p.uid)), builds: state.builds.filter(b => !bays.includes(b.bay)).map(b =>
+        withSockets(b, Object.fromEntries(BEGINNER_ORDER.map(s => [s, retired.has(socketsOf(b)[s] ?? "") ? null : socketsOf(b)[s]])) as ReturnType<typeof socketsOf>)), recycled: { bays, parts: Array.from(retired) } };
+    }
     for (const rawBuild of rawBuilds) if (rawBuild && typeof rawBuild.bay === "number") state = demoCreateBay(state, rawBuild.bay);
     const builds = state.builds.map(saved => {
       const raw = rawBuilds.find(b => b?.bay === saved.bay);
       return raw && FIRST_WORDS.includes(raw.name?.first) && SECOND_WORDS.includes(raw.name?.second) ? raw : saved;
     });
-    // Restore the whole arrangement at once. A legitimate swap between two robots
-    // must not collide with the other robot's old arrangement during hydration.
+    // Complete robots retain their canonical purchased instances. Recreated empty
+    // stands may take valid remaining spares, but retired instances never return.
     if (state.onboarding.step === "complete") {
-      const candidate = builds.map((b, i) => b.sockets ? withSockets(state.builds[i], socketsOf(b)) : state.builds[i]);
+      const candidate = builds.map((b, i) => {
+        const saved = state.builds[i], current = socketsOf(saved);
+        const locked = BEGINNER_ORDER.every(s => current[s] && state.parts.some(p => p.uid === current[s]));
+        return b.sockets && !locked ? withSockets(saved, socketsOf(b)) : saved;
+      });
       const known = new Map(state.parts.filter(p => gameCard(p.id)).map(p => [p.uid, p]));
       const used = new Set<string>();
       const valid = candidate.every(b => BEGINNER_ORDER.every(socket => {

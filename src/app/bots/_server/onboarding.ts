@@ -10,7 +10,8 @@ import { EQUIPMENT_KIND } from "@/lib/bots/equipment";
 import { engineBuildOf, loadBots, loadCrownBotIds, loadHats, loadParts, lookOf, nameTextOf, paintOf, socketPaintsOf, totalOf, type BotRow } from "./bots";
 import { canonicalBuild, type ResultJson } from "./fight-read";
 import { coinsOf, displayName, loadPlayer, type PlayerRow } from "./players";
-import { fightSalt, refuse, type BotsDb } from "./db";
+import { refuse, type BotsDb } from "./db";
+import { requireFightConfiguration } from "./fight-configuration";
 import type { FightIdentityView, FightRewardsView, LookView } from "./types";
 import { onboardingEnabled } from "./rollout";
 
@@ -92,7 +93,7 @@ async function practice(db: BotsDb, wallet: string, day: string, o: OnboardingRo
   if (!rawA || !rawB) return refuse(409, "Your robot needs all seven parts.");
   const buildA = canonicalBuild(rawA), buildB = canonicalBuild(rawB);
   // A tutorial has a stable identity before its battle row exists. No fight ID is consumed on a failed request.
-  const seed = fnv1a(`bb:welcome:v1:${wallet}|${fightSalt()}`);
+  const seed = fnv1a(`bb:welcome:v1:${wallet}|${requireFightConfiguration("spar")}`);
   const result = resolveFight(seed, buildA, buildB, NO_ORDERS, NO_ORDERS, "spar");
   const identity = (bot: BotRow): FightIdentityView => ({ name: nameTextOf(bot), wallet: displayName(player), wins: bot.wins, losses: bot.losses, strategy: "Welcome practice", paint: paintOf(bot), tier: 1, total: totalOf(bot, parts) });
   const appearance = (bot: BotRow): LookView => ({ paints: socketPaintsOf(bot, parts), look: lookOf(bot, parts, hats, crowns.has(bot.id)), marks: marksOf(bot.wins, bot.losses, bot.level, crowns.has(bot.id)), wins: bot.wins });

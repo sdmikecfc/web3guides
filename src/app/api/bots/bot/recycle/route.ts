@@ -9,7 +9,8 @@
  * A bot in the shop can be recycled (Mike: "recycle them for a fraction").
  */
 import { NextResponse } from "next/server";
-import { loadBot, loadPartsOfBot, nameTextOf, partRecycleValue } from "@/app/bots/_server/bots";
+import { assertPracticeHandoffReady, loadBot, loadPartsOfBot, nameTextOf, partRecycleValue } from "@/app/bots/_server/bots";
+import { recyclableParts, type RecycleReceipt } from "@/app/bots/_server/recycle";
 import { botsDb, failResponse, intIn, readJson, refuse } from "@/app/bots/_server/db";
 import { assertOnboardingUnlocked } from "@/app/bots/_server/onboarding";
 import { grant } from "@/app/bots/_server/grants";
@@ -29,9 +30,18 @@ export async function POST(req: Request) {
     const botId = intIn(body.botId, 1, Number.MAX_SAFE_INTEGER, "The bot");
     const bot = await loadBot(db, botId);
     if (!bot || bot.wallet !== sess.wallet) return refuse(404, "That bot is not in your garage.");
+    assertPracticeHandoffReady(bot);
 
     await assertOnboardingUnlocked(db, sess.wallet, bot.id);
-    const parts = await loadPartsOfBot(db, bot.id);
+    const [attached, paid] = await Promise.all([
+      loadPartsOfBot(db, bot.id),
+      db.from("battle_bots_ledger").select("wallet, reason, meta").eq("wallet", sess.wallet).eq("reason", `recycle:${bot.id}`).maybeSingle(),
+    ]);
+    if (paid.error) throw new Error(`recycle receipt read: ${paid.error.message}`);
+    const parts = recyclableParts(bot, attached, sess.wallet, paid.data as RecycleReceipt | null);
+    const { count: pendingFights, error: pendingError } = await db.from("battle_bots_battles").select("id", { count: "exact", head: true }).eq("status", "open").or(`challenger_bot_id.eq.${bot.id},defender_bot_id.eq.${bot.id}`);
+    if (pendingError) throw new Error(`recycle fight check: ${pendingError.message}`);
+    if (pendingFights) return refuse(409, "Wait for this robot's fight to finish before recycling it.");
     let coins = 0;
     for (const p of parts) coins += partRecycleValue(p);
     const name = nameTextOf(bot);

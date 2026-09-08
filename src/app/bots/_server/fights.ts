@@ -56,6 +56,7 @@ import {
 } from "../_engine/rewards";
 import { ENGINE_VERSION } from "../_engine/version";
 import {
+  assertPracticeHandoffReady,
   claimAttack,
   claimDefence,
   engineBuildOf,
@@ -79,7 +80,8 @@ import {
   type PartRow,
 } from "./bots";
 import { mintFirstWinCard, type CardPayload } from "./cards";
-import { type BotsDb, dayKey, dayNumber, fightSalt, isProduction, nowIso, refuse } from "./db";
+import { type BotsDb, dayKey, dayNumber, isProduction, nowIso, refuse } from "./db";
+import { requireFightConfiguration } from "./fight-configuration";
 import { battleCoinsToday, grant } from "./grants";
 import { assertOnboardingUnlocked, loadCoinBalance } from "./onboarding";
 import { coinsOf, displayName, loadPlayer } from "./players";
@@ -212,9 +214,10 @@ export async function startFight(db: BotsDb, sess: BotsSession, input: StartFigh
   const day = dayOverride ?? dayKey(now);
   const wallet = sess.wallet;
   const mode = input.mode;
-  if (mode !== "spar" && mode !== "pve" && mode !== "pvp") return refuse(400, "Something went wrong. Try again.");
+  if (mode !== "spar" && mode !== "pve" && mode !== "pvp") return refuse(400, "Choose a practice, house or player fight.");
   const botId = typeof input.botId === "number" ? input.botId : Number(input.botId);
   if (!Number.isInteger(botId) || botId <= 0) return refuse(400, "Pick your robot first.");
+  const salt = requireFightConfiguration(mode);
 
   const player = await loadPlayer(db, wallet);
   if (!player) return refuse(401, "Sign in first.");
@@ -225,6 +228,7 @@ export async function startFight(db: BotsDb, sess: BotsSession, input: StartFigh
   const bots = await loadBots(db, wallet);
   const bot = bots.find((b) => b.id === botId);
   if (!bot) return refuse(404, "That robot is not in your garage.");
+  assertPracticeHandoffReady(bot);
   const parts = await loadParts(db, wallet);
   const buildA = engineBuildOf(bot, parts);
   if (!buildA) return refuse(400, `${nameTextOf(bot)} needs more parts. Put on all seven.`);
@@ -250,6 +254,7 @@ export async function startFight(db: BotsDb, sess: BotsSession, input: StartFigh
     if (!Number.isInteger(defId) || defId <= 0) return refuse(400, "Pick a robot to challenge.");
     defender = await loadBot(db, defId);
     if (!defender) return refuse(404, "That robot is not there any more.");
+    assertPracticeHandoffReady(defender);
     if (defender.wallet === wallet) return refuse(400, "You cannot challenge your own robot.");
     if (!defender.listed) return refuse(409, "That robot is not taking challenges.");
     if (inShop(defender, now)) return refuse(409, "That robot is being fixed. Pick another one.");
@@ -431,7 +436,7 @@ export async function startFight(db: BotsDb, sess: BotsSession, input: StartFigh
 
   try {
     // ── resolve ─────────────────────────────────────────────────────────
-    const seed = fnv1a(`${fightId}|${fightSalt()}`);
+    const seed = fnv1a(`${fightId}|${salt}`);
     const result = resolveFight(seed, buildA, buildB, oa, ob, mode);
     const attackerWon = result.winner === 0;
     const dropRoll = Math.floor(rngFork(seed, "A", "drop")() * 100);

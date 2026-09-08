@@ -29,10 +29,11 @@ assert.equal(state.onboarding.reservedCoins, 0);
 assert.equal(state.onboarding.step, "practice");
 state = demoComplete(state);
 const slots = state.builds.map(socketsOf);
+const completedSlots = structuredClone(slots);
 [slots[0].armL, slots[1].armL] = [slots[1].armL, slots[0].armL];
 state = { ...state, builds: state.builds.map((b,i) => withSockets({ ...b, look: { ...b.look!, face: "happy" } }, slots[i])) };
 const swapped = readGameDemo(JSON.stringify(state));
-assert.deepEqual(swapped.builds.map(socketsOf), slots, "cross-robot swaps survive reload together");
+assert.deepEqual(swapped.builds.map(socketsOf), completedSlots, "completed robot parts remain permanent after reload");
 assert(swapped.builds.every(b => b.look?.face === "happy"), "cosmetics survive arrangement restore");
 const forged = JSON.parse(JSON.stringify(state));
 forged.coins = 100000; forged.parts[0].s = [999,999,999]; forged.builds[0].look.hat = "crown";
@@ -42,7 +43,7 @@ forged.builds[0].sockets.armR = forged.builds[1].sockets.armR;
 const invalid = readGameDemo(JSON.stringify(forged));
 const uids = invalid.builds.flatMap(b => Object.values(socketsOf(b))).filter(Boolean);
 assert.equal(new Set(uids).size, uids.length, "forged duplicate parts never restore");
-console.log("Practice: seven purchases, reload at each step, swaps, cosmetics and forged claims passed.");
+console.log("Practice: seven purchases, reload at each step, permanent completed parts, cosmetics and forged claims passed.");
 
 async function enrollmentChecks() {
   let rpcCalls = 0;
@@ -68,4 +69,3 @@ async function enrollmentChecks() {
   console.log("Campaign enrollment: draft, returning active, ready snapshots, test flag and unavailable reporter passed.");
 }
 void enrollmentChecks().catch(error => { console.error(error);process.exitCode=1; });
-
