@@ -64,6 +64,8 @@ export interface FightIdentity {
 
 export interface FightClientProps {
   embedded?: boolean;
+  /** Presentation-only demo preview. The server route gates access. */
+  actionPreview?: boolean;
   onClose?: () => void;
   onCloseLabel?: string;
   onComplete?: () => void;
@@ -203,6 +205,7 @@ export default function FightClient(p: FightClientProps) {
   const playingRef = useRef(true);
   const speedRef = useRef<1 | 2>(1);
   const reducedRef = useRef(false);
+  const movingCameraRef = useRef(true);
   const accRef = useRef(0);
   const lastRef = useRef(0);
   const uiFrameRef = useRef(-1);
@@ -217,6 +220,7 @@ export default function FightClient(p: FightClientProps) {
   const sceneQueueRef = useRef<Promise<void>>(Promise.resolve());
   const [small, setSmall] = useState(false);
   const [reduced, setReduced] = useState(false);
+  const [movingCamera, setMovingCamera] = useState(true);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState<1 | 2>(1);
   const [muted, setMuted] = useState(true);
@@ -313,9 +317,11 @@ export default function FightClient(p: FightClientProps) {
     const fx = fxRef.current;
     const before = f.st.log.length;
     if (!f.st.done) stepFight(f);
+    let previewCritical = false;
     for (let i = before; i < f.st.log.length; i++) {
       const e = f.st.log[i];
       scene.onEvent(e, f.st, fx);
+      if (e.t === "hit" && e.crit) previewCritical = true;
       if(e.t === "hit" || e.t === "block") {
         const attacker = e.t === "block" ? (e.who === 0 ? 1 : 0) : e.who;
         const move = direction.attacks.find(a=>a.frame===e.f && a.attacker===attacker)?.move;
@@ -327,6 +333,7 @@ export default function FightClient(p: FightClientProps) {
       if(e.t === "break")sfxRef.current?.crowd("break");
       if(e.t === "ko")sfxRef.current?.crowd("ko");
     }
+    if (p.actionPreview) fx.hitStop = Math.min(fx.hitStop, previewCritical ? 0.065 : 0.025);
     tickFightFx(fx, FIXED_DT);
     if (!f.st.done) {
       for (let side = 0; side < 2; side++) {
@@ -344,7 +351,7 @@ export default function FightClient(p: FightClientProps) {
         }
       }
     }
-  }, [direction,p.a,p.b]);
+  }, [direction,p.a,p.b,p.actionPreview]);
 
   // ── the scene and the loop ──────────────────────────────────────────────
   useEffect(() => {
@@ -358,7 +365,8 @@ export default function FightClient(p: FightClientProps) {
     let ownedScene: FightSceneHandle | null = null;
     setSceneError(false);
     const isSmall = typeof matchMedia !== "undefined" && matchMedia("(max-width: 899px)").matches;
-    const isReduced = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reducedQuery = typeof matchMedia !== "undefined" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+    const isReduced = reducedQuery?.matches ?? false;
     setSmall(isSmall);
     setReduced(isReduced);
     reducedRef.current = isReduced;
@@ -381,7 +389,10 @@ export default function FightClient(p: FightClientProps) {
           // the whole scene freezes: nothing accumulates, the stop counts down in wall time
           fx.hitStop = Math.max(0, fx.hitStop - frameDt);
         } else {
-          const slow = fx.ko >= 0 && fx.ko < KO_SLOW_FX ? SLOWMO_RATE : fx.critical >= 0 && fx.critical < CRIT_SLOW_S ? CRIT_SLOW_RATE : 1;
+          // Only the preview changes viewing pace; fixed simulation steps and results stay identical.
+          const slow = p.actionPreview
+            ? (f.st.done ? 1 : direction.attacks.some(a => f.st.frame >= a.begin && f.st.frame <= a.end) ? 1.2 : 1.6)
+            : fx.ko >= 0 && fx.ko < KO_SLOW_FX ? SLOWMO_RATE : fx.critical >= 0 && fx.critical < CRIT_SLOW_S ? CRIT_SLOW_RATE : 1;
           accRef.current += frameDt * speedRef.current * slow;
           let steps = 0;
           while (accRef.current >= FIXED_DT && steps < MAX_SUBSTEPS) {
@@ -400,7 +411,7 @@ export default function FightClient(p: FightClientProps) {
       syncUi(false);
     };
     function start() {
-      if (running || isReduced) return;
+      if (running || reducedRef.current) return;
       running = true;
       lastRef.current = performance.now();
       raf = requestAnimationFrame(loop);
@@ -414,13 +425,28 @@ export default function FightClient(p: FightClientProps) {
       if (document.hidden) stop();
       else start();
     };
+    const onReducedChange = () => {
+      if (!p.actionPreview) return;
+      const next = reducedQuery?.matches ?? false;
+      reducedRef.current = next;
+      setReduced(next);
+      sceneRef.current?.setCinematic?.(!next && movingCameraRef.current);
+      if (next) {
+        stop();
+        sfxRef.current?.stop();
+        accRef.current = 0;
+      } else if (!document.hidden) start();
+      const scene = sceneRef.current, fight = fightRef.current;
+      if (scene && fight) scene.render(fight.st, fxRef.current);
+    };
+    if (p.actionPreview) reducedQuery?.addEventListener("change", onReducedChange);
 
     sceneQueueRef.current = sceneQueueRef.current.catch(() => undefined)
       .then(async () => {
         if (dead) return null;
         const legacy = !toyPilotEnabled() || new URLSearchParams(window.location.search).get("renderer") === "legacy";
         const factory = legacy ? (await import("../_view/arena3d-legacy")).buildFightScene : buildFightScene;
-        const next = await factory(canvas, { small: isSmall, fightSeed: p.seed, ...(!legacy ? { log: full.result.log, reducedMotion: isReduced } : {}) });
+        const next = await factory(canvas, { small: isSmall, fightSeed: p.seed, ...(!legacy ? { log: full.result.log, reducedMotion: isReduced, actionStyle: p.actionPreview === true } : {}) });
         ownedScene = next;
         return next;
       })
@@ -436,6 +462,7 @@ export default function FightClient(p: FightClientProps) {
           return;
         }
         sceneRef.current = scene;
+        if (p.actionPreview) sceneRef.current.setCinematic?.(!reducedRef.current && movingCameraRef.current);
         const fit = () => {
           const r = wrap.getBoundingClientRect();
           scene.resize(r.width, r.height, Math.min(2, devicePixelRatio || 1));
@@ -460,6 +487,7 @@ export default function FightClient(p: FightClientProps) {
       dead = true;
       stop();
       document.removeEventListener("visibilitychange", onVis);
+      if (p.actionPreview) reducedQuery?.removeEventListener("change", onReducedChange);
       ro?.disconnect();
       setReady(false);
       // Shader compilation still owns its resources until initialization settles.
@@ -510,6 +538,16 @@ export default function FightClient(p: FightClientProps) {
     s.setMuted(next);
     setMuted(next);
   }, []);
+
+  const toggleCamera = useCallback(() => {
+    if (!p.actionPreview || reducedRef.current) return;
+    const next = !movingCameraRef.current;
+    movingCameraRef.current = next;
+    setMovingCamera(next);
+    const scene = sceneRef.current, fight = fightRef.current;
+    scene?.setCinematic?.(next);
+    if (scene && fight) scene.render(fight.st, fxRef.current);
+  }, [p.actionPreview]);
 
   const share = useCallback(async () => {
     const winner = names[full.result.winner];
@@ -622,8 +660,26 @@ export default function FightClient(p: FightClientProps) {
 
   return (
     <FightLayout embedded={p.embedded}>
-      <div className={`${css.viewer} ${p.embedded ? css.embedded : ""}`}>
+      <div className={`${css.viewer} ${p.embedded ? css.embedded : ""} ${p.actionPreview ? css.actionPreview : ""}`}>
         {p.onClose ? <button className={css.backToWorkshop} onClick={p.onClose} type="button">← Garage</button> : null}
+        {p.actionPreview ? (
+          <div aria-label="Action preview controls" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", padding: "8px 0", fontFamily: FONT_BODY }}>
+            <strong style={{ color: M.text }}>Action preview</strong>
+            <button
+              type="button"
+              role="switch"
+              aria-label="Moving camera"
+              aria-checked={movingCamera && !reduced}
+              disabled={reduced || !ready}
+              onClick={toggleCamera}
+              className={css.ctl}
+              style={{ width: "auto", padding: "0 14px", fontSize: 13 }}
+            >
+              {movingCamera && !reduced ? "Moving camera" : "Steady camera"}
+            </button>
+            {reduced ? <span style={{ color: M.muted, fontSize: 12 }}>Reduced motion is on.</span> : null}
+          </div>
+        ) : null}
         {/* the identity strips */}
         <div className={css.ids}>
           <IdentityStrip id={p.ids[0]} build={p.a} right={false} />
@@ -732,7 +788,7 @@ export default function FightClient(p: FightClientProps) {
               max={totalFrames}
               step={1}
               value={Math.min(frame, totalFrames)}
-              onChange={(e) => seekTo(Number(e.target.value))}
+              onChange={(e) => { if (p.actionPreview) pause(); seekTo(Number(e.target.value)); }}
               aria-label="Move through the fight"
               aria-valuetext={`${clock(frame)} of ${clock(totalFrames)}`}
             />

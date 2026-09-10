@@ -12,6 +12,11 @@
   margin: 0 auto;
 }
 
+/* Keep the extra preview switch and playback controls within a laptop window. */
+@media (min-width: 900px) {
+  .viewer.actionPreview { max-width: clamp(620px, calc((100dvh - 330px) * 16 / 9), 1200px); }
+}
+
 .embedded {
   position: relative;
   display: flex;

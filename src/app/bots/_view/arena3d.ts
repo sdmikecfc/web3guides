@@ -10,13 +10,15 @@ import { createCombatToy, type CombatToy } from "./combat-toy";
 import { createCombatDamage } from "./combat-damage";
 import { createWeaponContactSolver } from "./weapon-surface";
 import { directFight, activeAttack, actionTime, ringPosition, type FightDirection, type DirectedAttack } from "./fight-director";
+import { actionClipTime, actionPose, actionRingPosition } from "./action-choreography";
+import { createActionEffects } from "./action-effects";
 import type { Build, FightEvent, Side } from "../_engine/parts";
 import type { FightState } from "../_engine/resolve";
 import type { BotLook } from "./look";
 import type { Socket } from "@/lib/bots/fixtures";
 import { CRIT_CAMERA_S, HIT_STOP_S, SHAKE_S, settleFightFx, tumbleKey, type FightFx } from "./fightfx";
 
-export interface FightSceneOpts { small: boolean; fightSeed: number; showroom?: boolean; log?: readonly FightEvent[]; reducedMotion?: boolean }
+export interface FightSceneOpts { small: boolean; fightSeed: number; showroom?: boolean; log?: readonly FightEvent[]; reducedMotion?: boolean; actionStyle?: boolean }
 export interface FightSceneHandle {
   plate: boolean;
   setBuilds(a: Build, b: Build, looks: readonly [BotLook, BotLook]): Promise<void>;
@@ -29,6 +31,7 @@ export interface FightSceneHandle {
   snapshot(st:FightState,fx:FightFx):HTMLCanvasElement;
   /** Development capture only; changes framing without changing the fight. */
   captureFraming?(zoom: number, orbit: number, height?: number): void;
+  setCinematic?(enabled: boolean): void;
   destroy(): void;
 }
 
@@ -53,7 +56,7 @@ function studioEnvironment(renderer: THREE.WebGLRenderer) {
 }
 
 interface BreakShot { side: Side; socket: Socket; frame: number; key: number; group: THREE.Group; start: THREE.Vector3; rotation: THREE.Quaternion; scale: THREE.Vector3; restY?: number }
-interface Impact { frame: number; side: Side; point: THREE.Vector3; strong: boolean }
+interface Impact { frame: number; side: Side; point: THREE.Vector3; strong: boolean; kind?: "blunt" | "blade" | "projectile" }
 
 export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightSceneOpts): Promise<FightSceneHandle> {
   RectAreaLightUniformsLib.init();
@@ -74,6 +77,8 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
   camera.position.set(0, 3.90, 14.5); camera.lookAt(target);
   let baseCameraY=3.90,baseCameraZ=14.5;
   let captureZoom=1,captureOrbit=0,captureHeight=1.10;
+  const actionStyle = !!opts.actionStyle && !opts.showroom;
+  let cinematic = !opts.reducedMotion;
 
   const hemi = new THREE.HemisphereLight(0xe8dac3, 0x4c3222, .20); scene.add(hemi);
   const key = new THREE.DirectionalLight(0xffd99b, 4.5); key.position.set(-3, 7, -4);
@@ -188,6 +193,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
   let extraHeight=0;
   const broken: BreakShot[]=[];
   const impacts: Impact[]=[];
+  const actionEffects=actionStyle?createActionEffects(scene):null;
   const reportedContacts=new Set<number>();
   const dustGroup=new THREE.Group();scene.add(dustGroup);
   const sparkGeo=new THREE.SphereGeometry(.024,6,4),sparkMat=new THREE.MeshBasicMaterial({color:0xffd996});
@@ -244,7 +250,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
       const attack=direction.attacks.find(a=>a.frame===e.f&&a.attacker===e.who);
       const kind=attack?.move.includes("cut")?"blade":attack?.move.includes("thrust")?"projectile":"blunt";
       const dent=damage[victim]?.hit({frame:e.f,slot:SOCKETS[e.part],amount:e.dmg,critical:!!e.crit,kind});
-      impacts.push({frame:e.f,side:victim as Side,point:dent?.point??toys[victim].target(SOCKETS[e.part],new THREE.Vector3()),strong:!!e.crit});
+      impacts.push({frame:e.f,side:victim as Side,point:dent?.point??toys[victim].target(SOCKETS[e.part],new THREE.Vector3()),strong:!!e.crit,kind});
     }else if(e.t==="miss"){
       fx.sides[e.who===0?1:0].lean=0;fx.sides[e.who].recover=0;fx.sides[e.who].overRotate=1;
     }else if(e.t==="block"){
@@ -317,7 +323,8 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
       const toy=toys[i],s=st.sides[i],v=fx.sides[i],dir=i===0?1:-1;
       basePose(i);
       const now=opts.showroom?fx.time:frame/60;
-      const pos=ringPosition(direction,i as Side,eventFrame,opts.fightSeed);
+      const pos=(actionStyle?actionRingPosition:ringPosition)(direction,i as Side,eventFrame,opts.fightSeed);
+      const motion=actionStyle?actionPose(direction,i as Side,frame):null;
       toy.root.position.set(pos.x,.025,pos.z);toy.root.rotation.y=pos.yaw;
       if(opts.showroom){toy.root.rotation.y=(i===0?.25:-.25)+Math.sin(now*.25+i)*.075;toy.root.position.x=X[i];placeContacts(toy,i);continue;}
       toy.applyClip("guard",0,1,armMask);
@@ -337,7 +344,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
       toy.root.position.y+=Math.sin(now*2+i)*.007;
       toy.bones.head.rotation.y+=Math.sin(now*.7+i)*.025;
       if(action){
-        const phase=actionTime(action,frame);
+        const phase=(actionStyle?actionClipTime:actionTime)(action,frame);
         if(action.move==="shove")toy.bones.torso.rotation.x=-Math.sin(phase*Math.PI)*.16;
         else toy.applyClip(action.move,phase,1,action.move==="kick"?legMask:armMask,action.mirror);
         const push=phase<.5?smooth(phase*2):1-smooth((phase-.5)*2);
@@ -358,6 +365,16 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
         }else toy.applyClip("block",u,1,armMask,incoming.part===3);
       }
       const recoil=pulse(v.recoil,.24),recoilPower=v.recoilPower;toy.root.position.x-=dir*recoil*.12*recoilPower;toy.root.position.z+=recoil*.035*recoilPower;toy.bones.torso.rotation.z+=dir*recoil*.11*recoilPower;
+      if(motion&&v.sit<0){
+        // Slide along the current line between fighters, rather than always
+        // recoiling toward the screen edge while the pair circles.
+        toy.root.position.x-=dir*motion.slide*Math.cos(pos.yaw-dir*Math.PI/2);
+        toy.root.position.z+=motion.dodge;
+        toy.bones.torso.rotation.x+=motion.lean;
+        toy.bones.torso.rotation.y+=motion.twist;
+        toy.bones.head.rotation.x-=motion.lean*.45;
+        if(!action&&lostLegs===0){toy.bones.armL.rotation.x-=.18;toy.bones.armR.rotation.x-=.12;}
+      }
       if(lostLegs===1){
         toy.root.position.y-=.07;toy.root.rotation.z+=s.armor[4]<=0?-.09:.09;
         const remaining=s.armor[4]>0?"L":"R";toy.bones["leg"+remaining].rotation.x+=Math.sin(now*7)*.09;
@@ -395,19 +412,22 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
         const floor=surfaceFloor(toy.root);
         if(Number.isFinite(floor))toy.root.position.y+=.028-floor;
       }
+      // Ground the feet first, then lift the whole articulated toy. Grounding
+      // a second time would silently cancel every airborne attack.
+      if(motion&&lostLegs===0&&v.sit<0&&!st.done&&toy.movement.every(m=>m!=="wheel"))toy.root.position.y+=motion.lift;
       toy.root.updateMatrixWorld(true);
     }
     if(!opts.showroom)for(let i=0;i<toys.length;i++){
       const a=actions[i];if(!a||fx.sides[i].sit>=0)continue;
       const delta=frame-a.frame;
-      const amount=delta<=-3?smooth((delta+22)/19):delta<=0?1:1-smooth(delta/17);
+      const amount=actionStyle?(delta<=0?smooth((delta+8)/8):1-smooth(delta/4)):(delta<=-3?smooth((delta+22)/19):delta<=0?1:1-smooth(delta/17));
       approachContact(toys[i],a,toys[i===0?1:0],amount);
     }
     if(!opts.showroom)for(let sweep=0;sweep<2;sweep++)for(let i=0;i<toys.length;i++){
       const a=actions[i];
       if(a&&frame<a.end&&fx.sides[i].sit<0){
         const delta=frame-a.frame;
-        const amount=delta<=0?smooth((delta+11)/11):1-smooth(delta/12);
+        const amount=actionStyle?(delta<=0?smooth((delta+5)/5):1-smooth(delta/4)):(delta<=0?smooth((delta+11)/11):1-smooth(delta/12));
         correctContact(toys[i],a,toys[i===0?1:0],amount);
         if(process.env.NODE_ENV!=="production" && sweep===1 && delta===0 && a.outcome!=="miss" && a.move!=="shove") {
           const toy=toys[i],victim=toys[i===0?1:0];toy.root.updateMatrixWorld(true);
@@ -424,6 +444,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
   }
   function render(st:FightState,fx:FightFx){
     if(dead||toys.length!==2)return;const drawStart=performance.now();lastFrame=st.frame;pose(st,fx);
+    actionEffects?.render(fx.time,impacts,!opts.reducedMotion);
     for(const b of broken){
       const age=Math.max(0,fx.time-b.frame/60),dir=b.side===0?-1:1;
       const land=.62,fly=Math.min(age,land),extra=Math.max(0,age-land);
@@ -455,19 +476,29 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
         s.scale.setScalar((p.strong?1.5:1)*(1-age/.25));
       }
     }
-    const critical=opts.reducedMotion?0:pulse(fx.critical,CRIT_CAMERA_S);
-    const emphasis=opts.reducedMotion?0:Math.max(pulse(fx.ko,.8),pulse(fx.sides[0].crack,.45),pulse(fx.sides[1].crack,.45),critical*1.35);
+    const cameraMoves=cinematic;
+    const critical=cameraMoves?pulse(fx.critical,CRIT_CAMERA_S):0;
+    const emphasis=cameraMoves?Math.max(pulse(fx.ko,.8),pulse(fx.sides[0].crack,.45),pulse(fx.sides[1].crack,.45),critical*1.35):0;
     const midpoint=(toys[0].root.position.x+toys[1].root.position.x)*.5;
-    const shake=opts.reducedMotion||fx.shake<=0?0:Math.min(1,fx.shake/SHAKE_S)*fx.shakeAmp;
+    const shake=!cameraMoves||fx.shake<=0?0:Math.min(1,fx.shake/SHAKE_S)*fx.shakeAmp;
     const phase=fx.time*74+opts.fightSeed*.017;
     const focus=critical*toys[fx.criticalSide].root.position.x*.09;
-    camera.position.x=opts.reducedMotion?0:midpoint*.16+focus+Math.sin(phase*2.17)*shake*.012;
+    camera.position.x=!cameraMoves?0:midpoint*.16+focus+Math.sin(phase*2.17)*shake*(actionStyle?.025:.012);
     camera.position.y=baseCameraY+Math.cos(phase*2.83)*shake*.009;
     camera.position.x+=Math.sin(captureOrbit)*baseCameraZ;
     camera.position.z=Math.cos(captureOrbit)*baseCameraZ;
     target.x=focus*.42;
     target.y=captureHeight;
-    camera.zoom=(1+emphasis*.068)*captureZoom;camera.updateProjectionMatrix();camera.lookAt(target);renderer.render(scene,camera);
+    let actionZoom=1;
+    if(actionStyle&&cameraMoves){
+      const orbit=Math.sin(fx.time*.65+opts.fightSeed*.03)*(phone?.065:.16);
+      camera.position.x+=Math.sin(orbit)*baseCameraZ;
+      camera.position.z*=Math.cos(orbit);
+      camera.position.y-=phone?.30:.85;
+      target.x=midpoint*.35;target.z=(toys[0].root.position.z+toys[1].root.position.z)*.28;
+      actionZoom=phone?1:1.06;
+    }else target.z=0;
+    camera.zoom=(1+emphasis*(actionStyle?.095:.068))*captureZoom*actionZoom;camera.updateProjectionMatrix();camera.lookAt(target);renderer.render(scene,camera);
     if(process.env.NODE_ENV!=="production"){
       const interval=drawStart-previousRenderAt;
       if(previousRenderAt&&interval>0&&interval<250){cadenceTime+=interval;cadenceSamples++;}
@@ -484,6 +515,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
       }
       canvas.dataset.drawCalls=String(renderer.info.render.calls);canvas.dataset.triangles=String(renderer.info.render.triangles);canvas.dataset.renderer=toys.every(t=>t.blender)?"blender-toys":"articulated-toys";canvas.dataset.moves=direction.attacks.filter(a=>Math.abs(a.frame-st.frame)<10).map(a=>a.move).join(",");
       canvas.dataset.dents=String(damage.reduce((n,d)=>n+d.dents,0));canvas.dataset.damageVertices=String(damage.reduce((n,d)=>n+d.changedVertices,0));
+      canvas.dataset.actionStyle=String(actionStyle);canvas.dataset.cinematic=String(cameraMoves);
     }
   }
   return {
@@ -509,7 +541,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
       return picture;
     },
     onEvent,
-    reset(){cleanDebris();damage.forEach(d=>d.reset());toys.forEach((_,i)=>basePose(i));lastFrame=0;},
+    reset(){cleanDebris();actionEffects?.render(0,[],false);damage.forEach(d=>d.reset());toys.forEach((_,i)=>basePose(i));lastFrame=0;},
     settle(fx){settleFightFx(fx);},
     glint(){ /* The enamel catches the real light as the hand turns. */ },
     captureFraming(zoom,orbit,height=1.10){
@@ -518,10 +550,11 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
       captureOrbit=THREE.MathUtils.clamp(Number.isFinite(orbit)?orbit:0,-1.1,1.1);
       captureHeight=THREE.MathUtils.clamp(Number.isFinite(height)?height:1.10,.6,2.8);
     },
+    setCinematic(enabled){cinematic=enabled;},
     render,
     resize(w,h,dpr){if(dead||w<=0||h<=0)return;phone=w/h<1.35;renderer.setPixelRatio(Math.min(dpr,phone?1.35:1.75));renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=phone?Math.max(32,2*Math.atan(3.05/(12.5*camera.aspect))*180/Math.PI):30;baseCameraY=phone?3.45:3.9;baseCameraZ=phone?12.5:14.5;camera.position.set(0,baseCameraY,baseCameraZ);target.set(0,1.10,0);camera.lookAt(target);camera.updateProjectionMatrix();},
     destroy(){
-      if(dead)return;dead=true;cleanDebris();damage.forEach(d=>d.dispose());damage=[];for(const t of toys){scene.remove(t.root);t.dispose();}toys=[];
+      if(dead)return;dead=true;cleanDebris();actionEffects?.dispose();damage.forEach(d=>d.dispose());damage=[];for(const t of toys){scene.remove(t.root);t.dispose();}toys=[];
       const geometries=new Set<THREE.BufferGeometry>(),materials=new Set<THREE.Material>();
       scene.traverse(o=>{if(o instanceof THREE.Mesh){geometries.add(o.geometry);(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m));}if(o instanceof THREE.Sprite)materials.add(o.material);});
       geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());ownedTextures.forEach(t=>t.dispose());

@@ -64,6 +64,8 @@ function order(q: Query, side: "A" | "B"): Orders {
 }
 
 export default function FightDemoPage({ searchParams }: { searchParams: Query }) {
+  const actionPreview = one(searchParams, "action", "") === "1"
+    && (process.env.NODE_ENV === "development" || process.env.BOTS_ROOM_PREVIEW === "1");
   const seedRaw = one(searchParams, "seed", "7");
   const aRaw = one(searchParams, "a", "T2");
   const bRaw = one(searchParams, "b", "T2");
@@ -96,9 +98,14 @@ export default function FightDemoPage({ searchParams }: { searchParams: Query })
   ];
   const nextSeed = (seed + 1) >>> 0;
   const orders: [Orders, Orders] = [order(searchParams,"A"),order(searchParams,"B")];
-  const link = (n:number) => demoReplayLink(n, personal ? {robot:robotRaw} : showcase ? {showcase:true,...(hammer?{loadout:"hammer" as const}:{})} : {a:aRaw,b:bRaw}, orders);
+  const link = (n:number) => {
+    const href = demoReplayLink(n, personal ? {robot:robotRaw} : showcase ? {showcase:true,...(hammer?{loadout:"hammer" as const}:{})} : {a:aRaw,b:bRaw}, orders);
+    return actionPreview ? `${href}&action=1` : href;
+  };
   return (
     <FightClient
+      key={actionPreview ? `action-${link(seed)}` : undefined}
+      actionPreview={actionPreview}
       seed={seed}
       a={A.build}
       b={B.build}
