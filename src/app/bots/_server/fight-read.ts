@@ -246,6 +246,7 @@ export function fightSummary(row: BattleRow): FightSummary | null {
     walletNames: [r.walletNames[0], r.walletNames[1]],
     paints: [r.ids[0].paint, r.ids[1].paint],
     looks: looksOf(r),
+    builds: [canonicalBuild(r.buildA), canonicalBuild(r.buildB)],
     winnerName: r.names[w],
     loserName: r.names[l],
     winnerWallet: r.walletNames[w],

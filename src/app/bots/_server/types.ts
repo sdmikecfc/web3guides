@@ -233,6 +233,8 @@ export interface FightSummary {
   /** both robots as they were at the bell, so a thumbnail draws the real
    * robot instead of one flat colour (same snapshot as FightView.looks) */
   looks: [LookView, LookView];
+  /** Saved assembly in replay side order; independent limbs survive JSONB reads. */
+  builds: [Build, Build];
   winnerName: string;
   loserName: string;
   winnerWallet: string;
@@ -287,6 +289,8 @@ export interface BattlesView {
   me: { bots: BotView[]; selected: number | null; coins: number; walletName: string } | null;
   pve: PveLadderRow[];
   defenders: DefenderRow[];
+  /** False means opponent search failed; public replays remain available. */
+  defendersAvailable: boolean;
   live: FightSummary[];
   featured: { upset: FightSummary | null; longest: FightSummary | null; fastestKo: FightSummary | null };
   recent: FightSummary[];

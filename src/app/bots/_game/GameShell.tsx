@@ -10,7 +10,7 @@ import { LookPicker } from "../_components/LookPicker";
 import { IconGarage, IconPegboard, IconWeapon, IconWrench, IconStar } from "../_ui/icons";
 import { useBotsSession } from "../battles/useBotsSession";
 import { decodeBotsSession } from "../battles/session";
-import { parsePracticeAppearance, practiceAppearanceOf, type PracticeAppearance } from "@/lib/bots/practice-handoff";
+import { parsePracticeAppearance, parsePracticeDraft, practiceAppearanceOf, practiceDraftOf, type PracticeAppearance, type PracticeDraft } from "@/lib/bots/practice-handoff";
 import { rigLookOf } from "../_view/look-view";
 import type { FightClientProps } from "../fight/FightClient";
 import type { BattlesView, BotView, EarnedBotView, LookView, MeView } from "../_server/types";
@@ -18,7 +18,9 @@ import { CARD_SLOTS, engineBuild, emptySockets, nameText, starterBuild, SLOT_STA
 import { BEGINNER_OFFERS, BEGINNER_ORDER, gameCard, type BeginnerOffer } from "@/lib/bots/beginner-catalog";
 import { equipmentPaints, EQUIPMENT_KIND, EQUIPMENT_LABEL, EQUIPMENT_SOCKETS, fitPart, socketsOf, withSockets } from "@/lib/bots/equipment";
 import { buildOf, buyOnServer, ownedOf, recycleBotOnServer, saveBotOnServer, withBoughtPart, withSavedBot } from "@/lib/bots/live-garage";
-import { demoBuy, demoComplete, demoSave, demoRecycle, demoWelcome, demoCreateBay, freshGameDemo, GAME_DEMO_KEY, readGameDemo, type GameDemo } from "@/lib/bots/game-demo";
+import { demoBuy, demoComplete, demoSave, demoRecycle, demoWelcome, demoCreateBay, demoFinish, freshGameDemo, GAME_DEMO_KEY, readGameDemo, type GameDemo } from "@/lib/bots/game-demo";
+import { draftPreview } from "@/lib/bots/onboarding-draft";
+import { onboardingV2Enabled } from "@/lib/bots/rollout";
 import { NO_LOOK, NO_MARKS, findsOf, normalizeLook, type BotLook } from "@/lib/bots/look";
 import type { PaintId } from "../_engine/parts";
 import type { OnboardingView } from "@/lib/bots/onboarding-types";
@@ -34,14 +36,22 @@ import { ProgressPanel } from "./ProgressPanel";
 import type { ProgressView } from "@/lib/bots/progress-view";
 import css from "./game.module.css";
 import { OverallStats, PartNumbers, PartStats, previewOffer } from "./BuildStats";
+import StarterBuilder from "./StarterBuilder";
+import CommunityRoom from "./CommunityRoom";
+import TrailerPlayer from "./TrailerPlayer";
+import entryCss from "./entry.module.css";
+import EntryDialog from "./EntryDialog";
+import { readGameView } from "@/lib/bots/view-fetch";
 
 const FightClient = dynamic(() => import("../fight/FightClient"), { ssr: false, loading: () => <div className={css.loading}><p>Opening the ring…</p></div> });
 const ServerFight = dynamic(() => import("../fight/FightClient").then(m => m.ServerFight), { ssr: false, loading: () => <div className={css.loading}><p>Opening the ring…</p></div> });
-type Mode = "garage" | "parts" | "build" | "fight";
+type Mode = "garage" | "parts" | "build" | "fight" | "community";
 type Drawer = "help" | "earn" | "campaign" | "community" | "name" | "look" | "sample" | "tools" | null;
 type Feed = { kind: "server"; id: string; tutorial: boolean } | { kind: "local"; props: FightClientProps; tutorial: boolean } | null;
 type PlayerMe = MeView & { onboarding?: OnboardingView | null; player: MeView["player"] & { reservedCoins?: number; spendableCoins?: number } };
-const validMode = (s: string | null): Mode => s === "parts" || s === "build" || s === "fight" ? s : "garage";
+const validMode = (s: string | null): Mode => s === "parts" || s === "build" || s === "fight" || s === "community" ? s : "garage";
+const defaultOnboardingVersion = () => onboardingV2Enabled() ? 2 : 1;
+const roomPreview = process.env.NEXT_PUBLIC_BOTS_ROOM_PREVIEW === "1";
 const shortSocket: Record<Socket, string> = { head: "Head", torso: "Body", armL: "L arm", armR: "R arm", legL: "L leg", legR: "R leg", weapon: "Weapon" };
 const count = (n: number) => n.toLocaleString();
 const bayPreferenceKey = (token: string | null) => `bots.selected-bay.${token ? decodeBotsSession(token)?.wallet ?? "practice" : "practice"}`;
@@ -56,7 +66,10 @@ function Guide({ children }: { children: React.ReactNode }) { return <div classN
 export default function GameShell() {
   const params = useSearchParams(), session = useBotsSession();
   const [mode, setMode] = useState<Mode>("garage"), [drawer, setDrawer] = useState<Drawer>(null);
-  const [demo, setDemo] = useState<GameDemo>(() => freshGameDemo()), [hydrated, setHydrated] = useState(false);
+  const [demo, setDemo] = useState<GameDemo>(() => freshGameDemo(defaultOnboardingVersion())), [hydrated, setHydrated] = useState(false);
+  const [trailerOpen, setTrailerOpen] = useState(false), [justFinished, setJustFinished] = useState(false);
+  const [garageConflict, setGarageConflict] = useState(false), [retryFeed, setRetryFeed] = useState(0);
+  const [handoffFailed, setHandoffFailed] = useState(false);
   const [me, setMe] = useState<PlayerMe | null>(null), [loadState, setLoadState] = useState<"loading" | "ready" | "failed" | "expired">("loading");
   const [bay, setBay] = useState(1), [edit, setEdit] = useState<Build | null>(null), [socket, setSocket] = useState<Socket>("head");
   const [selection, setSelection] = useState<string | null>(null), [busy, setBusy] = useState(false), [note, setNote] = useState("");
@@ -67,14 +80,15 @@ export default function GameShell() {
   const [earnedRows, setEarnedRows] = useState<EarnedBotView[] | null>(null);
   const [progress, setProgress] = useState<{ token: string; view: ProgressView } | null>(null);
   const [nudgeHidden, setNudgeHidden] = useState(false), [resetAsk, setResetAsk] = useState(false);
-  const pendingPractice = useRef<PracticeAppearance | null>(null);
+  const pendingPractice = useRef<PracticeAppearance | PracticeDraft | null>(null);
   const practiceRequest = useRef<{ token: string; result: Promise<{ ok: boolean; applied?: boolean; bay?: number; reason?: string }> } | null>(null);
   const partialPractice = useRef(false);
   const selectionOwner = useRef<{ key: string; preferred: number | null } | null>(null);
   const connect = () => {
+    if (busyRef.current) { setNote("Saving your choices. Try connecting in a moment."); return; }
     if (!session.token) {
       const selected = edit ?? demo.builds.find(b => b.bay === bay);
-      pendingPractice.current = practiceAppearanceOf(demo, selected); practiceRequest.current = null;
+      pendingPractice.current = demo.version === 2 ? practiceDraftOf(demo, selected) : practiceAppearanceOf(demo, selected); practiceRequest.current = null;
       partialPractice.current = !pendingPractice.current && !!selected && Object.values(socketsOf(selected)).some(Boolean);
       try { if (pendingPractice.current) sessionStorage.setItem(PENDING_PRACTICE_KEY, JSON.stringify(pendingPractice.current)); else sessionStorage.removeItem(PENDING_PRACTICE_KEY); } catch { /* The practice garage itself remains persisted. */ }
     }
@@ -90,10 +104,10 @@ export default function GameShell() {
   const sampleBuilds = useMemo(() => Object.values(sampleGarage.builds), [sampleGarage]);
   const sampleLook = useCallback((b: Build) => rigLookOf({ paints: equipmentPaints(b, sampleGarage.parts), look: { ...NO_LOOK, ...(b.look ?? {}), plateNumber: b.name.num }, marks: NO_MARKS, wins: 0 }, "mint"), [sampleGarage]);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; requestEpoch.current++; }; }, []);
-  useEffect(() => { try { const raw = sessionStorage.getItem(PENDING_PRACTICE_KEY); if (raw && raw.length < 20000) pendingPractice.current = parsePracticeAppearance(JSON.parse(raw)); } catch { /* Malformed pending appearance cannot replace a robot. */ } }, []);
-  useEffect(() => { try { setDemo(readGameDemo(localStorage.getItem(GAME_DEMO_KEY))); } catch { setDemo(freshGameDemo()); } setHydrated(true); }, []);
+  useEffect(() => { try { const raw = sessionStorage.getItem(PENDING_PRACTICE_KEY); if (raw && raw.length < 20000) { const value = JSON.parse(raw); pendingPractice.current = value.version === 2 ? parsePracticeDraft(value) : parsePracticeAppearance(value); } } catch { /* Malformed pending appearance cannot replace a robot. */ } }, []);
+  useEffect(() => { try { setDemo(readGameDemo(localStorage.getItem(GAME_DEMO_KEY), defaultOnboardingVersion())); } catch { setDemo(freshGameDemo(defaultOnboardingVersion())); } setHydrated(true); }, []);
   useEffect(() => { if (hydrated && session.ready && !session.token) { try { localStorage.setItem(GAME_DEMO_KEY, JSON.stringify(demo)); } catch { /* The garage still works when browser storage is full. */ } } }, [demo, hydrated, session.ready, session.token]);
-  useEffect(() => { setMode(validMode(params.get("view"))); const open = params.get("panel"); if (open === "earn" || open === "campaign" || open === "community" || open === "help") setDrawer(open); }, [params]);
+  useEffect(() => { const next = validMode(params.get("panel") === "community" ? "community" : params.get("view")); setMode(next === "community" && !roomPreview ? "garage" : next); if (next === "community" && !roomPreview) setDrawer("community"); const open = params.get("panel"); if (open === "earn" || open === "campaign" || open === "help") setDrawer(open); }, [params]);
   useEffect(() => { if (!note) return; const timer = setTimeout(() => setNote(""), 5200); return () => clearTimeout(timer); }, [note]);
 
   const refresh = useCallback(async (token = tokenRef.current) => {
@@ -111,7 +125,7 @@ export default function GameShell() {
   }, []);
   useEffect(() => {
     if (!session.ready) return;
-    requestEpoch.current++; setMe(null); setEdit(null); setFeed(null); setBay(1); setNewBay(null); setSelection(null); setNudgeHidden(false); setEarnedRows(null); setProgress(null);
+    requestEpoch.current++; setMe(null); setEdit(null); setFeed(null); setBay(1); setNewBay(null); setSelection(null); setNudgeHidden(false); setEarnedRows(null); setProgress(null); setHandoffFailed(false); setGarageConflict(false);
     setLoadState(session.token ? "loading" : "ready");
     const token = session.token, appearance = token ? pendingPractice.current : null;
     const ownerKey = bayPreferenceKey(token);
@@ -134,9 +148,10 @@ export default function GameShell() {
             pendingPractice.current = null;
             try { sessionStorage.removeItem(PENDING_PRACTICE_KEY); } catch { /* Optional retry persistence. */ }
           }
-          if (result.ok && result?.applied && Number.isInteger(result.bay)) { copiedBay = result.bay!; setNote("Your chosen robot is now in your connected garage."); }
-          else setNote(result?.reason === "existing-garage" ? "Your connected garage is ready. Your separate practice robot is still saved in this browser." : "Your practice robot is still saved here. Its appearance could not be copied yet.");
-        } catch { if (!cancelled && tokenRef.current === token) setNote("Your practice robot is still saved here. Its appearance could not be copied yet."); }
+          if (result.ok && result?.applied && Number.isInteger(result.bay)) { copiedBay = result.bay!; setNote("Your robot choices are saved to your wallet."); }
+          else if (result.ok && result.reason === "existing-garage") { setGarageConflict(true); }
+          else { setHandoffFailed(true); setNote("Your browser robot is safe. Connecting its choices did not finish."); }
+        } catch { if (!cancelled && tokenRef.current === token) { setHandoffFailed(true); setNote("Your browser robot is safe. Connecting its choices did not finish."); } }
       }
       if (token && !appearance && partialPractice.current) { partialPractice.current = false; setNote("Your unfinished practice build is saved in this browser. Only a finished seven-part build can be copied into your connected garage."); }
       if (!cancelled) {
@@ -156,9 +171,12 @@ export default function GameShell() {
     if (!hydrated || !session.ready) return;
     const controller = new AbortController(), token = session.token;
     setCampaign(null);
-    void fetch(`/api/bots/campaign?period=${period}`, { cache: "no-store", signal: controller.signal, headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.ok ? r.json() : null).then(v => { if (!controller.signal.aborted && v?.ok) setCampaign(v); }).catch(() => {});
-    return () => controller.abort();
-  }, [period, session.token, session.ready, hydrated]);
+    let loading = false;
+    const update = () => { if (document.hidden || loading) return; loading = true; void readGameView<CampaignView>(`/api/bots/campaign?period=${period}`, controller.signal, token ? { Authorization: `Bearer ${token}` } : {}).then(v => { if (!controller.signal.aborted && v?.ok) setCampaign(v); }).catch(() => {}).finally(() => { loading = false; }); };
+    update(); const timer = mode === "community" ? setInterval(update, 60000) : null;
+    document.addEventListener("visibilitychange", update);
+    return () => { controller.abort(); if (timer) clearInterval(timer); document.removeEventListener("visibilitychange", update); };
+  }, [period, session.token, session.ready, hydrated, mode]);
 
   useEffect(() => {
     if (!session.ready || !session.token || !me || !(drawer === "look" || drawer === "name" || drawer === "help")) return;
@@ -174,15 +192,17 @@ export default function GameShell() {
 
   const onboarding = signedIn ? me?.onboarding ?? null : demo.onboarding;
   const intro = !!onboarding && onboarding.step !== "complete";
-  const parts = useMemo(() => signedIn ? me?.parts.map(ownedOf) ?? [] : demo.parts, [signedIn, me?.parts, demo.parts]);
+  const starterV2 = intro && onboarding?.version === 2;
+  const draft = useMemo(() => signedIn && starterV2 && onboarding ? draftPreview(onboarding) : null, [signedIn, starterV2, onboarding]);
+  const parts = useMemo(() => signedIn ? [...(me?.parts.map(ownedOf) ?? []), ...(draft?.parts ?? [])] : demo.parts, [signedIn, me?.parts, demo.parts, draft]);
   const builds = useMemo(() => {
     if (!signedIn) return demo.builds.length ? demo.builds : [starterBuild(1)];
     if (!me) return [];
-    const savedBuilds = me.bots.map(buildOf);
+    const savedBuilds = me.bots.map(b => draft && b.bay === onboarding?.draftBay ? { ...draft.build, look: buildOf(b).look } : buildOf(b));
     if (newBay && !savedBuilds.some(b => b.bay === newBay)) savedBuilds.push(starterBuild(newBay));
     // Recycling the last robot leaves a usable empty bay, not an endless loader.
     return savedBuilds.length ? savedBuilds : [withSockets(starterBuild(1), socketsOf(starterBuild(1)))];
-  }, [signedIn, me?.bots, demo.builds, newBay]);
+  }, [signedIn, me?.bots, demo.builds, newBay, draft, onboarding?.draftBay]);
   const saved = builds.find(b => b.bay === bay) ?? builds[0] ?? null;
   const build = edit && edit.bay === saved?.bay ? edit : saved;
   const row = me?.bots.find(b => b.bay === build?.bay);
@@ -195,7 +215,7 @@ export default function GameShell() {
     return { paints: equipmentPaints(b, parts), look: { ...(b.look ?? NO_LOOK), plateNumber: b.name.num }, marks: signedIn && actual ? actual.marks : NO_MARKS, wins: signedIn && actual ? actual.wins : 0 };
   }, [me?.bots, parts, signedIn]);
   const incomplete = build ? emptySockets(build).length : 7;
-  const partsLocked = !!saved && emptySockets(saved).length === 0;
+  const partsLocked = !starterV2 && !!saved && emptySockets(saved).length === 0;
   const worn = EQUIPMENT_SOCKETS.map(s => parts.find(p => p.uid === (build ? socketsOf(build)[s] : null))).filter((p): p is OwnedPart => !!p);
   const colours = Array.from(new Set(worn.filter(p => p.slot !== "weapon").map(p => p.paint).filter((p): p is PaintId => !!p)));
   const earned = findsOf({ wins: row?.wins ?? 0, losses: row?.losses ?? 0, level: row?.level ?? 1, champion: row?.marks.crown ?? false, bodyCount: 6,
@@ -219,15 +239,20 @@ export default function GameShell() {
   }, [onboarding?.step, onboarding?.draftBay, params, exploring]);
   useEffect(() => { if (onboarding?.step === "shop" && onboarding.nextSocket) { setSocket(onboarding.nextSocket); setSelection(null); } }, [onboarding?.nextSocket, onboarding?.step]);
   useEffect(() => {
-    if (!(mode === "fight" || drawer === "community") || !session.ready) return;
+    if (!(mode === "fight" || mode === "community" || drawer === "community") || !session.ready) return;
     const controller = new AbortController(), token = session.token;
-    setBattlesState("loading");
-    const q = row ? `?bot=${row.id}` : "";
-    void fetch(`/api/bots/battles${q}`, { cache: "no-store", signal: controller.signal, headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.ok ? r.json() : null).then(v => { if (controller.signal.aborted) return; setBattles(v?.ok ? v : null); setBattlesState(v?.ok ? "ready" : "failed"); }).catch(() => { if (!controller.signal.aborted) { setBattles(null); setBattlesState("failed"); } });
-    return () => controller.abort();
-  }, [mode, drawer, row?.id, session.token, session.ready]);
+    setBattlesState("loading"); let loading = false;
+    const q = row && mode === "fight" ? `?bot=${row.id}` : "";
+    const update = () => {
+      if (document.hidden || loading) return; loading = true;
+      void readGameView<BattlesView>(`/api/bots/battles${q}`, controller.signal, token ? { Authorization: `Bearer ${token}` } : {}).then(v => { if (controller.signal.aborted) return; if (v?.ok) setBattles(v); setBattlesState(v?.ok ? "ready" : "failed"); }).catch(() => { if (!controller.signal.aborted) setBattlesState("failed"); }).finally(() => { loading = false; });
+    };
+    update(); const timer = mode === "community" ? setInterval(update, 30000) : null;
+    document.addEventListener("visibilitychange", update);
+    return () => { controller.abort(); if (timer) clearInterval(timer); document.removeEventListener("visibilitychange", update); };
+  }, [mode, drawer, row?.id, session.token, session.ready, retryFeed]);
 
-  const go = (next: Mode) => { setMode(next); setSelection(null); if (next !== "fight") setFeed(null); setDrawer(null); const url = new URL(window.location.href); url.searchParams.delete("panel"); if (next === "garage") url.searchParams.delete("view"); else url.searchParams.set("view", next); window.history.replaceState(null, "", `${url.pathname}${url.search}`); };
+  const go = (next: Mode) => { if (next === "community" && !roomPreview) { setDrawer("community"); return; } setMode(next); setSelection(null); if (next !== "fight") setFeed(null); setDrawer(null); const url = new URL(window.location.href); url.searchParams.delete("panel"); if (next === "garage") url.searchParams.delete("view"); else url.searchParams.set("view", next); window.history.replaceState(null, "", `${url.pathname}${url.search}`); };
   const explore = (enabled: boolean) => {
     if (edit) { setNote("Save your changes before looking around."); return; }
     const url = new URL(window.location.href); url.searchParams.delete("panel");
@@ -236,50 +261,104 @@ export default function GameShell() {
     setMode(!enabled && onboarding?.step === "shop" ? "parts" : "garage"); setFeed(null); setDrawer(null); setSelection(null);
     window.history.replaceState(null, "", `${url.pathname}${url.search}`);
   };
-  const mutate = async (work: (token: string | null) => Promise<void> | void) => {
+  const mutate = async <T,>(work: (token: string | null) => Promise<T> | T): Promise<T | undefined> => {
     if (busyRef.current) return;
     const claims = tokenRef.current ? decodeBotsSession(tokenRef.current) : null;
     if (claims && claims.exp <= Date.now()) { setLoadState("expired"); return; }
     busyRef.current = true; setBusy(true); const token = tokenRef.current;
-    try { await work(token); } catch { if (mounted.current && tokenRef.current === token) setNote("That did not finish. Please try again."); }
+    try { return await work(token); } catch { if (mounted.current && tokenRef.current === token) setNote("That did not finish. Please try again."); }
     finally { busyRef.current = false; if (mounted.current) setBusy(false); }
   };
   const introAction = async (action: "welcome" | "buy" | "practice" | "complete", extra?: { socket?: Socket; offerId?: string }) => {
     await mutate(async token => {
       if (!token) {
-        if (action === "welcome") { setDemo(demoWelcome); rememberBay(2); go("parts"); }
+        if (action === "welcome") { setDemo(demoWelcome); rememberBay(onboarding?.draftBay ?? 2); explore(false); go("parts"); }
         if (action === "buy" && extra?.socket && extra.offerId) { setDemo(v => demoBuy(v, extra.socket!, extra.offerId!)); setEdit(null); setSelection(null); }
         if (action === "practice") openPractice(true);
         if (action === "complete") { setDemo(demoComplete); setNote("Your first build is ready. Nothing was lost in practice."); }
         return;
       }
-      const res = await fetch("/api/bots/onboarding", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ t: token, action, ...extra }) });
+      const res = await fetch("/api/bots/onboarding", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ t: token, action: starterV2 && action === "buy" ? "choose" : action, ...extra, ...(starterV2 ? { revision: onboarding?.revision } : {}) }) });
       const value = await res.json().catch(() => null);
       if (tokenRef.current !== token || !mounted.current) return;
-      if (!res.ok || !value?.ok) { setNote(safeMessage(value, "That did not finish. Please try again.")); return; }
+      if (!res.ok || !value?.ok) { setNote(safeMessage(value, "That did not finish. Please try again.")); if (res.status === 409) await refresh(token); return; }
       setEdit(null); setSelection(null); await refresh(token);
       if (tokenRef.current !== token || !mounted.current) return;
-      if (action === "welcome") { rememberBay(value.onboarding?.draftBay ?? 2); go("parts"); }
+      if (action === "welcome") { rememberBay(value.onboarding?.draftBay ?? 2); explore(false); go("parts"); }
       if (action === "practice" && typeof value.fightId === "string") { go("fight"); setFeed({ kind: "server", id: value.fightId, tutorial: true }); }
       if (action === "complete") setNote("Your first build is ready. Nothing was lost in practice.");
     });
   };
 
+  const finishStarter = async (name: Build["name"]) => {
+    await mutate(async token => {
+      if (!onboarding || onboarding.version !== 2 || !build) return;
+      if (!token) {
+        const next = demoFinish(demoSave(demo, { ...build, name }));
+        if (!next.onboarding.milestones.assembled) { setNote("Choose all seven parts first."); return; }
+        setDemo(next); setEdit(null); rememberBay(next.onboarding.draftBay); go("garage"); setJustFinished(true); return;
+      }
+      let revision = onboarding.revision;
+      const send = async (action: string, extra: object = {}) => {
+        const response = await fetch("/api/bots/onboarding", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ action, revision, ...extra }) });
+        const value = await response.json().catch(() => null);
+        if (tokenRef.current !== token || !mounted.current) return null;
+        if (!response.ok || !value?.ok) { setNote(safeMessage(value, "Your robot has not finished saving. Please try again.")); await refresh(token); return null; }
+        return value;
+      };
+      if (JSON.stringify(name) !== JSON.stringify(onboarding.draftName)) {
+        const renamed = await send("name", { name }); if (!renamed) return;
+        revision = renamed.onboarding?.revision ?? revision;
+      }
+      const finished = await send("finish"); if (!finished) return;
+      const loaded = await refresh(token); if (!loaded || tokenRef.current !== token) return;
+      setEdit(null); rememberBay(loaded.onboarding?.draftBay ?? 1); go("garage"); setJustFinished(true);
+    });
+  };
+
+  const saveStarterName = async (name: Build["name"]) => {
+    await mutate(async token => {
+      if (!starterV2 || !build || !onboarding) return;
+      if (!token) { setDemo(v => demoSave(v, { ...build, name })); return; }
+      const res = await fetch("/api/bots/onboarding", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ action: "name", name, revision: onboarding.revision }) });
+      const value = await res.json().catch(() => null);
+      if (tokenRef.current !== token || !mounted.current) return;
+      if (!res.ok || !value?.ok) setNote(safeMessage(value, "The name did not save. Please try again."));
+      await refresh(token);
+    });
+  };
+
+  const retryPracticeTransfer = () => void mutate(async token => {
+    const appearance = pendingPractice.current;
+    if (!token || !appearance) return;
+    practiceRequest.current = null;
+    const response = await fetch("/api/bots/practice-handoff", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ appearance }) });
+    const result = await response.json().catch(() => null);
+    if (tokenRef.current !== token || !mounted.current) return;
+    if (!response.ok || !result?.ok || !result.applied && result.reason !== "existing-garage") { setNote("Your choices are still saved here. Please retry, or keep practicing in this browser."); return; }
+    const loaded = await refresh(token); if (tokenRef.current !== token || !loaded) return;
+    pendingPractice.current = null; try { sessionStorage.removeItem(PENDING_PRACTICE_KEY); } catch {}
+    setHandoffFailed(false);
+    if (result.reason === "existing-garage") setGarageConflict(true);
+    else { rememberBay(result.bay ?? loaded.onboarding?.draftBay ?? 1); setNote("Your robot choices are saved to your wallet."); }
+  });
+
   const openPractice = (tutorial = false) => {
     const mine = tutorial ? builds.find(b => b.bay === onboarding?.draftBay) : build;
     const welcome = builds.find(b => b.bay === onboarding?.welcomeBay) ?? builds[0];
     if (!mine || !welcome || emptySockets(mine).length) { setNote("Add all seven parts first."); return; }
-    const a = engineBuild(mine, parts), b = engineBuild(welcome, parts), looks: [LookView, LookView] = [liveLook(mine), liveLook(welcome)];
+    const house = onboarding?.version === 2 || welcome.bay === mine.bay;
+    const a = engineBuild(mine, parts), b = house ? SHOWCASE.b : engineBuild(welcome, parts), looks: [LookView, LookView] = [liveLook(mine), house ? { look: NO_LOOK, marks: NO_MARKS, paints: {}, wins: 0 } as LookView : liveLook(welcome)];
     go("fight"); setFeed({ kind: "local", tutorial, props: {
       seed: 75, a, b, looks,
-      ids: [{ name: nameText(mine.name), wallet: "Your practice garage", wins: 0, losses: 0, strategy: "", paint: "mint" }, { name: nameText(welcome.name), wallet: "Welcome robot", wins: 0, losses: 0, strategy: "", paint: "butter" }],
+      ids: [{ name: nameText(mine.name), wallet: "Your practice garage", wins: 0, losses: 0, strategy: "", paint: "mint" }, { name: house ? SHOWCASE.names[1] : nameText(welcome.name), wallet: "Practice rival", wins: 0, losses: 0, strategy: "", paint: "butter" }],
       mode: "spar", modeLabel: "Welcome practice", replayUrl: "/bots", watchAnotherHref: "/bots?view=fight", rewardLines: ["Practice. No coins, points, wins, or repairs."],
     } });
   };
   const watchShowcase = () => { go("fight"); setFeed({ kind: "local", tutorial: false, props: { seed: 75, a: SHOWCASE.a, b: SHOWCASE.b, ids: [{ name: SHOWCASE.names[0], wallet: "Practice", wins: 0, losses: 0, strategy: "", paint: "mint" }, { name: SHOWCASE.names[1], wallet: "Practice", wins: 0, losses: 0, strategy: "", paint: "coral" }], mode: "spar", modeLabel: "A practice fight", replayUrl: SHOWCASE.href, watchAnotherHref: "/bots?view=fight" } }); };
   const watch = (id: string) => { go("fight"); setFeed({ kind: "server", id, tutorial: false }); };
   const fightComplete = () => { if (feed?.tutorial) { completedTutorial.current = true; void introAction("complete"); } else if (signedIn) void refresh(); };
-  const closeFight = () => { const explainEarning = feed?.tutorial && completedTutorial.current; setFeed(null); go("garage"); if (explainEarning) setDrawer("earn"); if (signedIn) void refresh(); };
+  const closeFight = () => { setFeed(null); go("garage"); if (signedIn) void refresh(); };
 
   const saveBuild = async () => {
     if (!build) return;
@@ -357,7 +436,7 @@ export default function GameShell() {
     const answer = await buyOnServer(listing.id);
     if (tokenRef.current !== token || !mounted.current) return;
     if (answer.ok) { setMe(v => v ? withBoughtPart(v, listing.id, answer.value.part, answer.value.coins) as PlayerMe : v); setSelection(null); setNote("It is yours. Use it in your next robot."); await refresh(token); }
-    else setNote(answer.message ?? "The part could not be bought. Try again.");
+    else { const message = answer.message ?? "The part could not be bought. Try again."; setNote(message); return { ok: false, message }; }
   });
 
   const stageTitle = onboarding?.step === "welcome" ? "Your first friend." : mode === "parts" && intro ? "Made by you." : build ? nameText(build.name) : "Your garage";
@@ -366,7 +445,7 @@ export default function GameShell() {
   const chooseIntro = intro && onboarding?.step === "shop";
   const introPractice = intro && onboarding?.step === "practice";
   const showChoice = mode === "parts" && !introWelcome || mode === "build" && !intro;
-  const fullRoom = (!intro || exploring) && (mode === "garage" || mode === "parts");
+  const fullRoom = mode === "community" || starterV2 && !exploring || (!intro || exploring) && (mode === "garage" || mode === "parts");
   const showStats = !feed && !fullRoom && (mode === "build" && !intro || mode === "parts" && chooseIntro);
   const trial = useMemo(() => build ? previewOffer(build, parts, socket, showStats && chooseIntro ? pickedOffer : undefined) : null, [build, parts, socket, showStats, chooseIntro, pickedOffer]);
   const robot = useMemo(() => trial ? engineBuild(trial.build, trial.parts) : null, [trial]);
@@ -389,10 +468,11 @@ export default function GameShell() {
     <main className={`${css.workspace} ${fullRoom && !feed ? css.fullRoom : css.artRoom} ${showStats ? css.withStats : ""}`} data-mode={mode} data-scene={mode === "fight" ? "arena" : "workshop"} aria-label={`${mode === "parts" ? "Parts shop" : mode === "build" ? "Build your robot" : mode === "fight" ? "Fight room" : "Your garage"}`}>
       {!ready ? <div className={css.loading}><div><h1 className={css.title}>{signedIn && loadState === "expired" ? "Welcome back." : signedIn && loadState === "failed" ? "Your garage is safe." : "Opening your workshop…"}</h1><p className={css.body}>{signedIn && loadState === "expired" ? "Sign in again to open your saved garage. Your robots are still yours." : signedIn && loadState === "failed" ? "We could not load your saved robot. Please try again." : "Your robot and its parts belong together."}</p>{signedIn && loadState === "expired" && <button className={css.primary} disabled={session.busy || session.pending} onClick={connect}>{session.busy || session.pending ? "Connecting…" : "Open my saved garage"}</button>}{signedIn && loadState === "failed" && <button className={css.primary} onClick={() => { setLoadState("loading"); void refresh(); }}>Try again</button>}</div></div> : feed ? <div className={css.fightHost}>
         {feed.kind === "server" ? <ServerFight key={feed.id} id={feed.id} embedded onClose={closeFight} onCloseLabel={feed.tutorial ? "What comes next?" : undefined} onComplete={fightComplete} hideShare={feed.tutorial} /> : <FightClient key={`${feed.props.seed}-${feed.props.ids[0].name}-${feed.tutorial}`} {...feed.props} embedded onClose={closeFight} onCloseLabel={feed.tutorial ? "What comes next?" : undefined} onComplete={fightComplete} hideShare={feed.tutorial || feed.props.replayUrl === "/bots"} />}
-      </div> : fullRoom ? <div className={css.roomHost}>
+      </div> : mode === "community" ? <CommunityRoom battles={battles} state={battlesState} campaign={campaign} onWatch={watch} onPractice={watchShowcase} onScores={() => setDrawer("campaign")} onRetry={() => setRetryFeed(n => n + 1)} /> : starterV2 && !exploring && onboarding?.step === "shop" ? <StarterBuilder build={build!} parts={parts} onboarding={onboarding} socket={socket} busy={busy} signedIn={signedIn} onSocket={s => { setSocket(s); setSelection(null); }} onChoose={(s, id) => void introAction("buy", { socket: s, offerId: id })} onName={saveStarterName} onFinish={finishStarter} onExplore={() => explore(true)} /> : fullRoom ? <div className={css.roomHost}>
         {edit && <div className={css.tourBar}><span>Unsaved changes to {nameText(edit.name)}</span><button disabled={busy} onClick={() => void saveBuild()}>{busy ? "Saving…" : "Save my robot"}</button></div>}
-        {exploring && <div className={css.tourBar}><span>{sample ? "Sample collection · your first build is saved" : "Looking around · your first build is saved"}</span><button onClick={() => explore(false)}>{intro ? "Continue my first build →" : "Back to my robots →"}</button></div>}
-        {mode === "parts" ? <WorkshopShop me={signedIn ? me : null} spendable={spendable} introductory={intro} onResume={() => explore(false)} onEarn={() => setDrawer("earn")} onBuy={buyRegular} onReload={() => void refresh()} /> : <GarageRoom builds={sample ? sampleBuilds : builds} parts={sample ? sampleGarage.parts : parts} selectedBay={sample ? sampleBay : build?.bay ?? 1} rows={signedIn ? me?.bots ?? [] : []} sample={sample} busy={busy} onRecycle={!sample && !intro ? recycleRobot : undefined} lookFor={sample ? sampleLook : collectionLook}
+        {justFinished && <div className={css.tourBar}><span>{nameText(build!.name)} is ready. {signedIn ? "Saved to your wallet." : "Saved in this browser."}</span><button onClick={() => { setJustFinished(false); openPractice(); }}>Try a practice fight</button><button onClick={() => setJustFinished(false)}>Explore the garage</button></div>}
+        {exploring && <div className={css.tourBar}><span>{sample ? "Example robots. Build one of your own." : "Looking around your garage."}</span><button onClick={() => onboarding?.step === "welcome" ? void introAction("welcome") : explore(false)}>{intro ? onboarding?.purchasedCount ? "Continue my build →" : "Build my robot →" : "Back to my robots →"}</button></div>}
+        {mode === "parts" ? <WorkshopShop me={signedIn ? me : null} spendable={spendable} introductory={intro} comparison={{ builds: sample ? sampleBuilds : builds, parts: sample ? sampleGarage.parts : parts, selectedBay: sample ? sampleBay : bay, finishedBays: (sample ? sampleBuilds : builds).filter(b => emptySockets(b).length === 0 && !(starterV2 && b.bay === onboarding?.draftBay)).map(b => b.bay) }} onResume={() => onboarding?.step === "welcome" ? void introAction("welcome") : explore(false)} onEarn={() => setDrawer("earn")} onBuy={buyRegular} onReload={() => void refresh()} /> : <GarageRoom builds={sample ? sampleBuilds : builds} parts={sample ? sampleGarage.parts : parts} selectedBay={sample ? sampleBay : build?.bay ?? 1} rows={signedIn ? me?.bots ?? [] : []} sample={sample} busy={busy} onRecycle={!sample && !intro ? recycleRobot : undefined} lookFor={sample ? sampleLook : collectionLook}
           onSelect={sample ? setSampleBay : selectBot} onBuild={sample ? next => { if (sampleGarage.builds[next]) { setSampleBay(next); setDrawer("sample"); } else explore(false); } : openBay}
           onName={() => setDrawer("name")} onFight={sample ? watchShowcase : () => go("fight")} onParts={() => go("parts")} onTools={sample ? () => go("parts") : () => setDrawer("tools")} onEarn={() => setDrawer("earn")} onProgress={() => setDrawer("help")}
           onExplore={!signedIn && !exploring ? () => explore(true) : undefined} nudge={!(nudgeHidden || !signedIn && demo.nudgeDismissed)} onDismiss={dismissNudge} />}
@@ -421,14 +501,14 @@ export default function GameShell() {
               <button className={css.secondary} onClick={() => go("fight")}>Take it to a fight <IconWeapon size={18} /></button>
               <div className={css.milestones}><span className={css.milestone} data-done={true}>A robot of your own</span>{onboarding?.milestones.assembled && <span className={css.milestone} data-done={true}>First build</span>}{onboarding?.milestones.practiced && <span className={css.milestone} data-done={true}>First practice</span>}</div>
               {!(nudgeHidden || (!signedIn && demo.nudgeDismissed)) && <div className={css.nudge}><button className={css.dismiss} onClick={dismissNudge} aria-label="Hide this suggestion">×</button><p className={css.body}>Want more parts? Let Doma trades earn your next coins.</p><button className={css.secondary} onClick={() => setDrawer("earn")}>Show me how</button></div>}
-              <button className={css.secondary} onClick={() => setDrawer("community")}>See what others are building</button>
+              <button className={css.secondary} onClick={() => go("community")}>See what others are building</button>
             </> : mode === "build" ? <><p className={css.body} style={{ marginBottom: 13 }}>{partsLocked ? "These parts stay with your finished robot. Build another to try new parts." : `${EQUIPMENT_LABEL[socket]}. Choose a part to put it on.`}</p>{partsLocked && <button className={css.secondary} onClick={beginAnother}>Build another robot →</button>}<div className={css.partGrid}>{owned.filter(p => !partsLocked || socketsOf(build!)[socket] === p.uid).map(p => <PartChoice disabled={partsLocked} key={p.uid} part={p} paint={p.paint} selected={socketsOf(build!)[socket] === p.uid} onClick={() => choosePart(p)} caption={socketsOf(build!)[socket] === p.uid ? "On your robot" : "Put it on"} />)}</div>{owned.length === 0 && <><p className={css.body}>There is no spare {EQUIPMENT_LABEL[socket].toLowerCase()} here yet.</p><button className={css.secondary} onClick={() => go("parts")}>Find one in Parts</button></>}</> : <>
               {incomplete ? <><Guide>Your robot needs all seven pieces before a fight.</Guide><button className={css.primary} onClick={() => go("build")}>Finish my robot</button></> : signedIn ? <>
                 <p className={css.body}>{row?.inShop ? "This robot is being repaired. Choose another robot or watch a fight." : `${row?.attacksLeft ?? 0} attacks left today. A real loss can mean a day for repairs.`}</p>
                 {battlesState === "loading" ? <p className={css.fine}>Finding rivals…</p> : battlesState === "failed" ? <p className={css.fine}>The ring could not load. You can still watch the practice fight.</p> : <div className={css.list}>{battles?.pve.map(rival => <button className={css.listRow} disabled={busy || !!row?.inShop || !row?.attacksLeft || !!edit} key={rival.difficulty} onClick={() => startFight(rival.difficulty)}><strong>{rival.title} · {rival.shapeName}</strong>{rival.feel}<small>{rival.coinsWin} coins for a win · {rival.points} points</small></button>)}</div>}
                 {!!battles?.defenders.length && <><h3 className={css.heading} style={{ fontSize: 23, marginTop: 24 }}>Neighbouring robots</h3><p className={css.fine}>Put in 25 coins to challenge a player. You can lose those coins.</p><div className={css.list}>{battles.defenders.slice(0, 6).map(rival => <button className={css.listRow} key={rival.botId} disabled={busy || spendable < 25 || rival.challengedToday || !!row?.inShop || !row?.attacksLeft || !!edit} onClick={() => startFight(undefined, rival.botId)}><strong>{rival.name}</strong>{rival.gapWords ?? "Ready in the ring"}<small>Challenge · 25 coins</small></button>)}</div></>}
               </> : <><Guide>Try another practice fight with your new robot.</Guide><button className={css.primary} onClick={() => openPractice(false)}>Watch my robot fight</button><p className={css.fine}>No coins, points, wins, or repairs in this practice garage.</p><button className={css.secondary} onClick={connect}>Connect for real fights</button></>}
-              <button className={css.secondary} onClick={watchShowcase}>Watch a practice fight</button><button className={css.secondary} onClick={() => setDrawer("community")}>Watch the community</button>
+              <button className={css.secondary} onClick={watchShowcase}>Watch a practice fight</button><button className={css.secondary} onClick={() => go("community")}>Watch the community</button>
             </>}
           </div>
           {chooseIntro && mode === "parts" && <div className={css.selection}><p className={css.body}>{pickedOffer ? `${pickedOffer.part.name} · ${pickedOffer.price} coins. It goes straight on your robot.` : "Tap a part to choose it."} · {reserved} coins reserved</p><button className={css.primary} disabled={!pickedOffer || busy} onClick={() => pickedOffer && void introAction("buy", { socket, offerId: pickedOffer.id })}>{busy ? "Putting it on…" : pickedOffer ? `Choose this ${EQUIPMENT_KIND[socket] === "arms" ? "arm" : EQUIPMENT_KIND[socket] === "legs" ? "leg" : EQUIPMENT_LABEL[socket].toLowerCase()}` : "Pick your favourite above"}</button></div>}
@@ -437,10 +517,14 @@ export default function GameShell() {
       </>}
     </main>
 
-    <nav className={css.nav} aria-label="Game rooms">{([{ id: "garage", label: "Garage", Icon: IconGarage }, { id: "parts", label: "Parts", Icon: IconPegboard }, { id: "build", label: "Build", Icon: IconWrench }, { id: "fight", label: "Fight", Icon: IconWeapon }] as const).map(({ id, label, Icon }) => <button key={id} className={css.navButton} aria-current={!drawer && mode === id ? "page" : undefined} onClick={() => { if (sample && id === "build") setDrawer("sample"); else if (exploring && id === "fight") watchShowcase(); else if (id === "build" && !intro) beginAnother(); else go(id); }}><Icon size={22} />{label}</button>)}<button className={`${css.navButton} ${css.navExtra}`} aria-current={drawer === "community" ? "page" : undefined} onClick={() => setDrawer("community")}><IconStar size={22} />Community</button><button className={css.navButton} aria-current={drawer === "help" ? "page" : undefined} onClick={() => setDrawer("help")}><span aria-hidden style={{ fontSize: 23, lineHeight: "22px", fontWeight: 800 }}>?</span>Help</button></nav>
+    <nav className={css.nav} aria-label="Game rooms">{([{ id: "garage", label: "Garage", Icon: IconGarage }, { id: "parts", label: "Parts", Icon: IconPegboard }, { id: "build", label: "Build", Icon: IconWrench }, { id: "fight", label: "Fight", Icon: IconWeapon }] as const).map(({ id, label, Icon }) => <button key={id} className={css.navButton} aria-current={!drawer && mode === id ? "page" : undefined} onClick={() => { if (sample && id === "build") setDrawer("sample"); else if (exploring && id === "fight") watchShowcase(); else if (id === "build" && !intro) beginAnother(); else go(id); }}><Icon size={22} />{label}</button>)}<button className={`${css.navButton} ${css.navExtra}`} aria-current={mode === "community" ? "page" : undefined} onClick={() => go("community")}><IconStar size={22} />Community</button><button className={css.navButton} aria-current={drawer === "help" ? "page" : undefined} onClick={() => setDrawer("help")}><span aria-hidden style={{ fontSize: 23, lineHeight: "22px", fontWeight: 800 }}>?</span>Help</button></nav>
     {(note || session.error) && <p role="status" className={css.status}>{note || session.error}</p>}
+    {ready && starterV2 && onboarding?.step === "welcome" && !exploring && !trailerOpen && !garageConflict && !handoffFailed && <EntryDialog title="Build your own robot." onClose={() => explore(true)}><p>Choose seven parts. Give it a name. Watch it fight.</p><p className={entryCss.allowance}>You get 250 starter coins to build your first robot.</p><button className={entryCss.primary} disabled={busy} onClick={() => void introAction("welcome")}>Build my robot</button><button className={entryCss.secondary} onClick={() => explore(true)}>Look around</button><button className={entryCss.textButton} onClick={() => setTrailerOpen(true)}>Watch trailer</button><small>{signedIn ? "Your choices save to this wallet." : "No wallet needed to try. Your choices save in this browser."}</small></EntryDialog>}
+    {garageConflict && <EntryDialog title="Two saved garages." onClose={() => setGarageConflict(false)}><p>This wallet already has a garage. Your browser robot is still saved here, too.</p><button className={entryCss.primary} onClick={() => { setGarageConflict(false); go("garage"); }}>Open my wallet garage</button><button className={entryCss.secondary} onClick={() => { setGarageConflict(false); session.signOut(); go("garage"); }}>Keep practicing in this browser</button></EntryDialog>}
+    {handoffFailed && <EntryDialog title="Your browser robot is safe." onClose={() => { setHandoffFailed(false); session.signOut(); }}><p>We could not finish saving your choices to this wallet. Your browser build is still here.</p><button className={entryCss.primary} disabled={busy} onClick={retryPracticeTransfer}>{busy ? "Saving choices…" : "Try saving again"}</button><button className={entryCss.secondary} disabled={busy} onClick={() => { setHandoffFailed(false); session.signOut(); go("garage"); }}>Keep practicing in this browser</button></EntryDialog>}
+    {trailerOpen && <TrailerPlayer onClose={() => setTrailerOpen(false)} />}
     {drawer && <GameDrawer wide={drawer === "earn"} room={drawer === "community" ? "street" : drawer === "campaign" ? "arena" : drawer === "tools" ? "cabinet" : "workshop"} title={drawer === "sample" ? "A workshop character" : drawer === "tools" ? "Your tool board" : drawer === "earn" ? "Feed your robot" : drawer === "campaign" ? "Model Kombat prizes" : drawer === "community" ? "Community" : drawer === "name" || drawer === "look" ? "A little personality" : "A helping hand"} onClose={() => { setDrawer(null); setResetAsk(false); const url = new URL(window.location.href); url.searchParams.delete("panel"); window.history.replaceState(null, "", url.pathname + url.search); }}>
-      {drawer === "sample" ? <><div style={{height:340}}><ToyDisplay build={engineBuild(sampleGarage.builds[sampleBay], sampleGarage.parts)} look={sampleLook(sampleGarage.builds[sampleBay])} mode="interactive" variant="workshop" ariaLabel={nameText(sampleGarage.builds[sampleBay].name)} /></div><h3>{nameText(sampleGarage.builds[sampleBay].name)}</h3><p>A sample robot from the workshop. Every arm, leg and tool can be chosen separately.</p><button className={css.primary} onClick={watchShowcase}>Watch a sample fight</button><button className={css.secondary} onClick={() => explore(false)}>{intro ? "Continue my first build" : "Back to my robots"}</button></> : drawer === "tools" ? <><p>Spare parts, ready for your next idea.</p><div className={css.partGrid}>{spares.map(p => <PartChoice key={p.uid} part={p} paint={p.paint} selected={false} caption="Use in a new robot" onClick={() => { setSocket(EQUIPMENT_SOCKETS.find(s => EQUIPMENT_KIND[s] === p.slot)!); beginAnother(); }} />)}</div>{!spares.length && <p>No spare parts yet. The cabinet gets a new shipment every day.</p>}<button className={css.secondary} onClick={() => go("parts")}>Open the parts cabinet</button></> : drawer === "earn" ? <EarnDashboard token={session.token} me={me} practiceCoins={demo.coins} preview={robot && build ? { build: robot, look, ariaLabel: nameText(build.name) } : undefined} onConnect={connect} onWatch={watch} onShop={() => go("parts")} onFight={() => go("fight")} /> : drawer === "campaign" ? <CampaignPanel view={campaign} period={period} onPeriod={setPeriod} /> : drawer === "help" ? <>{resetAsk ? <div className={css.callout}><strong>Start this practice garage again?</strong><p>Your local practice choices will be cleared. Your connected account is untouched.</p><button className={css.primary} onClick={() => { setDemo(freshGameDemo()); setEdit(null); setBay(1); setFeed(null); go("garage"); setResetAsk(false); }}>Yes, start again</button><button className={css.secondary} onClick={() => setResetAsk(false)}>Keep my robot</button></div> : <HelpPanel demo={!signedIn} onEarn={() => setDrawer("earn")} onCampaign={() => setDrawer("campaign")} onReset={() => setResetAsk(true)} onSignOut={() => { session.signOut(); setDrawer(null); go("garage"); }} />}{!resetAsk && <><button className={css.secondary} onClick={() => explore(true)}>Look around the workshop</button>{progressPanel}</>}</> : drawer === "community" ? <><div className={css.callout}><strong>Watch other robots fight.</strong><p>This is the community room, also called Sprocket Row. Watch recent player fights and see the competition leaders.</p><p>Choose a fight below to watch its replay. The robots wear the parts they used in that fight.</p></div>{battlesState === "loading" ? <p>Finding recent fights…</p> : battles?.recent.length ? <div className={css.list}>{battles.recent.slice(0, 15).map(f => <button key={f.id} className={css.listRow} onClick={() => watch(f.id)}><strong>{f.winnerName} won a fight</strong>{f.names[0]} vs {f.names[1]}<small>Watch · {f.seconds} seconds</small></button>)}</div> : <p>No player fights are ready to watch yet. Try a practice replay below.</p>}<button className={css.primary} style={{ marginTop: 20 }} onClick={watchShowcase}>Watch a practice fight</button><button className={css.secondary} onClick={() => setDrawer("campaign")}>See competition scores</button></> : build ? <><div style={{ height: 210, borderRadius: 18, overflow: "hidden", marginBottom: 18 }}><ToyDisplay build={robot!} look={look} ariaLabel={nameText(build.name)} /></div><details className={css.nameDetails}><summary>{nameText(build.name)} · Change name</summary><NamePicker name={build.name} onChange={name => { if (!busyRef.current) setEdit({ ...build, name, look: { ...(build.look ?? NO_LOOK), plateNumber: name.num } }); }} /></details><LookPicker look={build.look ?? NO_LOOK} earned={earned} colours={colours} onChange={changeLook} compact /><button className={css.primary} disabled={!edit || busy} onClick={async () => { await saveBuild(); }}>{busy ? "Saving…" : "Save my robot"}</button><p className={css.fine}>Parts keep their own colours. Earned hats and decorations stay with the robot.</p>{progressPanel}</> : null}
+      {drawer === "sample" ? <><div style={{height:340}}><ToyDisplay build={engineBuild(sampleGarage.builds[sampleBay], sampleGarage.parts)} look={sampleLook(sampleGarage.builds[sampleBay])} mode="interactive" variant="workshop" ariaLabel={nameText(sampleGarage.builds[sampleBay].name)} /></div><h3>{nameText(sampleGarage.builds[sampleBay].name)}</h3><p>A sample robot from the workshop. Every arm, leg and tool can be chosen separately.</p><button className={css.primary} onClick={watchShowcase}>Watch a sample fight</button><button className={css.secondary} onClick={() => explore(false)}>{intro ? "Continue my first build" : "Back to my robots"}</button></> : drawer === "tools" ? <><p>Spare parts, ready for your next idea.</p><div className={css.partGrid}>{spares.map(p => <PartChoice key={p.uid} part={p} paint={p.paint} selected={false} caption="Use in a new robot" onClick={() => { setSocket(EQUIPMENT_SOCKETS.find(s => EQUIPMENT_KIND[s] === p.slot)!); beginAnother(); }} />)}</div>{!spares.length && <p>No spare parts yet. The cabinet gets a new shipment every day.</p>}<button className={css.secondary} onClick={() => go("parts")}>Open the parts cabinet</button></> : drawer === "earn" ? <EarnDashboard token={session.token} me={me} practiceCoins={demo.coins} preview={robot && build ? { build: robot, look, ariaLabel: nameText(build.name) } : undefined} onConnect={connect} onWatch={watch} onShop={() => go("parts")} onFight={() => go("fight")} /> : drawer === "campaign" ? <CampaignPanel view={campaign} period={period} onPeriod={setPeriod} /> : drawer === "help" ? <>{resetAsk ? <div className={css.callout}><strong>Start this practice garage again?</strong><p>Your local practice choices will be cleared. Your connected account is untouched.</p><button className={css.primary} onClick={() => { setDemo(freshGameDemo(defaultOnboardingVersion())); setEdit(null); setBay(1); setFeed(null); go("garage"); setResetAsk(false); }}>Yes, start again</button><button className={css.secondary} onClick={() => setResetAsk(false)}>Keep my robot</button></div> : <HelpPanel demo={!signedIn} onEarn={() => setDrawer("earn")} onCampaign={() => setDrawer("campaign")} onReset={() => setResetAsk(true)} onSignOut={() => { session.signOut(); setDrawer(null); go("garage"); }} />}{!resetAsk && <><button className={css.secondary} onClick={() => explore(true)}>Look around the workshop</button>{progressPanel}</>}</> : drawer === "community" ? <><div className={css.callout}><strong>Watch other robots fight.</strong><p>This is the community room, also called Sprocket Row. Watch recent player fights and see the competition leaders.</p><p>Choose a fight below to watch its replay. The robots wear the parts they used in that fight.</p></div>{battlesState === "loading" ? <p>Finding recent fights…</p> : battles?.recent.length ? <div className={css.list}>{battles.recent.slice(0, 15).map(f => <button key={f.id} className={css.listRow} onClick={() => watch(f.id)}><strong>{f.winnerName} won a fight</strong>{f.names[0]} vs {f.names[1]}<small>Watch · {f.seconds} seconds</small></button>)}</div> : <p>No player fights are ready to watch yet. Try a practice replay below.</p>}<button className={css.primary} style={{ marginTop: 20 }} onClick={watchShowcase}>Watch a practice fight</button><button className={css.secondary} onClick={() => setDrawer("campaign")}>See competition scores</button></> : build ? <><div style={{ height: 210, borderRadius: 18, overflow: "hidden", marginBottom: 18 }}><ToyDisplay build={robot!} look={look} ariaLabel={nameText(build.name)} /></div><details className={css.nameDetails}><summary>{nameText(build.name)} · Change name</summary><NamePicker name={build.name} onChange={name => { if (!busyRef.current) setEdit({ ...build, name, look: { ...(build.look ?? NO_LOOK), plateNumber: name.num } }); }} /></details><LookPicker look={build.look ?? NO_LOOK} earned={earned} colours={colours} onChange={changeLook} compact /><button className={css.primary} disabled={!edit || busy} onClick={async () => { await saveBuild(); }}>{busy ? "Saving…" : "Save my robot"}</button><p className={css.fine}>Parts keep their own colours. Earned hats and decorations stay with the robot.</p>{progressPanel}</> : null}
     </GameDrawer>}
   </div>;
 }

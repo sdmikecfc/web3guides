@@ -5,8 +5,35 @@ import { FIRST_WORDS, SECOND_WORDS, type Build, type Socket } from "./fixtures";
 import type { BotLookRaw } from "./look";
 import type { GameDemo } from "./game-demo";
 import { isPaintId, type PaintId } from "@/app/bots/_engine/parts";
+import { parseDraftOffers, parseDraftName, type DraftOffers } from "./onboarding-draft";
 
 export interface PracticeAppearance { offers: Record<Socket, string>; paints?: Partial<Record<Socket, PaintId>>; name: Build["name"]; look?: BotLookRaw }
+export interface PracticeDraft { version: 2; offers: DraftOffers; paints?: Partial<Record<Socket, PaintId>>; name: Build["name"]; look?: BotLookRaw; complete: boolean }
+export function parsePracticeDraft(raw: unknown): PracticeDraft | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Partial<PracticeDraft>, offers = parseDraftOffers(value.offers), name = parseDraftName(value.name);
+  if (value.version !== 2 || !offers || !name || typeof value.complete !== "boolean") return null;
+  if (value.complete && BEGINNER_ORDER.some(s => !offers[s])) return null;
+  const full = BEGINNER_ORDER.every(s => offers[s]) ? parsePracticeAppearance(value) : null;
+  if (BEGINNER_ORDER.every(s => offers[s]) && !full) return null;
+  const paints: Partial<Record<Socket, PaintId>> = full?.paints ?? {};
+  if (!full) for (const socket of BEGINNER_ORDER) {
+    const paint = value.paints?.[socket];
+    if (paint == null) continue;
+    if (!isPaintId(paint) || socket === "weapon" || paint !== beginnerOffer(offers[socket])?.color) return null;
+    paints[socket] = paint;
+  }
+  return { version: 2, offers, name, paints, complete: value.complete, ...(value.look && typeof value.look === "object" ? { look: value.look } : {}) };
+}
+/** Partial choices cross as catalogue IDs; no local currency, items or results. */
+export function practiceDraftOf(state: GameDemo, build: Build | undefined): PracticeDraft | null {
+  if (!build) return null;
+  const offers = Object.fromEntries(BEGINNER_ORDER.map(s => [s, state.parts.find(p => p.uid === socketsOf(build)[s])?.id ?? null]));
+  const paints = Object.fromEntries(BEGINNER_ORDER.map(s => [s, state.parts.find(p => p.uid === socketsOf(build)[s])?.paint]));
+  const hasAll = BEGINNER_ORDER.every(s => !!offers[s]);
+  return parsePracticeDraft({ version: 2, offers, paints, name: build.name, look: build.look,
+    complete: hasAll && (state.version === 1 || state.onboarding.milestones.assembled) });
+}
 export function parsePracticeAppearance(raw: unknown): PracticeAppearance | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Partial<PracticeAppearance>;

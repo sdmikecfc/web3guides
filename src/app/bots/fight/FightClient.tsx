@@ -576,6 +576,16 @@ export default function FightClient(p: FightClientProps) {
       play,
       pause,
       speed: setRate,
+      ...(process.env.NODE_ENV !== "production" ? { captureFrame: () => {
+        const scene=sceneRef.current;
+        if(!scene||!fightRef.current)return null;
+        scene.render(fightRef.current.st,fxRef.current);
+        return canvasRef.current?.toDataURL("image/jpeg",.96)??null;
+      }, captureFraming: (zoom: number, orbit: number, height?: number) => {
+        const scene=sceneRef.current;
+        scene?.captureFraming?.(zoom,orbit,height);
+        if(scene&&fightRef.current)scene.render(fightRef.current.st,fxRef.current);
+      } } : {}),
       state: () => ({
         frame: fightRef.current?.st.frame ?? 0,
         done: fightRef.current?.st.done === 1,

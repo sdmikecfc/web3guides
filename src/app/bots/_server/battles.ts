@@ -139,7 +139,7 @@ export async function battlesView(db: BotsDb, sess: BotsSession | null, wantBotI
     }
   }
 
-  const [live, recent, today] = await Promise.all([
+  const [live, recent, today, opponentSearch] = await Promise.all([
     rowsSince(db, new Date(nowMs - LIVE_WINDOW_MS).toISOString(), 20),
     (async () => {
       const { data, error } = await publicRows(db).order("created_at", { ascending: false }).limit(RECENT_LIMIT);
@@ -151,6 +151,12 @@ export async function battlesView(db: BotsDb, sess: BotsSession | null, wantBotI
       if (error) throw new Error(`featured read: ${error.message}`);
       return (data || []) as BattleRow[];
     })(),
+    // Community does not depend on optional matchmaking tables. Report failure
+    // separately so an empty list never falsely says that no opponents exist.
+    defenders(db, sess ? sess.wallet : null, selected, day, nowMs).then(
+      items => ({ items, available: true }),
+      () => ({ items: [] as DefenderRow[], available: false }),
+    ),
   ]);
 
   const sums = (rows: BattleRow[]): FightSummary[] => rows.map(fightSummary).filter((s): s is FightSummary => !!s);
@@ -169,7 +175,8 @@ export async function battlesView(db: BotsDb, sess: BotsSession | null, wantBotI
     day,
     me,
     pve: pveLadder(selected, day),
-    defenders: await defenders(db, sess ? sess.wallet : null, selected, day, nowMs),
+    defenders: opponentSearch.items,
+    defendersAvailable: opponentSearch.available,
     live: sums(live),
     featured: { upset, longest, fastestKo },
     recent: sums(recent),

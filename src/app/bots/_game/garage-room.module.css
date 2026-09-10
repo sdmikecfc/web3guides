@@ -52,3 +52,39 @@
 @media(max-width:350px){.heading h1{font-size:23px}.standPlate strong{font-size:10px}.emptyInvitation b{font-size:10px}.buildCard{grid-template-columns:minmax(0,1fr) 125px;column-gap:8px;padding:11px 12px}.buildCard h2{font-size:18px}.cardEyebrow{font-size:6px;gap:5px}.roomTools{right:12px}.roomTools button{font-size:7px!important;gap:4px}.another{font-size:9px!important;padding:9px}.garageFoot p>span{font-size:7px}}
 @media(max-height:520px) and (min-width:621px){.room{grid-template-rows:minmax(430px,1fr) auto}.stage{min-height:430px}.heading{top:18px}.heading h1{font-size:27px}.standRow{top:105px}.buildCard{top:24px}.roomTools{bottom:12px}}
 @media(prefers-reduced-motion:reduce){.pointer{animation:none}}
+/* The scene and hit targets share one pixel space. The floor, robot scale and
+   shadows come from Three.js; these controls only label that real geometry. */
+.stage{background:#60442c;isolation:isolate;min-height:440px}.stage::before{display:none}
+.scene{position:absolute;inset:0;pointer-events:none}.scene::after{content:"";position:absolute;inset:0;background:linear-gradient(#1a100955,transparent 25%,transparent 78%,#1e130d40);pointer-events:none}
+.heading{z-index:2;top:20px;left:28px;right:270px}.heading h1{font-size:clamp(24px,2.2vw,34px)}
+.standRow{inset:0;display:block;pointer-events:none;z-index:3}.stand{position:absolute;transform:translate(-50%,-100%);pointer-events:auto;border-radius:40% 40% 12px 12px}
+.stand::before{inset:15px -3% -14px;background:radial-gradient(ellipse at 50% 90%,#ffe2a72b,transparent 66%)}
+.stand:focus-visible{outline:2px solid #ffe2a7;outline-offset:5px;background:#ffe5b00d}
+.standNumber{top:auto;bottom:15px;left:50%;height:18px;min-width:26px;font-size:9px;border-radius:3px}
+.standPlate{bottom:-32px;left:0;right:0;padding:6px 5px;background:#352a21e0;border:1px solid #b5997270;box-shadow:0 2px 8px #17110b38}
+.standPlate strong{font-size:clamp(11px,1vw,15px)}.standPlate small{font-size:8px;margin-top:3px}
+.emptyInvitation{top:auto;bottom:46px;left:3%;right:3%;gap:3px}.emptyInvitation b{font-size:12px}.emptyInvitation>span{font-size:24px}
+.buildCard{top:18px;right:22px;width:222px;max-height:245px;padding:21px 15px 12px;z-index:4;transform:rotate(1deg);box-shadow:1px 5px 16px #24180866}
+.buildCard h2{font-size:25px;margin-bottom:7px}.buildStatus{font-size:10px;margin-bottom:10px}.buildCard .actions button{min-height:34px;padding:8px 10px;font-size:10px!important}.permanentNote{font-size:8px;margin-top:8px}.recycleButton{min-height:26px;font-size:9px!important}
+.roomTools{bottom:15px;right:20px;width:222px;z-index:4}.roomTools button{min-height:38px;flex-direction:row;font-size:8px!important;gap:5px}.roomTools button>span:first-child{font-size:15px}.roomTools small{display:none}
+.garageFoot{padding:11px 24px;gap:12px}.garageFoot strong{font-size:16px}.garageFoot p>span{font-size:9px}
+@media(min-width:1500px){.heading{top:24px;left:36px;right:285px}.buildCard{width:236px;right:28px;padding:23px 17px 14px}.roomTools{width:236px;right:28px}.standRow{inset:0}.standPlate strong{font-size:16px}}
+@media(max-width:1050px) and (min-width:621px){.stage{min-height:440px}.scene,.standRow{inset:0}.heading{left:20px;right:235px}.heading h1{font-size:24px}.buildCard{right:14px;width:205px;max-height:225px}.buildCard h2{font-size:22px}.roomTools{right:14px;width:205px}.standPlate strong{font-size:11px}.standPlate small{font-size:7px}.emptyInvitation b{font-size:10px}}
+@media(max-width:620px){.room{grid-template-rows:minmax(610px,1fr) auto}.stage{min-height:610px}.scene,.standRow{inset:65px 0 169px}.heading{top:15px;left:17px;right:16px}.heading h1{font-size:24px}.eyebrow{font-size:7px;letter-spacing:1px;margin-bottom:5px}.intro{font-size:8px;margin-top:5px}.stand{transform:translate(-50%,-100%)}.standPlate{bottom:-28px;padding:4px 3px}.standPlate strong{font-size:11px}.standPlate small{font-size:7px;margin-top:2px}.standNumber{bottom:10px;height:15px;min-width:23px;font-size:7px}.emptyInvitation{bottom:35px;gap:2px}.emptyInvitation b{font-size:10px}.emptyInvitation>span{font-size:20px}.buildCard{inset:auto 11px 11px;width:auto;min-height:132px;max-height:none;padding:11px 13px;transform:none;grid-template-columns:minmax(0,1fr) 133px}.buildCard h2{font-size:21px}.buildCard .actions button{min-height:36px;padding:8px;font-size:9px!important}.permanentNote{font-size:8px;margin-top:7px}.recycleButton{font-size:9px!important;min-height:25px}.roomTools{left:12px;right:12px;bottom:159px;flex-direction:row;width:auto;gap:6px}.roomTools button{min-height:28px;justify-content:center;font-size:8px!important}.roomTools button>span:first-child{font-size:13px}.garageFoot{padding:9px 12px;gap:9px}.garageFoot strong{font-size:14px}.garageFoot p>span{font-size:8px}.another{font-size:10px!important;min-height:38px}.note{display:none}}
+@media(prefers-reduced-motion:reduce){.pointer{animation:none}.buildCard{transform:none}}
+.footerTools{display:none}
+@media(min-width:621px){
+  .roomTools{display:none}
+  .footerTools{display:flex;gap:5px}.footerTools button{border:1px solid #b18b5766;border-radius:7px;background:#3d2c1e;color:#eace9d;font-size:9px!important;padding:9px 10px;white-space:nowrap}.footerTools button span{font-size:13px;margin-right:3px}
+  .heading{right:378px}
+  .buildCard{width:344px;max-height:150px;display:grid;grid-template-columns:minmax(0,1fr) 141px;column-gap:12px;padding:15px 14px 10px;transform:rotate(.6deg)}
+  .cardEyebrow{grid-column:1;grid-row:1;font-size:7px;margin:0 0 5px;gap:5px}
+  .cardEyebrow span{font-size:8px;letter-spacing:.5px}
+  .buildCard h2{grid-column:1;grid-row:2;font-size:21px;margin:0 0 5px;line-height:1.05}
+  .buildStatus{grid-column:1;grid-row:3;font-size:9px;margin:0;line-height:1.3}
+  .buildCard .actions{grid-column:2;grid-row:1/4;align-self:center;gap:5px}
+  .buildCard .actions button{min-height:32px;font-size:9px!important;padding:7px}
+  .permanentNote,.sampleNote{grid-column:1/-1;grid-row:4;font-size:8px;margin:7px 0 0;line-height:1.25}
+  .recycleButton{grid-column:1/-1;grid-row:5;min-height:22px;margin-top:4px;padding-top:4px;font-size:8px!important}
+}
+@media(min-width:621px) and (max-width:900px){.buildCard{width:306px;grid-template-columns:minmax(0,1fr) 130px;column-gap:8px}.heading{right:330px}.heading h1{font-size:22px}}

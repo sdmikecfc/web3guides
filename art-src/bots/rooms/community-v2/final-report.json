@@ -1,0 +1,82 @@
+{
+  "schema": "game-room.room-final-report.v1",
+  "roomId": "model-kombat-community",
+  "gates": {
+    "function": false,
+    "form": false,
+    "runtime": false
+  },
+  "formChecks": {
+    "floorPlanParity": false,
+    "primaryArrival": false,
+    "symmetry": false,
+    "shell": false,
+    "manifold": false,
+    "booleans": false,
+    "collisions": false,
+    "support": false,
+    "attachmentOrientation": false,
+    "ceilingAttachmentOrientation": false,
+    "seatingOrientation": false,
+    "focalDistribution": false,
+    "heroClearance": false,
+    "colonnades": false,
+    "screenClearance": false,
+    "scale": false,
+    "camera": false,
+    "ceilingCoverage": false,
+    "environmentCoverage": false,
+    "provenance": false
+  },
+  "reviewRenders": {
+    "corners": [],
+    "ceiling": [],
+    "environment": {},
+    "gameFrames": [
+      "renders/community-desktop-form.png",
+      "renders/community-mobile-form.png"
+    ]
+  },
+  "runtimeChecks": {
+    "vlow": false,
+    "textureTiers": false,
+    "lightmap": false,
+    "lightingManifest": false,
+    "performance": false,
+    "browserCapture": "renders/community-desktop-form.png",
+    "errors": []
+  },
+  "postmortem": {
+    "observations": [
+      "The preview uses one shared camera, physical floor and original unit-scale robot meshes.",
+      "This fixed-camera 2.5D set uses existing high-quality artwork as visual dressing; toys, trolleys, contact shadows and selected foreground features are real 3D. The floor split changes its visible horizon correctly with the phone camera. Backdrop image planes are not complete sculpted room meshes.",
+      "Existing room plates are reused without paid generation or destructive edits. Static geometry is batched by material; room actors use fight-detail meshes and no dent geometry."
+    ],
+    "corrections": [
+      "Replaced the rejected flat procedural set dressing with the original high-quality room artwork projected onto real planes.",
+      "Matched warm key light, reduced fill and softened shared floor shadows.",
+      "Reserved the phone rows and compact clipboard space so robots remain visible."
+    ],
+    "remainingRisks": [
+      "The user said \"keep going please\" on 2026-09-10 after the concrete room previews. The layout and Form visual direction is accepted; Blender, final export and runtime audits remain open.",
+      "The projected room does not permit arbitrary camera travel through background workshops.",
+      "No final Blender scene or exported texture tiers have been created.",
+      "Physical-mobile performance is untested; short desktop browser samples are not a sustained benchmark.",
+      "Existing GLB rigs do not include authored eyelids; restrained head and torso movement is present but genuine blinks remain outstanding."
+    ]
+  },
+  "proposedLessons": [],
+  "visualDirectionReview": {
+    "status": "accepted",
+    "userWording": "keep going please",
+    "userResponseDate": "2026-09-10",
+    "recordedAt": "2026-09-10T04:29:42.816072+00:00",
+    "recordedBy": "Codex, following parent task report of user reply after concrete previews",
+    "scope": "Accepted room layout and Form direction in the reviewed game frames. Continue cinematic reference capture from these rooms.",
+    "reviewedImages": [
+      "C:/Users/Mike/Documents/Codex/2026-09-07/i-b/outputs/launch-review/community-form-desktop.png",
+      "C:/Users/Mike/Documents/Codex/2026-09-07/i-b/outputs/launch-review/community-form-mobile.png"
+    ],
+    "limits": "Does not certify complete Blender multi-view, structural, export, or runtime audits. No final room asset export or deployment approval is claimed."
+  }
+}

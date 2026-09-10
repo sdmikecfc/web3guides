@@ -3,8 +3,10 @@ import { createHash } from "node:crypto";
 import { BEGINNER_ORDER, beginnerOffer } from "@/lib/bots/beginner-catalog";
 import { EQUIPMENT_KIND } from "@/lib/bots/equipment";
 import { nameText } from "@/lib/bots/fixtures";
-import { normalizeLook } from "@/lib/bots/look";
-import { parsePracticeAppearance, type PracticeAppearance } from "@/lib/bots/practice-handoff";
+import { findsOf, normalizeLook } from "@/lib/bots/look";
+import { parsePracticeAppearance, parsePracticeDraft, type PracticeAppearance } from "@/lib/bots/practice-handoff";
+import { isPaintId } from "../_engine/parts";
+import { missingMigration } from "./rollout";
 import { STARTER_PARTS } from "../_engine/catalog";
 import { buildJsonOf, earnedOf, loadBots, loadParts, socketIdsOf, type BotRow, type PartRow } from "./bots";
 import { dayKey, nowIso, refuse, type BotsDb } from "./db";
@@ -44,6 +46,29 @@ async function claimAppearance(db: BotsDb, target: BotRow, fingerprint: string):
 }
 
 export async function carryPracticeAppearance(db: BotsDb, wallet: string, raw: unknown) {
+  const progressBefore = await loadOnboarding(db, wallet);
+  if (progressBefore?.version === 2) {
+    const draft = parsePracticeDraft(raw) ?? (() => {
+      const full = parsePracticeAppearance(raw);
+      return full ? parsePracticeDraft({ ...full, version: 2, complete: true }) : null;
+    })();
+    if (!draft) return refuse(400, "This browser build could not be read. It is still saved here.");
+    const selected = BEGINNER_ORDER.map(s => beginnerOffer(draft.offers[s]));
+    const paints = BEGINNER_ORDER.filter(s => s !== "weapon").map(s => draft.paints?.[s] ?? beginnerOffer(draft.offers[s])?.color).filter(isPaintId);
+    const look = normalizeLook(draft.look, findsOf({ wins: 0, losses: 0, level: 1, champion: false,
+      bodyCount: 6, bodyPaints: paints,
+      partStars: selected.filter(p => !!p).map(() => 1), hats: [], plateNumber: draft.name.num }));
+    const fingerprint = createHash("sha256").update(JSON.stringify({ offers: BEGINNER_ORDER.map(s => draft.offers[s]),
+      paints: BEGINNER_ORDER.map(s => draft.paints?.[s] ?? null), name: draft.name, look, complete: draft.complete })).digest("hex");
+    const { data, error } = await db.rpc("bb_onboarding_v2_handoff", { p_wallet: wallet, p_offers: draft.offers, p_name: draft.name,
+      p_look: look, p_paints: draft.paints ?? {}, p_complete: draft.complete, p_fingerprint: fingerprint });
+    if (error && missingMigration(error)) return refuse(503, "The new builder is being set up. Your browser build is safe. Please try again later.");
+    if (error?.code === "P0001") return refuse(409, error.message);
+    if (error) throw new Error(`starter build transfer: ${error.message}`);
+    return data as { applied: boolean; bay?: number; complete?: boolean; reason?: "existing-garage" };
+  }
+  // Version 2 partial drafts never overwrite an older wallet garage.
+  if (raw && typeof raw === "object" && (raw as { version?: unknown }).version === 2) return { applied: false, reason: "existing-garage" as const };
   const appearance = parsePracticeAppearance(raw);
   if (!appearance) return refuse(400, "Choose all seven beginner parts before connecting this build.");
   const fingerprint = appearanceFingerprint(appearance);

@@ -8,9 +8,9 @@ import { STARTER_PRICE, type Stats } from "../_engine/parts";
 import { starterColors } from "@/lib/bots/shipment";
 import type { PaintId } from "../_engine/parts";
 import { fnv1a } from "../_engine/rng";
-import { type BotsDb } from "./db";
+import { refuse, type BotsDb } from "./db";
 import type { PartRow, PartStatsJson } from "./bots";
-import { onboardingEnabled, missingMigration } from "./rollout";
+import { onboardingEnabled, onboardingV2Enabled, missingMigration } from "./rollout";
 import { ensureLegacyStarter } from "./legacy-starter";
 
 /** Historical constants used to interpret old starter grants. */
@@ -143,12 +143,29 @@ export async function enlistPlayer(
 ): Promise<{ player: PlayerRow; joined: boolean }> {
   const wallet = walletIn.toLowerCase();
   const existing = await loadPlayer(db, wallet);
-  const { data: progress, error: progressError } = await db.from("battle_bots_onboarding").select("version").eq("wallet", wallet).eq("version", 1).maybeSingle();
+  const { data: progress, error: progressError } = await db.from("battle_bots_onboarding").select("version").eq("wallet", wallet).maybeSingle();
   if (progressError && !missingMigration(progressError)) throw new Error(`onboarding read: ${progressError.message}`);
   // Rollback never grants an old kit over an existing allowance or resets progress.
   if (progress && existing) return { player: existing, joined: false };
   const welcomeName = starterBotName(wallet);
   const draftName = starterBotName(`first-build:${wallet}`);
+  if (onboardingV2Enabled()) {
+    // An established garage remains usable even while the additive migration is staged.
+    if (existing) {
+      const [bots, parts] = await Promise.all([
+        db.from("battle_bots_bots").select("id", { count: "exact", head: true }).eq("wallet", wallet),
+        db.from("battle_bots_part_instances").select("id", { count: "exact", head: true }).eq("wallet", wallet),
+      ]);
+      if (bots.error || parts.error) throw new Error(`existing garage read: ${bots.error?.message ?? parts.error?.message}`);
+      if ((bots.count ?? 0) > 0 || (parts.count ?? 0) > 0) return { player: existing, joined: false };
+    }
+    const { data, error } = await db.rpc("bb_onboarding_v2_provision", { p_wallet: wallet, p_wallet_name: walletNameFor(wallet), p_name: draftName, p_is_test: isTest });
+    if (error && missingMigration(error)) return refuse(503, "The new builder is being set up. Your browser build is safe. Please try again later.");
+    if (error) throw new Error(`starter build setup: ${error.message}`);
+    const player = await loadPlayer(db, wallet);
+    if (!player) throw new Error("The player row did not land.");
+    return { player, joined: !!data?.joined };
+  }
   if (onboardingEnabled()) {
     const { data, error } = await db.rpc("bb_onboarding_provision", {
       p_wallet: wallet, p_wallet_name: walletNameFor(wallet), p_welcome_name: welcomeName,

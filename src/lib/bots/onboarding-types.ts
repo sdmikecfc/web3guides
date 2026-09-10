@@ -1,9 +1,9 @@
-import type { Socket } from "./fixtures";
+import type { Build, Socket } from "./fixtures";
 import type { BeginnerOffer } from "./beginner-catalog";
 
 export interface OnboardingPurchase { partId: number; offerId: string }
 export interface OnboardingView {
-  version: 1;
+  version: 1 | 2;
   step: "welcome" | "shop" | "practice" | "complete";
   welcomeBotId: number;
   welcomeBay: number;
@@ -17,6 +17,10 @@ export interface OnboardingView {
   practiceFightId: string | null;
   milestones: { welcomed: boolean; assembled: boolean; practiced: boolean; completed: boolean };
   offers: readonly BeginnerOffer[];
+  /** Version 2 choices are previews until the explicit Finish transaction. */
+  revision?: number;
+  draftOffers?: Record<Socket, string | null>;
+  draftName?: Build["name"];
 }
 export interface CoinBalance { total: number; reserved: number; spendable: number }
 export interface CampaignEnrollmentView {

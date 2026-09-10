@@ -6,13 +6,13 @@ import type { Build, Slot } from "../_engine/parts";
 import type { Socket } from "@/lib/bots/fixtures";
 import { EQUIPMENT_KIND, EQUIPMENT_SOCKETS } from "@/lib/bots/equipment";
 import type { BotLook } from "./look";
-import { createCombatToy, type CombatToy } from "./combat-toy";
+import { createCombatToy, preloadCombatToy, type CombatToy } from "./combat-toy";
 import { ART_VERSION } from "./art-version";
 
 export type ToyStageVariant = "cream" | "dark" | "workshop" | "cutout" | "workbench" | "bay";
 export interface ToyStage {
   /** False means a newer request or disposal superseded this load. */
-  setToy(build: Build, look: BotLook, selected?: Socket | null, rotation?: number, partSocket?: Socket, variant?: ToyStageVariant): Promise<boolean>;
+  setToy(build: Build, look: BotLook, selected?: Socket | null, rotation?: number, partSocket?: Socket, variant?: ToyStageVariant, detail?: "fight" | "inspection"): Promise<boolean>;
   setVariant(variant: ToyStageVariant): void;
   resize(width: number, height: number, pixelRatio?: number): void;
   render(time?: number): void;
@@ -220,9 +220,9 @@ export function createToyStage(canvas: HTMLCanvasElement, variant: ToyStageVaria
     renderer.render(scene,camera);
   };
   return {
-    async setToy(build,look,selected=null,rotation=-0.12,partSocket,nextVariant=activeVariant){
+    async setToy(build,look,selected=null,rotation=-0.12,partSocket,nextVariant=activeVariant,detail="inspection"){
       const revision=++loadRevision;
-      const [next]=await Promise.all([createCombatToy(build,look,false,"inspection"),nextVariant==="workshop"?loadWorkshop():Promise.resolve()]);
+      const [next]=await Promise.all([createCombatToy(build,look,false,detail),nextVariant==="workshop"?loadWorkshop():Promise.resolve()]);
       if(disposed||revision!==loadRevision){next.dispose();return false;}
       // One complete reveal. A late loader is disposed before it can enter
       // the scene, and the existing picture remains valid while assets load.
@@ -333,7 +333,10 @@ export function retainToyPhotographs(onRestored?:()=>void):()=>void{
 }
 export async function photographToy(canvas:HTMLCanvasElement,build:Build,look:BotLook,variant:ToyStageVariant,width:number,height:number,rotation=-0.12,partSocket?:Socket,accept:()=>boolean=()=>true):Promise<boolean>{
   const ratio=Math.min(1.5,window.devicePixelRatio||1);
-  const key=JSON.stringify({build,look,variant,width,height,rotation,partSocket,ratio});
+  // Shelf icons use the same authored, lighter fight meshes. The larger
+  // inspection popup retains the detailed geometry and its close-up finish.
+  const detail=process.env.NEXT_PUBLIC_BOTS_ROOM_PREVIEW==="1"&&partSocket&&Math.max(width,height)<=192?"fight":"inspection";
+  const key=JSON.stringify({build,look,variant,width,height,rotation,partSocket,ratio,detail});
   const copy=(photo:HTMLCanvasElement)=>{
     if(!accept())return false;
     canvas.width=photo.width;canvas.height=photo.height;
@@ -347,6 +350,9 @@ export async function photographToy(canvas:HTMLCanvasElement,build:Build,look:Bo
     return copy(cached);
   }
   const revision=photographRevision;
+  // Download later cards alongside the first photograph. Waiting until each
+  // card owns the studio serialized every network request across the shelf.
+  const prepared=preloadCombatToy(build,detail);
   let copied=false;
   // Exactly one caller can use the shared WebGL studio, including its await.
   // A rejected task is not allowed to poison all subsequent gallery cards.
@@ -361,7 +367,8 @@ export async function photographToy(canvas:HTMLCanvasElement,build:Build,look:Bo
       offscreen.addEventListener("webglcontextrestored",()=>photographRestored.forEach(redraw=>redraw()));
     }
     const owned=photographStage;
-    if(!await owned.setToy(build,look,null,rotation,partSocket,variant))return;
+    await prepared;
+    if(!await owned.setToy(build,look,null,rotation,partSocket,variant,detail))return;
     if(!accept()||revision!==photographRevision||photographStage!==owned)return;
     owned.setVariant(variant);owned.resize(width,height,ratio);
     const photo=document.createElement("canvas");

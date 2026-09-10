@@ -27,6 +27,8 @@ export interface FightSceneHandle {
   render(st: FightState, fx: FightFx): void;
   resize(w: number, h: number, dpr: number): void;
   snapshot(st:FightState,fx:FightFx):HTMLCanvasElement;
+  /** Development capture only; changes framing without changing the fight. */
+  captureFraming?(zoom: number, orbit: number, height?: number): void;
   destroy(): void;
 }
 
@@ -71,6 +73,7 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
   const target = new THREE.Vector3(0, 1.10, 0);
   camera.position.set(0, 3.90, 14.5); camera.lookAt(target);
   let baseCameraY=3.90,baseCameraZ=14.5;
+  let captureZoom=1,captureOrbit=0,captureHeight=1.10;
 
   const hemi = new THREE.HemisphereLight(0xe8dac3, 0x4c3222, .20); scene.add(hemi);
   const key = new THREE.DirectionalLight(0xffd99b, 4.5); key.position.set(-3, 7, -4);
@@ -460,9 +463,11 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     const focus=critical*toys[fx.criticalSide].root.position.x*.09;
     camera.position.x=opts.reducedMotion?0:midpoint*.16+focus+Math.sin(phase*2.17)*shake*.012;
     camera.position.y=baseCameraY+Math.cos(phase*2.83)*shake*.009;
-    camera.position.z=baseCameraZ;
+    camera.position.x+=Math.sin(captureOrbit)*baseCameraZ;
+    camera.position.z=Math.cos(captureOrbit)*baseCameraZ;
     target.x=focus*.42;
-    camera.zoom=1+emphasis*.068;camera.updateProjectionMatrix();camera.lookAt(target);renderer.render(scene,camera);
+    target.y=captureHeight;
+    camera.zoom=(1+emphasis*.068)*captureZoom;camera.updateProjectionMatrix();camera.lookAt(target);renderer.render(scene,camera);
     if(process.env.NODE_ENV!=="production"){
       const interval=drawStart-previousRenderAt;
       if(previousRenderAt&&interval>0&&interval<250){cadenceTime+=interval;cadenceSamples++;}
@@ -507,6 +512,12 @@ export async function buildFightScene(canvas: HTMLCanvasElement, opts: FightScen
     reset(){cleanDebris();damage.forEach(d=>d.reset());toys.forEach((_,i)=>basePose(i));lastFrame=0;},
     settle(fx){settleFightFx(fx);},
     glint(){ /* The enamel catches the real light as the hand turns. */ },
+    captureFraming(zoom,orbit,height=1.10){
+      if(process.env.NODE_ENV==="production")return;
+      captureZoom=THREE.MathUtils.clamp(Number.isFinite(zoom)?zoom:1,.7,2.4);
+      captureOrbit=THREE.MathUtils.clamp(Number.isFinite(orbit)?orbit:0,-1.1,1.1);
+      captureHeight=THREE.MathUtils.clamp(Number.isFinite(height)?height:1.10,.6,2.8);
+    },
     render,
     resize(w,h,dpr){if(dead||w<=0||h<=0)return;phone=w/h<1.35;renderer.setPixelRatio(Math.min(dpr,phone?1.35:1.75));renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=phone?Math.max(32,2*Math.atan(3.05/(12.5*camera.aspect))*180/Math.PI):30;baseCameraY=phone?3.45:3.9;baseCameraZ=phone?12.5:14.5;camera.position.set(0,baseCameraY,baseCameraZ);target.set(0,1.10,0);camera.lookAt(target);camera.updateProjectionMatrix();},
     destroy(){

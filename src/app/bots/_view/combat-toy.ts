@@ -47,6 +47,23 @@ function manifest() {
     if (!r.ok) throw new Error("Toy library unavailable"); return r.json() as Promise<Manifest>;
   }).catch(e => { manifestPromise = undefined; throw e; });
 }
+/** Warm model downloads before a gallery's serialized GPU snapshot work.
+ * Assets share their existing promise cache; this does not create a renderer,
+ * change a selected mould or keep an extra cloned robot alive. */
+export async function preloadCombatToy(build: Build, detail: "fight" | "inspection" = "inspection"): Promise<void> {
+  if (!toyPilotEnabled()) return;
+  try {
+    const m = await manifest();
+    if (m.version !== "toy-rig-v1") return;
+    const files = SOCKETS.flatMap(socket => {
+      const id = artIdentity(combatPart(build, socket).id);
+      if (!id || /^empty[.-]/.test(id)) return [];
+      const entry = m.parts[id]?.variants.find(v => v.socket === socket);
+      return entry ? [detail === "inspection" ? entry.inspection : entry.file] : [];
+    });
+    await Promise.all([m.motion, ...files].map(file => asset(file).catch(() => undefined)));
+  } catch { /* The actual setToy call still selects its normal native fallback. */ }
+}
 const paintHex = (id?: string) => id && id in PAINTS ? Number.parseInt(PAINTS[id as keyof typeof PAINTS].slice(1), 16) : 0x8eb7a4;
 export const artIdentity = (id: string) => beginnerArtKey(id) ?? id;
 

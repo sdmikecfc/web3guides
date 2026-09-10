@@ -1,0 +1,89 @@
+{
+  "schema": "game-room.room-brief.v1",
+  "roomId": "model-kombat-community",
+  "family": "display-gallery",
+  "purpose": "Display five authentic, selectable robots in one coherent miniature set.",
+  "runtimeSurface": "/bots/rooms/review",
+  "boundsMeters": [
+    48,
+    10.24,
+    28
+  ],
+  "hero": {
+    "id": "player-robots",
+    "role": "Five independently selected saved builds, common unit scale",
+    "reservedBoundsMeters": [
+      3.8,
+      5.3,
+      3.4
+    ]
+  },
+  "symmetry": {
+    "mode": "bilateral",
+    "order": 2,
+    "appliesTo": [
+      "five desktop display anchors",
+      "room substrate"
+    ],
+    "exceptions": [
+      "Three photographic workshops on either side frame the recessed arena; visitors keep independent saved builds.",
+      "Mobile places three robots behind two foreground robots.",
+      "Player builds retain genuine silhouette and size differences."
+    ]
+  },
+  "circulation": {
+    "description": "Display diorama, no avatar navigation. The front camera boundary is an intentional cutaway.",
+    "minimumClearanceMeters": 0.6
+  },
+  "productionCamera": {
+    "viewport": [
+      1280,
+      720
+    ],
+    "location": [
+      1,
+      10.5,
+      27
+    ],
+    "target": [
+      0,
+      2.8,
+      0.1
+    ],
+    "verticalFovDegrees": 0,
+    "projection": "orthographic",
+    "minimumVerticalMeters": 10,
+    "minimumHorizontalMeters": 27.5
+  },
+  "performanceBudget": {
+    "maxSceneTriangles": 350000,
+    "maxVLowBytes": 0,
+    "maxHighTextureBytes": 4194304,
+    "maxRenderContexts": 1,
+    "desktopPixelRatioCap": 1.5,
+    "mobilePixelRatioCap": 1.35,
+    "desktopTargetFps": 60,
+    "mobileTargetFps": 30
+  },
+  "creditBudget": {
+    "maximumCredits": 0,
+    "approvalRequired": true
+  },
+  "environment": {
+    "type": "procedural",
+    "identity": "three-roomenvironment-r169",
+    "source": "Existing Three.js RoomEnvironment",
+    "assignmentKey": "living-room-v1"
+  },
+  "artifacts": {
+    "floorPlan": "plans/desktop-layout.svg",
+    "reflectedCeilingPlan": "",
+    "planMetadata": "plan-metadata.json",
+    "wallElevations": [
+      "plans/front-elevation.svg"
+    ],
+    "visualTarget": "../../concept/5-street.png",
+    "openingContactSheet": ""
+  },
+  "unitsNote": "Scene uses authored robot units. Values labelled metres are source coordinates, not life-size manufacturing measurements."
+}

@@ -74,11 +74,11 @@ import {
   type LookEarned,
 } from "../src/lib/bots/look";
 import { earnedFor, lookOf, socketPaintsOf, type BotRow, type PartRow } from "../src/app/bots/_server/bots";
-import { looksOf } from "../src/app/bots/_server/fight-read";
+import { looksOf, fightSummary, fightView } from "../src/app/bots/_server/fight-read";
 // the RIG's own ladder, imported so the two are compared rather than one of
 // them being restated here (the gates-must-import law)
 import { GOLD_STAR_AT, marksOf as viewMarksOf } from "../src/app/bots/_view/look";
-import type { ResultJson } from "../src/app/bots/_server/fight-read";
+import type { BattleRow, ResultJson } from "../src/app/bots/_server/fight-read";
 import type { CardSlot } from "../src/lib/bots/fixtures";
 import type { PaintId } from "../src/app/bots/_engine/parts";
 
@@ -474,6 +474,18 @@ console.log("\n-- (f) an old fight row still reads --");
   // a row WITH a snapshot is handed back untouched
   const snap = { ...old, looks: [{ paints: socketPaints(() => "ink" as PaintId), look: { ...NO_LOOK, face: "happy" as const }, marks: NO_MARKS, wins: 3 }, looksOf(old)[1]] } as unknown as ResultJson;
   report(looksOf(snap)[0].look.face === "happy", "(f) snapshot", "a row that DID store the look shows the robot as it was, not as it is now");
+  const row = { id: 72, status: "resolved", mode: "pve", result: old, created_at: "2026-09-09T00:00:00Z", challenger_wallet: "private-owner", stake: 0, class_gap: 0 } as BattleRow;
+  const summary = fightSummary(row)!, replay = fightView(row, null);
+  report(JSON.stringify(summary.builds) === JSON.stringify([replay.buildA,replay.buildB]), "(f) community", "old Community robots use the same saved assemblies as their replay");
+  report(summary.looks[0].paints.head === "mint" && summary.looks[0].look.plateNumber === 7, "(f) community", "old Community snapshots retain saved paints, name plate and honest default cosmetics");
+  summary.builds[0].head.s[0] = 99;
+  report(old.buildA.head.s[0] === 2, "(f) community", "Community assembly geometry input is isolated from the stored fight");
+  const mixedBuild = { ...build, limbs: { armL: build.arms, armR: { ...build.arms, id: "arms.hornetNeedlers", paint: "coral" as PaintId }, legL: build.legs, legR: { ...build.legs, id: "legs.hornetStriders", paint: "ink" as PaintId } } };
+  const mixed = { ...row, result: { ...snap, buildA: mixedBuild } };
+  const mixedSummary = fightSummary(mixed)!;
+  report(JSON.stringify(mixedSummary.builds[0]) === JSON.stringify(fightView(mixed,null).buildA), "(f) community", "mixed left/right limbs retain canonical replay ordering");
+  report(mixedSummary.looks[0].look.face === "happy" && mixedSummary.names[0] === old.names[0], "(f) community", "recorded Community robots retain the saved face and name");
+  report(fightSummary({ ...row, mode: "spar" }) === null, "(f) community", "private practice robots never enter the public activity feed");
 }
 
 // ---------------------------------------------------------------------------
@@ -518,7 +530,7 @@ console.log("\n-- (g) the words a player reads --");
   // every row carries its own line, and every id has a row
   report(FACES.length === FACE_IDS.length && STICKERS.length === STICKER_IDS.length && HATS.length === HAT_IDS.length, "(g) tables", "every face, sticker and hat has a row of its own");
   report(FACES.every((f) => f.earn.length > 8) && HATS.every((h) => h.earn === HAT_EARN), "(g) tables", "and every row says how it is got");
-  report(/won/i.test(HAT_EARN) && !/(buy|shop|coin)/i.test(HAT_EARN), "(g) hats", `a hat has one way in: "${HAT_EARN}"`);
+  report(/earned|won/i.test(HAT_EARN) && !/(buy|shop|coin)/i.test(HAT_EARN), "(g) hats", `a hat has one way in: "${HAT_EARN}"`);
 
   console.log("\n-- the hat drop --");
   const a = hatDrop("1041");

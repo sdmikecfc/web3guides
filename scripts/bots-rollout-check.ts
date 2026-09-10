@@ -3,8 +3,10 @@ import fs from "node:fs";
 import { rolloutEnabled, workshopEnabled, toyPilotEnabled } from "../src/lib/bots/rollout";
 import { onboardingEnabled } from "../src/app/bots/_server/rollout";
 import { enlistPlayer, starterPartRows } from "../src/app/bots/_server/players";
-import { mutateOnboarding, loadCoinBalance, loadOnboarding } from "../src/app/bots/_server/onboarding";
-import { BEGINNER_OFFERS } from "../src/lib/bots/beginner-catalog";
+import { mutateOnboarding, loadCoinBalance, loadOnboarding, onboardingView } from "../src/app/bots/_server/onboarding";
+import { carryPracticeAppearance } from "../src/app/bots/_server/practice-handoff";
+import { BEGINNER_OFFERS, BEGINNER_ORDER } from "../src/lib/bots/beginner-catalog";
+import { EQUIPMENT_KIND } from "../src/lib/bots/equipment";
 import type { BotsDb } from "../src/app/bots/_server/db";
 const { PGlite } = require(process.env.BOTS_PGLITE_PATH || "@electric-sql/pglite");
 const memory = new PGlite();
@@ -60,7 +62,7 @@ const adapter={
 async function main(){
  for(const env of ["development","production"])for(const value of [undefined,"0","1","true",""])
   assert.equal(rolloutEnabled(value,env),value==="1"||value===undefined&&env==="development");
- Object.assign(process.env,{NODE_ENV:"production",NEXT_PUBLIC_BOTS_WORKSHOP_V1:"0",NEXT_PUBLIC_BOTS_TOY_PILOT:"0",BOTS_ONBOARDING_V1:"0"});
+ Object.assign(process.env,{NODE_ENV:"production",NEXT_PUBLIC_BOTS_WORKSHOP_V1:"0",NEXT_PUBLIC_BOTS_TOY_PILOT:"0",BOTS_ONBOARDING_V1:"0",BOTS_ONBOARDING_V2:"0"});
  assert(!workshopEnabled()&&!toyPilotEnabled()&&!onboardingEnabled());
  await memory.exec(schema);await memory.exec(migration);
  const legacy=await enlistPlayer(adapter,"legacy-rollout",true);
@@ -104,6 +106,42 @@ async function main(){
  assert.equal((await one("SELECT count(*)::int AS n FROM battle_bots_ledger WHERE wallet='legacy-rollback'")).n,0);
  assert.equal((await one("SELECT has_function_privilege('anon','bb_legacy_provision(text,text,jsonb,jsonb,boolean)','EXECUTE') AS allowed")).allowed,false);
  console.log("PASS atomic legacy failure leaves no orphan rows/grants; browser cannot execute provisioning");
+ failNew=false;missingNew=false;process.env.BOTS_ONBOARDING_V2="1";calls.length=0;
+ await assert.rejects(enlistPlayer(adapter,"v2-missing",true),/being set up/);
+ assert.deepEqual(calls,["bb_onboarding_v2_provision"],"v2 missing migration never attempts v1 or legacy grants");
+ assert.equal((await one("SELECT count(*)::int AS n FROM battle_bots_players WHERE wallet='v2-missing'")).n,0);
+ assert.equal((await enlistPlayer(adapter,"legacy-rollout",true)).joined,false,"legacy garage stays available while v2 schema is missing");
+ await memory.exec(fs.readFileSync("scripts/sql/bots-onboarding-v2.sql","utf8"));
+ const v2=await enlistPlayer(adapter,"v2-rollout",true); assert.equal(Number(v2.player.coins),250);assert(v2.joined);
+ let view=await onboardingView(adapter,"v2-rollout");assert.equal(view?.version,2);assert.equal(view?.draftBay,1);assert.equal(view?.purchasedCount,0);
+ assert.equal((await one("SELECT count(*)::int AS n FROM battle_bots_bots WHERE wallet='v2-rollout'")).n,1);
+ assert.equal((await one("SELECT count(*)::int AS n FROM battle_bots_part_instances WHERE wallet='v2-rollout'")).n,0);
+ process.env.BOTS_ONBOARDING_V2="0";process.env.BOTS_ONBOARDING_V1="0";calls.length=0;
+ assert.equal((await enlistPlayer(adapter,"v2-rollout",false)).joined,false);assert.equal(calls.length,0,"v2 account survives rollback without a grant");
+ await mutateOnboarding(adapter,"v2-rollout",{action:"welcome"},"2026-09-09");
+ await assert.rejects(mutateOnboarding(adapter,"v2-rollout",{action:"choose",socket:"head",offerId:head.id,revision:"0"},"2026-09-09"),/Refresh/);
+ for(const socket of BEGINNER_ORDER){
+  const offer=BEGINNER_OFFERS.find(o=>o.part.slot===EQUIPMENT_KIND[socket])!;
+  view=(await mutateOnboarding(adapter,"v2-rollout",{action:"choose",socket,offerId:offer.id,revision:view!.revision},"2026-09-09")).onboarding;
+ }
+ assert.equal(view?.step,"shop");assert.equal(view?.purchasedCount,7);assert.equal(view?.reservedCoins,250);
+ const replacement=BEGINNER_OFFERS.filter(o=>o.part.slot==='head')[1];
+ view=(await mutateOnboarding(adapter,"v2-rollout",{action:"choose",socket:"head",offerId:replacement.id,revision:view!.revision},"2026-09-09")).onboarding;
+ assert.equal(view?.draftOffers?.head,replacement.id);
+ assert.equal(view?.purchases.head?.offerId,replacement.id);assert(Number(view?.purchases.head?.partId)<0,"draft selections expose only virtual IDs");
+ await assert.rejects(mutateOnboarding(adapter,"v2-rollout",{action:"finish",revision:0},"2026-09-09"),/another window/);
+ view=(await mutateOnboarding(adapter,"v2-rollout",{action:"finish",revision:view!.revision},"2026-09-09")).onboarding;
+ assert.equal(view?.step,"complete");assert.equal(view?.milestones.practiced,false);assert(Number(view?.purchases.head?.partId)>0);
+ assert.deepEqual(await loadCoinBalance(adapter,"v2-rollout",v2.player),{total:0,reserved:0,spendable:0});
+ process.env.BOTS_ONBOARDING_V2="1";
+ await enlistPlayer(adapter,"v2-transfer",true);
+ const transfer={version:2,offers:Object.fromEntries(BEGINNER_ORDER.map(socket=>[socket,BEGINNER_OFFERS.find(o=>o.part.slot===EQUIPMENT_KIND[socket])!.id])),name,complete:true,coins:999999,wins:900,look:{face:"happy",hat:"crown"}};
+ const result=await carryPracticeAppearance(adapter,"v2-transfer",transfer);assert(result.applied);
+ const transferred=await one("SELECT * FROM battle_bots_bots WHERE wallet='v2-transfer'");
+ assert.equal(transferred.wins,0);assert.equal(transferred.build.look.hat,null);
+ assert.equal(Number((await one("SELECT coins FROM battle_bots_players WHERE wallet='v2-transfer'")).coins),0);
+ assert.equal((await carryPracticeAppearance(adapter,"v2-transfer",transfer)).applied,true);
+ assert.equal((await carryPracticeAppearance(adapter,"v2-rollout",transfer)).applied,false,"completed wallet keeps its own selected body");
+ console.log("PASS v2 missing-schema refusal, actual service draft/Finish, flag rollback/resume, virtual-to-owned IDs and validated handoff");
 }
-main().finally(async()=>{for(const key of ["NODE_ENV","NEXT_PUBLIC_BOTS_WORKSHOP_V1","NEXT_PUBLIC_BOTS_TOY_PILOT","BOTS_ONBOARDING_V1"]){if(originalEnvironment[key]===undefined)delete process.env[key];else process.env[key]=originalEnvironment[key];}await memory.close();}).catch(error=>{console.error(error);process.exitCode=1;});
-
+main().finally(async()=>{for(const key of ["NODE_ENV","NEXT_PUBLIC_BOTS_WORKSHOP_V1","NEXT_PUBLIC_BOTS_TOY_PILOT","BOTS_ONBOARDING_V1","BOTS_ONBOARDING_V2"]){if(originalEnvironment[key]===undefined)delete process.env[key];else process.env[key]=originalEnvironment[key];}await memory.close();}).catch(error=>{console.error(error);process.exitCode=1;});

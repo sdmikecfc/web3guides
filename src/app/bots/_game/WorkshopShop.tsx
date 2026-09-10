@@ -6,11 +6,13 @@ import type { MeView } from "../_server/types";
 import { msToNextShipment, shipmentFor, type Listing } from "@/lib/bots/shipment";
 import type { GarageState } from "@/lib/bots/garage-state";
 import { cabinetShipment } from "@/lib/bots/workshop-views";
+import type { ShopComparisonContext } from "@/lib/bots/shop-comparison";
 
 /** The original cabinet, controlled by the shell's single inventory and purse. */
-export default function WorkshopShop({ me, spendable, introductory, onResume, onEarn, onBuy, onReload }: {
+export default function WorkshopShop({ me, spendable, introductory, onResume, onEarn, onBuy, onReload, comparison }: {
   me: MeView | null; spendable: number; introductory: boolean;
-  onResume: () => void; onEarn: () => void; onBuy: (listing: Listing) => Promise<void>; onReload: () => void;
+  comparison?: ShopComparisonContext;
+  onResume: () => void; onEarn: () => void; onBuy: (listing: Listing) => Promise<void | { ok: boolean; message?: string }>; onReload: () => void;
 }) {
   const [now, setNow] = useState(0);
   useEffect(() => { setNow(Date.now()); const timer = setInterval(() => setNow(Date.now()), 60000); return () => clearInterval(timer); }, []);
@@ -22,8 +24,8 @@ export default function WorkshopShop({ me, spendable, introductory, onResume, on
   }), [spendable, me?.player.level, me?.shop.listings, day]);
   const expired = !!me && !!now && day !== new Date(now).toISOString().slice(0, 10);
   const browseOnly = expired ? { label: "Refresh today's parts", message: "A new day has arrived. Refresh the shelf before buying.", onAction: onReload }
-    : introductory ? { label: "Continue my first build", message: "Your 250 starter coins are kept for the beginner parts. Come back here after your first practice.", onAction: onResume }
+    : introductory ? { label: "Continue my first build", message: "Your 250 starter coins are for your first robot. Finish building it to use this shop.", onAction: onResume }
     : !me ? { label: "How to earn more coins", message: "Look around the whole shop. Connect your wallet to buy parts with your coins.", onAction: onEarn } : undefined;
   return <CabinetShop embedded shipment={shipment} st={state} day={day} initialSlot={null}
-    leftMs={now ? msToNextShipment(now) : null} tomorrow="" returns="" toast={null} onBuy={onBuy} browseOnly={browseOnly} />;
+    leftMs={now ? msToNextShipment(now) : null} tomorrow="" returns="" toast={null} onBuy={onBuy} browseOnly={browseOnly} comparison={comparison} />;
 }
