@@ -11,7 +11,8 @@ import { SHOWCASE } from "@/lib/bots/showcase";
 import { readPracticeRobot, plainPracticeLook, demoReplayLink } from "@/lib/bots/demo-replay";
 import { buildTotal } from "@/app/bots/_engine/parts";
 import type { Metadata } from "next";
-import FightClient, { type FightIdentity } from "../FightClient";
+import { type FightIdentity } from "../FightClient";
+import { LocalFightRoom } from "../FightRoomEntry";
 import { fnv1a } from "@/app/bots/_engine/rng";
 import { NO_ORDERS, type Build, type CanonKey, type Orders } from "@/app/bots/_engine/parts";
 import { CANON, CANON_NAMES, SHAPES, scaleShape } from "@/app/bots/_engine/catalog";
@@ -103,7 +104,7 @@ export default function FightDemoPage({ searchParams }: { searchParams: Query })
     return actionPreview ? `${href}&action=1` : href;
   };
   return (
-    <FightClient
+    <LocalFightRoom
       key={actionPreview ? `action-${link(seed)}` : undefined}
       actionPreview={actionPreview}
       seed={seed}

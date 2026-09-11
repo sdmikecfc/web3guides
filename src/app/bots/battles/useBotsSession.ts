@@ -61,7 +61,8 @@ export interface BotsSessionState {
   signOut: () => void;
 }
 
-export function useBotsSession(): BotsSessionState {
+export function useBotsSession(options: { seasonOnly?: boolean } = {}): BotsSessionState {
+  const seasonOnly = !!options.seasonOnly;
   const { address, isConnected, isConnecting } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const { openConnectModal, connectModalOpen } = useConnectModal();
@@ -132,7 +133,7 @@ export function useBotsSession(): BotsSessionState {
         const uri = `${window.location.origin}/bots`;
         const message = buildEnlistMessage(addr, n.nonce, issuedAt, domain, uri);
         const signature = await signMessageAsync({ message });
-        const resp = await fetch("/api/bots/enlist", {
+        const resp = await fetch(seasonOnly ? "/api/bots/season/auth" : "/api/bots/enlist", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ address: addr, message, signature }),
@@ -146,7 +147,7 @@ export function useBotsSession(): BotsSessionState {
           return null;
         }
         writeBotsSession(String(r.token));
-        writeBotsPlayerName(String(r.walletName || ""));
+        if (!seasonOnly) writeBotsPlayerName(String(r.walletName || ""));
         setToken(String(r.token));
         setLast({ walletName: String(r.walletName || ""), coins: Number(r.coins) || 0, joined: !!r.joined });
         setBusy(false);
@@ -162,7 +163,7 @@ export function useBotsSession(): BotsSessionState {
         setBusy(false);
       }
     },
-    [signMessageAsync],
+    [signMessageAsync, seasonOnly],
   );
 
   const open = useCallback(async (): Promise<string | null> => {

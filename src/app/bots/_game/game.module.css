@@ -1,5 +1,8 @@
 .shell{--paper:#eee4d2;--ink:#30271f;--brass:#dfb477;--line:#544638;position:fixed;inset:0;isolation:isolate;display:grid;grid-template-rows:72px minmax(0,1fr) 80px;background:#1d1813;color:#f4ead8;font-family:"DM Sans",system-ui,sans-serif;overflow:hidden}
 .shell button,.shell a,.shell select{touch-action:manipulation}
+.seasonHost{height:100%;min-height:0;min-width:0;grid-column:1/-1}.seasonHost[hidden]{display:none}.collectionSwitch{display:flex;flex-shrink:0;gap:2px;padding:3px;border:1px solid #776044;border-radius:11px}.collectionSwitch button,.collectionSwitch a{border:0;border-radius:7px;padding:8px 10px;font-size:11px!important;font-weight:800;background:none;color:#cbb89c;text-decoration:none}.collectionSwitch button[aria-pressed=true]{background:#73502e;color:#f7dfb6}
+@media(max-width:600px){.collectionSwitch{position:absolute;left:12px;top:44px;padding:1px;border-color:#806142}.collectionSwitch button,.collectionSwitch a{font-size:8px!important;padding:3px 7px}.shell:has(.collectionSwitch) .top{padding-bottom:17px}.shell:has(.collectionSwitch) .brand{font-size:18px}.shell:has(.collectionSwitch) .subbrand{display:none}.shell:has(.collectionSwitch) .topRight{gap:6px}}
+@media(max-height:480px) and (min-width:601px){.collectionSwitch button,.collectionSwitch a{padding:5px 8px;font-size:10px!important}}
 .shell button{font:inherit;cursor:pointer}
 .shell button:disabled{opacity:.5;cursor:default}
 .shell :is(button,a,select):focus-visible{outline:3px solid #f0c786;outline-offset:4px}

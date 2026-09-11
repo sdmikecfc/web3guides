@@ -6,6 +6,7 @@ import { styleCardOf } from "./style-catalog";
 import { STYLE_GUIDE } from "./style-guide";
 import type { CombatBuild } from "./combat-model";
 import type { LookView } from "@/app/bots/_server/types";
+import { fightRoomHref } from "./fight-navigation";
 
 export function hasStyleParts(build: Build, parts: readonly OwnedPart[]) {
   const fitted = socketsOf(build);
@@ -26,8 +27,7 @@ export function buildStatsForUI(build: Build, parts: readonly OwnedPart[]) {
   return hasStyleParts(build, parts) && !styleAssemblyIssue(build, parts) ? statsV5(snapshot) : aggregates(snapshot);
 }
 export function styleRobotPreviewHref(robot: CombatBuild, appearance: LookView, seed = 75) {
-  const query = new URLSearchParams({ robot: JSON.stringify(robot), appearance: JSON.stringify(appearance), seed: String(seed) });
-  return `/bots/fight/styles?${query.toString()}`;
+  return fightRoomHref(5, { robot: JSON.stringify(robot), appearance: JSON.stringify(appearance), seed: String(seed) });
 }
 export function buildCapabilities(build: Build, parts: readonly OwnedPart[]) {
   const fitted = socketsOf(build);

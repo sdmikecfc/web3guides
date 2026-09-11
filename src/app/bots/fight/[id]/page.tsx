@@ -19,7 +19,8 @@ import { ART_VERSION } from "@/app/bots/_view/art-version";
  * back to its generic card on its own. Never an address, never a dollar.
  */
 import type { Metadata } from "next";
-import FightClient, { ServerFight, type FightIdentity } from "../FightClient";
+import { type FightIdentity } from "../FightClient";
+import { LocalFightRoom, SavedFightRoom } from "../FightRoomEntry";
 import { fnv1a } from "@/app/bots/_engine/rng";
 import { botTier, buildTotal, type Build, type Mode, type PaintId } from "@/app/bots/_engine/parts";
 import { CANON, SHAPE_INDEX, houseBuild, houseTarget, type Difficulty } from "@/app/bots/_engine/catalog";
@@ -211,15 +212,15 @@ export default function FightPage({ params }: { params: { id: string } }) {
   const sample = fixturePractice(id);
   if (sample) {
     const result = resolveFight(sample.seed, sample.a, sample.b, undefined, undefined, sample.mode);
-    return <FightClient {...sample} expectedHash={result.hash} />;
+    return <LocalFightRoom {...sample} expectedHash={result.hash} />;
   }
-  if (!id.startsWith("demo-")) return <ServerFight id={id} />;
+  if (!id.startsWith("demo-")) return <SavedFightRoom id={id} />;
   const mock = mockFor(id);
-  if (!mock) return <ServerFight id={id} />;
+  if (!mock) return <SavedFightRoom id={id} />;
   // the stored hash: what a server row carries; the client compares
   const stored = resolveFight(mock.seed, mock.a, mock.b, undefined, undefined, mock.mode);
   return (
-    <FightClient
+    <LocalFightRoom
       seed={mock.seed}
       a={mock.a}
       b={mock.b}

@@ -2,7 +2,7 @@ import { cardV5, presetV5, snapshotBuildV5, type BuildV5, type StyleV5 } from '.
 import type { CombatBuild } from './combat-model';
 import type { Tier } from '@/app/bots/_engine/parts';
 
-export interface StylePracticeQuery { style?: string; rival?: string; tier?: string; part?: string; robot?: string; appearance?: string; seed?: string; session?: string; botId?: string; difficulty?: string }
+export interface StylePracticeQuery { style?: string; rival?: string; tier?: string; part?: string; robot?: string; appearance?: string; seed?: string; session?: string; botId?: string; difficulty?: string; name?: string }
 export function practiceBuildV5(q: StylePracticeQuery): BuildV5 {
   if (q.robot) {
     if (q.robot.length > 8192) throw new Error('This robot link is too long. Open the fight from your garage.');

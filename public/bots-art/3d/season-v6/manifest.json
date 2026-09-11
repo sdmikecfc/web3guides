@@ -1,0 +1,107 @@
+{
+  "version": "mk6-art-hero-review-1",
+  "rigVersion": "mk6-rig-1",
+  "units": "metres",
+  "front": "+Z",
+  "up": "+Y",
+  "status": "hero-review",
+  "source": "Original procedural Blender models. No generated or third-party assets.",
+  "heroes": {
+    "boiler_knight.t3": {
+      "file": "boiler_knight.t3.glb",
+      "bytes": 1520280,
+      "sha256": "204e149ca9ffcc39a6e2597a31befaf7b2c5f46fade340a7b8987e0ab487483a",
+      "family": "boiler_knight",
+      "tier": 3,
+      "style": "tank",
+      "vertices": 32170,
+      "triangles": 62948,
+      "mounts": {
+        "handL": [
+          -0.8,
+          1.225,
+          0.12
+        ],
+        "handR": [
+          0.8,
+          1.225,
+          0.12
+        ],
+        "shoulderL": [
+          -0.76,
+          2.04,
+          0
+        ],
+        "shoulderR": [
+          0.76,
+          2.04,
+          0
+        ]
+      }
+    },
+    "roller_daredevil.t3": {
+      "file": "roller_daredevil.t3.glb",
+      "bytes": 1299492,
+      "sha256": "b8679edd8f4c7df0228f1e8306d0fe66cecab7eaee7b28149cb63d2963a6f26c",
+      "family": "roller_daredevil",
+      "tier": 3,
+      "style": "speed",
+      "vertices": 27028,
+      "triangles": 53224,
+      "mounts": {
+        "handL": [
+          -0.52,
+          1.125,
+          0.12
+        ],
+        "handR": [
+          0.52,
+          1.125,
+          0.12
+        ],
+        "shoulderL": [
+          -0.48,
+          1.94,
+          0
+        ],
+        "shoulderR": [
+          0.48,
+          1.94,
+          0
+        ]
+      }
+    },
+    "owl_ranger.t3": {
+      "file": "owl_ranger.t3.glb",
+      "bytes": 1502520,
+      "sha256": "35f1c6874e67085b11d2261ad30bd3a1153c8e34aa8c64b2e581dd9df23f6e1d",
+      "family": "owl_ranger",
+      "tier": 3,
+      "style": "ranged",
+      "vertices": 31774,
+      "triangles": 63144,
+      "mounts": {
+        "handL": [
+          -0.63,
+          1.1750000000000003,
+          0.12
+        ],
+        "handR": [
+          0.63,
+          1.1750000000000003,
+          0.12
+        ],
+        "shoulderL": [
+          -0.59,
+          1.99,
+          0
+        ],
+        "shoulderR": [
+          0.59,
+          1.99,
+          0
+        ]
+      }
+    }
+  }
+}

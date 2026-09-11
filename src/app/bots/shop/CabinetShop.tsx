@@ -14,6 +14,7 @@ import { BODY_BRANDS, WEAPON_BRANDS, BRAND_INDEX, BRAND_OF_FAMILY, BRAND_OF_WEAP
 import { SCREEN_WORDS, STAT_NAME_OF, fillWords } from "@/lib/bots/naming-screens";
 import css from "./cabinet.module.css";
 import LegacyCabinetShop from "./LegacyCabinetShop";
+import WorkshopLesson from "../_game/WorkshopLesson";
 import { styleCardOf, styleSpecialInfo } from "@/lib/bots/style-catalog";
 import { FIGHTING_STYLES, STYLE_GUIDE, stylePreviewHref, stylesPreviewEnabled, type FightingStyle } from "@/lib/bots/style-guide";
 import { styleShipmentFor, type CabinetShipment } from "@/lib/bots/style-shipment";
@@ -76,10 +77,11 @@ function CompactCabinetShop({ shipment, st, day, initialSlot, leftMs, tomorrow, 
   const [error, setError] = useState<string | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const calendarDialog = useRef<HTMLDialogElement>(null);
+  const lessonDialog = useRef<HTMLDialogElement>(null);
   const buying = useRef(false);
   const live = useRef(true);
   useEffect(() => { live.current = true; return () => { live.current = false; }; }, []);
-  useEffect(() => { dialog.current?.close(); calendarDialog.current?.close(); setSelection(null); setError(null); }, [day]);
+  useEffect(() => { dialog.current?.close(); calendarDialog.current?.close(); lessonDialog.current?.close(); setSelection(null); setError(null); }, [day]);
   const styledShelf = shipment?.v === 2;
   const styleWeek = useMemo(() => shipment?.v === 2 ? Array.from({ length: 7 }, (_, i) => {
     const date = new Date(`${shipment.dayKey}T00:00:00Z`); date.setUTCDate(date.getUTCDate() - shipment.t4.weekday + i);
@@ -155,7 +157,7 @@ function CompactCabinetShop({ shipment, st, day, initialSlot, leftMs, tomorrow, 
         <div className={css.purse}><span className={css.purseLabel}>YOUR COINS</span><strong><Coin /> {st.coins.toLocaleString("en-US")}</strong><small>{fill(t.shopUi.yourLevel, { n: st.level })}</small></div>
       </header>
 
-      <div className={css.arrival}><span><i aria-hidden />{shipment ? `${shipment.listings.length} parts today` : words.loading}</span><span>{leftMs == null ? "…" : leftMs === 0 ? t.shopUi.landed : fill(t.shopUi.nextIn, { time: timeLeft(leftMs) })}{leftMs === 0 ? <button onClick={() => window.location.reload()}>Refresh</button> : null}</span><button className={css.calendarButton} onClick={() => calendarDialog.current?.showModal()}>Delivery calendar</button></div>
+      <div className={css.arrival}><span><i aria-hidden />{shipment ? `${shipment.listings.length} parts today` : words.loading}</span><span>{leftMs == null ? "…" : leftMs === 0 ? t.shopUi.landed : fill(t.shopUi.nextIn, { time: timeLeft(leftMs) })}{leftMs === 0 ? <button onClick={() => window.location.reload()}>Refresh</button> : null}</span>{process.env.NEXT_PUBLIC_BOTS_SEASON_V1 === "1" && <button className={css.calendarButton} onClick={() => lessonDialog.current?.showModal()}>How parts work</button>}<button className={css.calendarButton} onClick={() => calendarDialog.current?.showModal()}>Delivery calendar</button></div>
 
       <div className={css.shopLayout}>
         <section className={css.browse} aria-label={words.shelf}>
@@ -192,6 +194,7 @@ function CompactCabinetShop({ shipment, st, day, initialSlot, leftMs, tomorrow, 
       <p className={css.footerNote}>{t.shopUi.keepsColor}</p>
     </div>
     <dialog ref={dialog} aria-labelledby={selected ? "shop-part-title" : undefined} aria-label={selected ? undefined : "Inspect part"} className={css.dialog} onClick={e => { if (e.target === e.currentTarget) dialog.current?.close(); }}><div>{inspection()}</div></dialog>
+    <dialog ref={lessonDialog} className={css.dialog} aria-label="How parts work" onClick={e => { if (e.target === e.currentTarget) lessonDialog.current?.close(); }}><div className={css.counterHeading}><h2>Wrench’s workshop notes</h2><button autoFocus className={css.closeButton} aria-label="Close workshop notes" onClick={() => lessonDialog.current?.close()}>×</button></div><div className={css.calendarContents}><WorkshopLesson topic="styles">{FIGHTING_STYLES.map(style => <p key={style}><a href={stylePreviewHref(style)}>Watch {STYLE_GUIDE[style].label.toLowerCase()} fight →</a></p>)}</WorkshopLesson><WorkshopLesson topic="special" compact /></div></dialog>
     <dialog ref={calendarDialog} aria-labelledby="shop-calendar-title" className={`${css.dialog} ${css.calendarDialog}`} onClick={e => { if (e.target === e.currentTarget) calendarDialog.current?.close(); }}><div className={css.counterHeading}><h2 id="shop-calendar-title">{words.calendar}</h2><button autoFocus className={css.closeButton} aria-label="Close delivery calendar" onClick={() => calendarDialog.current?.close()}>×</button></div><div className={css.calendarContents}><p>{styledShelf ? "The shop always has a starter weapon for Tank, Speed and Ranged. The Tier 4 part changes each day." : t.shopUi.comesBack}</p><div className={css.days}>{shipment ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((name, wd) => { const offer = styleWeek[wd], c = offer ? { slot: offer.slot, color: offer.color } : t4Calendar(shipment.t4.week, wd); return <div className={wd === shipment.t4.weekday ? css.today : ""} key={name}><span>{wd === shipment.t4.weekday ? t.shopUi.today : name}</span><strong>{offer?.card.name ?? t.ui.card[c.slot]}</strong><i style={{ background: c.color ? PAINTS[c.color] : "#bc9b63" }} /><small>★★★★</small></div>; }) : null}</div><p>{styledShelf ? "Colours change the look, not the stats." : t.shopUi.keepsColor}</p><button className={css.backButton} onClick={() => calendarDialog.current?.close()}>{words.close}</button></div></dialog>
     {toast ? <div className={css.toast} role="status">✓ {toast}</div> : null}
   </>;

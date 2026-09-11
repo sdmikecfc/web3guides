@@ -1,4 +1,5 @@
 /** Plain-language guidance. Styles suggest a build; they never lock its slots. */
+import { fightRoomHref } from "./fight-navigation";
 export type FightingStyle = "tank" | "speed" | "ranged";
 export const FIGHTING_STYLES: readonly FightingStyle[] = ["tank", "speed", "ranged"];
 export const STYLE_GUIDE: Readonly<Record<FightingStyle, { label: string; strength: string; weakness: string; parts: string }>> = {
@@ -9,5 +10,5 @@ export const STYLE_GUIDE: Readonly<Record<FightingStyle, { label: string; streng
 export const STYLE_STARTER_ORDER = ["torso", "head", "armL", "armR", "legL", "legR", "weapon"] as const;
 export const stylesPreviewEnabled = () => process.env.NEXT_PUBLIC_BOTS_STYLES_V1 === "1";
 export function stylePreviewHref(style: FightingStyle, tier: number = 1) {
-  return `/bots/fight/styles?style=${style}&tier=${Math.min(4, Math.max(1, Math.trunc(tier)))}`;
+  return fightRoomHref(5, { style, tier: String(Math.min(4, Math.max(1, Math.trunc(tier)))) });
 }

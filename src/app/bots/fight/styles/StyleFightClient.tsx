@@ -1,6 +1,7 @@
 'use client';
 
-import Link from 'next/link';
+import FightRoomFrame from '../../_game/FightRoomFrame';
+import { fightRoomHref } from '@/lib/bots/fight-navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createFightV5, stepFightV5, acceptSpecialV5, presetV5, cardV5, snapshotBuildV5, resultV5, type BuildV5, type StateV5, type StyleV5, type SpecialCommandV5 } from '@/lib/bots/v5';
 import { practiceBuildV5, type StylePracticeQuery } from '@/lib/bots/style-practice';
@@ -36,7 +37,7 @@ function status(s: StateV5, side: 0 | 1): string {
   return f.meter >= 100 ? 'Special ready' : 'Fighting';
 }
 
-export default function StyleFightClient({ query }: { query: StylePracticeQuery }) {
+export default function StyleFightClient({ query, embedded = false, onClose }: { query: StylePracticeQuery; embedded?: boolean; onClose?: () => void }) {
   const parsed = useMemo(() => { try { return { build: practiceBuildV5(query), error: '' }; } catch (e) { return { build: presetV5('ranged'), error: e instanceof Error ? e.message : 'This build could not load.' }; } }, [query]);
   const [build, setBuild] = useState(parsed.build), [rival, setRival] = useState<StyleV5>(query.rival === 'speed' || query.rival === 'ranged' ? query.rival : 'tank');
   const [seed, setSeed] = useState((Number(query.seed) || 75) >>> 0), [round, setRound] = useState(0), [playing, setPlaying] = useState(false), [replaying, setReplaying] = useState(false);
@@ -78,7 +79,7 @@ export default function StyleFightClient({ query }: { query: StylePracticeQuery 
         const response = await fetch(url, options), value = await response.json(); if (!response.ok || !value.ok) throw new Error(value.error?.message ?? value.message ?? value.error ?? 'The fight could not connect.');
         if (cancelled) return;
         const session = (value as LiveHouseResponse).session; sessionId.current = session.id;
-        const q = new URLSearchParams({ session: session.id }); history.replaceState(null, '', `/bots/fight/styles?${q}`);
+        history.replaceState(null, '', fightRoomHref(5, { session: session.id }));
         updateSession(session); setError('');
         if (session.status === 'complete') { for (const difficulty of ['easy', 'medium', 'hard']) sessionStorage.removeItem(`bots:live5:start:${session.botId}:${difficulty}`); sessionStorage.removeItem(`bots:live5:start:${session.botId}`); return; }
       } catch (e) { if (!cancelled) setNotice(e instanceof Error ? e.message : 'Connection lost. Trying again.'); }
@@ -165,36 +166,31 @@ export default function StyleFightClient({ query }: { query: StylePracticeQuery 
   const current = live?.builds[0] ?? build, special = current.capabilities.special;
   const canSpecial = ready && !done && !replaying && !active && (f?.meter ?? 0) >= 100 && (f?.stunnedUntil ?? 0) <= (s?.frame ?? 0) && (f?.downUntil ?? 0) <= (s?.frame ?? 0) && (liveMode || playing);
   const ending = current.style === 'tank' ? 'A shield charge can knock the rival down. A broken shield stops it.' : current.style === 'speed' ? 'A rear blade hit can finish a limb below 25% armour. Healthy limbs stay attached.' : 'Both arms fire a short machine-pistol burst. A missing arm cannot fire.';
-  if (liveMode && !live) return <main className={css.page}><header className={css.header}><Link href='/bots'>← Garage</Link><strong>Model Kombat · House fight</strong></header><div className={css.panel} style={{ margin: 20 }} role='status'><h1>Opening your fight</h1><p>{notice || 'Loading your saved robot and opponent…'}</p></div></main>;
-  return <main className={css.page}>
-    <header className={css.header}><Link href='/bots'>← Garage</Link><div><strong>Model Kombat</strong><span>{liveMode ? 'House fight' : 'Practice room'} · Build preview</span></div><label><input type='checkbox' checked={sound} onChange={e => { setSound(e.target.checked); sfx.current?.setMuted(!e.target.checked); }} /> Sound</label></header>
-    <div className={css.layout}>
-      <section className={css.stage} ref={host} aria-label='Robot fight arena'>
+  const title = liveMode ? 'House fight' : query.robot ? 'Your robot · practice' : 'Try a fighting style';
+  if (liveMode && !live) return <div className={css.page}><FightRoomFrame embedded={embedded} title={title} onClose={onClose} arena={<div className={css.waiting}><strong>Opening your fight</strong><p>{notice || 'Your saved robot and rival are getting ready.'}</p><button onClick={onClose ?? (() => { location.href = '/bots?view=fight'; })}>Back to the fight room</button></div>} special={<p>Your robot and saved result stay safe if you leave this screen.</p>} /></div>;
+  return <div className={css.page}><FightRoomFrame embedded={embedded} title={title} onClose={onClose}
+    tools={<label><input type='checkbox' checked={sound} onChange={e => { setSound(e.target.checked); sfx.current?.setMuted(!e.target.checked); }} /> Sound</label>}
+    arena={<section className={css.stage} ref={host} aria-label='Robot fight arena'>
         <canvas ref={canvas} aria-label='Your saved toy robot fighting in the arena' />
-        <div className={css.scoreboard}>{([0, 1] as const).map(side => <div key={side}><strong>{live?.identities[side].name ?? (side === 0 ? query.robot ? 'Your robot' : LABEL[build.style] : `${LABEL[rival]} rival`)}</strong><progress aria-label={`${side === 0 ? 'Your' : 'Rival'} body armour`} max={s?.stats[side].armour[1] ?? 100} value={s?.fighters[side].armour[1] ?? 100} /><span>{s ? `${Math.ceil(s.fighters[side].armour[1])} / ${s.stats[side].armour[1]} armour` : 'Getting ready'}</span><b>{s ? status(s, side) : ''}</b></div>)}</div>
+        <div className={css.scoreboard}>{([0, 1] as const).map(side => <div key={side}><strong>{live?.identities[side].name ?? (side === 0 ? query.robot ? query.name || 'Your robot' : LABEL[build.style] : `${LABEL[rival]} rival`)}</strong><progress aria-label={`${side === 0 ? 'Your' : 'Rival'} body armour`} max={s?.stats[side].armour[1] ?? 100} value={s?.fighters[side].armour[1] ?? 100} /><span>{s ? `${Math.ceil(s.fighters[side].armour[1])} / ${s.stats[side].armour[1]} armour` : 'Getting ready'}</span><b>{s ? status(s, side) : ''}</b></div>)}</div>
         {(!ready || error) && <div className={css.cover} role='status'><strong>{error || (liveMode && notice ? notice : 'Getting your robots ready…')}</strong></div>}
         {ready && !playing && !liveMode && !done && <div className={css.cover}><strong>Time your special.</strong><p>Your robot fights. You choose when to use its special.</p><button onClick={() => { setPlaying(true); sfx.current?.unlock(); sfx.current?.play('bell'); }}>Start practice fight</button></div>}
         <div className={css.footnote}><span>{Math.floor((s?.frame ?? 0) / 60)}s · {perf.dents} dents</span><label><input type='checkbox' checked={cinematic && !reduced} disabled={reduced} onChange={e => setCinematic(e.target.checked)} /> Moving camera</label></div>
-      </section>
-      <aside className={css.panel}>
-        <div><small>{LABEL[current.style]} body · Tier {current.tier}</small><h1>{special.name}</h1><p>{special.description}</p></div>
-        <div className={css.special}>
+      </section>}
+    special={<div className={css.special}>
           <div className={css.meter}><span style={{ width: `${active ? Math.max(0, ((f?.special?.until ?? 0) - (s?.frame ?? 0)) / 3) : f?.meter ?? 0}%` }} /></div>
           <button className={css.specialButton} disabled={!canSpecial || pending} onClick={() => void activate()}>{pending ? 'Sending…' : done ? 'Fight finished' : replaying ? 'Replaying your Special presses' : active ? `${special.name} · ${Math.max(0, ((f?.special?.until ?? 0) - (s?.frame ?? 0)) / 60).toFixed(1)}s` : canSpecial ? `Use ${special.name}` : `Special charging · ${Math.floor(f?.meter ?? 0)}%`}</button>
           <small>{liveMode ? 'Server-confirmed input' : 'Practice · no coins needed'} · Press Q or Space</small>
-        </div>
-        {notice && <p role='status' className={css.notice}>{notice}</p>}
-        {done && <div className={css.result} role='status'><strong>{s?.winner === 0 ? 'Your robot wins!' : 'Your rival wins this time.'}</strong><p>{liveMode ? live?.settlement ? `+${live.settlement.coins} coins · +${live.settlement.xp} XP` : 'Saving your result. Reopening this fight will finish saving it.' : 'Try another part combination or save your special for a different moment.'}</p>{(!liveMode || live?.status === 'complete') && <button onClick={() => reset(true)}>Replay my button presses</button>}</div>}
-        <details><summary>{current.tier >= 3 ? 'Your finishing move' : 'Tier 3 unlocks a finishing move'}</summary><p>{ending}</p><p>One button does both. Your robot must still have the right limbs and reach its target.</p><p>The meter fills over time and when your body takes damage. It starts empty each fight.</p></details>
-        {!liveMode && <>
+        </div>}
+    status={<>{notice && <p role='status' className={css.notice}>{notice}</p>}
+        {done && <div className={css.result} role='status'><strong>{s?.winner === 0 ? 'Your robot wins!' : 'Your rival wins this time.'}</strong><p>{liveMode ? live?.settlement ? `+${live.settlement.coins} coins · +${live.settlement.xp} XP` : 'Saving your result. Reopening this fight will finish saving it.' : 'Try another part combination or save your special for a different moment.'}</p>{(!liveMode || live?.status === 'complete') && <button onClick={() => reset(true)}>Replay my button presses</button>}</div>}</>}
+    setup={<div className={css.detailsPanel}><small>{LABEL[current.style]} body · Tier {current.tier}</small><h1>{special.name}</h1><p>{special.description}</p><details><summary>{current.tier >= 3 ? 'Your finishing move' : 'Tier 3 unlocks a finishing move'}</summary><p>{ending}</p><p>One button does both. Your robot must still have the right limbs and reach its target.</p><p>The meter fills over time and when your body takes damage. It starts empty each fight.</p></details>{!liveMode && <>
           <fieldset disabled={playing && !done}><legend>Try a fighting style</legend><div className={css.styles}>{(['tank', 'speed', 'ranged'] as StyleV5[]).map(style => <button key={style} aria-pressed={style === build.style} title={IDEA[style]} onClick={() => chooseStyle(style)}>{LABEL[style]}</button>)}</div><p>{IDEA[build.style]}</p><div className={css.inputs}><label>Tier<select value={build.tier} onChange={e => { setBuild(presetV5(build.style, Number(e.target.value) as 1 | 2 | 3 | 4)); setPlaying(false); }}>{[1, 2, 3, 4].map(t => <option key={t}>{t}</option>)}</select></label><label>Rival<select value={rival} onChange={e => { setRival(e.target.value as StyleV5); setPlaying(false); }}>{(['tank', 'speed', 'ranged'] as StyleV5[]).map(style => <option value={style} key={style}>{LABEL[style]}</option>)}</select></label></div>
           <label>Weapon<select value={current.parts.weapon.id} onChange={e => { const c = cardV5(e.target.value)!; setBuild(snapshotBuildV5({ ...build.appearanceBuild, weapon: { id: c.id, s: [...c.s] } })); setPlaying(false); }}>{!['tank', 'speed', 'ranged'].some(style => current.parts.weapon.id === `mk5.t${build.tier}.${style}.weapon`) && !current.parts.weapon.id.endsWith('paired-blades') && <option value={current.parts.weapon.id}>{cardV5(current.parts.weapon.id)?.name ?? 'Saved weapon'}</option>}{['tank', 'speed', 'ranged'].map(style => { const c = cardV5(`mk5.t${build.tier}.${style}.weapon`)!; return <option value={c.id} key={c.id}>{c.name}</option>; })}{build.tier >= 2 && <option value={`mk5.t${build.tier}.speed.paired-blades`}>Paired blades</option>}</select></label>
           <label>Fight seed<input type='number' min='0' max='4294967295' value={seed} onChange={e => { setSeed(Number(e.target.value) >>> 0); setPlaying(false); }} /></label></fieldset>
           <div className={css.actions}><button onClick={() => reset(false)} disabled={!ready}>Start again</button><button onClick={() => { setPlaying(v => !v); sfx.current?.unlock(); }} disabled={!ready || done}>{playing ? 'Pause' : 'Continue'}</button></div>
-        </>}
-        <details><summary>Robot stats &amp; fight details</summary><dl>{Object.entries({ 'Body armour': current.stats.armour[1], 'Movement': current.stats.movement.toFixed(1), 'Accuracy': `${current.stats.accuracy.toFixed(1)}%`, 'Evasion': `${current.stats.evasion.toFixed(1)}%`, 'Attack power': current.stats.force.toFixed(1), 'Rifle shots': f?.shots ?? 0 }).map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl><p>Colour changes the look. Mixed parts keep their full stats.</p><small>{perf.fps} FPS · {perf.drawCalls} draws · {Math.round(perf.triangles / 1000)}k triangles · {perf.vertices} dented vertices{done && s ? ` · Replay ${resultV5(s).hash}` : ''}</small></details>
-        <p className={css.limit}>These builds work in practice and house fights. Player fights will support them in a later update.</p>
-      </aside>
-    </div>
-  </main>;
+        </>}</div>}
+    details={<div className={css.detailsPanel}><details><summary>Robot stats &amp; fight details</summary><dl>{Object.entries({ 'Body armour': current.stats.armour[1], 'Movement': current.stats.movement.toFixed(1), 'Accuracy': `${current.stats.accuracy.toFixed(1)}%`, 'Evasion': `${current.stats.evasion.toFixed(1)}%`, 'Attack power': current.stats.force.toFixed(1), 'Rifle shots': f?.shots ?? 0 }).map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl><p>Colour changes the look. Mixed parts keep their full stats.</p><small>{perf.fps} FPS · {perf.drawCalls} draws · {Math.round(perf.triangles / 1000)}k triangles · {perf.vertices} dented vertices{done && s ? ` · Replay ${resultV5(s).hash}` : ''}</small></details>
+        <p className={css.limit}>These builds work in practice and house fights. Player fights will support them in a later update.</p></div>}
+  /></div>;
 }

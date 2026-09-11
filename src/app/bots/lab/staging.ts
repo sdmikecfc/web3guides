@@ -1,9 +1,10 @@
 import * as THREE from "three";
 
 /** The lab shares the game's workshop and miniature arena art direction. */
-export async function createLabSet(scene: THREE.Scene) {
+export async function createLabSet(scene: THREE.Scene, arenaRadius = 5.68, surroundAudience = false) {
   const workshop = new THREE.Group(), arena = new THREE.Group();
   scene.add(workshop, arena);
+  arena.scale.set(arenaRadius / 5.68, 1, arenaRadius / 5.68);
   const geometry = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>(), textures = new Set<THREE.Texture>();
   const mat = (color: number, roughness = .7, metalness = 0) => new THREE.MeshStandardMaterial({ color, roughness, metalness });
   function mesh(g: THREE.BufferGeometry, m: THREE.Material, parent: THREE.Group, x = 0, y = 0, z = 0) {
@@ -72,9 +73,10 @@ export async function createLabSet(scene: THREE.Scene) {
   plates.forEach(p => { if (p.status === "fulfilled") { p.value.colorSpace = THREE.SRGBColorSpace; textures.add(p.value); } });
   if (plates[0].status === "fulfilled") workshopPlate = plates[0].value;
   if (plates[1].status === "fulfilled") {
-    const t = plates[1].value; t.repeat.set(1, .46); t.offset.set(0, .54);
+    const t = plates[1].value; t.repeat.set(surroundAudience ? 2 : 1, .46); t.offset.set(0, .54);
+    if (surroundAudience) t.wrapS = THREE.RepeatWrapping;
     audienceStill = t; audienceMaterial = new THREE.MeshBasicMaterial({ map: t, color: 0xa89c88, toneMapped: false, side: THREE.BackSide });
-    const audience = mesh(new THREE.CylinderGeometry(10.8, 10.8, 8.8, 72, 1, true, Math.PI / 2, Math.PI), audienceMaterial, arena, 0, 3.6); audience.receiveShadow = false;
+    const audience = mesh(new THREE.CylinderGeometry(10.8, 10.8, 8.8, surroundAudience ? 128 : 72, 1, true, Math.PI / 2, Math.PI * (surroundAudience ? 2 : 1)), audienceMaterial, arena, 0, 3.6); audience.receiveShadow = false;
   }
   // One small, locally served Higgsfield loop. Three updates its video texture
   // on decoded frames, independently of the camera's render rate.
@@ -82,6 +84,7 @@ export async function createLabSet(scene: THREE.Scene) {
   crowd.src = "/bots-art/video/arena-crowd-loop.mp4"; crowd.muted = true; crowd.defaultMuted = true;
   crowd.loop = true; crowd.playsInline = true; crowd.preload = "none";
   const crowdTexture = new THREE.VideoTexture(crowd); crowdTexture.colorSpace = THREE.SRGBColorSpace; textures.add(crowdTexture);
+  if (surroundAudience) { crowdTexture.wrapS = THREE.RepeatWrapping; crowdTexture.repeat.x = 2; }
   let playPending = false, playbackFailed = false, disposed = false;
   const visibility = () => { if (document.hidden) crowd.pause(); };
   document.addEventListener("visibilitychange", visibility);

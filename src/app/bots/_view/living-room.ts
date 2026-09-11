@@ -5,20 +5,20 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { createCombatToy, type CombatToy } from "./combat-toy";
-import type { RoomActor, RoomAnchor } from "../_game/LivingRoomScene";
+import type { RoomActor, RoomAnchor, RoomLoadStatus } from "../_game/LivingRoomScene";
 
 export interface LivingRoom {
-  setActors(actors: RoomActor[]): Promise<boolean>;
+  setActors(actors: RoomActor[], onProgress?: (status: RoomLoadStatus) => void): Promise<boolean>;
   select(id?: string): void;
   resize(width: number, height: number, pixelRatio?: number): void;
   anchors(): RoomAnchor[];
   render(time?: number): void;
-  metrics(): { calls: number; triangles: number; cpuMs: number; geometries: number; textures: number };
+  metrics(): { calls: number; triangles: number; cpuMs: number; geometries: number; textures: number; actors: number };
   dispose(): void;
 }
 
-type Actor = { definition: RoomActor; toy: CombatToy; head: THREE.Quaternion; body: THREE.Quaternion; floorOffset: number };
-const Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1);
+type Actor = { definition: RoomActor; toy: CombatToy; head: THREE.Quaternion; body: THREE.Quaternion; arm: THREE.Quaternion; legs: { node: THREE.Object3D; quaternion: THREE.Quaternion }[]; floorOffset: number };
+const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1);
 const STAND_TOP = .44;
 
 /** Source form preview: authentic player meshes retain authored unit scale.
@@ -196,11 +196,22 @@ export function createLivingRoom(canvas: HTMLCanvasElement, variant: "garage" | 
     actors.forEach(actor => { actor.toy.root.position.copy(bayPosition(actor.definition.bay)); actor.toy.root.position.y = actor.floorOffset + (variant === "garage" ? STAND_TOP : 0); });
   };
   const api: LivingRoom = {
-    async setActors(definitions) {
+    async setActors(definitions, onProgress) {
       const ticket = ++generation;
-      await Promise.all(backdropLoads);
-      const results = await Promise.allSettled(definitions.slice(0, 5).map(async definition => {
-        const toy = await createCombatToy(definition.build, definition.look, false, referenceShot ? "inspection" : "fight"); toy.resetPose();
+      const wanted = definitions.slice(0, 5), failedIds: string[] = [];
+      let pending = wanted.length;
+      const report = () => { if (!disposed && ticket === generation) onProgress?.({ ready: actors.length, pending, failedIds: [...failedIds] }); };
+      actors = actors.filter(actor => { if (wanted.some(d => d.id === actor.definition.id)) return true; scene.remove(actor.toy.root); actor.toy.dispose(); return false; });
+      report();
+      // Art and occupants load independently. One unavailable model must not
+      // erase the neighbours that are already standing in the street.
+      const backdropReady = Promise.allSettled(backdropLoads);
+      await Promise.all(wanted.map(async definition => {
+        const existing = actors.find(a => a.definition.id === definition.id);
+        if (existing && JSON.stringify(existing.definition) === JSON.stringify(definition)) { pending--; report(); return; }
+        let toy: CombatToy | undefined;
+        try {
+        toy = await createCombatToy(definition.build, definition.look, false, referenceShot ? "inspection" : "fight"); toy.resetPose();
         toy.applyClip("guard", .5, 1, ["armL", "armR", "elbowL", "elbowR", "wristL", "wristR"]);
         toy.root.rotation.y = -.11 + (definition.bay - 3) * -.035;
         toy.root.updateMatrixWorld(true);
@@ -208,15 +219,16 @@ export function createLivingRoom(canvas: HTMLCanvasElement, variant: "garage" | 
         // Feet establish support. Weapons and cosmetic geometry must never lift a robot.
         toy.root.traverseVisible(o => { const mesh = o as THREE.Mesh; if (!mesh.isMesh || !["legL", "legR"].includes(mesh.userData.socket)) return; const skin = mesh as THREE.SkinnedMesh; if (skin.isSkinnedMesh) { skin.skeleton.update(); skin.computeBoundingBox(); if (skin.boundingBox) bounds.union(skin.boundingBox.clone().applyMatrix4(skin.matrixWorld)); } else { mesh.geometry.computeBoundingBox(); if (mesh.geometry.boundingBox) bounds.union(mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrixWorld)); } });
         const floorOffset = bounds.isEmpty() ? 0 : -bounds.min.y;
-        return { definition, toy, head: toy.sockets.head.quaternion.clone(), body: toy.sockets.torso.quaternion.clone(), floorOffset };
+        if (disposed || ticket !== generation) { toy.dispose(); return; }
+        if (existing) { scene.remove(existing.toy.root); existing.toy.dispose(); actors = actors.filter(a => a !== existing); }
+        const legs = ["legL", "legR", "kneeL", "kneeR"].flatMap(name => { const node = toy!.bones[name]; return node ? [{ node, quaternion: node.quaternion.clone() }] : []; });
+        actors.push({ definition, toy, head: toy.sockets.head.quaternion.clone(), body: toy.sockets.torso.quaternion.clone(), arm: toy.sockets.armL.quaternion.clone(), legs, floorOffset });
+        actors.sort((a, b) => a.definition.bay - b.definition.bay); scene.add(toy.root); place(); lastPoseTime = -1; api.select(selectedId);
+        } catch (error) { toy?.dispose(); if (!disposed && ticket === generation) { if (existing && actors.includes(existing)) { scene.remove(existing.toy.root); existing.toy.dispose(); actors = actors.filter(actor => actor !== existing); } failedIds.push(definition.id); console.warn("[room occupant unavailable]", definition.id, error); } }
+        finally { pending--; report(); }
       }));
-      const next: Actor[] = [];
-      let failure: unknown;
-      results.forEach(result => { if (result.status === "fulfilled") next.push(result.value); else failure = result.reason; });
-      if (failure) { next.forEach(a => a.toy.dispose()); throw failure; }
-      if (disposed || ticket !== generation) { next.forEach(a => a.toy.dispose()); return false; }
-      actors.forEach(a => { scene.remove(a.toy.root); a.toy.dispose(); }); actors = next;
-      actors.forEach(a => scene.add(a.toy.root)); place(); lastPoseTime = -1; api.select(selectedId); return true;
+      await backdropReady;
+      return !disposed && ticket === generation;
     },
     select(id) {
       selectedId = id;
@@ -256,14 +268,34 @@ export function createLivingRoom(canvas: HTMLCanvasElement, variant: "garage" | 
       if (lastPoseTime !== time) {
         actors.forEach((actor, i) => {
           const t = time ? time + i * 1.73 : 0;
+          const base = bayPosition(actor.definition.bay), activity = actor.definition.activity;
+          actor.toy.root.position.copy(base); actor.toy.root.position.y = actor.floorOffset + (variant === "garage" ? STAND_TOP : 0);
+          actor.toy.root.rotation.y = -.11 + (actor.definition.bay - 3) * -.035;
           actor.toy.sockets.head.quaternion.copy(actor.head).multiply(quat.setFromAxisAngle(Y, t ? Math.sin(t * .48) * .055 : 0));
           actor.toy.sockets.torso.quaternion.copy(actor.body).multiply(quat.setFromAxisAngle(Z, t ? Math.sin(t * .67) * .008 : 0));
+          actor.toy.sockets.armL.quaternion.copy(actor.arm);
+          actor.legs.forEach(rest => rest.node.quaternion.copy(rest.quaternion));
+          if (variant === "community" && t && activity && !referenceShot) {
+            if (activity === "wave") {
+              const greeting = Math.max(0, Math.sin(t * .55));
+              actor.toy.sockets.armL.quaternion.multiply(quat.setFromAxisAngle(Z, greeting * (.8 + Math.sin(t * 6) * .12)));
+              actor.toy.sockets.head.quaternion.multiply(quat.setFromAxisAngle(Y, Math.sin(t * .55) * .16));
+            } else if (activity === "inspect") {
+              actor.toy.sockets.head.quaternion.multiply(quat.setFromAxisAngle(X, .14 + Math.sin(t * .8) * .08));
+              actor.toy.sockets.armL.quaternion.multiply(quat.setFromAxisAngle(X, -.25 + Math.sin(t * 2) * .13));
+            } else {
+              const pace = Math.sin(t * .24), moving = Math.abs(Math.cos(t * .24)) > .2;
+              actor.toy.root.position.z += pace * (mobile ? .3 : .6);
+              actor.toy.root.rotation.y += Math.cos(t * .24) < 0 ? .28 : -.28;
+              actor.toy.applyClip("advance", moving ? (t * 1.15) % 1 : 0, moving ? .25 : 0, ["legL", "legR", "kneeL", "kneeR"]);
+            }
+          }
         });
         lastPoseTime = time; renderer.shadowMap.needsUpdate = true;
       }
       renderer.render(scene, camera); cpuMs = performance.now() - start;
     },
-    metrics: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, cpuMs, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }),
+    metrics: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, cpuMs, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, actors: actors.length }),
     dispose() {
       if (disposed) return; disposed = true; generation++;
       actors.forEach(a => a.toy.dispose()); actors = [];

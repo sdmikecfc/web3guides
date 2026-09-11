@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import LivingRoomScene, { type RoomAnchor } from "./LivingRoomScene";
+import LivingRoomScene, { type RoomAnchor, type RoomActor } from "./LivingRoomScene";
 import type { BattlesView } from "../_server/types";
 import type { CampaignView } from "@/lib/bots/campaign-view";
 import { communityVisitors } from "@/lib/bots/community-room";
@@ -16,7 +16,7 @@ export interface CommunityRoomProps {
 /** Real replay snapshots populate the street; recorded fights imply no online presence. */
 export default function CommunityRoom({ battles, state, campaign, onWatch, onPractice, onScores, onRetry }: CommunityRoomProps) {
   const { visitors, featured } = useMemo(() => communityVisitors(battles), [battles]);
-  const actors = useMemo(() => visitors.map(visitor => ({ id: visitor.id, bay: visitor.bay, build: visitor.build, look: rigLookOf(visitor.look, visitor.paint) })), [visitors]);
+  const actors = useMemo<RoomActor[]>(() => visitors.map(visitor => ({ id: visitor.id, bay: visitor.bay, build: visitor.build, look: rigLookOf(visitor.look, visitor.paint), activity: visitor.bay === 5 ? "inspect" : visitor.bay === 3 ? "arrive" : "wave" })), [visitors]);
   const [anchors, setAnchors] = useState<RoomAnchor[]>([]), [selectedId, setSelectedId] = useState<string>();
   const recent = (battles?.recent ?? []).slice(0, 6);
   const standings = campaign?.source === "available" ? campaign.standings.battles.slice().sort((a, b) => a.rank - b.rank).slice(0, 3) : [];
