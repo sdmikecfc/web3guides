@@ -12,8 +12,10 @@
  * bot may be saved (an engine on hooks) but never fights. A whole bot is
  * listed for challenges unless `listed: false` is sent.
  */
+import { cardV5, snapshotBuildV5 } from "@/lib/bots/v5";
+import { stylesEnabled, missingMigration } from "@/app/bots/_server/rollout";
 import { EQUIPMENT_SOCKETS, EQUIPMENT_KIND, EQUIPMENT_LABEL, type EquipmentIds } from "@/lib/bots/equipment";
-import { equipmentStatsTotal, type CombatSocket } from "@/lib/bots/combat-model";
+import { equipmentStatsTotal, modularBuild, type CombatSocket } from "@/lib/bots/combat-model";
 import { NextResponse } from "next/server";
 import { DECAL_IDS, FIRST_WORDS, SECOND_WORDS, nameText, type DecalId } from "@/lib/bots/fixtures";
 import { LookRefused, parseLook, type BotLookRaw } from "@/lib/bots/look";
@@ -146,7 +148,25 @@ export async function POST(req: Request) {
       const current = socketIdsOf(existing);
       if (!sockets || EQUIPMENT_SOCKETS.some(s => sockets![s] !== current[s])) return refuse(409, "Choose these parts in your beginner shop first.");
     }
-    const listed = !protectedBot && complete && body.listed !== false;
+    const selectedIds = new Set(Object.values(sockets ?? ids).filter((id): id is number => id !== null));
+    const chosenParts = parts.filter(p => selectedIds.has(p.id));
+    const styledCount = chosenParts.filter(p => !!cardV5(p.part_key)).length;
+    const priorStyled = !!existing && buildJsonOf(existing).engineVersion === 5;
+    const torso = chosenParts.find(p => p.id === ids.torso);
+    const styledBody = torso ? cardV5(torso.part_key) : undefined;
+    if (torso && !styledBody && (styledCount || priorStyled)) return refuse(400, "Choose a styled body to use these parts in the new arena.");
+    if (styledCount && !priorStyled && !stylesEnabled()) return refuse(409, "The styled builder is not open yet.");
+    const styled = priorStyled || styledCount > 0;
+    if (styled && !sockets) return refuse(400, "Choose each arm and leg separately.");
+    if (styled && complete && sockets) {
+      const [head, torso, armL, armR, legL, legR, weapon] = EQUIPMENT_SOCKETS.map(socket => {
+        const part = chosenParts.find(p => p.id === sockets![socket])!;
+        return { id: part.part_key, s: partStats(part) };
+      });
+      try { snapshotBuildV5(modularBuild(head, torso, armL, armR, legL, legR, weapon)); }
+      catch { return refuse(409, "These saved parts cannot fight together. Refresh your garage and choose their original parts."); }
+    }
+    const listed = !styled && !protectedBot && complete && body.listed !== false;
 
     // ── THE LOOK, checked against the rows and nothing else ──────────────
     // The server is the truth (the joint law): a face, a sticker colour and
@@ -182,14 +202,14 @@ export async function POST(req: Request) {
       throw e;
     }
 
-    const build: BuildJson = { parts: ids, ...(sockets ? {sockets,equipmentVersion:2 as const} : {}), ...(existing && buildJsonOf(existing).practiceImported ? { practiceImported: true, practiceHandoff: buildJsonOf(existing).practiceHandoff } : {}), name, decal, paint, look };
+    const build: BuildJson = { ...(styled ? { engineVersion: 5 as const, catalogueVersion: 2 as const, assemblyLocked: complete || !!(existing && buildJsonOf(existing).assemblyLocked) } : {}), parts: ids, ...(sockets ? {sockets,equipmentVersion:2 as const} : {}), ...(existing && buildJsonOf(existing).practiceImported ? { practiceImported: true, practiceHandoff: buildJsonOf(existing).practiceHandoff } : {}), name, decal, paint, look };
     const row = {
       wallet: sess.wallet,
       slot: bay,
       name: nameText(name),
       build,
       total,
-      tier: complete ? botTier(total) : 1,
+      tier: styled ? styledBody?.tier ?? 1 : complete ? botTier(total) : 1,
       weight_class: weightClassOf(total),
       listed,
       is_test: isTest,
@@ -197,7 +217,17 @@ export async function POST(req: Request) {
     };
 
     let botId: number;
-    if (existing) {
+    if (styled) {
+      const { data, error } = await db.rpc("bb_styles_save_assembly", { p_wallet: sess.wallet, p_bot_id: existing?.id ?? null,
+        p_expected_updated_at: existing?.updated_at ?? null, p_bay: bay, p_name: row.name, p_build: build, p_total: total, p_tier: row.tier, p_weight_class: row.weight_class });
+      if (error) {
+        if (missingMigration(error)) return refuse(503, "The styled builder is being set up. Your saved parts are safe.");
+        if (error.code === "P0001" || error.code === "P0002") return refuse(409, error.message);
+        throw new Error(`styled assembly: ${error.message}`);
+      }
+      if (!data?.botId) throw new Error("The saved styled robot did not come back");
+      botId = Number(data.botId);
+    } else if (existing) {
       const { data, error } = await db.from("battle_bots_bots").update(row).eq("id", existing.id).eq("wallet", sess.wallet).eq("updated_at", existing.updated_at).select("id");
       if (error) throw new Error(`bot update: ${error.message}`);
       if (!data?.length) return refuse(409, "Your robot changed in another window. Refresh your garage before saving.");
@@ -212,6 +242,7 @@ export async function POST(req: Request) {
     }
 
     // socket the parts: free the ones that left, bind the ones that arrived
+    if (!styled) {
     const keep = new Set(Object.values(sockets ?? ids).filter((v): v is number => v != null));
     const leaving = parts.filter((p) => p.bot_id === botId && !keep.has(p.id)).map((p) => p.id);
     if (leaving.length) {
@@ -225,6 +256,7 @@ export async function POST(req: Request) {
         .in("id", Array.from(keep))
         .eq("wallet", sess.wallet);
       if (error) throw new Error(`parts bind: ${error.message}`);
+    }
     }
 
     const fresh = await loadBots(db, sess.wallet);

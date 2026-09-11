@@ -4,6 +4,8 @@ import type { BeginnerOffer } from "./beginner-catalog";
 export interface OnboardingPurchase { partId: number; offerId: string }
 export interface OnboardingView {
   version: 1 | 2;
+  /** Missing on saved earlier drafts. Their original catalogue stays available. */
+  catalogueVersion?: 1 | 2;
   step: "welcome" | "shop" | "practice" | "complete";
   welcomeBotId: number;
   welcomeBay: number;

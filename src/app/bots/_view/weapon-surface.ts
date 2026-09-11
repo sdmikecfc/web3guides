@@ -22,7 +22,7 @@ export function createWeaponContactSolver() {
   const offset=new THREE.Vector3(), goal=new THREE.Vector3(), joint=new THREE.Vector3(), end=new THREE.Vector3(), from=new THREE.Vector3(), toward=new THREE.Vector3();
   const shoulder=new THREE.Vector3(), elbow=new THREE.Vector3(), bend=new THREE.Vector3(), elbowGoal=new THREE.Vector3();
   const scale=new THREE.Vector3();
-  return (toy: CombatToy, target: THREE.Vector3, amount: number): boolean => {
+  return (toy: CombatToy, target: THREE.Vector3, amount: number, allowVisualStep = true): boolean => {
     if (!toy.weaponFace || amount<=0) return false;
     const weapon=toy.bones.weapon, wrist=toy.bones.wristR;
     toy.root.updateMatrixWorld(true);
@@ -55,7 +55,7 @@ export function createWeaponContactSolver() {
     const maxReach=upperLength+lowerLength-.0001, dy=goal.y-shoulder.y;
     toward.copy(goal).sub(shoulder);toward.y=0;
     const horizontal=toward.length(), allowed=Math.sqrt(Math.max(.0001,maxReach*maxReach-dy*dy));
-    if(horizontal>allowed){
+    if(allowVisualStep && horizontal>allowed){
       toy.root.position.addScaledVector(toward,(horizontal-allowed)/horizontal*amount);
       toy.root.updateMatrixWorld(true);toy.bones.armR.getWorldPosition(shoulder);toy.bones.elbowR.getWorldPosition(elbow);
     }

@@ -1,5 +1,7 @@
 /** A visitor's practice garage. Its economy stays local; only validated appearance choices may be copied at sign-in. */
-import { BEGINNER_ALLOWANCE, BEGINNER_OFFERS, BEGINNER_ORDER, WELCOME_PAINTS, beginnerOffer, gameCard } from "./beginner-catalog";
+import { BEGINNER_ALLOWANCE, BEGINNER_OFFERS, BEGINNER_ORDER, WELCOME_PAINTS, beginnerOffer, beginnerOffersFor, beginnerOrderFor, gameCard } from "./beginner-catalog";
+import { stylesPreviewEnabled } from "./style-guide";
+import { hasStyleParts, styleAssemblyIssue } from "./style-preview";
 import { EQUIPMENT_KIND, fitPart, socketsOf, withSockets } from "./equipment";
 import { FIRST_WORDS, SECOND_WORDS, starterBuild, recycleValue, type Build, type OwnedPart, type Socket } from "./fixtures";
 import { NO_LOOK, findsOf, normalizeLook } from "./look";
@@ -10,13 +12,13 @@ import { draftPreview, emptyDraftOffers, parseDraftName } from "./onboarding-dra
 export const GAME_DEMO_KEY = "bots.practice.garage.v1";
 export interface GameDemo { version: 1 | 2; coins: number; parts: OwnedPart[]; builds: Build[]; onboarding: OnboardingView; nudgeDismissed: boolean; recycled?: { bays: number[]; parts: string[] } }
 const purchases = () => Object.fromEntries(BEGINNER_ORDER.map(s => [s, null])) as OnboardingView["purchases"];
-export function freshGameDemo(version: 1 | 2 = 1): GameDemo {
+export function freshGameDemo(version: 1 | 2 = 1, catalogueVersion: 1 | 2 = version === 2 && stylesPreviewEnabled() ? 2 : 1): GameDemo {
   if (version === 2) {
     const draft = { ...starterBuild(1), name: { first: "Tiny", second: "Biscuit", num: null }, look: { ...NO_LOOK } };
     return { version: 2, coins: BEGINNER_ALLOWANCE, parts: [], builds: [draft], nudgeDismissed: false, onboarding: {
-      version: 2, step: "welcome", welcomeBotId: -1, welcomeBay: 1, draftBotId: -1, draftBay: 1,
-      allowance: 250, reservedCoins: 250, purchases: purchases(), nextSocket: "head", purchasedCount: 0, practiceFightId: null,
-      milestones: { welcomed: false, assembled: false, practiced: false, completed: false }, offers: BEGINNER_OFFERS,
+      version: 2, catalogueVersion, step: "welcome", welcomeBotId: -1, welcomeBay: 1, draftBotId: -1, draftBay: 1,
+      allowance: 250, reservedCoins: 250, purchases: purchases(), nextSocket: beginnerOrderFor(catalogueVersion)[0], purchasedCount: 0, practiceFightId: null,
+      milestones: { welcomed: false, assembled: false, practiced: false, completed: false }, offers: beginnerOffersFor(catalogueVersion),
       revision: 0, draftOffers: emptyDraftOffers(), draftName: draft.name,
     } };
   }
@@ -41,13 +43,13 @@ export function demoWelcome(state: GameDemo): GameDemo {
   return { ...state, onboarding: { ...state.onboarding, step: "shop", milestones: { ...state.onboarding.milestones, welcomed: true } } };
 }
 export function demoBuy(state: GameDemo, socket: Socket, offerId: string): GameDemo {
-  const o = state.onboarding, offer = beginnerOffer(offerId);
+  const o = state.onboarding, offer = beginnerOffer(offerId, o.catalogueVersion ?? 1);
   if (o.version === 2) {
     if (!offer || o.step !== "shop" || offer.part.slot !== EQUIPMENT_KIND[socket] || o.draftOffers?.[socket] === offerId) return state;
     const draftOffers = { ...emptyDraftOffers(), ...o.draftOffers, [socket]: offerId };
     const chosen = { ...o.purchases, [socket]: { partId: -1 - BEGINNER_ORDER.indexOf(socket), offerId } };
     const onboarding: OnboardingView = { ...o, draftOffers, purchases: chosen, revision: (o.revision ?? 0) + 1,
-      nextSocket: BEGINNER_ORDER.find(s => !chosen[s]) ?? null, purchasedCount: BEGINNER_ORDER.filter(s => chosen[s]).length };
+      nextSocket: beginnerOrderFor(o.catalogueVersion).find(s => !chosen[s]) ?? null, purchasedCount: BEGINNER_ORDER.filter(s => chosen[s]).length };
     const preview = draftPreview(onboarding), previous = state.builds.find(b => b.bay === o.draftBay);
     return { ...state, onboarding, parts: preview.parts, builds: [{ ...preview.build, ...(previous ? { name: previous.name, look: previous.look } : {}) }] };
   }
@@ -87,6 +89,7 @@ export function demoSave(state: GameDemo, build: Build): GameDemo {
       onboarding: { ...state.onboarding, draftName: name, revision: (state.onboarding.revision ?? 0) + (JSON.stringify(previous.name) === JSON.stringify(name) ? 0 : 1) } };
   }
   const prior = socketsOf(previous), next = socketsOf(build);
+  if (styleAssemblyIssue(build, state.parts, hasStyleParts(previous, state.parts))) return state;
   if (BEGINNER_ORDER.every(s => prior[s] && state.parts.some(p => p.uid === prior[s])) && BEGINNER_ORDER.some(s => prior[s] !== next[s])) return state;
   const valid = new Map(state.parts.map(p => [p.uid, p])), used = new Set<string>();
   const elsewhere = new Set(state.builds.filter(b => b.bay !== build.bay).flatMap(b => Object.values(socketsOf(b)).filter((uid): uid is string => uid !== null)));
@@ -118,7 +121,9 @@ export function readGameDemo(raw: string | null, defaultVersion: 1 | 2 = 1): Gam
   try {
     const value = JSON.parse(raw) as GameDemo;
     if (value.version !== 1 && value.version !== 2) return freshGameDemo(defaultVersion);
-    let state = freshGameDemo(value.version);
+    // A flag change must never turn an earlier saved draft into a new starter.
+    const catalogueVersion = value.version === 2 && value.onboarding?.catalogueVersion === 2 ? 2 : 1;
+    let state = freshGameDemo(value.version, catalogueVersion);
     if (value.onboarding?.milestones?.welcomed) state = demoWelcome(state);
     for (const s of BEGINNER_ORDER) { const id = value.onboarding?.purchases?.[s]?.offerId; if (typeof id === "string") state = demoBuy(state, s, id); }
     if (value.version === 2 && value.onboarding?.milestones?.assembled) state = demoFinish(state);

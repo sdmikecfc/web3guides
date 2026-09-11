@@ -4,7 +4,11 @@ import * as THREE from "three";
 import type { Socket } from "@/lib/bots/fixtures";
 import type { CombatToy } from "./combat-toy";
 
-export interface CombatDamageEvent { frame: number; slot: Socket; amount: number; critical?: boolean; kind?: "blunt" | "blade" | "projectile" }
+export interface CombatDamageEvent {
+  frame: number; slot: Socket; amount: number; critical?: boolean; kind?: "blunt" | "blade" | "projectile";
+  /** V5 records the struck region in part-box coordinates; legacy dents retain their seed placement. */
+  point?: readonly [number, number, number]; normal?: readonly [number, number, number];
+}
 export interface CombatDamage {
   hit(event: CombatDamageEvent): { point: THREE.Vector3; moved: number } | null;
   reset(): void;
@@ -118,7 +122,7 @@ export function createCombatDamage(toy: CombatToy): CombatDamage {
   toy.root.updateMatrixWorld(true);
   const surfaces: Surface[] = [], bounds = new Map<ArmourSlot, THREE.Box3>();
   const meshes: THREE.Mesh[] = [];
-  toy.root.traverse(o => { if (o instanceof THREE.Mesh && SLOTS.includes(o.userData.socket) && !o.userData.cosmetic && !o.name.startsWith("cosmetic:") && !Object.keys(o.geometry.morphAttributes).length) meshes.push(o); });
+  toy.root.traverse(o => { if (o instanceof THREE.Mesh && SLOTS.includes(o.userData.socket) && !o.userData.cosmetic && !o.userData.styleAccessory && !o.userData.styleReplaced && !o.name.startsWith("cosmetic:") && !Object.keys(o.geometry.morphAttributes).length) meshes.push(o); });
   let disposed = false, dents = 0, changedVertices = 0;
   const point = new THREE.Vector3(), normal = new THREE.Vector3();
   for (const slot of SLOTS) {
@@ -203,6 +207,16 @@ export function createCombatDamage(toy: CombatToy): CombatDamage {
       center.x += size.x * side * (zone === 0 ? .05 + random() * .10 : .12 + random() * .14);
       center.y = box.min.y + size.y * (slot === "head" ? .68 + random() * .20 : .30 + random() * .40);
       const outward = new THREE.Vector3(side * (zone === 0 ? .10 + random() * .35 : 1.45 + random() * .30), .04 + random() * .12, zone === 0 ? 1 : .9).normalize();
+      if (event.point && event.normal && [...event.point, ...event.normal].every(Number.isFinite)) {
+        center.set(
+          (box.min.x + box.max.x) / 2 + size.x * THREE.MathUtils.clamp(event.point[0] / 2000, -.45, .45),
+          box.min.y + size.y * THREE.MathUtils.clamp(event.point[1] / 1000, .15, .90),
+          (box.min.z + box.max.z) / 2 + size.z * THREE.MathUtils.clamp(event.point[2] / 2000, -.4, .4),
+        );
+        outward.fromArray(event.normal);
+        if (outward.lengthSq() < .001) outward.set(0, .05, 1);
+        outward.normalize();
+      }
       const ray = new THREE.Ray(center.clone().addScaledVector(outward, size.length() + 1), outward.clone().negate());
       let contact: { s: Surface; vertex: number; point: THREE.Vector3; normal: THREE.Vector3 } | null = null, nearest = Infinity;
       const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), hit = new THREE.Vector3(), bary = new THREE.Vector3(), faceNormal = new THREE.Vector3();

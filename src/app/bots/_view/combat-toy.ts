@@ -13,12 +13,15 @@ import type { BotLook } from "./look";
 import { toyPilotEnabled } from "@/lib/bots/rollout";
 import { hasStrikingFace, nativeWeaponContact, weaponGripYaw } from "./weapon-surface";
 import { attachToyCosmetics } from "./toy-cosmetics";
+import { cardV5 } from "@/lib/bots/v5/catalog";
+import { attachStyleEquipment, type StyleEquipment } from "./style-equipment";
 
 const SOCKETS: Socket[] = ["head", "torso", "armL", "armR", "legL", "legR", "weapon"];
 type V3 = [number, number, number];
 interface ModuleEntry { socket: Socket; file: string; inspection: string; triangles: number; movement?: string; grip?: V3; contact?: V3; attackFamily?: string }
 interface Manifest { version: string; motion: string; parts: Record<string, { variants: ModuleEntry[] }> }
 export interface CombatToy extends Toy3D {
+  styleEquipment?: StyleEquipment;
   blender: boolean;
   bones: Record<string, THREE.Object3D>;
   movement: readonly [string, string];
@@ -65,7 +68,7 @@ export async function preloadCombatToy(build: Build, detail: "fight" | "inspecti
   } catch { /* The actual setToy call still selects its normal native fallback. */ }
 }
 const paintHex = (id?: string) => id && id in PAINTS ? Number.parseInt(PAINTS[id as keyof typeof PAINTS].slice(1), 16) : 0x8eb7a4;
-export const artIdentity = (id: string) => beginnerArtKey(id) ?? id;
+export const artIdentity = (id: string) => cardV5(id)?.artKey ?? beginnerArtKey(id) ?? id;
 
 interface Channel { node: string; property: string; sample: (time: number) => ArrayLike<number> }
 function channelsOf(gltf?: GLTF) {
@@ -88,6 +91,12 @@ function channelsOf(gltf?: GLTF) {
 /** Complete-scene selection: asset failure falls back before the bell, never
  * swaps a visible robot halfway through a replay. */
 export async function createCombatToy(build: Build, look: BotLook = {}, forceNative = false, detail: "fight" | "inspection" = "fight"): Promise<CombatToy> {
+  const toy = await createBaseCombatToy(build, look, forceNative, detail);
+  const parts = Object.fromEntries(SOCKETS.map(s => [s, cardV5(combatPart(build, s).id)]));
+  if (Object.values(parts).some(Boolean)) toy.styleEquipment = attachStyleEquipment(toy, parts);
+  return toy;
+}
+async function createBaseCombatToy(build: Build, look: BotLook = {}, forceNative = false, detail: "fight" | "inspection" = "fight"): Promise<CombatToy> {
   // A disabled pilot never requests a Blender model, motion clip or manifest.
   if (!toyPilotEnabled()) return nativeCombatToy(build, look);
   const fallback = async () => nativeCombatToy(build, look, await asset("toy-motion-v1.glb").catch(() => undefined));
@@ -216,6 +225,7 @@ export async function createCombatToy(build: Build, look: BotLook = {}, forceNat
         const capture = socket === "armR" ? [socket,"weapon"] as Socket[] : [socket];
         const v = new THREE.Vector3();
         for (const s of capture) for (const original of meshes[s]) {
+          if (original.userData.styleReplaced) continue;
           const skin = original as THREE.SkinnedMesh; if(skin.isSkinnedMesh)skin.skeleton.update();
           const geometry = original.geometry.clone(), positions = geometry.getAttribute("position") as THREE.BufferAttribute;
           for (let i=0;i<positions.count;i++) {

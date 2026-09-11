@@ -22,6 +22,8 @@
  * log; the card still carries its colour in stats.paint either way.
  */
 import { NextResponse } from "next/server";
+import { STYLE_LISTING_ID_RE } from "@/lib/bots/style-shipment";
+import { stylesEnabled } from "@/app/bots/_server/rollout";
 import { LISTING_ID_RE } from "@/lib/bots/shipment";
 import { STRINGS, fill } from "@/lib/bots/strings";
 import { bestLevel, loadBots, partView, type PartRow } from "@/app/bots/_server/bots";
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
     const sess = sessionFromRequest(req, body);
     if (!sess) return NextResponse.json({ ok: false, error: "session expired: sign in again" }, { status: 401 });
     const listingId = typeof body.listingId === "string" ? body.listingId : "";
-    if (!LISTING_ID_RE.test(listingId)) return refuse(400, "Pick a listing.");
+    if (!(stylesEnabled() ? STYLE_LISTING_ID_RE : LISTING_ID_RE).test(listingId)) return refuse(400, "Pick a listing.");
 
     const db = botsDb();
     const player = await loadPlayer(db, sess.wallet);
@@ -119,6 +121,7 @@ export async function POST(req: Request) {
       tier: card.tier,
       stats: {
         equipmentVersion: 2,
+        ...(shop.shipment.v === 2 ? { engineVersion: 5, catalogueVersion: 2 } : {}),
         s: [card.s[0], card.s[1], card.s[2]],
         provenance: shopProvenance(shop),
         ...(listing.color ? { paint: listing.color } : {}),

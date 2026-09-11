@@ -45,6 +45,9 @@ import { type BotsDb, nowIso, refuse } from "./db";
 import type { BotName, BotView, PartView } from "./types";
 
 export interface BuildJson {
+  engineVersion?: 5;
+  catalogueVersion?: 1 | 2;
+  assemblyLocked?: boolean;
   parts?: Partial<Record<Slot, number | null>>;
   sockets?: EquipmentIds<number>;
   equipmentVersion?: 2;
@@ -595,6 +598,7 @@ export function botView(b: BotRow, parts: readonly PartRow[], day: string, nowMs
   const name = nameOf(b);
   return {
     id: b.id,
+    ...(buildJsonOf(b).engineVersion === 5 ? { engineVersion: 5 as const } : {}),
     bay: b.slot,
     name,
     nameText: nameTextOf(b),

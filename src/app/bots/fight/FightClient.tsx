@@ -37,9 +37,9 @@ import { directFight } from "../_view/fight-director";
 import { toyPilotEnabled } from "@/lib/bots/rollout";
 import { combatPart } from "@/lib/bots/combat-model";
 import { NO_ORDERS, PIECE, TIMEOUT_WHY, botTier, buildTotal, type Build, type FightEvent, type Mode, type Orders, type Side } from "../_engine/parts";
-import { createFight, resultOf, runFight, stepFight, type Fight } from "@/lib/bots/combat";
+import { createFightAtVersion, resultOf, runFightAtVersion, stepFight, type Fight } from "@/lib/bots/combat";
 import { type Aggregates } from "../_engine/derive";
-import { aggregates } from "@/lib/bots/combat";
+import { aggregatesAtVersion } from "@/lib/bots/combat";
 import { chainDetail, chainSummary, narrate } from "../_engine/commentary";
 // type-only (erased at compile time): the stored fight's shape, never the server client
 import type { FightView, LookView } from "../_server/types";
@@ -63,6 +63,7 @@ export interface FightIdentity {
 }
 
 export interface FightClientProps {
+  engineVersion?: 2 | 3;
   embedded?: boolean;
   /** Presentation-only demo preview. The server route gates access. */
   actionPreview?: boolean;
@@ -172,7 +173,7 @@ export default function FightClient(p: FightClientProps) {
 
   // ── the truth: resolved once, the same call the server makes ────────────
   const full = useMemo(() => {
-    const f = runFight(p.seed, p.a, p.b, oa, ob, p.mode);
+    const f = runFightAtVersion(p.engineVersion, p.seed, p.a, p.b, oa, ob, p.mode);
     const result = resultOf(f);
     const lines = narrate(result.log, names);
     // the bar's clock lives in _view/commentary-bar.ts: a line never lags its event by more than a second
@@ -189,9 +190,9 @@ export default function FightClient(p: FightClientProps) {
       chain: chainSummary(result.log, names),
       // the result card headline already says who won, in display type
       chainDetail: chainDetail(result.log, names),
-      stats: [aggregates(p.a, oa), aggregates(p.b, ob)] as [Aggregates, Aggregates],
+      stats: [aggregatesAtVersion(p.engineVersion, p.a, oa), aggregatesAtVersion(p.engineVersion, p.b, ob)] as [Aggregates, Aggregates],
     };
-  }, [p.seed, p.a, p.b, p.mode, oa, ob, names]);
+  }, [p.engineVersion, p.seed, p.a, p.b, p.mode, oa, ob, names]);
   const direction = useMemo(() => directFight(full.result.log,[p.a,p.b]),[full.result.log,p.a,p.b]);
   const versionSkew = p.expectedHash !== undefined && (p.expectedHash >>> 0) !== full.result.hash;
 
@@ -287,7 +288,7 @@ export default function FightClient(p: FightClientProps) {
       const fx = fxRef.current;
       scene?.reset();
       resetFightFx(fx);
-      const f = createFight(p.seed, p.a, p.b, oa, ob, p.mode);
+      const f = createFightAtVersion(p.engineVersion, p.seed, p.a, p.b, oa, ob, p.mode);
       const want = Math.max(0, Math.min(target, full.result.frames));
       while (f.st.frame < want && !f.st.done) {
         const before = f.st.log.length;
@@ -1235,9 +1236,11 @@ export function ServerFight({ id, embedded, onClose, onCloseLabel, onComplete, h
     );
   }
   const v = state.view;
+  if (v.engineVersion !== 2 && v.engineVersion !== 3) return <FightLayout embedded={embedded}><Panel title="Replay unavailable"><p>This fight uses a different combat version. Its saved result has been kept.</p><Link href="/bots">Back to the garage</Link></Panel></FightLayout>;
   return (
     <FightClient
       key={v.id}
+      engineVersion={v.engineVersion}
       embedded={embedded}
       onClose={onClose}
       onCloseLabel={onCloseLabel}

@@ -8,10 +8,13 @@ import { isPaintId, type PaintId } from "@/app/bots/_engine/parts";
 import { parseDraftOffers, parseDraftName, type DraftOffers } from "./onboarding-draft";
 
 export interface PracticeAppearance { offers: Record<Socket, string>; paints?: Partial<Record<Socket, PaintId>>; name: Build["name"]; look?: BotLookRaw }
-export interface PracticeDraft { version: 2; offers: DraftOffers; paints?: Partial<Record<Socket, PaintId>>; name: Build["name"]; look?: BotLookRaw; complete: boolean }
+export interface PracticeDraft { version: 2; catalogueVersion?: 1 | 2; offers: DraftOffers; paints?: Partial<Record<Socket, PaintId>>; name: Build["name"]; look?: BotLookRaw; complete: boolean }
 export function parsePracticeDraft(raw: unknown): PracticeDraft | null {
   if (!raw || typeof raw !== "object") return null;
-  const value = raw as Partial<PracticeDraft>, offers = parseDraftOffers(value.offers), name = parseDraftName(value.name);
+  const value = raw as Partial<PracticeDraft>;
+  if (value.catalogueVersion !== undefined && value.catalogueVersion !== 1 && value.catalogueVersion !== 2) return null;
+  const catalogueVersion = value.catalogueVersion ?? 1;
+  const offers = parseDraftOffers(value.offers, catalogueVersion), name = parseDraftName(value.name);
   if (value.version !== 2 || !offers || !name || typeof value.complete !== "boolean") return null;
   if (value.complete && BEGINNER_ORDER.some(s => !offers[s])) return null;
   const full = BEGINNER_ORDER.every(s => offers[s]) ? parsePracticeAppearance(value) : null;
@@ -23,7 +26,7 @@ export function parsePracticeDraft(raw: unknown): PracticeDraft | null {
     if (!isPaintId(paint) || socket === "weapon" || paint !== beginnerOffer(offers[socket])?.color) return null;
     paints[socket] = paint;
   }
-  return { version: 2, offers, name, paints, complete: value.complete, ...(value.look && typeof value.look === "object" ? { look: value.look } : {}) };
+  return { version: 2, ...(value.catalogueVersion !== undefined ? { catalogueVersion } : {}), offers, name, paints, complete: value.complete, ...(value.look && typeof value.look === "object" ? { look: value.look } : {}) };
 }
 /** Partial choices cross as catalogue IDs; no local currency, items or results. */
 export function practiceDraftOf(state: GameDemo, build: Build | undefined): PracticeDraft | null {
@@ -31,7 +34,7 @@ export function practiceDraftOf(state: GameDemo, build: Build | undefined): Prac
   const offers = Object.fromEntries(BEGINNER_ORDER.map(s => [s, state.parts.find(p => p.uid === socketsOf(build)[s])?.id ?? null]));
   const paints = Object.fromEntries(BEGINNER_ORDER.map(s => [s, state.parts.find(p => p.uid === socketsOf(build)[s])?.paint]));
   const hasAll = BEGINNER_ORDER.every(s => !!offers[s]);
-  return parsePracticeDraft({ version: 2, offers, paints, name: build.name, look: build.look,
+  return parsePracticeDraft({ version: 2, ...(state.onboarding.catalogueVersion ? { catalogueVersion: state.onboarding.catalogueVersion } : {}), offers, paints, name: build.name, look: build.look,
     complete: hasAll && (state.version === 1 || state.onboarding.milestones.assembled) });
 }
 export function parsePracticeAppearance(raw: unknown): PracticeAppearance | null {

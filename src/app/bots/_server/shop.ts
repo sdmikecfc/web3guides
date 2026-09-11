@@ -12,6 +12,8 @@
  * paint job, so this file is the only place a colour is ever chosen.
  */
 import "server-only";
+import { styleShipmentFor, type CabinetShipment } from "@/lib/bots/style-shipment";
+import { stylesEnabled } from "./rollout";
 import { MONTHS_SHORT, WEEKDAYS, dayKey as fixtureDayKey } from "@/lib/bots/fixtures";
 import { SHOP_EPOCH_MONDAY, dayIndexOf, listingOf, shipmentFor, type Listing, type Shipment } from "@/lib/bots/shipment";
 import type { BotsDb } from "./db";
@@ -35,7 +37,7 @@ export interface TodayShop {
   day: string;
   weekday: string;
   cal: Calendar;
-  shipment: Shipment;
+  shipment: CabinetShipment;
   /** the same 16 listings, flattened: what callers that only want to count
    * the shelf read (the Morning Paper's "the shop has N listings today"). */
   listings: Listing[];
@@ -50,13 +52,13 @@ export interface TodayShop {
 export function todayShop(nowMs: number, epochMonday: string = SHOP_EPOCH_MONDAY): TodayShop {
   const cal = utcParts(nowMs);
   const day = fixtureDayKey(cal.year, cal.month, cal.day);
-  const shipment = shipmentFor(day, dayIndexOf(day, epochMonday));
+  const shipment = (stylesEnabled() ? styleShipmentFor : shipmentFor)(day, dayIndexOf(day, epochMonday));
   return { day, weekday: WEEKDAYS[cal.weekday], cal, shipment, listings: shipment.listings };
 }
 
 /** One listing off today's shelf, or null (the buy route's only lookup). */
 export function listingToday(shop: TodayShop, listingId: string): Listing | null {
-  return listingOf(shop.shipment, listingId);
+  return shop.shipment.listings.find(l => l.id === listingId) ?? null;
 }
 
 /** "Bought on Monday 1 Sep" (stamped once, never changed). */
@@ -86,6 +88,7 @@ export function shopView(shop: TodayShop, bought: readonly string[]): ShopView {
     needsLevel: l.needsLevel,
   });
   return {
+    v: s.v,
     day: shop.day,
     weekday: shop.weekday,
     dayIndex: s.dayIndex,

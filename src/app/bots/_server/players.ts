@@ -10,7 +10,7 @@ import type { PaintId } from "../_engine/parts";
 import { fnv1a } from "../_engine/rng";
 import { refuse, type BotsDb } from "./db";
 import type { PartRow, PartStatsJson } from "./bots";
-import { onboardingEnabled, onboardingV2Enabled, missingMigration } from "./rollout";
+import { onboardingEnabled, onboardingV2Enabled, stylesEnabled, missingMigration } from "./rollout";
 import { ensureLegacyStarter } from "./legacy-starter";
 
 /** Historical constants used to interpret old starter grants. */
@@ -149,7 +149,7 @@ export async function enlistPlayer(
   if (progress && existing) return { player: existing, joined: false };
   const welcomeName = starterBotName(wallet);
   const draftName = starterBotName(`first-build:${wallet}`);
-  if (onboardingV2Enabled()) {
+  if (onboardingV2Enabled() || stylesEnabled()) {
     // An established garage remains usable even while the additive migration is staged.
     if (existing) {
       const [bots, parts] = await Promise.all([
@@ -159,7 +159,7 @@ export async function enlistPlayer(
       if (bots.error || parts.error) throw new Error(`existing garage read: ${bots.error?.message ?? parts.error?.message}`);
       if ((bots.count ?? 0) > 0 || (parts.count ?? 0) > 0) return { player: existing, joined: false };
     }
-    const { data, error } = await db.rpc("bb_onboarding_v2_provision", { p_wallet: wallet, p_wallet_name: walletNameFor(wallet), p_name: draftName, p_is_test: isTest });
+    const { data, error } = await db.rpc(stylesEnabled() ? "bb_onboarding_styles_provision" : "bb_onboarding_v2_provision", { p_wallet: wallet, p_wallet_name: walletNameFor(wallet), p_name: draftName, p_is_test: isTest });
     if (error && missingMigration(error)) return refuse(503, "The new builder is being set up. Your browser build is safe. Please try again later.");
     if (error) throw new Error(`starter build setup: ${error.message}`);
     const player = await loadPlayer(db, wallet);

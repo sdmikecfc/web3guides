@@ -63,6 +63,7 @@ import {
   inShop,
   insertHat,
   loadBot,
+  buildJsonOf,
   loadBots,
   loadCrownBotIds,
   loadHats,
@@ -229,6 +230,7 @@ export async function startFight(db: BotsDb, sess: BotsSession, input: StartFigh
   const bot = bots.find((b) => b.id === botId);
   if (!bot) return refuse(404, "That robot is not in your garage.");
   assertPracticeHandoffReady(bot);
+  if (buildJsonOf(bot).engineVersion === 5) return refuse(409, "Choose the new house arena for this styled robot.");
   const parts = await loadParts(db, wallet);
   const buildA = engineBuildOf(bot, parts);
   if (!buildA) return refuse(400, `${nameTextOf(bot)} needs more parts. Put on all seven.`);
@@ -255,6 +257,7 @@ export async function startFight(db: BotsDb, sess: BotsSession, input: StartFigh
     defender = await loadBot(db, defId);
     if (!defender) return refuse(404, "That robot is not there any more.");
     assertPracticeHandoffReady(defender);
+    if (buildJsonOf(defender).engineVersion === 5) return refuse(409, "This styled robot fights in the new house arena.");
     if (defender.wallet === wallet) return refuse(400, "You cannot challenge your own robot.");
     if (!defender.listed) return refuse(409, "That robot is not taking challenges.");
     if (inShop(defender, now)) return refuse(409, "That robot is being fixed. Pick another one.");

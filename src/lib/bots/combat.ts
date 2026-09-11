@@ -16,3 +16,16 @@ export function runFight(seed: number, a: CombatBuild, b: CombatBuild, oa: Order
 }
 export function resolveFight(seed: number, a: CombatBuild, b: CombatBuild, oa: Orders = NO_ORDERS, ob: Orders = NO_ORDERS, mode: Mode = "spar") { return resultOf(runFight(seed,a,b,oa,ob,mode)); }
 export function aggregates(b: CombatBuild, o: Orders = NO_ORDERS) { return b.limbs ? newAggregates(b,o) : oldAggregates(b,o); }
+/** Stored replays choose their recorded rules, never infer rules from today's build shape. */
+export function createFightAtVersion(version: 2 | 3 | undefined, seed: number, a: CombatBuild, b: CombatBuild, oa: Orders = NO_ORDERS, ob: Orders = NO_ORDERS, mode: Mode = "spar"): Fight {
+  if (version === undefined) return createFight(seed, a, b, oa, ob, mode);
+  return version === 3 ? modular.createFight(seed, a, b, oa, ob, mode) : legacy.createFight(seed, a, b, oa, ob, mode);
+}
+export function runFightAtVersion(version: 2 | 3 | undefined, seed: number, a: CombatBuild, b: CombatBuild, oa: Orders = NO_ORDERS, ob: Orders = NO_ORDERS, mode: Mode = "spar"): Fight {
+  const f = createFightAtVersion(version, seed, a, b, oa, ob, mode);
+  while (!f.st.done) stepFight(f);
+  return f;
+}
+export function aggregatesAtVersion(version: 2 | 3 | undefined, b: CombatBuild, o: Orders = NO_ORDERS) {
+  return version === undefined ? aggregates(b, o) : version === 3 ? newAggregates(b, o) : oldAggregates(b, o);
+}

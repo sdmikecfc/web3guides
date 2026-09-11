@@ -9,7 +9,7 @@
  * A bot in the shop can be recycled (Mike: "recycle them for a fraction").
  */
 import { NextResponse } from "next/server";
-import { assertPracticeHandoffReady, loadBot, loadPartsOfBot, nameTextOf, partRecycleValue } from "@/app/bots/_server/bots";
+import { buildJsonOf, assertPracticeHandoffReady, loadBot, loadPartsOfBot, nameTextOf, partRecycleValue } from "@/app/bots/_server/bots";
 import { recyclableParts, type RecycleReceipt } from "@/app/bots/_server/recycle";
 import { botsDb, failResponse, intIn, readJson, refuse } from "@/app/bots/_server/db";
 import { assertOnboardingUnlocked } from "@/app/bots/_server/onboarding";
@@ -31,6 +31,12 @@ export async function POST(req: Request) {
     const bot = await loadBot(db, botId);
     if (!bot || bot.wallet !== sess.wallet) return refuse(404, "That bot is not in your garage.");
     assertPracticeHandoffReady(bot);
+    if (buildJsonOf(bot).engineVersion === 5) {
+      const { data, error } = await db.rpc("bb_styles_recycle", { p_wallet: sess.wallet, p_bot_id: bot.id });
+      if (error?.code === "P0001") return refuse(409, error.message);
+      if (error || !data) throw new Error("The robot could not be recycled. Try again.");
+      return NextResponse.json({ ok: true, ...data });
+    }
 
     await assertOnboardingUnlocked(db, sess.wallet, bot.id);
     const [attached, paid] = await Promise.all([

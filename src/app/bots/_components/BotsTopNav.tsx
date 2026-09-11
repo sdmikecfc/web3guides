@@ -52,7 +52,7 @@ export function BotsTopNav() {
   // The garage-first game owns its own persistent controls.
   // Wait for the browser before choosing: the custom-domain middleware rewrites
   // / to /bots, so the server and browser intentionally observe different paths.
-  if (!mounted || gameApex || path === "/bots/lab" || path === "/bots/welcome" || path === "/bots" && workshopEnabled()) return null;
+  if (!mounted || gameApex || path === "/bots/lab" || path === "/bots/fight/styles" || path === "/bots/welcome" || path === "/bots" && workshopEnabled()) return null;
 
   const nav = [
     { t: t.garage, href: "/bots/garage", icon: <IconGarage size={22} /> },

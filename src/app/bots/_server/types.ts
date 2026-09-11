@@ -62,6 +62,7 @@ export interface PartView {
 }
 
 export interface BotView {
+  engineVersion?: 5;
   id: number;
   bay: number;
   name: BotName;
@@ -116,6 +117,7 @@ export interface ShopListingView {
 }
 
 export interface ShopView {
+  v?: 1 | 2;
   day: string;
   weekday: string;
   /** days since the shop's epoch Monday */

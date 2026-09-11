@@ -1,5 +1,5 @@
 import "server-only";
-import { BEGINNER_ALLOWANCE, BEGINNER_OFFERS, BEGINNER_ORDER, beginnerOffer, isBeginnerSocket } from "@/lib/bots/beginner-catalog";
+import { BEGINNER_ALLOWANCE, beginnerOffersFor, beginnerOrderFor, BEGINNER_ORDER, beginnerOffer, isBeginnerSocket } from "@/lib/bots/beginner-catalog";
 import type { CoinBalance, OnboardingView } from "@/lib/bots/onboarding-types";
 import { parseDraftName, parseDraftOffers } from "@/lib/bots/onboarding-draft";
 import type { Build as GarageBuild } from "@/lib/bots/fixtures";
@@ -18,7 +18,7 @@ import type { FightIdentityView, FightRewardsView, LookView } from "./types";
 import { onboardingEnabled, missingMigration } from "./rollout";
 
 export interface OnboardingRow {
-  wallet: string; version: 1 | 2; welcome_bot_id: number | null; draft_bot_id: number; reserved_coins: number;
+  wallet: string; version: 1 | 2; catalogue_version?: 1 | 2; welcome_bot_id: number | null; draft_bot_id: number; reserved_coins: number;
   welcomed_at: string | null; assembled_at: string | null; practice_fight_id: number | null;
   practiced_at: string | null; completed_at: string | null;
   draft_offers?: Record<string, string | null>; draft_name?: GarageBuild["name"]; revision?: number;
@@ -49,25 +49,25 @@ export async function onboardingView(db: BotsDb, wallet: string, known?: Onboard
   const row = known === undefined ? await loadOnboarding(db, wallet) : known;
   if (!row) return null;
   const [{ data: claims, error }, bots] = await Promise.all([
-    db.from("battle_bots_beginner_claims").select("socket,part_id,offer_id").eq("wallet", wallet.toLowerCase()).eq("version", row.version),
+    db.from(row.catalogue_version === 2 ? "battle_bots_styles_claims" : "battle_bots_beginner_claims").select("socket,part_id,offer_id").eq("wallet", wallet.toLowerCase()).eq("version", row.version),
     loadBots(db, wallet),
   ]);
   if (error) throw new Error(`beginner claims: ${error.message}`);
   const purchases = Object.fromEntries(BEGINNER_ORDER.map(s => [s, null])) as OnboardingView["purchases"];
   for (const c of claims ?? []) if (isBeginnerSocket(c.socket)) purchases[c.socket] = { partId: Number(c.part_id), offerId: String(c.offer_id) };
-  const draftOffers = row.version === 2 ? parseDraftOffers(row.draft_offers) : null;
+  const draftOffers = row.version === 2 ? parseDraftOffers(row.draft_offers, row.catalogue_version ?? 1) : null;
   if (draftOffers && !row.completed_at) for (const s of BEGINNER_ORDER) if (draftOffers[s]) purchases[s] = { partId: -1 - BEGINNER_ORDER.indexOf(s), offerId: draftOffers[s]! };
   const purchasedCount = BEGINNER_ORDER.filter(s => purchases[s] !== null).length;
   return {
-    version: row.version,
+    version: row.version, catalogueVersion: row.catalogue_version ?? 1,
     step: row.completed_at ? "complete" : !row.welcomed_at ? "welcome" : row.version === 2 || purchasedCount < 7 ? "shop" : "practice",
     welcomeBotId: Number(row.welcome_bot_id ?? row.draft_bot_id), welcomeBay: bots.find(b => b.id === row.welcome_bot_id)?.slot ?? 1,
     draftBotId: Number(row.draft_bot_id), draftBay: bots.find(b => b.id === row.draft_bot_id)?.slot ?? (row.version === 2 ? 1 : 2),
     allowance: BEGINNER_ALLOWANCE, reservedCoins: Number(row.reserved_coins), purchases,
-    nextSocket: BEGINNER_ORDER.find(s => !purchases[s]) ?? null, purchasedCount,
+    nextSocket: beginnerOrderFor(row.catalogue_version ?? 1).find(s => !purchases[s]) ?? null, purchasedCount,
     practiceFightId: row.practice_fight_id == null ? null : String(row.practice_fight_id),
     milestones: { welcomed: !!row.welcomed_at, assembled: !!row.assembled_at, practiced: !!row.practiced_at, completed: !!row.completed_at },
-    offers: BEGINNER_OFFERS,
+    offers: beginnerOffersFor(row.catalogue_version ?? 1),
     ...(row.version === 2 ? { revision: Number(row.revision ?? 0), draftOffers: draftOffers ?? undefined, draftName: row.draft_name } : {}),
   };
 }
@@ -127,13 +127,13 @@ export async function mutateOnboarding(db: BotsDb, wallet: string, body: Onboard
     const action = body.action;
     if (!["welcome", "choose", "name", "finish"].includes(String(action))) return refuse(400, "Choose your next step.");
     if (action !== "welcome" && (!Number.isSafeInteger(body.revision) || Number(body.revision) < 0 || Number(body.revision) > 2147483647)) return refuse(400, "Refresh your build before saving it.");
-    const offer = action === "choose" ? beginnerOffer(body.offerId) : null;
+    const offer = action === "choose" ? beginnerOffer(body.offerId, o.catalogue_version ?? 1) : null;
     if (action === "choose" && (!isBeginnerSocket(body.socket) || !offer || offer.part.slot !== EQUIPMENT_KIND[body.socket])) return refuse(400, "Choose a part for this place.");
     const name = action === "name" ? parseDraftName(body.name) : null;
     if (action === "name" && !name) return refuse(400, "Choose a robot name.");
     const { error } = action === "finish"
-      ? await db.rpc("bb_onboarding_v2_finish", { p_wallet: wallet, p_revision: body.revision })
-      : await db.rpc("bb_onboarding_v2_edit", { p_wallet: wallet, p_revision: body.revision ?? o.revision ?? 0, p_action: action, p_socket: body.socket ?? null, p_offer_id: offer?.id ?? null, p_name: name });
+      ? await db.rpc(o.catalogue_version === 2 ? "bb_onboarding_styles_finish" : "bb_onboarding_v2_finish", { p_wallet: wallet, p_revision: body.revision })
+      : await db.rpc(o.catalogue_version === 2 ? "bb_onboarding_styles_edit" : "bb_onboarding_v2_edit", { p_wallet: wallet, p_revision: body.revision ?? o.revision ?? 0, p_action: action, p_socket: body.socket ?? null, p_offer_id: offer?.id ?? null, p_name: name });
     if (error && missingMigration(error)) return refuse(503, "The new builder is being set up. Your saved build is safe. Please try again later.");
     if (error?.code === "P0001") return refuse(409, error.message);
     if (error) throw new Error(`starter build: ${error.message}`);

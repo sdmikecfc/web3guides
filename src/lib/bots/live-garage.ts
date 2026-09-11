@@ -38,7 +38,6 @@ import { readBotsSession } from "@/app/bots/battles/session";
 import type { BotView, MeView, PaperView, PartView } from "@/app/bots/_server/types";
 import {
   BAY_COUNT,
-  CARD_BY_ID,
   CARD_SLOTS,
   type Build,
   type CardSlot,
@@ -47,6 +46,7 @@ import {
 import type { BayState, GarageState } from "./garage-state";
 import type { BotLookRaw } from "./look";
 import { STRINGS } from "./strings";
+import { gameCard } from "./beginner-catalog";
 
 const t = STRINGS.en;
 
@@ -237,7 +237,7 @@ export async function saveBotOnServer(body: SaveBotBody): Promise<ServerSay<BotV
  *  arrived in. The numbers are the row's, never the catalog's, because a
  *  stored part is the truth about itself. */
 export function ownedOf(v: PartView): OwnedPart {
-  const card = CARD_BY_ID[v.partKey];
+  const card = gameCard(v.partKey);
   const base = card ?? {
     id: v.partKey,
     slot: v.slot,

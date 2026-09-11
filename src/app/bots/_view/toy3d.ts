@@ -6,6 +6,7 @@ import type { Build, Part } from "../_engine/parts";
 import { combatPart } from "@/lib/bots/combat-model";
 import { CARD_BY_ID, type Socket } from "@/lib/bots/fixtures";
 import { beginnerArtKey } from "@/lib/bots/beginner-catalog";
+import { cardV5 } from "@/lib/bots/v5/catalog";
 import { PAINTS } from "../_ui/tokens";
 import { marksOf, type BotLook } from "./look";
 import { weaponGripYaw } from "./weapon-surface";
@@ -107,7 +108,7 @@ export function createToy(build: Build, look: BotLook = {}): Toy3D {
   };
   const variant = (socket: Socket) => {
     const id = source(socket)?.id;
-    const card = CARD_BY_ID[beginnerArtKey(id) ?? id];
+    const card = CARD_BY_ID[cardV5(id)?.artKey ?? beginnerArtKey(id) ?? id];
     return card ? (card.tier - 1) * 2 + card.design - 1 : 0;
   };
   for (const name of ["torso", "head", "armL", "armR", "legL", "legR", "weapon"] as Socket[]) {

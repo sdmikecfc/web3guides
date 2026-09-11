@@ -7,6 +7,8 @@ import { msToNextShipment, shipmentFor, type Listing } from "@/lib/bots/shipment
 import type { GarageState } from "@/lib/bots/garage-state";
 import { cabinetShipment } from "@/lib/bots/workshop-views";
 import type { ShopComparisonContext } from "@/lib/bots/shop-comparison";
+import { styleShipmentFor } from "@/lib/bots/style-shipment";
+import { stylesPreviewEnabled } from "@/lib/bots/style-guide";
 
 /** The original cabinet, controlled by the shell's single inventory and purse. */
 export default function WorkshopShop({ me, spendable, introductory, onResume, onEarn, onBuy, onReload, comparison }: {
@@ -17,7 +19,7 @@ export default function WorkshopShop({ me, spendable, introductory, onResume, on
   const [now, setNow] = useState(0);
   useEffect(() => { setNow(Date.now()); const timer = setInterval(() => setNow(Date.now()), 60000); return () => clearInterval(timer); }, []);
   const day = me?.day ?? (now ? new Date(now).toISOString().slice(0, 10) : "");
-  const shipment = useMemo(() => me ? cabinetShipment(me.shop) : day ? shipmentFor(day) : null, [me?.shop, day]);
+  const shipment = useMemo(() => me ? cabinetShipment(me.shop) : day ? stylesPreviewEnabled() ? styleShipmentFor(day) : shipmentFor(day) : null, [me?.shop, day]);
   const state = useMemo<GarageState>(() => ({ v: 1, equipmentVersion: 2, coins: spendable, level: me?.player.level ?? 1,
     parts: [], builds: {}, bays: {}, crew: [], nextUid: 0,
     bought: { [day]: me?.shop.listings.filter(l => l.bought).map(l => l.id) ?? [] },

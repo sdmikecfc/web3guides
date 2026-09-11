@@ -1,7 +1,7 @@
-import { aggregates } from "./combat";
-import { engineBuild, SLOT_STATS, type Build, type OwnedPart, type Socket } from "./fixtures";
+import { SLOT_STATS, type Build, type OwnedPart, type Socket } from "./fixtures";
 import { equipmentTarget, fitPart, socketsOf } from "./equipment";
 import type { Listing } from "./shipment";
+import { buildStatsForUI, buildCapabilities, hasStyleParts, styleAssemblyIssue } from "./style-preview";
 
 /** Read-only shop context. Buying a part never replaces an equipped item. */
 export interface ShopComparisonContext {
@@ -31,11 +31,15 @@ export function compareShopPart(build: Build, parts: readonly OwnedPart[], listi
   // Read older paired builds as seven sockets on both sides: replacing one
   // arm must not appear to replace the whole pair or change its set rules.
   const beforeBuild = build.sockets ? build : { ...build, sockets: socketsOf(build) };
-  const before = aggregates(engineBuild(beforeBuild, parts));
-  const after = aggregates(engineBuild(nextBuild, nextParts));
+  const before = buildStatsForUI(beforeBuild, parts);
+  const after = buildStatsForUI(nextBuild, nextParts);
+  const capabilitiesBefore = buildCapabilities(beforeBuild, parts), capabilitiesAfter = buildCapabilities(nextBuild, nextParts);
   return {
     socket, previous, build: nextBuild, parts: nextParts,
     partStats: SLOT_STATS[listing.slot].map((key, i) => ({ key, before: previous?.s[i] ?? 0, after: part.s[i], delta: part.s[i] - (previous?.s[i] ?? 0) })),
     totals: (Object.keys(SHOP_TOTAL_NAMES) as (keyof typeof SHOP_TOTAL_NAMES)[]).map(key => ({ key, label: SHOP_TOTAL_NAMES[key], before: before[key], after: after[key], delta: after[key] - before[key] })),
+    styled: hasStyleParts(nextBuild, nextParts),
+    assemblyIssue: styleAssemblyIssue(nextBuild, nextParts),
+    capabilities: capabilitiesAfter.map((capability, i) => ({ ...capability, before: capabilitiesBefore[i].value, after: capability.value, changed: capability.value !== capabilitiesBefore[i].value })),
   };
 }
