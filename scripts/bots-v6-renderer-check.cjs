@@ -156,11 +156,15 @@ const hash=v=>createHash('sha256').update(v).digest('hex');
  const cases=[];
  for(const family of FAMILIES_V6)for(const tier of[1,2,3,4])cases.push(presetV6(family.style,tier,{family:family.id,signature:tier>=3}));
  const rows=Array.isArray(CATALOG_V6)?CATALOG_V6:Object.values(CATALOG_V6||{});
+ const {cardAssetV6}=require(repo+'/src/lib/bots/v6/assets');
+ assert.equal(cardAssetV6('mk6.t2.weapon.shoulder_cannon'),undefined,'retired cannon proof is not admitted as a playable part');
+ for(const card of rows)assert(cardAssetV6(card)?.ready,'every active card has an admitted visual: '+card.id);
  for(const card of rows.filter(c=>c.slot==='weapon')){
   const reference=presetV6(card.style??'ranged',card.tier),raw={...reference.appearanceBuild,weapon:{id:card.id,s:[...card.s]}};
   try{cases.push(snapshotBuildV6(raw));}catch(error){report.failures.push('weapon fixture '+card.id+': '+error.message);}
  }
- assert(cases.length>=63,'full catalogue weapon and family cases are included');
+ assert.equal(cases.length,FAMILIES_V6.length*4+rows.filter(c=>c.slot==='weapon').length,'every active weapon and family/tier has an actual model case');
+ assert.equal(rows.filter(c=>c.id==='mk6.t2.weapon.shoulder_cannon').length,0,'retired T2 cannon is not a playable catalogue card');
  for(const build of cases){
   const toy=await createToyV6(build),state=createFightV6(75,build,presetV6('tank',build.tier)),f=state.fighters[0];
   f.x=150;f.z=-200;f.yaw=500;const w=build.capabilities.weaponDefinition;

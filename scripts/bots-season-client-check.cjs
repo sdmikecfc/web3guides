@@ -2,6 +2,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const {chromium}=require('C:/Users/Mike/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const {createFightV6,presetV6,stepFightV6,acceptSpecialV6,advanceFightV6,resultV6,RULES_V6}=require('../src/lib/bots/v6');
 const {HERO_COLLISION_VERSION_V6}=require('../src/lib/bots/v6/hero-collision');
+const {SEASON_RULES}=require('../src/lib/bots/season/rules');
 const out=path.join(process.env.BOTS_SEASON_STAGE||path.resolve(__dirname,'..'),'client-qa');fs.mkdirSync(out,{recursive:true});
 const rulesOnly=process.argv.includes('--rules-only');
 const id='00000000-0000-4000-8000-000000000076',copy=structuredClone,hero=presetV6('tank',3,{signature:true,collisionVersion:HERO_COLLISION_VERSION_V6});
@@ -13,7 +14,7 @@ for(let seed=1;seed<=64&&!ready;seed++){
  if(!s.done)ready=copy(s);
 }
 assert(ready,'real signature hero reaches a charged manual Special');
-function session(s,revision,inputs=[],status=s.done?'complete':'running',viewerSide=0){return {id,seasonId:'fixture-season',botId:'fixture-bot',revision,engineVersion:6,mode:'house',requestedMode:'house',serverNow:Date.now(),startedAt:new Date(Date.now()-s.frame*1000/60).toISOString(),tick:s.frame,status,rules:RULES_V6,builds:s.builds,state:copy(s),inputs:copy(inputs),identities:[{name:'Fixture Attacker',botId:'fixture-bot'},{name:'Fixture Defender',botId:'fixture-defender'}],result:s.done?resultV6(s):null,settlement:status==='complete'?{playCoins:75,objectiveCoins:0,tradeBonus:0,rewarded:true,ratingChange:0,defenderRatingChange:0,repairUntil:null,finishedAt:new Date().toISOString(),winner:s.winner}:null,viewerSide};}
+function session(s,revision,inputs=[],status=s.done?'complete':'running',viewerSide=0){return {id,seasonId:'fixture-season',botId:'fixture-bot',revision,engineVersion:6,mode:'house',requestedMode:'house',serverNow:Date.now(),startedAt:new Date(Date.now()-s.frame*1000/60).toISOString(),seed:s.seed,tick:s.frame,status,playbackAvailable:true,rules:{...SEASON_RULES,engine:RULES_V6},builds:s.builds,state:copy(s),inputs:copy(inputs),identities:[{name:'Fixture Attacker',botId:'fixture-bot'},{name:'Fixture Defender',botId:'fixture-defender'}],result:s.done?resultV6(s):null,settlement:status==='complete'?{playCoins:75,objectiveCoins:0,tradeBonus:0,rewarded:true,ratingChange:0,defenderRatingChange:0,repairUntil:null,finishedAt:new Date().toISOString(),winner:s.winner}:null,viewerSide};}
 const report={checks:[],errors:[],unexpectedApi:[],blockedExternal:[],fixture:{seed:ready.seed,readyFrame:ready.frame}};
 const pass=name=>{report.checks.push(name);console.log('PASS',name);};
 const fake='bb1.'+Buffer.from(JSON.stringify({wallet:'0x'+'b'.repeat(40),isTest:true,exp:Date.now()+3600000})).toString('base64url')+'.LOCAL_FIXTURE_NOT_SIGNED';

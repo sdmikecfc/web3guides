@@ -4,7 +4,7 @@ This lane changes only Model Kombat's new `mk6_*` namespace. It does not import 
 
 ## Install order and flags
 
-1. Review `scripts/sql/bots-season-v1.sql`, then `bots-season-v1-catalog.sql`. The first creates only new tables, indexes and private RPCs. The second installs the exact 135-card v6 catalogue. Neither inserts an active season or changes an existing season.
+1. Review `scripts/sql/bots-season-v1.sql`, then `bots-season-v1-catalog.sql`. The first creates only new tables, indexes and private RPCs. The second installs the exact 134-card v6 catalogue. Neither inserts an active season or changes an existing season.
 2. Apply them only after separate live-migration authorization. Create a new season row with an explicit ID, name, UTC start/end, `rules_version='mk-season-1'`, and `enabled=false`. The intended duration is fourteen days, with rollover at UTC midnight so a calendar day's allowance is not split across two seasons. Review dates and catalogue before enabling that new row.
 3. Set `BOTS_SEASON_V1=1`, `NEXT_PUBLIC_BOTS_SEASON_V1=1`, and `BOTS_SEASON_ID` to that new ID only for the intended preview/release. Production also needs the existing game's `BB_FIGHT_SALT` and a new `BOTS_SEASON_QUOTE_SECRET` of at least 24 characters. Missing configuration refuses the new season; it never creates the old starter as a fallback.
 4. The v6 engine, art, catalogue and collision versions must pass their own acceptance review before a public league is enabled. Current engine balance and authored-art acceptance are separate work; these backend tests do not approve them.
@@ -98,3 +98,11 @@ Server simulation state, builds, rule/catalogue/collision versions and accepted 
 The season fight client accepts only monotonic revisions/ticks for the current session. Its visual simulation never advances beyond a confirmed server frame; saved manual commands apply at their exact recorded ticks. An accepted receipt reconciles a lost Special response and clears its session-specific retry ID. Route changes invalidate old network replies; completing a match clears stale input attempts and stops polling. Replay runs locally from the frozen initial state and recorded inputs, with no start/input/reward call. Defender replay maps names/results to `viewerSide:1`, labels its recorded defense and never shows the attacker's coin payout. Negative trade corrections are explicitly signed instead of displaying an incorrect positive reward. Result moments stay collapsed so the final damaged robots remain visible.
 
 PGlite verifies local transaction behavior and concurrent request idempotency. It is not a physical-mobile performance test, a multi-node PostgreSQL load/deadlock test, proof of deployed source readiness, or authorization to apply migrations. Hosted schema, verified-source readiness, final engine balance/contact/art review and production launch remain separately gated.
+
+## Cannon catalogue compatibility
+
+Shoulder cannon and shoulder battery kits require a Tier 3 or Tier 4 Ranged body. There is no active Tier 2 cannon. Other limbs and heads can still mix families. The 134 active cards keep the retained IDs, GP, stat tuples and prices; only the retired offer and cannon compatibility metadata changed before release.
+
+The canonical seed inserts missing rows without overwriting existing rows. It compares the installed catalogue with all expected metadata inside the same transaction. `MK6_CATALOG_MISMATCH` means a prior preview catalogue differs; the operator must roll back and review that preview database before enabling enrollment. No automatic deletion, inventory rewrite or old-build reinterpretation is performed. Fresh and repeat seeds pass; an older 135-card preview and altered cannon metadata are rejected with the entire transaction rolled back.
+
+Run the isolated cannon checks through `node scripts/bots-season-server-check.cjs --cannon`, supplying the local `BOTS_PGLITE_PATH` when needed. The captured SQL under `scripts/fixtures/bots-season-catalog-before-cannon.sql` is test data, never a rollout migration.

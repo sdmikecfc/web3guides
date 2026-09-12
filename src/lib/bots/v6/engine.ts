@@ -88,6 +88,17 @@ function proxyTarget(s:StateV6,who:SideV6,bodyOnly=false):Vec3 {
   // Choosing an aim target is allowed before an attack. Contact decides the part actually struck.
   const p=bodyOnly||randomV6(s.fighters[who],10)<7?body:available[randomV6(s.fighters[who],available.length)];return worldPoint(p.center,root(f));
 }
+/** Aim at a visible point on the chosen part. Cover remains a real first collision, never a damage bypass. */
+export function projectileAimV6(s:StateV6,who:SideV6,kind:AttackKindV6,mount:MountV6,part:HitProxyV6):Vec3 {
+  const f=s.fighters[who],r=s.fighters[other(who)],b=s.builds[who],w=definition(s,who,kind),body=bodyMotionV6(b.collision,{...f,frame:s.frame}).body,targetProxies=posedProxiesV6(s,other(who)),center=worldPoint(part.center,root(r)),origin=muzzleV6(s,who,kind,mount);
+  const direct=sweepRobotV6(origin,center,root(r),root(r),targetProxies,r.armour,w.projectileRadius);
+  if(direct?.slot===part.slot||part.shape==="capsule")return center;
+  const q=part.orientation??[0,0,0,1],offsets:Vec3[]=[.2,.35,.5].flatMap(n=>[[0,-n,0],[0,n,0],[-n,0,0],[n,0,0]] as Vec3[]);
+  for(const offset of offsets){const local=add(part.center,rotateQuatV6(offset.map((v,i)=>v*part.half[i]) as Vec3,q)),point=worldPoint(local,root(r));if(sweepRobotV6(origin,point,root(r),root(r),targetProxies,r.armour,w.projectileRadius)?.slot!==part.slot)continue;
+    const gun=aimGunMountV6(b.collision,w.proxy,mount,unbodyPointV6(body,localPoint(point,root(f))));if(!gun.aimable)continue;const actualOrigin=worldPoint(bodyPointV6(body,gun.muzzle),root(f));if(sweepRobotV6(actualOrigin,point,root(r),root(r),targetProxies,r.armour,w.projectileRadius)?.slot===part.slot)return point;
+  }
+  return center;
+}
 /** Root-local aimed mount, including the same velocity lead used by the physical projectile. */
 export function gunMountV6(s:StateV6,who:SideV6,kind:AttackKindV6,mount:MountV6):GunMountPoseV6 {
   const b=s.builds[who],f=s.fighters[who],w=definition(s,who,kind),a=f.action,rest=aimGunMountV6(b.collision,w.proxy,mount),matching=a?.kind===kind,body=bodyMotionV6(b.collision,{...f,frame:s.frame}).body;
@@ -96,7 +107,7 @@ export function gunMountV6(s:StateV6,who:SideV6,kind:AttackKindV6,mount:MountV6)
 export function muzzleV6(s:StateV6,who:SideV6,kind:AttackKindV6,mount:MountV6):Vec3 {return worldPoint(bodyPointV6(bodyMotionV6(s.builds[who].collision,{...s.fighters[who],frame:s.frame}).body,gunMountV6(s,who,kind,mount).muzzle),root(s.fighters[who])).map(Math.round) as Vec3;}
 
 function startAction(s:StateV6,who:SideV6,kind:AttackKindV6,mount:MountV6,special?:ActionV6["special"]){
-  const f=s.fighters[who],w=definition(s,who,kind),rate=s.stats[who].attackRate*(speedActive(f)?1.2:1)*(f.slowUntil>s.frame?.7:1),aim=proxyTarget(s,who),aimLocal=localPoint(aim,root(s.fighters[other(who)])),aimPart=posedProxiesV6(s,other(who)).reduce((best,p)=>Math.hypot(...subtract(p.center,aimLocal))<Math.hypot(...subtract(best.center,aimLocal))?p:best),error=s.stats[who].aimError*(f.armour[0]>0?1:2);
+  const f=s.fighters[who],w=definition(s,who,kind),rate=s.stats[who].attackRate*(speedActive(f)?1.2:1)*(f.slowUntil>s.frame?.7:1),initial=proxyTarget(s,who),initialLocal=localPoint(initial,root(s.fighters[other(who)])),aimPart=posedProxiesV6(s,other(who)).reduce((best,p)=>Math.hypot(...subtract(p.center,initialLocal))<Math.hypot(...subtract(best.center,initialLocal))?p:best),aim=w.projectile?projectileAimV6(s,who,kind,mount,aimPart):initial,aimLocal=localPoint(aim,root(s.fighters[other(who)])),error=s.stats[who].aimError*(f.armour[0]>0?1:2);
   const a:ActionV6={id:++s.attackSequence,kind,mount,started:s.frame,windup:Math.max(3,Math.round(w.windup/rate/(w.projectile?1+s.stats[who].acc*.025:1))),active:Math.max(1,Math.round(w.active/rate)),recovery:Math.max(6,Math.round(w.recovery/rate)),released:false,hitTargets:[],targetHeight:aim[1],aim,aimLocal,aimFrame:s.frame,aimSlot:aimPart.slot,aimSegment:aimPart.pose?.segment,aimVelocity:[0,0,0],aimError:[(randomV6(f,2001)-1000)/1000*error,(randomV6(f,2001)-1000)/1000*error*.65,0],lastPoint:null,nextPulse:s.frame,burstBudget:0,critical:randomV6(f,100)<Math.min(18,3+s.stats[who].luck*.35),emissions:0,pathActive:[...w.proxy.active],slowed:f.slowUntil>s.frame,special};
   if(special){a.windup=special==="burst"?10:special==="flank"?34:18;a.active=special==="burst"?40:special==="flank"?16:25;a.recovery=special==="flank"?10:12;a.critical=false;if(special==="burst")a.burstBudget=f.special!.burstBudget;}
   f.action=a;emit(s,"windup",who,{attackId:a.id,weapon:kind,mount});if(special&&special!=="burst")emit(s,special,who,{attackId:a.id,weapon:kind,mount});
@@ -155,7 +166,7 @@ export function incomingThreatV6(s:StateV6,who:SideV6):boolean {
 }
 function decide(s:StateV6,who:SideV6){
   const f=s.fighters[who],rival=s.fighters[other(who)],d=Math.hypot(rival.x-f.x,rival.z-f.z),b=s.builds[who];if(controlledV6(s,who))return;
-  if(s.autoSpecial[who]&&f.meter>=100&&!f.special){const plan=s.defensePlans[who],use=plan==="early"||plan==="last-stand"&&f.armour[1]<s.stats[who].armour[1]*.4||plan==="balanced"&&(b.style==="tank"?incomingThreatV6(s,who):b.style==="speed"?d<2600&&!(s.builds[other(who)].style==="tank"&&((rival.special?.shieldLeft??0)>0&&rival.special!.until-s.frame>45||!rival.special&&rival.meter>80)&&f.armour[1]>s.stats[who].armour[1]*.3):d<3600);if(use)activate(s,who);}
+  if(s.autoSpecial[who]&&f.meter>=100&&!f.special){const plan=s.defensePlans[who],use=plan==="early"||plan==="last-stand"&&f.armour[1]<s.stats[who].armour[1]*.4||plan==="balanced"&&(b.style==="tank"?incomingThreatV6(s,who):b.style==="speed"?d<2600&&!(s.builds[other(who)].style==="tank"&&((rival.special?.shieldLeft??0)>0&&rival.special!.until-s.frame>45)&&f.armour[1]>s.stats[who].armour[1]*.3):d<3600);if(use)activate(s,who);}
   if(readyFinisher(s,who))return;
   // Recovery keeps its full duration; a working pair of legs may still make space.
   if(f.action&&!f.action.special&&actionPhaseV6(f.action,s.frame)==="recovery"&&b.capabilities.weaponDefinition.projectile&&legs(f)===2&&s.frame>=f.nextShove&&(!barrelClearV6(s,who,b.capabilities.weapon,b.capabilities.mount))&&rival.action){f.nextShove=s.frame+150;escape(s,who);}
@@ -180,7 +191,9 @@ function decide(s:StateV6,who:SideV6){
 function moveFighter(s:StateV6,who:SideV6){
   const f=s.fighters[who],target=s.fighters[other(who)],dx=target.x-f.x,dz=target.z-f.z,d=Math.max(1,Math.hypot(dx,dz)),forward=[dx/d,dz/d],equipped=s.builds[who].capabilities.weaponDefinition,kind:AttackKindV6=workingArm(f,equipped.mount)||equipped.paired&&(f.armour[2]>0||f.armour[3]>0)?s.builds[who].capabilities.weapon:"punch",w=definition(s,who,kind),a=f.action;
   if(f.pushUntil>s.frame)move(f,f.pushX,f.pushZ);if(controlledV6(s,who))return;
-  const aimed=definition(s,who,a?.kind??kind),stance=a?.special==="charge"||aimed.projectile||aimed.id==="flamethrower"?0:meleeReachPose(s,who,a?.kind??kind).stance,desired=Math.atan2(a&&a.special!=="charge"?a.aim[0]-f.x:dx,a&&a.special!=="charge"?a.aim[2]-f.z:dz)-stance,turn=s.stats[who].turnRate*(f.slowUntil>s.frame?.7:1),delta=angle(desired-f.yaw/1000);if(!a||a.special||actionPhaseV6(a,s.frame)==="recovery"||s.frame<a.started+a.windup-7)f.yaw=Math.round(angle(f.yaw/1000+clamp(delta,-turn/1000,turn/1000))*1000);
+  // A swing stance belongs to its preparation/contact. Approach and recovery face
+  // the rival so the actual front forearm can guard while the weapon is carried.
+  const phase=a?actionPhaseV6(a,s.frame):null,committed=Boolean(a&&phase!=="recovery"&&a.special!=="charge"),aimed=definition(s,who,a?.kind??kind),stance=!committed||aimed.projectile||aimed.id==="flamethrower"?0:meleeReachPose(s,who,a!.kind).stance,desired=Math.atan2(committed?a!.aim[0]-f.x:dx,committed?a!.aim[2]-f.z:dz)-stance,turn=s.stats[who].turnRate*(f.slowUntil>s.frame?.7:1),delta=angle(desired-f.yaw/1000);if(!a||a.special||phase==="recovery"||s.frame<a.started+a.windup-7)f.yaw=Math.round(angle(f.yaw/1000+clamp(delta,-turn/1000,turn/1000))*1000);
   // Evasion moves a real collider before the strike, never rolls a hit away afterward.
   const threat=target.action;if(threat&&threat.id!==f.lastThreat&&threat.started+threat.windup-s.frame<=7&&threat.started+threat.windup>s.frame){f.lastThreat=threat.id;if(legs(f)===2&&s.frame>=f.nextDodge&&d<4500){f.nextDodge=s.frame+120;const chance=Math.min(60,s.stats[who].evasion+(speedActive(f)?15:0));if(randomV6(f,10000)<chance*100){const direction=randomV6(f,2)?1:-1;f.dodgeUntil=s.frame+10;f.dashX=-forward[1]*direction;f.dashZ=forward[0]*direction;emit(s,"dodge",who,{attackId:threat.id});}}}
   if(f.dodgeUntil>s.frame&&legs(f)===2){move(f,f.dashX*movementV6(s,who)*2.2,f.dashZ*movementV6(s,who)*2.2);return;}
@@ -237,11 +250,11 @@ function actionContacts(s:StateV6,who:SideV6,previous:[{x:number;z:number;yaw:nu
   if(!workingArm(f,a.mount)||a.special==="charge"&&f.special?.shieldLeft===0){cancel(s,who);return;}
   if(phase==="done"){f.action=null;f.nextAction=s.frame+2;return;}
   if(phase==="preparation"){
-    const remaining=a.started+a.windup-s.frame;if(remaining>7){const tracked=a.aimSlot?posedProxiesV6(s,other(who)).find(p=>p.slot===a.aimSlot&&p.pose?.segment===a.aimSegment):undefined;a.aim=worldPoint(tracked?.center??a.aimLocal,root(target));a.aimFrame=s.frame;a.aimVelocity=[target.moveX,0,target.moveZ];}
+    const remaining=a.started+a.windup-s.frame;if(remaining>7){const tracked=a.aimSlot?posedProxiesV6(s,other(who)).find(p=>p.slot===a.aimSlot&&p.pose?.segment===a.aimSegment):undefined;a.aim=w.projectile&&tracked?projectileAimV6(s,who,a.kind,a.mount,tracked):worldPoint(tracked?.center??a.aimLocal,root(target));a.aimFrame=s.frame;a.aimVelocity=[target.moveX,0,target.moveZ];}
     if(w.projectile&&a.special!=="burst"&&(Math.hypot(target.x-f.x,target.z-f.z)<minimumFireRange(s,who,a.kind,a.mount)||!barrelClearV6(s,who,a.kind,a.mount))){cancel(s,who,0);return;}
   }
   if(a.special==="burst"){
-    if(phase==="contact"&&s.frame>=a.nextPulse&&a.emissions<8){a.nextPulse=s.frame+5;const mount=a.emissions%2?"left":"right";a.aim=proxyTarget(s,who,true);a.aimFrame=s.frame;a.aimVelocity=[target.moveX,0,target.moveZ];if(workingArm(f,mount))fire(s,who,a,mount);else a.emissions++;}return;
+    if(phase==="contact"&&s.frame>=a.nextPulse&&a.emissions<8){a.nextPulse=s.frame+5;const mount=a.emissions%2?"left":"right";a.aim=projectileAimV6(s,who,a.kind,mount,posedProxiesV6(s,other(who)).find(p=>p.slot==="torso")!);a.aimFrame=s.frame;a.aimVelocity=[target.moveX,0,target.moveZ];if(workingArm(f,mount))fire(s,who,a,mount);else a.emissions++;}return;
   }
   if(a.special==="charge"){if(phase==="contact"&&!a.hitTargets.length){const hit=chargeContact(s,who,previous,previousProxies);if(hit){a.hitTargets.push(hit.slot);resolveImpactV6(s,{who,weapon:a.kind,mount:a.mount,attackId:a.id,contact:hit,damage:weaponDamageV6(s,who,a.kind),impulse:w.impulse,knockdown:true});}}return;}
   if(w.projectile){if(phase==="contact"&&!a.released){a.released=true;fire(s,who,a);}return;}

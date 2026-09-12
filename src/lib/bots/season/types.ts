@@ -40,7 +40,8 @@ export interface SeasonSettlement {
 export interface SeasonMatch {
   id: string; seasonId: string; botId: string | null; mode: SeasonMode; requestedMode: SeasonMode;
   revision: number; engineVersion: 6; status: "running" | "settlement-pending" | "complete";
-  serverNow: number; startedAt: string; tick: number; builds: [BuildV6, BuildV6]; state: StateV6;
+  serverNow: number; startedAt: string; seed: number; tick: number; builds: [BuildV6, BuildV6]; state: StateV6;
+  playbackAvailable: boolean;
   rules: Record<string, unknown>; inputs: SeasonInputReceipt[];
   identities: [{ name: string; botId: string | null }, { name: string; botId: string | null }];
   result: unknown | null; settlement: SeasonSettlement | null;

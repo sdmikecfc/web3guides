@@ -649,12 +649,6 @@
       "ready": true,
       "thumbnail": "thumbs/flamethrower.t2.png"
     },
-    "mk6.t2.weapon.shoulder_cannon": {
-      "model": "weapons/shoulder_cannon.t2.glb",
-      "node": "weapon_kit",
-      "ready": true,
-      "thumbnail": "thumbs/shoulder_cannon.t2.png"
-    },
     "mk6.t3.weapon.hammer": {
       "model": "weapons/hammer.t3.glb",
       "node": "weapon_kit",

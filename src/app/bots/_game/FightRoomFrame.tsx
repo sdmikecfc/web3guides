@@ -19,12 +19,12 @@ export default function FightRoomFrame({ arena, special, setup, details, status,
     return () => { element?.removeEventListener("close", restore); element?.close(); };
   }, []);
   return <section className={`${css.frame} ${embedded ? css.embedded : ""}`} aria-label="Fight room">
-    <header className={css.toolbar}><div>{onClose ? <button onClick={onClose} aria-label="Leave the arena">←</button> : !embedded ? <a href="/bots?view=fight">← Fight room</a> : null}<strong>{title}</strong></div><div>{tools}{(setup || details) && <button ref={trigger} disabled={setupDisabled} onClick={() => dialog.current?.showModal()}>Robot &amp; fight details</button>}</div></header>
+    <header className={css.toolbar}><div className={css.toolbarTitle}>{onClose ? <button onClick={onClose} aria-label="Leave the arena">←</button> : !embedded ? <a href="/bots?view=fight">← Fight room</a> : null}<strong title={title}>{title}</strong></div><div className={css.toolbarActions}><div className={css.toolbarTools}>{tools}</div>{(setup || details) && <button ref={trigger} aria-label="Robot & fight details" disabled={setupDisabled} onClick={() => dialog.current?.showModal()}><span className={css.detailsLong}>Robot &amp; fight details</span><span className={css.detailsShort}>Details</span></button>}</div></header>
     <div className={css.arena}>{arena}{status && <div className={css.status} aria-live="polite">{status}</div>}</div>
     <div className={css.controls}>{special}</div>
     <dialog ref={dialog} className={css.dialog} aria-label="Robot and fight details" onClick={event => { if (event.target === event.currentTarget) dialog.current?.close(); }}>
       <header><div><small>BEFORE THE BELL</small><h2>Your robot. Your plan.</h2></div><button autoFocus aria-label="Close fight details" onClick={() => dialog.current?.close()}>×</button></header>
-      <div className={css.dialogBody}>{setup}{details}</div>
+      <div className={css.dialogBody}>{tools && <div className={css.mobileTools}>{tools}</div>}{setup}{details}</div>
       <footer><button onClick={() => dialog.current?.close()}>Back to the ring</button></footer>
     </dialog>
   </section>;

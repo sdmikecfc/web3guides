@@ -4,11 +4,11 @@ const path = require('node:path');
 const Module = require('node:module');
 const { spawnSync } = require('node:child_process');
 const root = process.env.BOTS_V6_REPO_ROOT ? path.resolve(process.env.BOTS_V6_REPO_ROOT) : path.resolve(__dirname, '..');
-const tests = ['bots-v6-check.ts', 'bots-v6-balance-check.ts', 'bots-v6-pose-check.ts', 'bots-v6-body-check.ts', 'bots-v6-combat-regression-check.ts', 'bots-v6-carry-check.ts', 'bots-v6-balance-matrix.ts', 'bots-v6-hero-balance-check.ts'];
+const tests = ['bots-v6-check.ts', 'bots-v6-balance-check.ts', 'bots-v6-pose-check.ts', 'bots-v6-body-check.ts', 'bots-v6-combat-regression-check.ts', 'bots-v6-carry-check.ts', 'bots-v6-balance-matrix.ts', 'bots-v6-balance-grid.ts', 'bots-v6-pressure-grid.ts', 'bots-v6-hero-balance-check.ts'];
 const selected = process.argv[2];
 if (!selected) {
   // Ordinary verification must not accidentally consume the reserved held-out bank.
-  for (const test of tests.filter(test => !test.includes('balance'))) {
+  for (const test of tests.filter(test => !test.includes('balance') && !test.includes('pressure-grid'))) {
     const run = spawnSync(process.execPath, [...process.execArgv, __filename, test], { cwd: root, stdio: 'inherit', env: process.env });
     if (run.error) throw run.error;
     if (run.status !== 0) process.exit(run.status || 1);

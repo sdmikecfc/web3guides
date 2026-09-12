@@ -10,7 +10,7 @@ from mathutils import Matrix
 TIERS={1:.79,2:.90,3:1,4:1.06}
 FAMILIES=[('boiler_knight','tank'),('scrapyard_bruiser','tank'),('roller_daredevil','speed'),('spring_duelist','speed'),('owl_ranger','ranged'),('clockwork_gunner','ranged')]
 KINDS=['hammer','sword','paired_blades','ap_rifle','shotgun_tight','shotgun_wide','shock_blade','flame_sword','flamethrower','shoulder_cannon']
-manifest={'version':'mk6-art-1','status':'authored-candidate','license':'LicenseRef-ModelKombat-Original','source':'Original procedural Blender sculpture by the Model Kombat project; no third-party mesh or paid generation.','rigVersion':'mk6-rig-2','bodies':{},'weapons':{},'cards':{}}
+manifest={'version':'mk6-art-1','status':'authored-candidate','license':'LicenseRef-ModelKombat-Original','source':'Original procedural Blender sculpture by the Model Kombat project; no third-party mesh or paid generation.','rigVersion':'mk6-rig-2','bodies':{},'weapons':{},'cards':{},'retiredCards':{}}
 collision={'version':'mk6-collision-catalogue-1','rigVersion':'mk6-rig-2','units':'millimetres','bodies':{},'weapons':{}}
 M['rust']=mat('clay_ochre_scrap',(.56,.255,.085),.13,.4)
 M['jade']=mat('clay_duelist_jade',(.08,.41,.31),.12,.33)
@@ -348,7 +348,10 @@ def weapon_asset(kind,tier):
     if canonical=='shoulder_cannon':info['backupMuzzle']=[n*TIERS[tier] for n in backup]
     info['triangles']=sum(sum(len(p.vertices)-2 for p in o.data.polygons) for o in descendants(root) if o.type=='MESH')
     key=kind+'.t'+str(tier);manifest['weapons'][key]=info
-    manifest['cards'][f'mk6.t{tier}.'+('signature.' if signature else 'weapon.')+kind]={'model':info['url'],'node':'weapon_kit','ready':True,'thumbnail':'thumbs/'+key+'.png'}
+    # Preserve the earlier T2 cannon export as a review asset. Playable cannon
+    # kits begin at T3 and require a matching Ranged body in the catalogue.
+    bucket='retiredCards' if tier==2 and kind=='shoulder_cannon' else 'cards'
+    manifest[bucket][f'mk6.t{tier}.'+('signature.' if signature else 'weapon.')+kind]={'model':info['url'],'node':'weapon_kit','ready':True,'thumbnail':'thumbs/'+key+'.png'}
     if not opt.models_only:render_tiles(root,kind,tier,['weapon'])
 
 def render_tiles(root,name,tier,kinds):

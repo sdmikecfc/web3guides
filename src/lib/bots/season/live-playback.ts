@@ -1,6 +1,24 @@
-import { acceptSpecialV6, stepFightV6 } from "@/lib/bots/v6";
+import { acceptSpecialV6, stepFightV6, RULES_V6, validBuildV6 } from "@/lib/bots/v6";
 import type { StateV6, EventV6 } from "@/lib/bots/v6";
 import type { SeasonMatch } from "./types";
+import { SEASON_RULES } from "./rules";
+
+export const SEASON_PLAYBACK_UNAVAILABLE = "This fight needs its saved robot and combat rules. Your saved result is safe.";
+const canonical = (value: unknown): string => value && typeof value === "object" ? Array.isArray(value) ? `[${value.map(canonical).join(",")}]` : `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(",")}}` : JSON.stringify(value);
+/** One identity gate for server advancement and browser replay. It never repairs a saved proof. */
+export function seasonSnapshotMatchesRules(snapshot: { seed: unknown; rules: unknown; builds: unknown; state: StateV6 | null }): boolean {
+  try {
+    return Number.isInteger(snapshot.seed) && Number(snapshot.seed) >= 0 && Number(snapshot.seed) <= 4294967295 &&
+      canonical(snapshot.rules) === canonical({ ...SEASON_RULES, engine: RULES_V6 }) &&
+      Array.isArray(snapshot.builds) && snapshot.builds.length === 2 && snapshot.builds.every(validBuildV6) &&
+      (!snapshot.state || snapshot.state.version === 6 && snapshot.state.rulesVersion === RULES_V6.rulesVersion &&
+        snapshot.state.catalogVersion === RULES_V6.catalogVersion && snapshot.state.seed === snapshot.seed &&
+        canonical(snapshot.state.builds) === canonical(snapshot.builds));
+  } catch { return false; }
+}
+export function seasonSessionPlaybackAvailable(session: SeasonMatch): boolean {
+  return session.playbackAvailable !== false && !!session.state && session.tick === session.state.frame && seasonSnapshotMatchesRules(session);
+}
 
 /** Polls and input replies may arrive in either order. A route owns one session. */
 export function acceptsSeasonSnapshot(current: SeasonMatch | null, incoming: SeasonMatch, sessionId: string): boolean {

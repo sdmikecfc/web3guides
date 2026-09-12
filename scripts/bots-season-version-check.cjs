@@ -1,6 +1,7 @@
 /* Current source only, local objects and a read-only mock. No services or database. */
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
-const { presetV6, createFightV6, RULES_V6, validBuildV6, replayV6 } = require('../src/lib/bots/v6');
+const { presetV6, createFightV6, advanceFightV6, resultV6, RULES_V6, validBuildV6, replayV6 } = require('../src/lib/bots/v6');
+const { seasonSessionPlaybackAvailable } = require('../src/lib/bots/season/live-playback');
 const { SEASON_RULES } = require('../src/lib/bots/season/rules');
 const { advanceSeasonSnapshot, resumeSeasonMatch, seasonBuild, SeasonError } = require('../src/app/bots/_server/season');
 const clone = structuredClone, checks = [], now = Date.now(), wallet = '0x' + 'a'.repeat(40);
@@ -34,6 +35,25 @@ const pass = name => { checks.push(name); console.log('PASS', name); };
   }
   assert.equal(reads, 3); assert.equal(writes, 0);
   pass('preparing, running and settlement-pending old proofs refuse resume before any CAS or payout; saved data stays intact');
+  const finalState = clone(initial); advanceFightV6(finalState, 5400);
+  const complete = { ...clone(original), status: 'complete', state: finalState, result: resultV6(finalState), settlement: { winner: finalState.winner, playCoins: 75, objectiveCoins: 0, tradeBonus: 0 } };
+  for (const viewer of [0, 1]) for (const fault of ['current', 'old-rules', 'old-state', 'old-build', 'changed-build', 'changed-seed']) {
+    const row = clone(complete);
+    if (fault === 'old-rules') row.rules.engine.rulesVersion = 'mk6-1';
+    if (fault === 'old-state') row.state.rulesVersion = 'mk6-1';
+    if (fault === 'old-build') row.builds[0].rulesVersion = 'mk6-1';
+    if (fault === 'changed-build') row.state.builds[0].gp++;
+    if (fault === 'changed-seed') row.state.seed++;
+    const before = JSON.stringify(row);
+    const db = { from(table) { assert.equal(table, 'mk6_matches'); let defense = false; const q = { select() { return q; }, eq(key) { if (key === 'target_wallet') defense = true; return q; }, async maybeSingle() { return { data: viewer === 0 || defense ? row : null, error: null }; } }; return q; }, rpc() { throw Error('Completed proof inspection must not write.'); } };
+    const response = await resumeSeasonMatch(db, wallet, row.id, undefined, now);
+    assert.equal(response.session.viewerSide ?? 0, viewer); assert.equal(response.session.seed, row.seed);
+    assert.deepEqual(response.session.result, row.result); assert.deepEqual(response.session.settlement, row.settlement); assert.deepEqual(response.session.state, row.state);
+    assert.equal(response.session.playbackAvailable, fault === 'current'); assert.equal(seasonSessionPlaybackAvailable(response.session), fault === 'current');
+    if (fault !== 'current') assert.equal(seasonSessionPlaybackAvailable({ ...response.session, playbackAvailable: true }), false, 'client independently rejects a falsely enabled saved proof');
+    assert.equal(JSON.stringify(row), before);
+  }
+  pass('completed own and defender results remain readable and unchanged; both server and client gate old rules/state/builds and inconsistent seed/build identity without any write');
   const report = { passed: true, rulesVersion: RULES_V6.rulesVersion, checks, completedAt: new Date().toISOString(), scope: 'local in-memory objects and read-only mock only' };
   fs.writeFileSync(path.join(process.env.BOTS_SEASON_STAGE || path.resolve(__dirname, '..'), 'version-verification.json'), JSON.stringify(report, null, 2));
 })().catch(error => { console.error(error); process.exitCode = 1; });

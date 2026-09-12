@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { CATALOG_V6, FAMILIES_V6, cardV6, presetV6, snapshotBuildV6, statsV6 } from "../src/lib/bots/v6";
 import { seasonPracticeBuild } from "../src/lib/bots/season/practice";
-import { BUILD_ORDER, collectionBuildQuote, emptySeasonDraft, readSeasonDraft, seasonComparison, seasonDisplayBuild, seasonDraftSummary, seasonHeroStill, trySeasonPart } from "../src/lib/bots/season/workshop";
+import { BUILD_ORDER, collectionBuildQuote, emptySeasonDraft, readSeasonDraft, seasonComparison, seasonDisplayBuild, seasonDraftSummary, seasonDraftUnavailable, seasonHeroStill, trySeasonPart } from "../src/lib/bots/season/workshop";
 import { clearFightQuery, fightRoomHref } from "../src/lib/bots/fight-navigation";
 import type { SeasonDraft } from "../src/lib/bots/season/types";
 
@@ -38,6 +38,19 @@ assert(partial); assert.deepEqual(partial.parts, { torso: "mk6.t1.boiler_knight.
 assert.equal(partial.revision, 0); assert.equal("coins" in partial, false); assert.equal(partial.defensePlan, "last-stand");
 assert.equal(readSeasonDraft('{"name":"x","parts":{},"defensePlan":"cheat"}'), null);
 assert.equal(seasonDraftSummary(emptySeasonDraft()).count, 0);
+const retiredRaw = { ...asDraft("tank", 1), parts: { ...asDraft("tank", 1).parts, weapon: "mk6.t2.weapon.shoulder_cannon" }, coins: 99999, battleResults: ["untrusted"] };
+const retired = readSeasonDraft(JSON.stringify(retiredRaw))!;
+assert.equal(cardV6(retired.parts.weapon), undefined);
+assert.equal(retired.parts.weapon, retiredRaw.parts.weapon);
+for (const socket of BUILD_ORDER.filter(s => s !== "weapon")) assert.equal(retired.parts[socket], retiredRaw.parts[socket]);
+assert.equal(retired.name, retiredRaw.name); assert.equal(retired.defensePlan, retiredRaw.defensePlan);
+assert.equal("coins" in retired, false); assert.equal("battleResults" in retired, false);
+assert.match(seasonDraftUnavailable(retired)!, /Choose another weapon/);
+assert.equal(seasonDraftSummary(retired).count, 6); assert.equal(seasonDraftSummary(retired).complete, false);
+assert.equal(seasonDisplayBuild(retired)!.visibleSlots.includes("weapon"), false);
+assert.throws(() => snapshotBuildV6(seasonDraftSummary(retired).build));
+assert.equal(readSeasonDraft(JSON.stringify({ ...retiredRaw, parts: { ...retiredRaw.parts, weapon: "invented.weapon" } }))!.parts.weapon, undefined);
+pass("Only the known retired cannon marker survives draft parsing; six valid parts/name/defense stay, while stats, weapon preview and complete-build validation reject it");
 pass("Browser drafts accept only canonical slot choices, never balances, old catalogue IDs or server revisions");
 const partialBefore = JSON.stringify(partial), displayed = seasonDisplayBuild(partial)!;
 assert.deepEqual(displayed.visibleSlots, ["torso", "armL"]); assert.equal(displayed.build.parts.armL.id, partial.parts.armL);
@@ -84,7 +97,7 @@ assert.equal(exact.name, "My exact mixed robot"); assert.equal(exact.linked, tru
 for (const socket of BUILD_ORDER) assert.equal(exact.build.parts[socket].id, weapon.parts[socket]);
 const archivedHero = presetV6("tank", 3, { signature: true, collisionVersion: "mk6-collision-hero-1" });
 assert.deepEqual(seasonPracticeBuild({ robot: JSON.stringify(archivedHero.appearanceBuild), collision: archivedHero.collisionVersion }).build, archivedHero);
-pass("All 135 item links and all 24 family/tier examples preserve their actual canonical model; exact mixed links preserve every socket and name");
+pass(`All ${CATALOG_V6.length} item links and all 24 family/tier examples preserve their actual canonical model; exact mixed links preserve every socket and name`);
 for (const query of [{ robot: "{" }, { robot: "{}" }, { part: "not-real" }, { family: "not-real" }, { tier: "5" }, { tier: "2", weapon: "not-real" }, { style: "speed", tier: "3", weapon: "piledriver" }, { robot: "x".repeat(16001) }]) assert.throws(() => seasonPracticeBuild(query));
 pass("Broken robot, part, tier, family and incompatible weapon links fail clearly without substituting a preset");
 console.log(`${checks} season workshop checks passed.`);

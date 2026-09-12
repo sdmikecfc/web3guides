@@ -1,13 +1,14 @@
 import "server-only";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import { V6_CATALOG, cardV6, presetV6, snapshotBuildV6, validBuildV6, createFightV6, advanceFightV6, acceptSpecialV6, resultV6, RULES_V6, FPS_V6, MAX_FRAMES_V6, type BuildV6, type StateV6 } from "@/lib/bots/v6";
+import { V6_CATALOG, cardV6, presetV6, snapshotBuildV6, createFightV6, advanceFightV6, acceptSpecialV6, resultV6, RULES_V6, FPS_V6, MAX_FRAMES_V6, type BuildV6, type StateV6 } from "@/lib/bots/v6";
 import { modularBuild } from "@/lib/bots/combat-model";
 import { SEASON_RULES, SEASON_SOCKETS, repairPrice, seasonalPartPrice } from "@/lib/bots/season/rules";
 import type { SeasonStateResponse, SeasonDraft, SeasonMatch, SeasonInputReceipt, SeasonStartInput, RepairQuote, SeasonBot, DefensePlan, SeasonInfo, SeasonMatchResponse } from "@/lib/bots/season/types";
 import { fnv1a } from "../_engine/rng";
 import { fightSalt, type BotsDb } from "./db";
 import { syncSeasonTrades, seasonTradeReadiness, oldestSeasonStart } from "./season-trades";
+import { seasonSnapshotMatchesRules, SEASON_PLAYBACK_UNAVAILABLE } from "@/lib/bots/season/live-playback";
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{7,95}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -138,12 +139,10 @@ export async function finishSeasonBot(db: BotsDb, wallet: string, input: ReturnT
   return { ok: true as const, bot };
 }
 
-const canonical = (value: unknown): string => value && typeof value === "object" ? Array.isArray(value) ? `[${value.map(canonical).join(",")}]` : `{${Object.keys(value).sort().map(k => `${JSON.stringify(k)}:${canonical((value as Record<string, unknown>)[k])}`).join(",")}}` : JSON.stringify(value);
 const savedRules = () => ({ ...SEASON_RULES, engine: RULES_V6 });
 export function advanceSeasonSnapshot(row: SeasonMatchRow, now: number, input?: ReturnType<typeof parseSeasonInput>) {
-  if (canonical(row.rules) !== canonical(savedRules()) || !Array.isArray(row.builds) || row.builds.length !== 2 || !row.builds.every(validBuildV6) ||
-    row.state && (row.state.version !== 6 || row.state.rulesVersion !== RULES_V6.rulesVersion || row.state.catalogVersion !== RULES_V6.catalogVersion || row.state.seed !== row.seed || canonical(row.state.builds) !== canonical(row.builds))) {
-    return reject(503, "RULES_UNAVAILABLE", "This fight needs its saved robot and combat rules. Your saved result is safe.");
+  if (!seasonSnapshotMatchesRules(row)) {
+    return reject(503, "RULES_UNAVAILABLE", SEASON_PLAYBACK_UNAVAILABLE);
   }
   const state = row.state ? structuredClone(row.state) : createFightV6(row.seed, row.builds[0], row.builds[1], { autoSpecial: [false, true], defensePlans: row.plans });
   const receipts = row.input_receipts.slice(), previous = input && receipts.find(r => r.inputId === input.inputId);
@@ -160,7 +159,7 @@ export function advanceSeasonSnapshot(row: SeasonMatchRow, now: number, input?: 
 function matchView(row: SeasonMatchRow, now: number): SeasonMatch {
   if (!row.state || row.status === "preparing") return reject(503, "MATCH_PREPARING", "Your fight is getting ready. Try again.");
   return { id: row.id, seasonId: row.season_id, botId: row.bot_id, mode: row.mode, requestedMode: row.requested_mode, revision: row.revision, engineVersion: 6, status: row.status,
-    serverNow: now, startedAt: row.started_at, tick: row.state.frame, builds: row.builds, state: row.state, rules: row.rules, inputs: row.input_receipts, identities: row.identities, result: row.result, settlement: row.settlement };
+    serverNow: now, startedAt: row.started_at, seed: row.seed, tick: row.state.frame, builds: row.builds, state: row.state, rules: row.rules, inputs: row.input_receipts, identities: row.identities, result: row.result, settlement: row.settlement, playbackAvailable: seasonSnapshotMatchesRules(row) };
 }
 export async function resumeSeasonMatch(db: BotsDb, wallet: string, matchId: string, input?: ReturnType<typeof parseSeasonInput>, now = Date.now()): Promise<SeasonMatchResponse> {
   requireSeason(); uuid(matchId);

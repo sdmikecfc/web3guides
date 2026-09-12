@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const os = require('node:os');
 const assert = require('node:assert/strict');
 const split = process.argv[2], scope = process.argv[3] || 'all';
 assert(['train', 'heldout'].includes(split), 'Choose an explicit train or heldout bank. Never tune on heldout.');
@@ -44,9 +45,15 @@ function run(cohort) {
   return new Promise(resolve => {
     const log = path.join(output, `${cohort}.log`), sink = fs.createWriteStream(log);
     const env = { ...process.env, MK_V6_BENCH_OUTPUT: output, MK_V6_BENCH_COHORT: cohort, MK_V6_BENCH_SPLIT: split, MK_V6_BENCH_PARTITION: '1' };
+    if (cohort === 'role-t1' && process.env.MK_V6_REFERENCE_SEEDS_T1) env.MK_V6_REFERENCE_SEEDS = process.env.MK_V6_REFERENCE_SEEDS_T1;
     if (diagnosticSeeds === null) delete env.MK_V6_BENCH_SEEDS;
     else env.MK_V6_BENCH_SEEDS = String(diagnosticSeeds);
     const child = spawn(process.execPath, [...process.execArgv, path.join(__dirname, 'bots-v6-check.cjs'), 'bots-v6-balance-matrix.ts'], { env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+    // Touch only this runner's newly spawned worker; never enumerate or alter other processes.
+    child.once('spawn', () => {
+      try { os.setPriority(child.pid, os.constants.priority.PRIORITY_BELOW_NORMAL); console.log(JSON.stringify({ worker: cohort, pid: child.pid, priority: 'below-normal' })); }
+      catch (error) { console.log(JSON.stringify({ worker: cohort, pid: child.pid, priority: 'unchanged', reason: String(error) })); }
+    });
     child.stdout.pipe(sink, { end: false }); child.stderr.pipe(sink, { end: false });
     child.on('error', error => { sink.end(String(error)); resolve({ cohort, log, exitCode: -1, error: String(error) }); });
     child.on('close', exitCode => sink.end(() => {
@@ -57,9 +64,12 @@ function run(cohort) {
     }));
   });
 }
-async function worker() { while (next < cohortIds.length) { const cohort = cohortIds[next++]; results.push(await run(cohort)); } }
+async function worker(limit = cohortIds.length) { while (next < limit) { const cohort = cohortIds[next++]; results.push(await run(cohort)); } }
 (async () => {
-  await Promise.all(Array.from({ length: workers }, worker));
+  await Promise.all(Array.from({ length: workers }, () => worker(4)));
+  const referenceFailed = results.some(result => result.exitCode || !result.receipt || result.receipt.failures.length);
+  if (scope === 'all' && !referenceFailed) await Promise.all(Array.from({ length: workers }, () => worker()));
+  else if (scope === 'all') console.log(JSON.stringify({ incompleteBank: true, reason: 'Reference partition failed. Remaining cohorts were not run for this rejected candidate.' }));
   results.sort((a, b) => a.cohort.localeCompare(b.cohort));
   const problems = [], hashes = new Set(results.map(r => r.header?.sourceHash)), tests = new Set(results.map(r => r.header?.testHash));
   if (hashes.size !== 1 || hashes.has(undefined)) problems.push('Domain changed or a worker failed before loading its source.');
@@ -84,7 +94,15 @@ async function worker() { while (next < cohortIds.length) { const cohort = cohor
   if (references.length !== 12 || references.some(row => row.independentSeeds < 16 || row.familyCombinations !== 4)) problems.push('All four tiers require 16+ independent seeds, four family combinations and mirrored sides.');
   const nearBoundary = references.filter(row => row.independentSeeds < 32 && (Math.abs(row.firstStyleWinRate - .3) <= .04 || Math.abs(row.firstStyleWinRate - .7) <= .04)).map(row => ({ cohort: row.cohort, pair: row.pair, rate: row.firstStyleWinRate, requiredSeeds: 32 }));
   const outliers = results.flatMap(r => r.pairs || []).filter(row => !row.reference && (row.firstStyleWinRate < .25 || row.firstStyleWinRate > .75)).map(row => ({ cohort: row.cohort, pair: row.pair, rate: row.firstStyleWinRate, matches: row.matches }));
-  const report = { split, scope, diagnosticSeeds, completeBank: scope === 'all' && diagnosticSeeds === null, sourceHash: [...hashes][0], testHash: [...tests][0], referenceGames: games, overall, sideBias, nearBoundary, subgroupOutliers: outliers, problems: [...new Set(problems)], thresholdPass: problems.length === 0 && diagnosticSeeds === null, releaseGatePass: false, note: 'A complete training and separate held-out bank with the same frozen source, boundary expansions, and an investigated subgroup report are required before release.', partitions: results };
+  const weaponScores = [];
+  for (const result of results.filter(result => result.cohort.startsWith('arsenal-'))) {
+    const totals = {};
+    for (const row of result.pairs || []) for (const [weapon, score] of Object.entries(row.weaponScores || {})) {
+      const value = totals[weapon] ||= { wins: 0, matches: 0 }; value.wins += score.wins; value.matches += score.matches;
+    }
+    for (const [weapon, score] of Object.entries(totals)) weaponScores.push({ cohort: result.cohort, weapon, ...score, winRate: score.wins / score.matches });
+  }
+  const report = { split, scope, diagnosticSeeds, completeBank: scope === 'all' && diagnosticSeeds === null && results.length === cohortIds.length, sourceHash: [...hashes][0], testHash: [...tests][0], referenceGames: games, overall, sideBias, nearBoundary, subgroupOutliers: outliers, weaponScores, problems: [...new Set(problems)], thresholdPass: problems.length === 0 && diagnosticSeeds === null, releaseGatePass: false, note: 'A complete training and separate held-out bank with the same frozen source, boundary expansions, and an investigated subgroup report are required before release.', partitions: results };
   fs.writeFileSync(path.join(output, 'bank.json'), JSON.stringify(report, null, 2));
   console.log(JSON.stringify({ ...report, partitions: undefined }));
   process.exitCode = problems.length || nearBoundary.length ? 1 : 0;

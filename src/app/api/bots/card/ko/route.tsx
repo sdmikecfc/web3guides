@@ -1,34 +1,8 @@
 /**
- * BATTLE BOTS KNOCKOUT CARD, the fight's og:image (screens doc 4.3).
- *
- *   GET /api/bots/card/ko?f=<fightId>  ->  image/png 1200x630
- *
- * The money gradient, the WINNER as a full picture of the real robot (one
- * composited portrait from /api/bots/portrait, in all four of its own
- * colours with its face, its sticker, its marks and its hat), the loser
- * behind it, cracked and faded, KNOCKOUT in Baloo 2, both bot names with
- * their wallet names, the finisher line, the chain sentence, two hairline
- * chips and the replay URL. Never a dollar figure, never an address.
- * Sparring and an unknown id FAIL SOFT to a generic "Watch bots fight"
- * card (og scrapers must always get an image).
- *
- * Built exactly like src/app/api/s7/hq-card/route.tsx: next/og (Satori)
- * renders; every multi-child div carries display: flex; fonts are fetched
- * over HTTP (Aktiv from our own /public, Baloo 2 and Syne from Google
- * Fonts as WOFF, which Satori reads) and any failure falls back to what
- * loaded. The two robots are fetched as BYTES and handed to Satori as data
- * URIs, never as urls: a 404 inside Satori fails the whole render
- * mid-stream where a try/catch cannot help, and a fetch whose result we
- * can test is one round trip cheaper than the HEAD-then-GET this route used
- * to do per part. Reading the request URL keeps the route dynamic.
- *
- * ONE difference from hq-card: this route runs on the EDGE runtime. The
- * node build of next/og reads its fallback font at module top level through
- * `join(import.meta.url, ...)`, which a Windows dev box turns into an
- * invalid file URL, so every nodejs ImageResponse there answers 500 (Next
- * 14.2.3; hq-card included, 2026-09-03). The edge build bundles its fonts
- * and wasm as assets and renders on every box. The fight is read through
- * _server/fight-read.ts, the half of fights.ts with no node:crypto in it.
+ * Public knockout share image, 1200×630. Fonts and robot portraits are fetched
+ * from this game deployment only. Static Baloo2 instances retain the OFL licence
+ * beside the font files. Missing/private fights receive a generic game card;
+ * missing fonts use ImageResponse's bundled fallback.
  */
 import { ImageResponse } from "next/og";
 import { PORTRAIT_ASPECT, bodyCentreInSquare, portraitUrl } from "@/app/bots/_view/pieces";
@@ -51,62 +25,37 @@ const GOLD = "#f0b340";
 const WORDMARK = "MODEL KOMBAT";
 const BACKGROUND = "linear-gradient(135deg, #414735 0%, #222a22 52%, #141b17 100%)";
 
-const FONT_BODY = "Aktiv, sans-serif";
-const FONT_TOY = '"Baloo 2", Aktiv, sans-serif';
+const FONT_BODY = '"Baloo 2", sans-serif';
+const FONT_TOY = FONT_BODY;
 const FONT_DISPLAY = FONT_TOY;
-
-// ── fonts ───────────────────────────────────────────────────────────────────
 
 type FontSpec = { name: string; data: ArrayBuffer; weight: 400 | 700 | 800; style: "normal" };
 type Fonts = FontSpec[] | undefined;
 
+// ImageResponse cannot parse this font's variable fvar table. These static
+// instances come from the game's same OFL source; its licence lives beside them.
+const CARD_FONTS = [
+  { file: "Baloo2-Regular.ttf", weight: 400 },
+  { file: "Baloo2-Bold.ttf", weight: 700 },
+  { file: "Baloo2-ExtraBold.ttf", weight: 800 },
+] as const;
 const fontCache = new Map<string, Promise<ArrayBuffer | null>>();
 
-/** A Google Fonts face as WOFF (the css2 endpoint hands an old browser a
- * WOFF url, which Satori reads; WOFF2 it cannot). Cached per process. */
-function googleFont(family: string, weight: number): Promise<ArrayBuffer | null> {
-  const key = `${family}:${weight}`;
-  let p = fontCache.get(key);
-  if (!p) {
-    p = (async () => {
-      try {
-        const css = await fetch(`https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@${weight}`, {
-          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 6.1; rv:8.0) Gecko/20100101 Firefox/8.0" },
-        }).then((r) => (r.ok ? r.text() : ""));
-        const m = /url\((https:[^)]+\.(?:woff|ttf|otf))\)/.exec(css);
-        if (!m) return null;
-        const r = await fetch(m[1]);
-        return r.ok ? await r.arrayBuffer() : null;
-      } catch {
-        return null;
-      }
-    })();
-    fontCache.set(key, p);
-  }
-  return p;
-}
-
 async function loadFonts(origin: string): Promise<Fonts> {
-  const grab = async (url: string): Promise<ArrayBuffer | null> => {
-    try {
-      const r = await fetch(url);
-      return r.ok ? await r.arrayBuffer() : null;
-    } catch {
-      return null;
+  const loaded = await Promise.all(CARD_FONTS.map(async ({ file, weight }) => {
+    let pending = fontCache.get(file);
+    if (!pending) {
+      pending = fetch(new URL(`/bots-art/fonts/${file}`, origin))
+        .then(async response => response.ok ? response.arrayBuffer() : null)
+        .catch(() => null);
+      fontCache.set(file, pending);
     }
-  };
-  const [rg, bd, baloo, syne] = await Promise.all([
-    grab(origin + "/s4-art/fonts/AktivGrotesk_Rg.ttf"),
-    grab(origin + "/s4-art/fonts/AktivGrotesk_Bd.ttf"),
-    googleFont("Baloo 2", 800),
-    googleFont("Syne", 700),
-  ]);
-  const out: FontSpec[] = [];
-  if (rg) out.push({ name: "Aktiv", data: rg, weight: 400, style: "normal" });
-  if (bd) out.push({ name: "Aktiv", data: bd, weight: 700, style: "normal" });
-  if (baloo) out.push({ name: "Baloo 2", data: baloo, weight: 800, style: "normal" });
-  if (syne) out.push({ name: "Syne", data: syne, weight: 700, style: "normal" });
-  return out.length ? out : undefined; // system default (fine on Vercel)
+    const data = await pending;
+    if (!data) fontCache.delete(file); // A temporary miss must not poison the cache.
+    return data ? { name: "Baloo 2", data, weight, style: "normal" as const } : null;
+  }));
+  const fonts = loaded.filter((font): font is FontSpec => font !== null);
+  return fonts.length ? fonts : undefined;
 }
 
 // ── the robot: ONE compositor, fetched as a picture ─────────────────────────
@@ -338,11 +287,11 @@ function genericCard(fonts: Fonts, host: string) {
         <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center" }}>
           <div style={{ display: "flex", fontFamily: FONT_TOY, fontSize: 64, fontWeight: 800, color: CREAM, lineHeight: 1 }}>Watch robots fight.</div>
           <div style={{ display: "flex", fontFamily: FONT_DISPLAY, fontSize: 40, fontWeight: 700, marginTop: 18, lineHeight: 1.1 }}>{STRINGS.en.landing.headline}</div>
-          <div style={{ display: "flex", fontSize: 26, color: LORE, marginTop: 18 }}>{STRINGS.en.landing.sub}</div>
+          <div style={{ display: "flex", fontSize: 26, color: LORE, marginTop: 18 }}>Build your own robot. Find your favourite way to fight.</div>
         </div>
         <div style={{ display: "flex", gap: 14 }}>
           {chip("Five robots", LORE)}
-          {chip("Two fights a day", ACCENT)}
+          {chip("Build. Fight. Repeat.", ACCENT)}
           {chip("Watch every fight again", GOLD)}
         </div>
       </div>

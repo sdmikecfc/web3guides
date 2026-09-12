@@ -13,6 +13,8 @@ export const socketKindV6=(socket:SocketV6)=>socket.startsWith("arm")?"arms":soc
 export function partAtV6(raw:CombatBuild|undefined,socket:SocketV6):Part|undefined {return socket==="armL"||socket==="armR"?raw?.limbs?.[socket]??raw?.arms:socket==="legL"||socket==="legR"?raw?.limbs?.[socket]??raw?.legs:raw?.[socket];}
 function cardsOf(raw:CombatBuild):Partial<Record<SocketV6,CardV6>> {return Object.fromEntries(SOCKETS_V6.map(slot=>{const c=cardV6(partAtV6(raw,slot)?.id);return [slot,c?.slot===socketKindV6(slot)?c:undefined];}));}
 export function gpV6(raw:CombatBuild):number{return Object.values(cardsOf(raw)).reduce((total,card)=>total+(card?.gp??0),0);}
+/** Milliradians. Every accuracy point narrows the cone; current canonical totals span 0–24. */
+export function aimErrorV6(accuracy:number):number{return Math.round(105000/(1+Math.max(0,accuracy)*.015))/1000;}
 /** Same canonical aggregation is used for incomplete previews and complete simulation snapshots. */
 export function statsV6(raw:CombatBuild):StatsV6 {
   const cards=cardsOf(raw),tuple=(slot:SocketV6):Stats=>cards[slot]?.s??[0,0,0],mean=(a:Stats,b:Stats):Stats=>a.map((n,i)=>(n+b[i])/2) as Stats;
@@ -21,7 +23,7 @@ export function statsV6(raw:CombatBuild):StatsV6 {
   const armour=BODY_SOCKETS_V6.map(slot=>{const c=cards[slot];if(!c)return 0;return Math.round((slot==="torso"?150+c.gp*2+a.health*4:slot==="head"?40+c.gp:45+c.gp*1.35+c.s[1])*1.8);});
   const plating=BODY_SOCKETS_V6.map(slot=>{const p=tuple(slot),total=p.reduce((n,v)=>n+v,0)||1;return cards[slot]?clamp(body[0]/bodyTotal*.24+p[1]/total*.08,0,.35):0;});
   const attackPoints=arms.reduce((n,v)=>n+v,0)+weapon.reduce((n,v)=>n+v,0),power=(.72+.28*((cards.weapon?.gp??0)/20+((cards.armL?.gp??0)+(cards.armR?.gp??0))/24)/2)*(.84+.32*a.dmg/Math.max(1,attackPoints));
-  return {...a,gp,armour,plating,guard:8+a.block*2,movement:35+a.speed*1.5+legs[1]*.8,turnRate:75+Math.min(50,a.speed*3),aimError:Math.round(Math.min(105,140/(1+a.acc*.035))),evasion:Math.min(45,8+a.dodge*1.1+a.speed*.35),force:a.dmg+a.str*.4,power,attackRate:1+a.atkSpd*.014,heatCapacity:100,cooling:34/60};
+  return {...a,gp,armour,plating,guard:8+a.block*2,movement:35+a.speed*1.5+legs[1]*.8,turnRate:75+Math.min(50,a.speed*3),aimError:aimErrorV6(a.acc),evasion:Math.min(45,8+a.dodge*1.1+a.speed*.35),force:a.dmg+a.str*.4,power,attackRate:1+a.atkSpd*.014,heatCapacity:100,cooling:34/60};
 }
 function shiftedProxy(proxy:HitProxyV6,offset:Vec3):HitProxyV6 {return {...cloneV6(proxy),center:add(proxy.center,offset),...(proxy.a?{a:add(proxy.a,offset)}:{}),...(proxy.b?{b:add(proxy.b,offset)}:{})};}
 function collisionSnapshot(parts:Record<SocketV6,PartV6>,version:string):CollisionSnapshotV6 {
@@ -45,9 +47,9 @@ export function snapshotBuildV6(raw:CombatBuild,options:{collisionVersion?:strin
   const appearanceBuild:CombatBuild={head:compact("head"),torso:compact("torso"),weapon:compact("weapon"),limbs,arms:meanPart(limbs.armL,limbs.armR),legs:meanPart(limbs.legL,limbs.legR)};
   const body=parts.torso,collisionVersion=options.collisionVersion??CATALOGUE_COLLISION_VERSION_V6,collision=collisionSnapshot(parts,collisionVersion),definition:WeaponDefinitionV6=cloneV6(WEAPONS_V6[parts.weapon.weaponKind!]);definition.proxy=cloneV6(collision.weapon);definition.minimumRange*=parts.weapon.tier===1?.79:parts.weapon.tier===2?.9:parts.weapon.tier===4?1.06:1;
   
-  if(definition.id==="ap_rifle"&&parts.weapon.tier===1)definition.damage*=28/27;
-  if(definition.id==="sword"&&parts.weapon.tier<=2)definition.damage*=25/24;
-  if(definition.id==="hammer")definition.damage*=parts.weapon.tier<=2?29/32:parts.weapon.tier===4?33/32:1;
+  if(definition.id==="ap_rifle"&&parts.weapon.tier===1)definition.damage*=29.5/29*28/27;
+  if(definition.id==="sword")definition.damage*=parts.weapon.tier===1?25.5/24:parts.weapon.tier===2?25/24:parts.weapon.tier===3?26/24:1;
+  if(definition.id==="hammer")definition.damage*=[0,30.5,31,33,34][parts.weapon.tier]/32;
   if(parts.weapon.signature==="piledriver"){definition.damage*=1.40;definition.recovery+=16;definition.impulse+=80;}else if(parts.weapon.signature==="powered_twins"){definition.damage*=parts.weapon.tier===4?.91:.94;definition.recovery=Math.max(10,definition.recovery-5);}else if(parts.weapon.signature==="shoulder_battery"){definition.damage*=1.1;definition.recovery+=8;}
   const stats=statsV6(appearanceBuild);
   return deepFreeze({version:6,rulesVersion:"mk6-2",catalogVersion:CATALOG_VERSION_V6,assetVersion:ASSET_VERSION_V6,collisionVersion,appearanceBuild,parts,gp:stats.gp,style:body.style,tier:body.tier,stats,collision,capabilities:{special:specialInfoV6(body.style),tier3:body.tier>=3,weapon:definition.id,paired:definition.paired,mount:definition.mount,signature:parts.weapon.signature??null,weaponDefinition:definition}} as BuildV6);

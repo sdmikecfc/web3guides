@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {V6_CATALOG,FAMILIES_V6,GP_TIERS_V6,BUILD_PRICES_V6,SOCKETS_V6,cardV6,posedProxiesV6,presetV6,snapshotBuildV6,validBuildV6,statsV6,gpV6,cloneV6,hashV6,createFightV6,advanceFightV6,stepFightV6,acceptSpecialV6,resultV6,replayV6,runFightV6,applyControlV6,resolveImpactV6,movementV6,sweepBoxV6,sweepCapsuleV6,sweepRobotV6,actionPhaseV6,actionPathPhaseV6,muzzleV6,MAX_FRAMES_V6,footprintSupportV6,rotateY,normalize,scale,BODY_SOCKETS_V6,WEAPON_KINDS_V6,type SideV6,type StyleV6,type StateV6,type SweepContactV6,type Vec3} from '../src/lib/bots/v6';
+import {V6_CATALOG,FAMILIES_V6,GP_TIERS_V6,BUILD_PRICES_V6,SOCKETS_V6,cardV6,weaponCompatibilityV6,posedProxiesV6,presetV6,snapshotBuildV6,validBuildV6,statsV6,gpV6,cloneV6,hashV6,createFightV6,advanceFightV6,stepFightV6,acceptSpecialV6,resultV6,replayV6,runFightV6,applyControlV6,resolveImpactV6,movementV6,sweepBoxV6,sweepCapsuleV6,sweepRobotV6,actionPhaseV6,actionPathPhaseV6,muzzleV6,MAX_FRAMES_V6,footprintSupportV6,rotateY,normalize,scale,BODY_SOCKETS_V6,WEAPON_KINDS_V6,type SideV6,type StyleV6,type StateV6,type SweepContactV6,type Vec3} from '../src/lib/bots/v6';
 
 let groups=0;
 function check(name:string,fn:()=>void){fn();groups++;console.log(`PASS ${name}`);}
@@ -8,12 +8,19 @@ function contact(slot:typeof BODY_SOCKETS_V6[number]='torso'):SweepContactV6{ret
 function impact(s:StateV6,damage:number,options:Partial<Parameters<typeof resolveImpactV6>[1]>={}){return resolveImpactV6(s,{who:0,weapon:'ap_rifle',mount:'right',attackId:100,contact:contact(),damage,...options});}
 function ready(s:StateV6,who:SideV6=0,id='manual'){s.fighters[who].meter=100;assert.equal(acceptSpecialV6(s,{id,kind:'special',who,frame:s.frame}).accepted,true);}
 
-check('135 canonical cards, independent sockets, fixed GP/price budgets and signature restrictions',()=>{
-  assert.equal(V6_CATALOG.length,135);assert.equal(new Set(V6_CATALOG.map(c=>c.id)).size,135);
+check('134 canonical cards, independent sockets, fixed GP/price budgets and signature restrictions',()=>{
+  assert.equal(V6_CATALOG.length,134);assert.equal(new Set(V6_CATALOG.map(c=>c.id)).size,134);
   for(const tier of [1,2,3,4] as const)for(const family of FAMILIES_V6){const b=presetV6(family.style,tier,{family:family.id});assert.equal(b.gp,GP_TIERS_V6[tier-1]);assert.equal(SOCKETS_V6.reduce((n,s)=>n+b.parts[s].price,0),BUILD_PRICES_V6[tier-1]);assert(validBuildV6(b));}
   const base=presetV6('tank',3),mixed=cloneV6(base.appearanceBuild),part=presetV6('speed',1).appearanceBuild.limbs!.legL;mixed.limbs!.legL=part;const built=snapshotBuildV6(mixed);assert.equal(built.style,'tank');assert.equal(built.parts.legL.id,part.id);assert.equal(built.parts.legR.id,base.parts.legR.id);assert.equal(statsV6(mixed).gp,built.gp);assert.equal(gpV6(mixed),built.gp);
   const bad=cloneV6(base.appearanceBuild);bad.weapon=presetV6('speed',3,{signature:true}).appearanceBuild.weapon;assert.throws(()=>snapshotBuildV6(bad),/signature kit/);bad.weapon=base.appearanceBuild.weapon;bad.torso=presetV6('tank',1).appearanceBuild.torso;bad.weapon=presetV6('tank',3,{signature:true}).appearanceBuild.weapon;assert.throws(()=>snapshotBuildV6(bad),/signature kit/);
   const forged=cloneV6(base);forged.parts.torso.s[0]++;assert(!validBuildV6(forged));const forgedRaw=cloneV6(base.appearanceBuild);forgedRaw.head.s[0]++;assert.throws(()=>snapshotBuildV6(forgedRaw));const collision=cloneV6(base);collision.collision.weapon.muzzle[2]++;assert(!validBuildV6(collision));assert.equal(statsV6({} as never).gp,0);
+});
+
+check('all shoulder kits require a tier3+ Ranged body; removed tier2 and illegal saved assemblies reject',()=>{
+ assert.equal(cardV6('mk6.t2.weapon.shoulder_cannon'),undefined);assert.throws(()=>presetV6('ranged',2,{weapon:'shoulder_cannon'}),/not available/);
+ for(const tier of [3,4] as const)for(const signature of [false,true]){const good=presetV6('ranged',tier,{weapon:'shoulder_cannon',signature}),card=good.parts.weapon;assert.equal(card.style,'ranged');assert.equal(card.signatureStyle,'ranged');assert(validBuildV6(good));
+  for(const style of ['tank','speed','ranged'] as const)for(const bodyTier of [1,2,3,4] as const){const body=presetV6(style,bodyTier),allowed=style==='ranged'&&bodyTier>=3,raw=cloneV6(good.appearanceBuild);raw.torso=body.appearanceBuild.torso;assert.equal(weaponCompatibilityV6(card.id,body.parts.torso.id).compatible,allowed);if(allowed)assert(validBuildV6(snapshotBuildV6(raw)));else{assert.throws(()=>snapshotBuildV6(raw),/tier 3 or 4 Ranged body/);const saved=cloneV6(good);saved.appearanceBuild=raw;assert(!validBuildV6(saved));assert.throws(()=>createFightV6(1,saved,good),/saved build/);}}
+ }
 });
 
 check('swept boxes/capsules hit through a long tick; misses remain misses; targets move',()=>{

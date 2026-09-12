@@ -1,13 +1,17 @@
 import { modularBuild, type CombatBuild, type CombatSocket } from "@/lib/bots/combat-model";
-import { cardV6, presetV6, snapshotBuildV6, statsV6, weaponCompatibilityV6, type CardV6, type BuildV6 } from "@/lib/bots/v6";
+import { cardV6, presetV6, snapshotBuildV6, statsV6, validBuildV6, weaponCompatibilityV6, type CardV6, type BuildV6 } from "@/lib/bots/v6";
 import { fightRoomHref } from "@/lib/bots/fight-navigation";
 import type { Part } from "@/app/bots/_engine/parts";
-import type { SeasonDraft, SeasonStateResponse } from "./types";
+import type { SeasonBot, SeasonDraft, SeasonStateResponse } from "./types";
 
 export const BUILD_ORDER = ["torso", "head", "armL", "armR", "legL", "legR", "weapon"] as const;
 export const SOCKET_NAME: Record<CombatSocket, string> = { torso: "Body", head: "Head", armL: "Left arm", armR: "Right arm", legL: "Left leg", legR: "Right leg", weapon: "Weapon" };
 export const socketKind = (socket: CombatSocket) => socket.startsWith("arm") ? "arms" : socket.startsWith("leg") ? "legs" : socket;
 export const emptySeasonDraft = (): SeasonDraft => ({ revision: 0, name: "", parts: {}, defensePlan: "balanced" });
+const RETIRED_SEASON_WEAPON = "mk6.t2.weapon.shoulder_cannon";
+export function seasonDraftUnavailable(draft: SeasonDraft | null): string | null {
+  return draft?.parts.weapon === RETIRED_SEASON_WEAPON ? "Tier 2 shoulder cannon is no longer available. Choose another weapon; your other six parts stay. Choose a new weapon to save changes." : null;
+}
 export function seasonBuild(parts: SeasonDraft["parts"]): CombatBuild {
   const part = (socket: CombatSocket): Part => { const c = cardV6(parts[socket]); return c && c.slot === socketKind(socket) ? { id: c.id, s: [...c.s] } : { id: "", s: [0, 0, 0] }; };
   return modularBuild(part("head"), part("torso"), part("armL"), part("armR"), part("legL"), part("legR"), part("weapon"));
@@ -15,7 +19,8 @@ export function seasonBuild(parts: SeasonDraft["parts"]): CombatBuild {
 export function seasonDraftSummary(draft: SeasonDraft) {
   const cards = BUILD_ORDER.map(socket => { const card = cardV6(draft.parts[socket]); return card?.slot === socketKind(socket) ? card : undefined; });
   const count = cards.filter(Boolean).length, build = seasonBuild(draft.parts);
-  const compatibility = draft.parts.weapon ? weaponCompatibilityV6(draft.parts.weapon, draft.parts.torso) : { compatible: true, reason: null };
+  const unavailable = seasonDraftUnavailable(draft);
+  const compatibility = unavailable ? { compatible: false, reason: unavailable } : draft.parts.weapon ? weaponCompatibilityV6(draft.parts.weapon, draft.parts.torso) : { compatible: true, reason: null };
   return { build, cards, count, complete: count === 7 && compatibility.compatible, price: cards.reduce((sum, card) => sum + (card?.price ?? 0), 0), stats: statsV6(build), compatibility };
 }
 /** Missing choices only fill an invisible display rig; they never enter the editable draft or Finish payload. */
@@ -40,10 +45,17 @@ export function seasonComparison(draft: SeasonDraft, socket: CombatSocket, card:
 }
 export const STAT_NAME = { health: "Body strength", speed: "Speed", str: "Push power", dodge: "Dodging", dmg: "Hit power", block: "Guard", luck: "Critical hits", acc: "Aim", atkSpd: "Attack speed" } as const;
 export function seasonPreviewHref(card: CardV6) { return fightRoomHref(6, { part: card.id }); }
+/** Practice accepts only an unchanged current snapshot; earlier proofs stay archived as saved. */
+export function seasonCollectionPracticeHref(bot: Pick<SeasonBot, "name" | "build">, seed = 75): string | null {
+  if (!validBuildV6(bot.build) || !Number.isInteger(seed) || seed < 0 || seed > 4294967295) return null;
+  return `${fightRoomHref(6, { robot: JSON.stringify(bot.build.appearanceBuild), name: bot.name, collision: bot.build.collisionVersion, seed: String(seed) })}&collection=season`;
+}
 export function readSeasonDraft(raw: string | null): SeasonDraft | null {
   try { const value = raw ? JSON.parse(raw) : null; if (!value || typeof value.name !== "string" || value.name.length > 40 || !value.parts || typeof value.parts !== "object" || !["early", "balanced", "last-stand"].includes(value.defensePlan)) return null;
     const draft = emptySeasonDraft(); draft.name = value.name; draft.defensePlan = value.defensePlan;
     for (const socket of BUILD_ORDER) { const card = cardV6(value.parts[socket]); if (card?.slot === socketKind(socket)) draft.parts[socket] = card.id; }
+    // Preserve only this known retired prototype choice for an explicit replacement. It is not a purchasable card.
+    if (value.parts.weapon === RETIRED_SEASON_WEAPON) draft.parts.weapon = RETIRED_SEASON_WEAPON;
     return draft;
   } catch { return null; }
 }

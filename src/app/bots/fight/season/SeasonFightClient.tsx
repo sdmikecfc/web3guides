@@ -8,7 +8,7 @@ import { createFightV6, stepFightV6, acceptSpecialV6, presetV6, CATALOG_V6, FAMI
 import type { StateV6, StyleV6, SpecialCommandV6, BuildV6, EventV6, TierV6 } from "@/lib/bots/v6/types";
 import { seasonPracticeBuild, type SeasonPracticeQuery } from "@/lib/bots/season/practice";
 import type { SeasonMatch, SeasonMatchResponse } from "@/lib/bots/season/types";
-import { acceptsSeasonSnapshot, advanceSeasonPicture, seasonMoment, seasonPayoutText } from "@/lib/bots/season/live-playback";
+import { acceptsSeasonSnapshot, advanceSeasonPicture, seasonMoment, seasonPayoutText, seasonSessionPlaybackAvailable, SEASON_PLAYBACK_UNAVAILABLE } from "@/lib/bots/season/live-playback";
 import css from "./season-fight.module.css";
 
 export type SeasonFightQuery = SeasonPracticeQuery;
@@ -54,6 +54,7 @@ export default function SeasonFightClient({ query, embedded = false, onClose }: 
   const practiceError = query.session ? "" : practiceChoice.error;
   const chooseExample = (next: SeasonPracticeQuery) => { controls.current.running = false; setRunning(false); setReplaying(false); setPracticeQuery(next); };
   const currentLive = live?.id === query.session ? live : null;
+  const liveCanPlay = useMemo(() => !!currentLive && seasonSessionPlaybackAvailable(currentLive), [currentLive]);
   const builds = currentLive?.builds ?? practice, liveMode = !!query.session;
   const sceneKey = liveMode ? currentLive?.id ?? `waiting:${query.session}` : "practice";
   const buildKey = JSON.stringify(builds.map(b => [b.appearanceBuild, b.rulesVersion, b.assetVersion, b.collisionVersion]));
@@ -63,6 +64,11 @@ export default function SeasonFightClient({ query, embedded = false, onClose }: 
     const old = authority.current;
     if (!activeSession.current || !acceptsSeasonSnapshot(old, session, activeSession.current)) return false;
     authority.current = session; setLive(session);
+    if (!seasonSessionPlaybackAvailable(session)) {
+      state.current = null; initial.current = null; controls.current.running = false; setRunning(false);
+      setHud(session.status === "complete" ? copy(session.state) : null); setNotice("");
+      return true;
+    }
     if (!controls.current.replaying) {
       if (!state.current) state.current = copy(session.state);
       setHud(copy(session.state));
@@ -106,6 +112,7 @@ export default function SeasonFightClient({ query, embedded = false, onClose }: 
     if (!canvas.current || !host.current || liveMode && !currentLive) return;
     let dead = false, raf = 0, last = 0, accumulator = 0, since = 0, count = 0, localScene: FightSceneV6 | undefined;
     setReady(false); setError("");
+    if (liveMode && !liveCanPlay) { setError(SEASON_PLAYBACK_UNAVAILABLE); state.current = null; initial.current = null; controls.current.running = false; setRunning(false); return; }
     if (practiceError) { setError(practiceError); setHud(null); controls.current.running = false; setRunning(false); return; }
     let fresh: StateV6;
     try {
@@ -158,7 +165,7 @@ export default function SeasonFightClient({ query, embedded = false, onClose }: 
     return () => { dead = true; cancelAnimationFrame(raf); observer.disconnect(); localScene?.dispose(); if (scene.current === localScene) scene.current = null; audio.current?.stop(); };
     // Build identity, not each polled state, owns the renderer lifecycle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildKey, sceneKey, seed, liveMode, practiceError]);
+  }, [buildKey, sceneKey, seed, liveMode, practiceError, liveCanPlay]);
   const special = useCallback(async () => {
     if (!scene.current || !initial.current || requestLatch.current || controls.current.replaying || !controls.current.running || !state.current || state.current.done) return;
     audio.current?.unlock();
@@ -180,7 +187,7 @@ export default function SeasonFightClient({ query, embedded = false, onClose }: 
   useEffect(() => { const key = (event: KeyboardEvent) => { if (event.code !== "Space" || event.repeat || event.target instanceof Element && event.target.closest("input,select,textarea,button,dialog,a,[contenteditable=true]")) return; event.preventDefault(); void special(); }; window.addEventListener("keydown", key); return () => window.removeEventListener("keydown", key); }, [special]);
   function restart(replay = false, at = 0) {
     if (!initial.current) return;
-    if (liveMode && (!replay || authority.current?.status !== "complete")) return;
+    if (liveMode && (!replay || authority.current?.status !== "complete" || !liveCanPlay || !seasonSessionPlaybackAvailable(authority.current))) return;
     if (liveMode && authority.current) replayInputs.current = copy(authority.current.state.commands);
     else if (!replaying && state.current) replayInputs.current = copy(state.current.commands);
     const s = copy(initial.current); replayCursor.current = 0;
@@ -190,7 +197,7 @@ export default function SeasonFightClient({ query, embedded = false, onClose }: 
   }
   const viewer = currentLive?.viewerSide ?? 0, describe = (event: EventV6) => seasonMoment(event, viewer);
   const meter = Math.min(100, hud?.fighters[viewer].meter ?? 0), finished = !!hud?.done, moments = hud?.events.filter(e => describe(e)).slice(-5) ?? [];
-  const canReplay = !liveMode || currentLive?.status === "complete";
+  const canReplay = !liveMode || currentLive?.status === "complete" && liveCanPlay;
   return <FightRoomFrame embedded={embedded} onClose={onClose} title={liveMode ? "Season fight" : "New robot practice"}
     tools={<label className={css.option}><input type="checkbox" checked={cinematic && !reduced} disabled={reduced} onChange={e => setCinematic(e.target.checked)} /> {reduced ? "Steady camera · reduced motion" : "Moving camera"}</label>}
     arena={<section className={css.arena} ref={host}><canvas ref={canvas} aria-label="Robot fight arena" />

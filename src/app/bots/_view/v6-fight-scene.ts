@@ -24,7 +24,16 @@ export async function createFightSceneV6(canvas: HTMLCanvasElement, builds: [Bui
     const failure = loaded.find(r => r.status === "rejected") as PromiseRejectedResult | undefined;
     if (failure) throw failure.reason;
     stage = await createLabSet(scene, 6.75, true); toys.forEach(t => scene.add(t.root));
-  } catch (error) { toys.forEach(t => t.dispose()); environment.dispose(); renderer.dispose(); throw error; }
+  } catch (error) { toys.forEach(t => t.dispose()); stage?.dispose(); releaseRenderer(); throw error; }
+  function releaseRenderer() {
+    key.shadow.dispose();
+    scene.background = null; scene.environment = null; scene.clear();
+    environment.dispose(); renderer.dispose();
+    // A connected canvas can be reused by the queued React effect. Losing that
+    // context would break its next scene. A detached canvas has no next owner;
+    // release Three's internal fallback textures/programs with its context.
+    if (!canvas.isConnected) renderer.forceContextLoss();
+  }
   const g = new THREE.IcosahedronGeometry(.045, 0), mat = new THREE.MeshBasicMaterial({ color: 0xffd9a4 });
   const shots = new THREE.InstancedMesh(g, mat, 160); shots.frustumCulled = false; scene.add(shots);
   const flashG = new THREE.IcosahedronGeometry(.1, 0), flashM = new THREE.MeshBasicMaterial({ color: 0xffdba7, transparent: true });
@@ -43,7 +52,7 @@ export async function createFightSceneV6(canvas: HTMLCanvasElement, builds: [Bui
   const broken = [new Set<string>(), new Set<string>()], debris: { object: THREE.Object3D; tick: number; position: THREE.Vector3; quaternion: THREE.Quaternion; side: number }[] = [];
   let cursor = 0, width = 1000, height = 650, frame = -1, first = true, drawMs = 0, disposed = false, lastTime = 0, cameraAngle = .35;
   function clearDebris() { debris.forEach(d => d.object.removeFromParent()); debris.length = 0; broken.forEach(s => s.clear()); }
-  function reset() { cursor = 0; frame = -1; effects.length = 0; jets.clear(); clearDebris(); toys.forEach(t => t.reset()); cameraAngle = .35; first = true; }
+  function reset() { if (disposed) return; cursor = 0; frame = -1; effects.length = 0; jets.clear(); clearDebris(); toys.forEach(t => t.reset()); cameraAngle = .35; first = true; }
   return {
     render(state: StateV6, wallTime: number, cinematic: boolean, reduced: boolean) {
       if (disposed) return;
@@ -114,10 +123,20 @@ export async function createFightSceneV6(canvas: HTMLCanvasElement, builds: [Bui
       const goal = aim.clone().addScaledVector(backward, distance + .35); camera.position.lerp(goal, first ? 1 : 1 - Math.exp(-delta * 6)); camera.lookAt(aim); first = false;
       renderer.render(scene, camera); drawMs = performance.now() - begin;
     },
-    resize(w: number, h: number, dpr: number) { width = Math.max(1, w); height = Math.max(1, h); camera.aspect = width / height; camera.updateProjectionMatrix(); renderer.setPixelRatio(Math.min(1.5, dpr)); renderer.setSize(width, height, false); first = true; },
+    resize(w: number, h: number, dpr: number) { if (disposed) return; width = Math.max(1, w); height = Math.max(1, h); camera.aspect = width / height; camera.updateProjectionMatrix(); renderer.setPixelRatio(Math.min(1.5, dpr)); renderer.setSize(width, height, false); first = true; },
     reset,
     stats() { return { dents: toys.reduce((n, t) => n + t.dents, 0), scorches: toys.reduce((n, t) => n + t.scorches, 0), vertices: toys.reduce((n, t) => n + t.changedVertices, 0), gripError: Math.max(...toys.map(t => t.gripError)), drawCalls: renderer.info.render.calls, triangles: renderer.info.render.triangles, drawMs, crowd: stage!.crowdState().playing }; },
-    dispose() { disposed = true; jets.clear(); clearDebris(); toys.forEach(t => t.dispose()); stage!.dispose(); [g, flashG, flameG, shieldG, fieldG].forEach(x => x.dispose()); [mat, flashM, flameM, shieldM, fieldM].forEach(x => x.dispose()); environment.dispose(); renderer.dispose(); },
+    dispose() {
+      if (disposed) return; disposed = true;
+      effects.length = 0; jets.clear(); clearDebris();
+      // Instance attributes belong to the mesh, not its BufferGeometry. This
+      // also covers this scene's stage bulbs/sockets without changing the lab.
+      scene.traverse(object => { if (object instanceof THREE.InstancedMesh) object.dispose(); });
+      toys.forEach(t => t.dispose()); stage!.dispose();
+      [g, flashG, flameG, shieldG, fieldG].forEach(x => x.dispose());
+      [mat, flashM, flameM, shieldM, fieldM].forEach(x => x.dispose());
+      releaseRenderer();
+    },
   };
 }
 export type FightSceneV6 = Awaited<ReturnType<typeof createFightSceneV6>>;
