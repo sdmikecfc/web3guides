@@ -13,7 +13,7 @@ export const socketKindV6=(socket:SocketV6)=>socket.startsWith("arm")?"arms":soc
 export function partAtV6(raw:CombatBuild|undefined,socket:SocketV6):Part|undefined {return socket==="armL"||socket==="armR"?raw?.limbs?.[socket]??raw?.arms:socket==="legL"||socket==="legR"?raw?.limbs?.[socket]??raw?.legs:raw?.[socket];}
 function cardsOf(raw:CombatBuild):Partial<Record<SocketV6,CardV6>> {return Object.fromEntries(SOCKETS_V6.map(slot=>{const c=cardV6(partAtV6(raw,slot)?.id);return [slot,c?.slot===socketKindV6(slot)?c:undefined];}));}
 export function gpV6(raw:CombatBuild):number{return Object.values(cardsOf(raw)).reduce((total,card)=>total+(card?.gp??0),0);}
-/** Milliradians. Every accuracy point narrows the cone; current canonical totals span 0–24. */
+/** Milliradians. Every accuracy point narrows the cone; current canonical totals span 0 to 24. */
 export function aimErrorV6(accuracy:number):number{return Math.round(105000/(1+Math.max(0,accuracy)*.015))/1000;}
 /** Same canonical aggregation is used for incomplete previews and complete simulation snapshots. */
 export function statsV6(raw:CombatBuild):StatsV6 {
@@ -50,7 +50,7 @@ export function snapshotBuildV6(raw:CombatBuild,options:{collisionVersion?:strin
   if(definition.id==="ap_rifle"&&parts.weapon.tier===1)definition.damage*=29.5/29*28/27;
   if(definition.id==="sword")definition.damage*=parts.weapon.tier===1?25.5/24:parts.weapon.tier===2?25/24:parts.weapon.tier===3?26/24:1;
   if(definition.id==="hammer")definition.damage*=[0,30.5,31,33,34][parts.weapon.tier]/32;
-  if(parts.weapon.signature==="piledriver"){definition.damage*=1.40;definition.recovery+=16;definition.impulse+=80;}else if(parts.weapon.signature==="powered_twins"){definition.damage*=parts.weapon.tier===4?.91:.94;definition.recovery=Math.max(10,definition.recovery-5);}else if(parts.weapon.signature==="shoulder_battery"){definition.damage*=1.1;definition.recovery+=8;}
+  if(parts.weapon.signature==="piledriver"){definition.damage*=1.40;definition.recovery+=16;definition.impulse+=80;}else if(parts.weapon.signature==="powered_twins"){definition.damage=25*(parts.weapon.tier===4?.91:.94);definition.windup=17;definition.active=10;definition.recovery=18;}else if(parts.weapon.signature==="shoulder_battery"){definition.damage=47*1.1;definition.recovery=86;}
   const stats=statsV6(appearanceBuild);
   return deepFreeze({version:6,rulesVersion:"mk6-2",catalogVersion:CATALOG_VERSION_V6,assetVersion:ASSET_VERSION_V6,collisionVersion,appearanceBuild,parts,gp:stats.gp,style:body.style,tier:body.tier,stats,collision,capabilities:{special:specialInfoV6(body.style),tier3:body.tier>=3,weapon:definition.id,paired:definition.paired,mount:definition.mount,signature:parts.weapon.signature??null,weaponDefinition:definition}} as BuildV6);
 }

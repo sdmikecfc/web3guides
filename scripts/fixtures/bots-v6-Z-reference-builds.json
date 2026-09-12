@@ -1,0 +1,24 @@
+{
+  "source": "Z frozen reference definitions",
+  "sourceSha256": "89c634cad01ec5d0d43dd87c50da4cb931d8a2feab972926ae512e89f344ec35",
+  "hashes": {
+    "tank:1:ordinary": "0bf519e2",
+    "tank:2:ordinary": "f8b05540",
+    "tank:3:ordinary": "dd16e54a",
+    "tank:3:signature": "8b72f622",
+    "tank:4:ordinary": "e45ee5c2",
+    "tank:4:signature": "84574a2c",
+    "speed:1:ordinary": "bc7897ef",
+    "speed:2:ordinary": "0cf9b726",
+    "speed:3:ordinary": "f859307b",
+    "speed:3:signature": "06893540",
+    "speed:4:ordinary": "0e387e01",
+    "speed:4:signature": "e8817686",
+    "ranged:1:ordinary": "8d649f8f",
+    "ranged:2:ordinary": "f9ca17e6",
+    "ranged:3:ordinary": "74f03262",
+    "ranged:3:signature": "eb54b8f4",
+    "ranged:4:ordinary": "2e320b9f",
+    "ranged:4:signature": "4d722eab"
+  }
+}

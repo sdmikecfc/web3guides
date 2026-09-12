@@ -42,7 +42,7 @@ export interface ActionV6 {
   special?:"charge"|"flank"|"burst";interrupted?:boolean;slowed?:boolean;burstBudget:number;critical:boolean;emissions:number;pathActive:[number,number];
 }
 export interface SpecialV6 {style:StyleV6;started:number;until:number;shieldLeft:number;finisherUsed:boolean;burstBudget:number}
-export interface BurnV6 {by:SideV6;until:number;nextTick:number;damage:number;slot:BodySocketV6;attackId:number}
+export interface BurnV6 {by:SideV6;weapon:AttackKindV6;until:number;nextTick:number;damage:number;slot:BodySocketV6;attackId:number}
 export interface FighterV6 {
   random:number;
   x:number;z:number;yaw:number;moveX:number;moveZ:number;gait:number;arenaLimit:number;armour:number[];guard:number;guardPose:number;guardRecoverAt:number;heat:number;overheated:boolean;

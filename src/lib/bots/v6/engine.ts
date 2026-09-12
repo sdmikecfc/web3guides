@@ -46,7 +46,7 @@ export function resolveImpactV6(s:StateV6,impact:ImpactV6):number {
   amount=rounded(Math.min(b.armour[index],Math.max(0,amount)));b.armour[index]=rounded(b.armour[index]-amount);a.dealt=rounded(a.dealt+amount);
   if(index===1&&!b.special&&amount>0){const gain=Math.min(40-b.damageMeter,amount/s.stats[target].armour[1]*100);b.damageMeter=rounded(b.damageMeter+gain);b.meter=Math.min(100,rounded(b.meter+gain));}
   emit(s,impact.burnTick?"burn":absorbed>0?"block":"hit",who,{target,attackId:impact.attackId,weapon:impact.weapon,mount:impact.mount,slot:impact.contact.slot,damage:amount,absorbed:rounded(absorbed),platingStopped:rounded(stopped),point:impact.contact.localPoint,normal:impact.contact.localNormal,worldPoint:impact.contact.point,worldNormal:impact.contact.normal,critical:impact.critical});
-  if(amount>0&&absorbed===0&&!impact.burnTick){if(impact.burn){const prior=b.burn;b.burn={by:who,until:s.frame+150,nextTick:prior&&prior.until>s.frame?prior.nextTick:s.frame+30,damage:Math.max(impact.burn,prior&&prior.until>s.frame?prior.damage:0),slot:impact.contact.slot,attackId:impact.attackId};}
+  if(amount>0&&absorbed===0&&!impact.burnTick){if(impact.burn){const prior=b.burn;b.burn={by:who,weapon:impact.weapon,until:s.frame+150,nextTick:prior&&prior.until>s.frame?prior.nextTick:s.frame+30,damage:Math.max(impact.burn,prior&&prior.until>s.frame?prior.damage:0),slot:impact.contact.slot,attackId:impact.attackId};}
     if(impact.shock){b.shock=Math.min(100,b.shock+impact.shock);b.shockDecayAt=s.frame+90;emit(s,"shock",who,{attackId:impact.attackId,slot:impact.contact.slot});if(b.shock>=100){applyControlV6(s,target,"stun",who);b.shock=0;}}
     if(impact.impulse){const n=normalize([b.x-a.x,0,b.z-a.z]),force=impact.impulse*(1+s.stats[who].str*.015)/(1+s.stats[target].str*.07);b.pushX=Math.round(n[0]*force/8);b.pushZ=Math.round(n[2]*force/8);b.pushUntil=s.frame+8;}
     if(impact.knockdown)applyControlV6(s,target,"knockdown",who);
@@ -220,7 +220,7 @@ function statuses(s:StateV6,who:SideV6){const f=s.fighters[who];
   if(!controlledV6(s,who)&&s.frame>=f.guardRecoverAt)f.guard=Math.min(s.stats[who].guard,rounded(f.guard+.14));
   f.guardPose=rounded(clamp(f.guardPose+(guardingV6(s,who)?.125:-.125),0,1));
   if(s.frame>=f.shockDecayAt){f.shock=Math.max(0,f.shock-12);f.shockDecayAt=s.frame+60;}
-  if(f.burn){const burn=f.burn;if(s.frame>=burn.until||f.armour[BODY_SOCKETS_V6.indexOf(burn.slot)]<=0)f.burn=null;else if(s.frame>=burn.nextTick){burn.nextTick+=30;resolveImpactV6(s,{who:burn.by,weapon:"flamethrower",mount:"right",attackId:burn.attackId,contact:contactFromCenter(s,burn.by,burn.slot),damage:burn.damage,burnTick:true});}}
+  if(f.burn){const burn=f.burn;if(s.frame>=burn.until||f.armour[BODY_SOCKETS_V6.indexOf(burn.slot)]<=0)f.burn=null;else if(s.frame>=burn.nextTick){burn.nextTick+=30;resolveImpactV6(s,{who:burn.by,weapon:burn.weapon,mount:"right",attackId:burn.attackId,contact:contactFromCenter(s,burn.by,burn.slot),damage:burn.damage,burnTick:true});}}
 }
 function fire(s:StateV6,who:SideV6,a:ActionV6,overrideMount?:MountV6){
   const f=s.fighters[who],target=s.fighters[other(who)],mount=overrideMount??a.mount,w=definition(s,who,a.kind),origin=muzzleV6(s,who,a.kind,mount),d=Math.hypot(target.x-f.x,target.z-f.z);
