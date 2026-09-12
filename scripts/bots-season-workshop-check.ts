@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { cardV6, presetV6, snapshotBuildV6, statsV6 } from "../src/lib/bots/v6";
-import { BUILD_ORDER, collectionBuildQuote, emptySeasonDraft, readSeasonDraft, seasonComparison, seasonDraftSummary, seasonHeroStill, trySeasonPart } from "../src/lib/bots/season/workshop";
+import { CATALOG_V6, FAMILIES_V6, cardV6, presetV6, snapshotBuildV6, statsV6 } from "../src/lib/bots/v6";
+import { seasonPracticeBuild } from "../src/lib/bots/season/practice";
+import { BUILD_ORDER, collectionBuildQuote, emptySeasonDraft, readSeasonDraft, seasonComparison, seasonDisplayBuild, seasonDraftSummary, seasonHeroStill, trySeasonPart } from "../src/lib/bots/season/workshop";
 import { clearFightQuery, fightRoomHref } from "../src/lib/bots/fight-navigation";
 import type { SeasonDraft } from "../src/lib/bots/season/types";
 
@@ -38,6 +39,13 @@ assert.equal(partial.revision, 0); assert.equal("coins" in partial, false); asse
 assert.equal(readSeasonDraft('{"name":"x","parts":{},"defensePlan":"cheat"}'), null);
 assert.equal(seasonDraftSummary(emptySeasonDraft()).count, 0);
 pass("Browser drafts accept only canonical slot choices, never balances, old catalogue IDs or server revisions");
+const partialBefore = JSON.stringify(partial), displayed = seasonDisplayBuild(partial)!;
+assert.deepEqual(displayed.visibleSlots, ["torso", "armL"]); assert.equal(displayed.build.parts.armL.id, partial.parts.armL);
+assert.equal(displayed.build.parts.torso.id, partial.parts.torso); assert.equal(JSON.stringify(partial), partialBefore);
+assert.equal(seasonDisplayBuild(emptySeasonDraft()), null);
+const incompatibleBefore = JSON.stringify(incompatible), blockedDisplay = seasonDisplayBuild(incompatible)!;
+assert.equal(blockedDisplay.visibleSlots.includes("weapon"), false); assert(blockedDisplay.warning); assert.equal(JSON.stringify(incompatible), incompatibleBefore);
+pass("Partial previews show only selected sockets and never save invisible fillers or replace an incompatible chosen weapon");
 
 const archivedDraft = asDraft("tank", 1), freshQuote = collectionBuildQuote(archivedDraft, []);
 assert.equal(freshQuote.coins, 200); assert.equal(freshQuote.missing.length, 5);
@@ -60,4 +68,23 @@ assert.equal(query.get("robot"), raw); assert.equal(query.get("name"), name); as
 query.set("collection", "classic"); query.set("replay", "saved"); clearFightQuery(query);
 assert.equal(query.get("collection"), "classic"); for (const key of ["combat", "robot", "name", "session", "replay"]) assert.equal(query.has(key), false);
 pass("Fight links preserve exact identity and room navigation clears fight state without clearing collection choice");
+
+for (const card of CATALOG_V6) {
+  const preview = seasonPracticeBuild({ part: card.id }).build;
+  const slot = card.slot === "arms" ? "armL" : card.slot === "legs" ? "legL" : card.slot;
+  assert.equal(preview.parts[slot].id, card.id, `part preview substitutes ${card.id}`);
+  assert.equal(preview.tier, card.tier); assert.deepEqual(preview, snapshotBuildV6(preview.appearanceBuild));
+}
+for (const family of FAMILIES_V6) for (const tier of [1, 2, 3, 4]) {
+  const preview = seasonPracticeBuild({ family: family.id, tier: String(tier) }).build;
+  assert.equal(preview.parts.torso.family, family.id); assert.equal(preview.tier, tier);
+}
+const exact = seasonPracticeBuild({ robot: JSON.stringify(seasonDraftSummary(weapon).build), name: "My exact mixed robot" });
+assert.equal(exact.name, "My exact mixed robot"); assert.equal(exact.linked, true);
+for (const socket of BUILD_ORDER) assert.equal(exact.build.parts[socket].id, weapon.parts[socket]);
+const archivedHero = presetV6("tank", 3, { signature: true, collisionVersion: "mk6-collision-hero-1" });
+assert.deepEqual(seasonPracticeBuild({ robot: JSON.stringify(archivedHero.appearanceBuild), collision: archivedHero.collisionVersion }).build, archivedHero);
+pass("All 135 item links and all 24 family/tier examples preserve their actual canonical model; exact mixed links preserve every socket and name");
+for (const query of [{ robot: "{" }, { robot: "{}" }, { part: "not-real" }, { family: "not-real" }, { tier: "5" }, { tier: "2", weapon: "not-real" }, { style: "speed", tier: "3", weapon: "piledriver" }, { robot: "x".repeat(16001) }]) assert.throws(() => seasonPracticeBuild(query));
+pass("Broken robot, part, tier, family and incompatible weapon links fail clearly without substituting a preset");
 console.log(`${checks} season workshop checks passed.`);

@@ -4,20 +4,19 @@ import FightRoomFrame from "../../_game/FightRoomFrame";
 import { createFightSceneV6, type FightSceneV6 } from "../../_view/v6-fight-scene";
 import { createBotsSfx, savedBotsSound, type BotsSfx } from "../../_view/sfx";
 import { authHeaders, readBotsSession } from "../../battles/session";
-import { createFightV6, stepFightV6, acceptSpecialV6, presetV6 } from "@/lib/bots/v6";
-import { HERO_COLLISION_VERSION_V6 } from "@/lib/bots/v6/hero-collision";
-import type { StateV6, StyleV6, SpecialCommandV6, BuildV6, EventV6 } from "@/lib/bots/v6/types";
+import { createFightV6, stepFightV6, acceptSpecialV6, presetV6, CATALOG_V6, FAMILIES_V6, weaponCompatibilityV6 } from "@/lib/bots/v6";
+import type { StateV6, StyleV6, SpecialCommandV6, BuildV6, EventV6, TierV6 } from "@/lib/bots/v6/types";
+import { seasonPracticeBuild, type SeasonPracticeQuery } from "@/lib/bots/season/practice";
 import type { SeasonMatch, SeasonMatchResponse } from "@/lib/bots/season/types";
 import { acceptsSeasonSnapshot, advanceSeasonPicture, seasonMoment, seasonPayoutText } from "@/lib/bots/season/live-playback";
 import css from "./season-fight.module.css";
 
-export interface SeasonFightQuery { session?: string; style?: string; rival?: string; seed?: string; tier?: string; weapon?: string }
+export type SeasonFightQuery = SeasonPracticeQuery;
 const STYLES: StyleV6[] = ["tank", "speed", "ranged"];
 const LABEL = { tank: "Tank", speed: "Speed", ranged: "Ranged" };
 const NAMES = { tank: "Boiler knight", speed: "Roller daredevil", ranged: "Owl-eyed ranger" };
 const uid = () => crypto.randomUUID();
 const copy = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
-const hero = (style: StyleV6) => presetV6(style, 3, { signature: true, collisionVersion: HERO_COLLISION_VERSION_V6 });
 const inputKey = (id: string) => `bots:season:special:${id}`;
 function savedInput(id: string) { try { return sessionStorage.getItem(inputKey(id)); } catch { return null; } }
 function saveInput(id: string, input: string | null) { try { if (input) sessionStorage.setItem(inputKey(id), input); else sessionStorage.removeItem(inputKey(id)); } catch { /* In-memory retries still use the same ID when storage is unavailable. */ } }
@@ -33,9 +32,9 @@ function status(s: StateV6, side: 0 | 1) {
   return f.action ? f.action.released ? "Recovering" : "Preparing attack" : "Finding an opening";
 }
 export default function SeasonFightClient({ query, embedded = false, onClose }: { query: SeasonFightQuery; embedded?: boolean; onClose?: () => void }) {
-  const [style, setStyle] = useState<StyleV6>(STYLES.includes(query.style as StyleV6) ? query.style as StyleV6 : "tank");
+  const [practiceQuery, setPracticeQuery] = useState<SeasonPracticeQuery>(() => ({ ...query, session: undefined }));
   const [rival, setRival] = useState<StyleV6>(STYLES.includes(query.rival as StyleV6) ? query.rival as StyleV6 : "ranged");
-  const [seed, setSeed] = useState((Number(query.seed) || 75) >>> 0), [running, setRunning] = useState(false), [ready, setReady] = useState(false);
+  const [seed, setSeed] = useState(query.seed !== undefined && Number.isInteger(Number(query.seed)) && Number(query.seed) >= 0 && Number(query.seed) <= 4294967295 ? Number(query.seed) : 75), [running, setRunning] = useState(false), [ready, setReady] = useState(false);
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [hud, setHud] = useState<StateV6 | null>(null), [live, setLive] = useState<SeasonMatch | null>(null);
   const [pending, setPending] = useState(false), [replaying, setReplaying] = useState(false), [reduced, setReduced] = useState(false), [cinematic, setCinematic] = useState(true), [sound, setSound] = useState(false);
   const [stats, setStats] = useState({ fps: 0, dents: 0, scorches: 0, vertices: 0, gripError: 0, drawCalls: 0, triangles: 0, drawMs: 0, crowd: false });
@@ -46,11 +45,18 @@ export default function SeasonFightClient({ query, embedded = false, onClose }: 
   activeSession.current = query.session;
   const controls = useRef({ running, replaying, cinematic, reduced }), soundCursor = useRef(0), initial = useRef<StateV6 | null>(null);
   controls.current = { running, replaying, cinematic, reduced };
-  const practice = useMemo(() => [hero(style), hero(rival)] as [BuildV6, BuildV6], [style, rival]);
+  const practiceChoice = useMemo(() => {
+    try { return { ...seasonPracticeBuild(practiceQuery), error: "" }; }
+    catch (error) { return { build: presetV6("tank", 1), name: "Robot link unavailable", linked: true, error: error instanceof Error ? error.message : "Open this robot from your garage again." }; }
+  }, [practiceQuery]);
+  const style = practiceChoice.build.style, tier = practiceChoice.build.tier;
+  const practice = useMemo(() => [practiceChoice.build, presetV6(rival, tier, { signature: !!practiceChoice.build.parts.weapon.signature && tier >= 3 })] as [BuildV6, BuildV6], [practiceChoice.build, rival, tier]);
+  const practiceError = query.session ? "" : practiceChoice.error;
+  const chooseExample = (next: SeasonPracticeQuery) => { controls.current.running = false; setRunning(false); setReplaying(false); setPracticeQuery(next); };
   const currentLive = live?.id === query.session ? live : null;
   const builds = currentLive?.builds ?? practice, liveMode = !!query.session;
   const sceneKey = liveMode ? currentLive?.id ?? `waiting:${query.session}` : "practice";
-  const buildKey = JSON.stringify(builds.map(b => b.appearanceBuild));
+  const buildKey = JSON.stringify(builds.map(b => [b.appearanceBuild, b.rulesVersion, b.assetVersion, b.collisionVersion]));
   useEffect(() => { const media = matchMedia("(prefers-reduced-motion: reduce)"); const update = () => setReduced(media.matches); update(); media.addEventListener("change", update); setSound(savedBotsSound()); audio.current = createBotsSfx(savedBotsSound()); return () => { media.removeEventListener("change", update); audio.current?.dispose(); }; }, []);
   useEffect(() => audio.current?.setMuted(!sound), [sound]);
   const receive = useCallback((session: SeasonMatch) => {
@@ -100,6 +106,7 @@ export default function SeasonFightClient({ query, embedded = false, onClose }: 
     if (!canvas.current || !host.current || liveMode && !currentLive) return;
     let dead = false, raf = 0, last = 0, accumulator = 0, since = 0, count = 0, localScene: FightSceneV6 | undefined;
     setReady(false); setError("");
+    if (practiceError) { setError(practiceError); setHud(null); controls.current.running = false; setRunning(false); return; }
     let fresh: StateV6;
     try {
       fresh = liveMode && authority.current ? copy(authority.current.state) : createFightV6(seed, builds[0], builds[1]);
@@ -151,7 +158,7 @@ export default function SeasonFightClient({ query, embedded = false, onClose }: 
     return () => { dead = true; cancelAnimationFrame(raf); observer.disconnect(); localScene?.dispose(); if (scene.current === localScene) scene.current = null; audio.current?.stop(); };
     // Build identity, not each polled state, owns the renderer lifecycle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildKey, sceneKey, seed, liveMode]);
+  }, [buildKey, sceneKey, seed, liveMode, practiceError]);
   const special = useCallback(async () => {
     if (!scene.current || !initial.current || requestLatch.current || controls.current.replaying || !controls.current.running || !state.current || state.current.done) return;
     audio.current?.unlock();
@@ -185,15 +192,15 @@ export default function SeasonFightClient({ query, embedded = false, onClose }: 
   const meter = Math.min(100, hud?.fighters[viewer].meter ?? 0), finished = !!hud?.done, moments = hud?.events.filter(e => describe(e)).slice(-5) ?? [];
   const canReplay = !liveMode || currentLive?.status === "complete";
   return <FightRoomFrame embedded={embedded} onClose={onClose} title={liveMode ? "Season fight" : "New robot practice"}
-    tools={<label className={css.option}><input type="checkbox" checked={cinematic} onChange={e => setCinematic(e.target.checked)} /> Moving camera</label>}
+    tools={<label className={css.option}><input type="checkbox" checked={cinematic && !reduced} disabled={reduced} onChange={e => setCinematic(e.target.checked)} /> {reduced ? "Steady camera · reduced motion" : "Moving camera"}</label>}
     arena={<section className={css.arena} ref={host}><canvas ref={canvas} aria-label="Robot fight arena" />
-      <div className={css.hud}>{hud?.fighters.map((f, i) => <div key={i}><strong>{currentLive?.identities[i].name ?? (i === 0 ? NAMES[style] : NAMES[rival])}</strong><span>{hud.builds[i].gp} GP · {LABEL[hud.builds[i].style]}</span><progress max={hud.stats[i].armour[1]} value={Math.max(0, f.armour[1])} /><small>{status(hud, i as 0 | 1)}</small></div>)}</div>
+      <div className={css.hud}>{hud?.fighters.map((f, i) => <div key={i}><strong>{currentLive?.identities[i].name ?? (i === 0 ? practiceChoice.name : NAMES[rival])}</strong><span>{hud.builds[i].gp} GP · {LABEL[hud.builds[i].style]}</span><progress max={hud.stats[i].armour[1]} value={Math.max(0, f.armour[1])} /><small>{status(hud, i as 0 | 1)}</small></div>)}</div>
       {!ready && <div className={css.loading} role={error ? "alert" : "status"}><strong>{error || "Bringing your robots into the ring…"}</strong>{error && <p>Use the room buttons below to continue.</p>}</div>}
       <div className={css.dentCount}>{stats.dents} dents · {stats.scorches} scorch marks</div>
     </section>}
     status={<>{notice && <p className={css.notice} role="status">{notice}</p>}{finished && <div className={css.result}><strong><span>{hud?.winner === viewer ? "Your robot wins!" : "The rival wins this one."}</span>{liveMode && currentLive && <> · <small>{seasonPayoutText(currentLive)}</small></>}</strong><button disabled={!ready || !canReplay} onClick={() => restart(true)}>Watch replay</button>{!liveMode && <button onClick={() => restart(false)}>Fight again</button>}<details><summary>Why this result</summary>{moments.map(e => <button disabled={!canReplay} key={e.id} className={css.moment} onClick={() => restart(true, Math.max(0, e.frame - 45))}>{describe(e)} <span>↗ {Math.floor(e.frame / 60)}s</span></button>)}</details></div>}</>}
-    special={<div className={css.actionBar}>{!liveMode && !running && !finished ? <button className={css.primary} disabled={!ready} onClick={() => { audio.current?.unlock(); controls.current.running = true; setRunning(true); }}>Start practice fight</button> : <button className={`${css.primary} ${meter >= 100 ? css.charged : ""}`} disabled={!ready || !running || finished || replaying || pending || viewer === 1 || liveMode && currentLive?.status !== "running" || meter < 100 && !lastInput.current} onClick={() => void special()}>{replaying || viewer === 1 ? "Recorded fight" : finished ? "Fight complete" : pending ? "Sending Special…" : lastInput.current ? "Retry Special" : hud?.fighters[viewer].special ? `${hud.builds[viewer].capabilities.special.name} active` : meter >= 100 ? `${hud?.builds[viewer].capabilities.special.name} · Space` : `Special charging · ${Math.floor(meter)}%`}</button>}<progress aria-label="Special charge" max={100} value={meter} /><small>{viewer === 1 ? "Your saved defense plan ran this fight. Watch its replay." : replaying ? "Replaying the recorded Special presses." : liveMode ? "You choose when to use Special. The server runs the fight." : "Practice only. No coins or repairs."}</small></div>}
-    setup={!liveMode ? <div className={css.setup}><p>Three Tier 3 heroes, each with 350 Gear Points. These are the first models for review.</p><label>Your robot<select value={style} onChange={e => { setRunning(false); setReplaying(false); setStyle(e.target.value as StyleV6); }}>{STYLES.map(s => <option key={s} value={s}>{LABEL[s]} · {NAMES[s]}</option>)}</select></label><label>Rival<select value={rival} onChange={e => { setRunning(false); setReplaying(false); setRival(e.target.value as StyleV6); }}>{STYLES.map(s => <option key={s} value={s}>{LABEL[s]} · {NAMES[s]}</option>)}</select></label><label>Fight seed<input type="number" min={0} max={4294967295} value={seed} onChange={e => { setRunning(false); setSeed(Number(e.target.value) >>> 0); }} /></label></div> : undefined}
-    details={<div className={css.details}><strong>{builds[viewer].capabilities.special.name}</strong><p>{builds[viewer].capabilities.special.description}</p><p>{builds[viewer].capabilities.special.ending}</p><label><input type="checkbox" checked={sound} onChange={e => { setSound(e.target.checked); if (e.target.checked) { audio.current?.setMuted(false); audio.current?.unlock(); } }} /> Sound</label><p>Render: {stats.fps} FPS · {stats.drawCalls} draws · {stats.triangles.toLocaleString()} triangles · {stats.drawMs.toFixed(1)} ms. Damage: {stats.vertices.toLocaleString()} moved vertices. Reach limit: {Math.round(stats.gripError * 1000)} mm.</p></div>}
+    special={<div className={css.actionBar}>{!liveMode && !running && !finished ? <button className={css.primary} disabled={!ready} onClick={() => { audio.current?.unlock(); controls.current.running = true; setRunning(true); }}>Start practice fight</button> : <button className={`${css.primary} ${meter >= 100 ? css.charged : ""}`} disabled={!ready || !running || finished || replaying || pending || viewer === 1 || liveMode && currentLive?.status !== "running" || meter < 100 && !lastInput.current} onClick={() => void special()}>{replaying || viewer === 1 ? "Recorded fight" : finished ? "Fight complete" : pending ? "Sending Special…" : lastInput.current ? "Retry Special" : hud?.fighters[viewer].special ? `${hud.builds[viewer].capabilities.special.name} active` : meter >= 100 ? `${hud?.builds[viewer].capabilities.special.name} · Space` : `Special charging · ${Math.floor(meter)}%`}</button>}<progress aria-label="Special charge" max={100} value={meter} /><small>{viewer === 1 ? "Your saved defense plan ran this fight. Watch its replay." : replaying ? "Replaying the recorded Special presses." : liveMode ? "Your robot moves and attacks. You choose when to use Special." : "Practice only. No coins or repairs."}</small></div>}
+    setup={!liveMode ? <div className={css.setup}><p>{practiceError ? "This link could not open. Choose a practice example below." : practiceChoice.linked ? "These are the exact parts from your link. Trying another example leaves your saved robot unchanged." : "Try six robot families, four tiers and different weapons. Practice costs no coins."}</p><label>Practice example<select value={practiceChoice.linked ? "linked" : practice[0].parts.torso.family ?? ""} onChange={e => chooseExample({ family: e.target.value, tier: String(tier) })}>{practiceChoice.linked && <option value="linked" disabled>{practiceError ? "Choose an example" : practiceChoice.name}</option>}{FAMILIES_V6.map(f => <option key={f.id} value={f.id}>{LABEL[f.style]} · {f.name}</option>)}</select></label><label>Tier<select disabled={practiceChoice.linked} value={tier} onChange={e => chooseExample({ family: practice[0].parts.torso.family ?? undefined, tier: e.target.value })}>{([1, 2, 3, 4] as TierV6[]).map(value => <option key={value} value={value}>Tier {value}</option>)}</select></label><label>Weapon<select disabled={practiceChoice.linked} value={practice[0].parts.weapon.id} onChange={e => chooseExample({ family: practice[0].parts.torso.family ?? undefined, tier: String(tier), weapon: e.target.value })}>{CATALOG_V6.filter(c => c.slot === "weapon" && c.tier === tier && weaponCompatibilityV6(c.id, practice[0].parts.torso.id).compatible).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>Rival<select value={rival} onChange={e => { setRunning(false); setReplaying(false); setRival(e.target.value as StyleV6); }}>{STYLES.map(s => <option key={s} value={s}>{LABEL[s]} · {NAMES[s]}</option>)}</select></label><label>Fight seed<input type="number" min={0} max={4294967295} value={seed} onChange={e => { setRunning(false); setSeed(Number(e.target.value) >>> 0); }} /></label></div> : undefined}
+    details={<div className={css.details}><strong>{builds[viewer].capabilities.special.name}</strong><p>{builds[viewer].capabilities.special.description}</p><p>{builds[viewer].capabilities.special.ending}</p><label><input type="checkbox" checked={sound} onChange={e => { setSound(e.target.checked); if (e.target.checked) { audio.current?.setMuted(false); audio.current?.unlock(); } }} /> Sound</label>{process.env.NODE_ENV === "development" && <p>Render: {stats.fps} FPS · {stats.drawCalls} draws · {stats.triangles.toLocaleString()} triangles · {stats.drawMs.toFixed(1)} ms. Damage: {stats.vertices.toLocaleString()} moved vertices. Reach limit: {Math.round(stats.gripError * 1000)} mm.</p>}</div>}
   />;
 }

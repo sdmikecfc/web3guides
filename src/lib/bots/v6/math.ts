@@ -6,11 +6,11 @@ export const dotV6=(a:Vec3,b:Vec3)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
 export const crossV6=(a:Vec3,b:Vec3):Vec3=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
 export const inverseQuatV6=(q:QuatV6):QuatV6=>[-q[0],-q[1],-q[2],q[3]];
 export function multiplyQuatV6(a:QuatV6,b:QuatV6):QuatV6{return [a[3]*b[0]+a[0]*b[3]+a[1]*b[2]-a[2]*b[1],a[3]*b[1]-a[0]*b[2]+a[1]*b[3]+a[2]*b[0],a[3]*b[2]+a[0]*b[1]-a[1]*b[0]+a[2]*b[3],a[3]*b[3]-a[0]*b[0]-a[1]*b[1]-a[2]*b[2]];}
-export function rotateQuatV6(v:Vec3,q:QuatV6):Vec3 {const t=scale(crossV6([q[0],q[1],q[2]],v),2);return add(v,add(scale(t,q[3]),crossV6([q[0],q[1],q[2]],t)));}
+export function rotateQuatV6(v:Vec3,q:QuatV6):Vec3 {const x=2*(q[1]*v[2]-q[2]*v[1]),y=2*(q[2]*v[0]-q[0]*v[2]),z=2*(q[0]*v[1]-q[1]*v[0]);return [v[0]+(x*q[3]+q[1]*z-q[2]*y),v[1]+(y*q[3]+q[2]*x-q[0]*z),v[2]+(z*q[3]+q[0]*y-q[1]*x)];}
 export function axisQuatV6(axis:Vec3,radians:number):QuatV6 {const n=scale(normalize(axis),Math.sin(radians/2));return [...n,Math.cos(radians/2)];}
 export function fromVectorsQuatV6(from:Vec3,to:Vec3):QuatV6 {const a=normalize(from),b=normalize(to),d=dotV6(a,b);if(d<-.999999){const axis=Math.abs(a[0])<.8?crossV6(a,[1,0,0]):crossV6(a,[0,1,0]);return axisQuatV6(axis,Math.PI);}const c=crossV6(a,b),q:QuatV6=[...c,1+d],length=Math.hypot(...q);return q.map(v=>v/length) as QuatV6;}
 /** Authored XYZ rotations use the same successive X, Y, Z convention as mount transforms. */
-export function eulerQuatV6(rotation:Vec3):QuatV6{return multiplyQuatV6(axisQuatV6([0,0,1],rotation[2]/1000),multiplyQuatV6(axisQuatV6([0,1,0],rotation[1]/1000),axisQuatV6([1,0,0],rotation[0]/1000)));}
+export function eulerQuatV6(rotation:Vec3):QuatV6{if(!rotation[0]&&!rotation[1]&&!rotation[2])return [0,0,0,1];return multiplyQuatV6(axisQuatV6([0,0,1],rotation[2]/1000),multiplyQuatV6(axisQuatV6([0,1,0],rotation[1]/1000),axisQuatV6([1,0,0],rotation[0]/1000)));}
 export function slerpQuatV6(a:QuatV6,b:QuatV6,t:number):QuatV6 {let d=a.reduce((n,v,i)=>n+v*b[i],0),end=b;if(d<0){end=b.map(v=>-v) as QuatV6;d=-d;}if(d>.9995){const q=a.map((v,i)=>v+(end[i]-v)*t) as QuatV6,n=Math.hypot(...q);return q.map(v=>v/n) as QuatV6;}const theta=Math.acos(clamp(d,-1,1)),den=Math.sin(theta),x=Math.sin((1-t)*theta)/den,y=Math.sin(t*theta)/den;return a.map((v,i)=>v*x+end[i]*y) as QuatV6;}
 export const clamp = (value: number, low: number, high: number) => Math.max(low, Math.min(high, value));
 export const rounded = (value: number) => Math.round(value * 1e6) / 1e6;

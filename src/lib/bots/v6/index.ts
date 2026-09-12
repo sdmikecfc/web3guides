@@ -7,3 +7,5 @@ export * from "./default-collision";
 export * from "./build";
 export * from "./engine";
 export * from "./pose";
+export * from "./body-pose";
+export * from "./catalogue-collision";

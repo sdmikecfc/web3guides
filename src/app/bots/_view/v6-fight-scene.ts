@@ -29,17 +29,21 @@ export async function createFightSceneV6(canvas: HTMLCanvasElement, builds: [Bui
   const shots = new THREE.InstancedMesh(g, mat, 160); shots.frustumCulled = false; scene.add(shots);
   const flashG = new THREE.IcosahedronGeometry(.1, 0), flashM = new THREE.MeshBasicMaterial({ color: 0xffdba7, transparent: true });
   const flashes = new THREE.InstancedMesh(flashG, flashM, 64); flashes.frustumCulled = false; scene.add(flashes);
+  const flameG = new THREE.IcosahedronGeometry(1, 1), flameM = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .67, blending: THREE.AdditiveBlending, depthWrite: false });
+  const flames = new THREE.InstancedMesh(flameG, flameM, 96); flames.frustumCulled = false; flames.count = 0; scene.add(flames);
   const shieldG = new THREE.SphereGeometry(1, 24, 16), shieldM = new THREE.MeshBasicMaterial({ color: 0x79deef, transparent: true, opacity: .17, wireframe: true, depthWrite: false });
   const shields = toys.map(() => { const mesh = new THREE.Mesh(shieldG, shieldM); scene.add(mesh); return mesh; });
   const fieldG = new THREE.TorusGeometry(1.3, .045, 6, 40), fieldM = new THREE.MeshBasicMaterial({ color: 0x92c8ff, transparent: true, opacity: .6 });
   const fields = toys.map(() => { const mesh = new THREE.Mesh(fieldG, fieldM); mesh.rotation.x = -Math.PI / 2; scene.add(mesh); return mesh; });
   const dummy = new THREE.Object3D(), extent = new THREE.Box3(), meshBounds = new THREE.Box3(), centre = new THREE.Vector3(), aim = new THREE.Vector3(0, 1.4, 0), offset = new THREE.Vector3();
   const backward = new THREE.Vector3(), right = new THREE.Vector3(), up = new THREE.Vector3(), worldUp = new THREE.Vector3(0, 1, 0);
-  const effects: { tick: number; point: THREE.Vector3; size: number }[] = [];
+  const effects: { tick: number; point: THREE.Vector3; size: number; color: number }[] = [];
+  const jets = new Map<number, { tick: number; attackId: number; origin: THREE.Vector3; direction: THREE.Vector3; range: number }>();
+  const flameAxis = new THREE.Vector3(0, 0, 1), jetSide = new THREE.Vector3(), jetUp = new THREE.Vector3(), flameColor = new THREE.Color();
   const broken = [new Set<string>(), new Set<string>()], debris: { object: THREE.Object3D; tick: number; position: THREE.Vector3; quaternion: THREE.Quaternion; side: number }[] = [];
   let cursor = 0, width = 1000, height = 650, frame = -1, first = true, drawMs = 0, disposed = false, lastTime = 0, cameraAngle = .35;
   function clearDebris() { debris.forEach(d => d.object.removeFromParent()); debris.length = 0; broken.forEach(s => s.clear()); }
-  function reset() { cursor = 0; frame = -1; effects.length = 0; clearDebris(); toys.forEach(t => t.reset()); cameraAngle = .35; first = true; }
+  function reset() { cursor = 0; frame = -1; effects.length = 0; jets.clear(); clearDebris(); toys.forEach(t => t.reset()); cameraAngle = .35; first = true; }
   return {
     render(state: StateV6, wallTime: number, cinematic: boolean, reduced: boolean) {
       if (disposed) return;
@@ -49,7 +53,8 @@ export async function createFightSceneV6(canvas: HTMLCanvasElement, builds: [Bui
       while (cursor < state.events.length) {
         const e = state.events[cursor++];
         if (e.kind === "hit" || e.kind === "burn" || e.kind === "block") toys[e.target].impact(e);
-        if ((e.kind === "hit" || e.kind === "block" || e.kind === "shot") && (e.worldPoint || e.origin)) effects.push({ tick: e.frame, point: new THREE.Vector3().fromArray((e.worldPoint ?? e.origin)!).multiplyScalar(.001), size: e.kind === "shot" ? .6 : 1.1 });
+        if ((e.kind === "hit" || e.kind === "block" || e.kind === "shot") && (e.worldPoint || e.origin)) effects.push({ tick: e.frame, point: new THREE.Vector3().fromArray((e.worldPoint ?? e.origin)!).multiplyScalar(.001), size: e.kind === "shot" ? .6 : e.critical ? 1.6 : 1.1, color: e.weapon === "shock_blade" ? 0x72caff : e.weapon === "flame_sword" || e.weapon === "flamethrower" ? 0xff813c : 0xffdba7 });
+        if (e.kind === "flame" && e.origin && e.direction) jets.set(e.who, { tick: e.frame, attackId: e.attackId!, origin: new THREE.Vector3().fromArray(e.origin).multiplyScalar(.001), direction: new THREE.Vector3().fromArray(e.direction).normalize(), range: state.builds[e.who].capabilities.weaponDefinition.range / 1000 });
         if (e.kind === "break" && e.slot && !broken[e.who].has(e.slot)) {
           broken[e.who].add(e.slot); const part = toys[e.who].slots[e.slot];
           if (part) { const copy = part.clone(true); copy.visible = true; part.updateWorldMatrix(true, true); copy.position.copy(part.getWorldPosition(new THREE.Vector3())); copy.quaternion.copy(part.getWorldQuaternion(new THREE.Quaternion())); scene.add(copy); debris.push({ object: copy, tick: e.frame, position: copy.position.clone(), quaternion: copy.quaternion.clone(), side: e.who }); }
@@ -58,8 +63,25 @@ export async function createFightSceneV6(canvas: HTMLCanvasElement, builds: [Bui
       let n = 0;
       for (const p of state.projectiles.slice(-160)) { dummy.position.set(p.x / 1000, p.y / 1000, p.z / 1000); dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(p.vx, p.vy, p.vz).normalize()); dummy.scale.set(p.radius / 45, p.radius / 45, Math.max(2, Math.hypot(p.vx, p.vy, p.vz) / 55)); dummy.updateMatrix(); shots.setMatrixAt(n++, dummy.matrix); }
       shots.count = n; shots.instanceMatrix.needsUpdate = true; n = 0;
-      for (let i = effects.length - 1; i >= 0; i--) { const e = effects[i], age = (frame - e.tick) / 60; if (age > .25) { effects.splice(i, 1); continue; } if (reduced || n >= 64) continue; dummy.position.copy(e.point); dummy.scale.setScalar(e.size * (1 - age * 4)); dummy.quaternion.identity(); dummy.updateMatrix(); flashes.setMatrixAt(n++, dummy.matrix); }
+      for (let i = effects.length - 1; i >= 0; i--) { const e = effects[i], age = (frame - e.tick) / 60; if (age > .25) { effects.splice(i, 1); continue; } if (reduced || n >= 64) continue; dummy.position.copy(e.point); dummy.scale.setScalar(e.size * (1 - age * 4)); dummy.quaternion.identity(); dummy.updateMatrix(); flashes.setMatrixAt(n, dummy.matrix); flashes.setColorAt(n++, flameColor.setHex(e.color)); }
       flashes.count = n; flashes.instanceMatrix.needsUpdate = true;
+      if (flashes.instanceColor) flashes.instanceColor.needsUpdate = true;
+      // Visible flame is driven only by accepted flame pulses. It follows the
+      // recorded nozzle and occupies the same short cone as the simulation.
+      n = 0;
+      for (const [who, jet] of Array.from(jets)) {
+        const f = state.fighters[who], age = frame - jet.tick;
+        if (age > 9 || f.action?.id !== jet.attackId) { jets.delete(who); continue; }
+        jetSide.crossVectors(jet.direction, worldUp).normalize(); jetUp.crossVectors(jetSide, jet.direction).normalize();
+        const layers = reduced ? 9 : 21;
+        for (let k = 0; k < layers && n < 96; k++) {
+          const q = (k + .5) / layers, phase = reduced ? 0 : frame * .64 + k * 2.399, width = .025 + q * .19;
+          dummy.position.copy(jet.origin).addScaledVector(jet.direction, q * jet.range).addScaledVector(jetSide, Math.sin(phase) * width).addScaledVector(jetUp, Math.cos(phase * .81) * width);
+          dummy.quaternion.setFromUnitVectors(flameAxis, jet.direction); dummy.scale.set(width * (k % 2 ? 1.3 : .75), width, .18 + q * .19); dummy.updateMatrix();
+          flames.setMatrixAt(n, dummy.matrix); flames.setColorAt(n++, flameColor.setRGB(1, .88 - q * .58, .38 - q * .35));
+        }
+      }
+      flames.count = n; flames.instanceMatrix.needsUpdate = true; if (flames.instanceColor) flames.instanceColor.needsUpdate = true;
       debris.forEach(d => { const age = Math.max(0, (frame - d.tick) / 60); d.object.position.copy(d.position); if (!reduced) { d.object.position.x += (d.side ? 1 : -1) * Math.min(.85, age * 1.5); d.object.position.y = Math.max(.15, d.position.y + .8 * age - 4.9 * age * age); d.object.quaternion.copy(d.quaternion); d.object.rotateZ(Math.min(2, age * 3)); } });
       toys.forEach((toy, i) => { const f = state.fighters[i]; shields[i].visible = f.special?.style === "tank"; shields[i].position.set(f.x / 1000, 1.45, f.z / 1000); shields[i].scale.set(1.05, 1.5, .85); fields[i].visible = !!f.special && f.special.style !== "tank"; fields[i].position.set(f.x / 1000, .04, f.z / 1000); });
       stage!.update(false, width, height, toys.map(t => t.root), !reduced);
@@ -95,7 +117,7 @@ export async function createFightSceneV6(canvas: HTMLCanvasElement, builds: [Bui
     resize(w: number, h: number, dpr: number) { width = Math.max(1, w); height = Math.max(1, h); camera.aspect = width / height; camera.updateProjectionMatrix(); renderer.setPixelRatio(Math.min(1.5, dpr)); renderer.setSize(width, height, false); first = true; },
     reset,
     stats() { return { dents: toys.reduce((n, t) => n + t.dents, 0), scorches: toys.reduce((n, t) => n + t.scorches, 0), vertices: toys.reduce((n, t) => n + t.changedVertices, 0), gripError: Math.max(...toys.map(t => t.gripError)), drawCalls: renderer.info.render.calls, triangles: renderer.info.render.triangles, drawMs, crowd: stage!.crowdState().playing }; },
-    dispose() { disposed = true; clearDebris(); toys.forEach(t => t.dispose()); stage!.dispose(); [g, flashG, shieldG, fieldG].forEach(x => x.dispose()); [mat, flashM, shieldM, fieldM].forEach(x => x.dispose()); environment.dispose(); renderer.dispose(); },
+    dispose() { disposed = true; jets.clear(); clearDebris(); toys.forEach(t => t.dispose()); stage!.dispose(); [g, flashG, flameG, shieldG, fieldG].forEach(x => x.dispose()); [mat, flashM, flameM, shieldM, fieldM].forEach(x => x.dispose()); environment.dispose(); renderer.dispose(); },
   };
 }
 export type FightSceneV6 = Awaited<ReturnType<typeof createFightSceneV6>>;

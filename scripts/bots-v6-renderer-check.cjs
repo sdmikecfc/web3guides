@@ -30,6 +30,8 @@ const hash=v=>createHash('sha256').update(v).digest('hex');
  for(const name of['pose','hero-collision','catalog','collision'])report.sources[name]=hash(fs.readFileSync(repo+'/src/lib/bots/v6/'+name+'.ts'));
  let code=ts.transpileModule(fs.readFileSync(file,'utf8'),{fileName:file,compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
  code=code.replaceAll('"three"',JSON.stringify(pathToFileURL(threePath).href)).replaceAll('"three/examples/jsm/loaders/GLTFLoader.js"',JSON.stringify(pathToFileURL(loaderPath).href));
+ const assetsShim=path.join(out,'assets.runtime.mjs');fs.writeFileSync(assetsShim,`import {createRequire} from 'node:module';const require=createRequire(import.meta.url);const assets=require(${JSON.stringify(repo+'/src/lib/bots/v6/assets.ts')});export const cardAssetV6=assets.cardAssetV6,CATALOGUE_ASSET_ROOT_V6=assets.CATALOGUE_ASSET_ROOT_V6;`);
+ code=code.replaceAll('"@/lib/bots/v6/assets"',JSON.stringify(pathToFileURL(assetsShim).href));
  const moduleFile=path.join(out,'v6-toy.runtime.mjs');fs.writeFileSync(moduleFile,code);const {createToyV6}=await import(pathToFileURL(moduleFile).href+'?'+Date.now());
  const hero=style=>presetV6(style,3,{signature:true,collisionVersion:HERO_COLLISION_VERSION_V6});
  const hashMeshes=toy=>{const rows=[];toy.root.traverse(o=>{if(o.isMesh)rows.push([o.name,hash(Buffer.from(o.geometry.getAttribute('position').array.buffer)),o.geometry.getAttribute('color')?hash(Buffer.from(o.geometry.getAttribute('color').array.buffer)):null,hash(Buffer.from(o.geometry.getAttribute('normal').array.buffer))]);});return rows;};
@@ -48,7 +50,7 @@ const hash=v=>createHash('sha256').update(v).digest('hex');
   pass(`${style}: real Blender hero loads every canonical body slot, elbow and hand`);
   const state=createFightV6(75,build,hero(style==='speed'?'tank':'speed'));
   state.fighters[0].x=1234;state.fighters[0].z=-987;state.fighters[0].yaw=789;
-  const f=state.fighters[0],rootPoint=arr=>toy.root.localToWorld(new THREE.Vector3(...arr).multiplyScalar(.001));
+  const f=state.fighters[0],rootPoint=arr=>toy.body.localToWorld(new THREE.Vector3(...arr).multiplyScalar(.001));
   let maxGrip=0,maxJoint=0,maxStretch=0,maxMuzzle=0,maxBarrelAngle=0,animated=false,samples=0;
   const restPositions=new Map();toy.root.traverse(o=>{if(!o.isMesh)restPositions.set(o.name,o.position.clone());});
   const w=build.capabilities.weaponDefinition;
@@ -71,10 +73,10 @@ const hash=v=>createHash('sha256').update(v).digest('hex');
     }
     for(const [side,gun] of Object.entries(shared.mounts||{})){
      const weapon=toy.root.getObjectByName('weapon_'+side);if(!weapon)continue;
-     const definition=weaponForActionV6(state,0,f.action.mount===side?f.action.kind:w.id),muzzle=definition.proxy.muzzle;
+     const definition=weaponForActionV6(state,0,f.action.mount===side?f.action.kind:(side==='right'&&w.mount==='shoulder'?'backup_pistol':w.id)),muzzle=definition.proxy.muzzle;
      const actual=weapon.localToWorld(new THREE.Vector3(...muzzle).multiplyScalar(.001)),expected=rootPoint(gun.muzzle);
      maxMuzzle=Math.max(maxMuzzle,actual.distanceTo(expected));
-     const axis=new THREE.Vector3(0,0,1).transformDirection(weapon.matrixWorld),forward=new THREE.Vector3(...gun.forward).transformDirection(toy.root.matrixWorld);
+     const axis=new THREE.Vector3(0,0,1).transformDirection(weapon.matrixWorld),forward=new THREE.Vector3(...gun.forward).transformDirection(toy.body.matrixWorld);
      maxBarrelAngle=Math.max(maxBarrelAngle,axis.angleTo(forward));
      if(weapon.quaternion.angleTo(new THREE.Quaternion())>.01)animated=true;
     }
@@ -125,12 +127,12 @@ const hash=v=>createHash('sha256').update(v).digest('hex');
   burstState.frame=frame;const shared=fighterPoseV6(burstState,0);burstToy.pose(burstFighter,frame,shared);
   for(const side of['left','right']){
    const gun=burstToy.root.getObjectByName('special_'+side),mount=shared.mounts[side],suffix=side==='left'?'L':'R';assert(gun.visible&&mount,'both actual Special guns are visible and aimed during burst');
-   const definition=weaponForActionV6(burstState,0,'special_burst'),actualMuzzle=gun.localToWorld(new THREE.Vector3(...definition.proxy.muzzle).multiplyScalar(.001)),expectedMuzzle=burstToy.root.localToWorld(new THREE.Vector3(...mount.muzzle).multiplyScalar(.001));
+   const definition=weaponForActionV6(burstState,0,'special_burst'),actualMuzzle=gun.localToWorld(new THREE.Vector3(...definition.proxy.muzzle).multiplyScalar(.001)),expectedMuzzle=burstToy.body.localToWorld(new THREE.Vector3(...mount.muzzle).multiplyScalar(.001));
    specialMuzzle=Math.max(specialMuzzle,actualMuzzle.distanceTo(expectedMuzzle));
-   const actualForward=new THREE.Vector3(0,0,1).transformDirection(gun.matrixWorld),expectedForward=new THREE.Vector3(...mount.forward).transformDirection(burstToy.root.matrixWorld);specialDirection=Math.max(specialDirection,actualForward.angleTo(expectedForward));
+   const actualForward=new THREE.Vector3(0,0,1).transformDirection(gun.matrixWorld),expectedForward=new THREE.Vector3(...mount.forward).transformDirection(burstToy.body.matrixWorld);specialDirection=Math.max(specialDirection,actualForward.angleTo(expectedForward));
    const actualHand=burstToy.root.getObjectByName('hand'+suffix).getWorldPosition(new THREE.Vector3()),actualElbow=burstToy.root.getObjectByName('arm'+suffix+'_elbow').getWorldPosition(new THREE.Vector3()),actualShoulder=burstToy.slots['arm'+suffix].getWorldPosition(new THREE.Vector3());
    specialGrip=Math.max(specialGrip,actualHand.distanceTo(gun.localToWorld(new THREE.Vector3(...definition.proxy.grip).multiplyScalar(.001))));
-   specialJoint=Math.max(specialJoint,actualHand.distanceTo(burstToy.root.localToWorld(new THREE.Vector3(...shared.arms[side].grip).multiplyScalar(.001))));
+   specialJoint=Math.max(specialJoint,actualHand.distanceTo(burstToy.body.localToWorld(new THREE.Vector3(...shared.arms[side].grip).multiplyScalar(.001))));
    const rig=burstBuild.collision.arms[side];specialStretch=Math.max(specialStretch,Math.abs(actualShoulder.distanceTo(actualElbow)-Math.hypot(...rig.upper)/1000),Math.abs(actualElbow.distanceTo(actualHand)-Math.hypot(...rig.lower)/1000));
   }
   for(const side of['left','right','shoulder']){const normal=burstToy.root.getObjectByName('weapon_'+side);if(normal)assert.equal(normal.visible,false,'ordinary weapons are stowed during two-pistol Special');}
@@ -147,8 +149,41 @@ const hash=v=>createHash('sha256').update(v).digest('hex');
  const tank=hero('tank'),speed=hero('speed'),ranged=hero('ranged'),choices=[ranged.parts.head,tank.parts.torso,speed.parts.armL,ranged.parts.armR,ranged.parts.legL,speed.parts.legR,tank.parts.weapon];
  const mixedBuild=snapshotBuildV6(modularBuild(...choices.map(c=>({id:c.id,s:[...c.s]}))),{collisionVersion:HERO_COLLISION_VERSION_V6}),mixedToy=await createToyV6(mixedBuild);loading.push(mixedToy);
  const mixedState=createFightV6(31,mixedBuild,speed);let mixedGap=0;
- for(let n=0;n<300&&!mixedState.done;n++){stepFightV6(mixedState);const pose=fighterPoseV6(mixedState,0);mixedToy.pose(mixedState.fighters[0],mixedState.frame,pose);for(const side of['left','right']){const actual=mixedToy.root.getObjectByName(side==='left'?'handL':'handR').getWorldPosition(new THREE.Vector3()),expected=mixedToy.root.localToWorld(new THREE.Vector3(...pose.arms[side].grip).multiplyScalar(.001));mixedGap=Math.max(mixedGap,actual.distanceTo(expected));}}
+ for(let n=0;n<300&&!mixedState.done;n++){stepFightV6(mixedState);const pose=fighterPoseV6(mixedState,0);mixedToy.pose(mixedState.fighters[0],mixedState.frame,pose);for(const side of['left','right']){const actual=mixedToy.root.getObjectByName(side==='left'?'handL':'handR').getWorldPosition(new THREE.Vector3()),expected=mixedToy.body.localToWorld(new THREE.Vector3(...pose.arms[side].grip).multiplyScalar(.001));mixedGap=Math.max(mixedGap,actual.distanceTo(expected));}}
  soft(mixedGap<.001,`mixed donor limbs differ from saved mount/arm pose by${mixedGap*1000}mm`);if(mixedGap<.001)pass('mixed three-family hero retains exact independent donor limbs and shared attachment poses',{maxJointMm:mixedGap*1000});
+ const {FAMILIES_V6,CATALOG_V6}=require(repo+'/src/lib/bots/v6/catalog');
+ let catalogueSamples=0,catalogueJoint=0,catalogueMuzzle=0;
+ const cases=[];
+ for(const family of FAMILIES_V6)for(const tier of[1,2,3,4])cases.push(presetV6(family.style,tier,{family:family.id,signature:tier>=3}));
+ const rows=Array.isArray(CATALOG_V6)?CATALOG_V6:Object.values(CATALOG_V6||{});
+ for(const card of rows.filter(c=>c.slot==='weapon')){
+  const reference=presetV6(card.style??'ranged',card.tier),raw={...reference.appearanceBuild,weapon:{id:card.id,s:[...card.s]}};
+  try{cases.push(snapshotBuildV6(raw));}catch(error){report.failures.push('weapon fixture '+card.id+': '+error.message);}
+ }
+ assert(cases.length>=63,'full catalogue weapon and family cases are included');
+ for(const build of cases){
+  const toy=await createToyV6(build),state=createFightV6(75,build,presetV6('tank',build.tier)),f=state.fighters[0];
+  f.x=150;f.z=-200;f.yaw=500;const w=build.capabilities.weaponDefinition;
+  for(const frame of[0,15,30,45,70]){
+   state.frame=frame;f.gait=frame*47;f.moveX=35;f.moveZ=12;
+   f.action={id:1,kind:w.id,mount:w.mount,started:0,windup:30,active:18,recovery:42,released:false,hitTargets:[],targetHeight:1600,aim:[0,1600,3000],aimLocal:[0,1600,0],aimVelocity:[0,0,0],aimError:[0,0,0],aimFrame:0,aimSlot:'torso',lastPoint:null,nextPulse:0,burstBudget:0,critical:false,emissions:0,pathActive:[...w.proxy.active],slowed:false};
+   const pose=fighterPoseV6(state,0);toy.pose(f,frame,pose);catalogueSamples++;
+   for(const side of['left','right']){
+    const hand=toy.root.getObjectByName(side==='left'?'handL':'handR'),expected=toy.body.localToWorld(new THREE.Vector3(...pose.arms[side].grip).multiplyScalar(.001));
+    catalogueJoint=Math.max(catalogueJoint,hand.getWorldPosition(new THREE.Vector3()).distanceTo(expected));
+    const leg=toy.slots[side==='left'?'legL':'legR'];assert(leg.quaternion.angleTo(new THREE.Quaternion(...pose.legs[side].hipQuaternion))<.000001,'actual leg follows shared hip pose');
+   }
+   for(const [mount,gun]of Object.entries(pose.mounts)){
+    const node=toy.root.getObjectByName('weapon_'+mount);if(!node)continue;
+    const mountKind=mount===f.action.mount?f.action.kind:(mount==='right'&&w.mount==='shoulder'?'backup_pistol':w.id);
+    const proxy=weaponForActionV6(state,0,mountKind).proxy;
+    catalogueMuzzle=Math.max(catalogueMuzzle,node.localToWorld(new THREE.Vector3(...proxy.muzzle).multiplyScalar(.001)).distanceTo(toy.body.localToWorld(new THREE.Vector3(...gun.muzzle).multiplyScalar(.001))));
+   }
+  }
+  toy.dispose();
+ }
+ soft(catalogueJoint<.001,`catalogue hand error ${catalogueJoint*1000}mm`);soft(catalogueMuzzle<.001,`catalogue muzzle error ${catalogueMuzzle*1000}mm`);
+ if(catalogueJoint<.001&&catalogueMuzzle<.001)pass('all six families across four tiers and every weapon: actual joints, walking hips and gun muzzles follow combat',{builds:cases.length,samples:catalogueSamples,maxJointMm:catalogueJoint*1000,maxMuzzleMm:catalogueMuzzle*1000});
  for(const toy of loading){toy.dispose();toy.dispose();}
  const doubleMaterials=[...mats.values()].filter(n=>n!==1).length,doubleGeometries=[...geos.values()].filter(n=>n!==1).length;
  soft(doubleMaterials===0,`${doubleMaterials} material resources disposed more than once`);soft(doubleGeometries===0,`${doubleGeometries} geometry resources disposed more than once`);
@@ -156,3 +191,4 @@ const hash=v=>createHash('sha256').update(v).digest('hex');
  if(!doubleMaterials&&!doubleGeometries)pass('one owned-resource dispose each; shared cached GLB materials/geometry stay alive');
  fs.writeFileSync(path.join(out,'actual-glb-report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));if(report.failures.length)process.exitCode=1;
 })().catch(e=>{report.failures.push(e.stack||String(e));fs.writeFileSync(path.join(out,'actual-glb-report.json'),JSON.stringify(report,null,2));console.error(e);process.exitCode=1;});
+

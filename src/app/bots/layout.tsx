@@ -5,7 +5,7 @@
  * a page's layout flow, so it cannot break the bay canvas.
  */
 
-import { Baloo_2 } from "next/font/google";
+import localFont from "next/font/local";
 import { WalletProviders } from "@/app/wallet/providers";
 import { BotsTopNav } from "./_components/BotsTopNav";
 import { M } from "./_ui/tokens";
@@ -26,9 +26,10 @@ export const metadata = {
  * the load window rather than blocking first paint. tokens.ts keeps the
  * fallback inside the var() for the same reason.
  */
-const toyFont = Baloo_2({
-  subsets: ["latin"],
-  weight: ["400", "600", "700", "800"],
+const toyFont = localFont({
+  src: "../../../public/bots-art/fonts/Baloo2-Variable.ttf",
+  weight: "400 800",
+  style: "normal",
   variable: "--font-bots-toy",
   display: "swap",
 });
@@ -37,7 +38,7 @@ export default function BotsLayout({ children }: { children: React.ReactNode }) 
   // the site accent on the connect button: the money layer IS the site
   return (
     <WalletProviders accent={M.accent} accentForeground="#ffffff">
-      <div className={toyFont.variable} style={{ background: M.ground, minHeight: "100dvh" }}>
+      <div className={toyFont.variable} style={{ background: M.ground, minHeight: "100dvh", fontFamily: "var(--font-bots-toy), ui-rounded, Arial, sans-serif" }}>
         <BotsTopNav />
         {children}
       </div>

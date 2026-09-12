@@ -1,4 +1,4 @@
-import { add,axisQuatV6,clamp,crossV6,dotV6,eulerQuatV6,fromVectorsQuatV6,inverseQuatV6,length3,multiplyQuatV6,normalize,rotateQuatV6,scale,subtract,type QuatV6,type Vec3 } from "./math";
+import { add,angle,axisQuatV6,clamp,crossV6,dotV6,eulerQuatV6,fromVectorsQuatV6,inverseQuatV6,length3,multiplyQuatV6,normalize,rotateQuatV6,scale,slerpQuatV6,subtract,type QuatV6,type Vec3 } from "./math";
 import type { ArmRigV6,CollisionSnapshotV6,HitProxyV6,WeaponProxyV6 } from "./collision";
 
 export interface ArmPoseV6 {
@@ -24,6 +24,11 @@ export function restArmPoseV6(c:CollisionSnapshotV6,side:"left"|"right"):ArmPose
   const rig=c.arms[side],mount=c.mounts[sideKey(side)],q=eulerQuatV6(mount.rotation),shoulder=[...mount.position] as Vec3,elbow=add(shoulder,rotateQuatV6(rig.upper,q)),grip=add(elbow,rotateQuatV6(rig.lower,q));
   return {shoulder,elbow,grip,requestedGrip:[...grip],gripError:0,upperQuaternion:q,elbowQuaternion:[...identity],handQuaternion:[...identity],orientation:q,proxies:proxies(c,side,shoulder,elbow,grip,q,q)};
 }
+/** The real free forearm comes across the chest; the bounded IK never enlarges its collider. */
+export function guardArmPoseV6(c:CollisionSnapshotV6,amount:number):ArmPoseV6 {
+  const rest=restArmPoseV6(c,"left"),body=c.proxies.find(p=>p.slot==="torso")!,reach=length3(c.arms.left.upper)+length3(c.arms.left.lower),target:Vec3=[-body.half[0]*.12,Math.min(rest.shoulder[1]-reach*.12,body.center[1]+body.half[1]*.6),body.center[2]+body.half[2]+c.arms.left.lowerRadius*.8],delta=subtract(target,rest.shoulder),bounded=add(rest.shoulder,scale(delta,Math.min(1,reach*.96/length3(delta)))),t=clamp(amount,0,1),grip=add(rest.grip,scale(subtract(bounded,rest.grip),t));
+  return solveArmPoseV6(c,"left",grip,rest.orientation);
+}
 /** Bounded two-link IK. An unreachable target moves the actual hand, never stretches a limb. */
 export function solveArmPoseV6(c:CollisionSnapshotV6,side:"left"|"right",requestedGrip:Vec3,orientation:QuatV6):ArmPoseV6 {
   const rig=c.arms[side],shoulder=[...c.mounts[sideKey(side)].position] as Vec3,a=length3(rig.upper),b=length3(rig.lower),delta=subtract(requestedGrip,shoulder),distance=length3(delta),dir=distance>1e-8?scale(delta,1/distance):normalize(add(rig.upper,rig.lower)),d=clamp(distance,Math.abs(a-b)+.001,a+b-.001),grip=add(shoulder,scale(dir,d));
@@ -32,10 +37,10 @@ export function solveArmPoseV6(c:CollisionSnapshotV6,side:"left"|"right",request
   return {shoulder,elbow,grip,requestedGrip:[...requestedGrip],gripError:length3(subtract(grip,requestedGrip)),upperQuaternion:upper,elbowQuaternion:multiplyQuatV6(inverseQuatV6(upper),lower),handQuaternion:multiplyQuatV6(inverseQuatV6(lower),orientation),orientation,proxies:proxies(c,side,shoulder,elbow,grip,upper,lower)};
 }
 /** Preserve the striking normal; choose the remaining roll that brings the grip nearest its shoulder. */
-export function weaponGripPoseV6(c:CollisionSnapshotV6,weapon:WeaponProxyV6,side:"left"|"right",sample:{point:Vec3;normal:Vec3;roll?:number}):WeaponGripPoseV6 {
+export function weaponGripPoseV6(c:CollisionSnapshotV6,weapon:WeaponProxyV6,side:"left"|"right",sample:{point:Vec3;normal:Vec3;roll?:number;rollWeight?:number;up?:Vec3;upWeight?:number}):WeaponGripPoseV6 {
   const mirror=(v:Vec3):Vec3=>side==="left"?[-v[0],v[1],v[2]]:[...v],offset=mirror(subtract(weapon.strikePoint,weapon.grip)),normal=normalize(sample.normal),base=fromVectorsQuatV6(mirror(weapon.strikeNormal),normal),rotated=rotateQuatV6(offset,base),shoulder=c.mounts[sideKey(side)].position;
   const projection=subtract(rotated,scale(normal,dotV6(rotated,normal))),toward=subtract(sample.point,shoulder),wanted=subtract(toward,scale(normal,dotV6(toward,normal)));
-  const roll=sample.roll!==undefined?sample.roll/1000:length3(projection)>1e-8&&length3(wanted)>1e-8?Math.atan2(dotV6(normal,crossV6(projection,wanted)),dotV6(projection,wanted)):0,orientation=multiplyQuatV6(axisQuatV6(normal,roll),base),desired=subtract(sample.point,rotateQuatV6(offset,orientation)),pose=solveArmPoseV6(c,side,desired,orientation),origin=subtract(pose.grip,rotateQuatV6(mirror(weapon.grip),orientation));
+  const automaticRoll=length3(projection)>1e-8&&length3(wanted)>1e-8?Math.atan2(dotV6(normal,crossV6(projection,wanted)),dotV6(projection,wanted)):0,roll=sample.roll===undefined?automaticRoll:automaticRoll+angle(sample.roll/1000-automaticRoll)*clamp(sample.rollWeight??1,0,1),automaticOrientation=multiplyQuatV6(axisQuatV6(normal,roll),base); let orientation=automaticOrientation; if(sample.up){const before=rotateQuatV6([0,1,0],base),project=(v:Vec3)=>subtract(v,scale(normal,dotV6(v,normal))),from=normalize(project(before)),to=normalize(project(sample.up)),twist=Math.atan2(dotV6(normal,crossV6(from,to)),dotV6(from,to)),authored=multiplyQuatV6(axisQuatV6(normal,twist),base);orientation=slerpQuatV6(automaticOrientation,authored,clamp(sample.upWeight??1,0,1));}const desired=subtract(sample.point,rotateQuatV6(offset,orientation)),pose=solveArmPoseV6(c,side,desired,orientation),origin=subtract(pose.grip,rotateQuatV6(mirror(weapon.grip),orientation));
   return {...pose,strikePoint:add(pose.grip,rotateQuatV6(offset,orientation)),requestedStrikePoint:[...sample.point],strikeNormal:normal,weaponOrigin:origin};
 }
 /** Exact barrel-ray aiming from an eccentric muzzle. The grip stays on its real hand or body mount. */

@@ -101,11 +101,16 @@ const url='http://127.0.0.1:3000/bots?view=fight&combat=6&collection=season&sess
   await third.page.screenshot({path:path.join(out,'defender-recorded-replay.png')});pass('defender sees own win/loss, no attacker payout and cannot send Special during result or replay');
   await third.context.close();
   }
-  const incompatible=session(ready,1);incompatible.builds=copy(incompatible.builds);incompatible.builds[0].gp++;incompatible.state.builds=copy(incompatible.builds);
+  for(const reason of ['changed-build','old-proof-rules']) {
+  const incompatible=session(ready,1);incompatible.builds=copy(incompatible.builds);
+  if(reason==='changed-build')incompatible.builds[0].gp++;
+  else { incompatible.builds.forEach(build=>build.rulesVersion='mk6-1');incompatible.state.rulesVersion='mk6-1';incompatible.rules={...incompatible.rules,rulesVersion:'mk6-1'}; }
+  incompatible.state.builds=copy(incompatible.builds);
   let incompatiblePosts=0;const fourth=await contextFor(browser,(route,request)=>{if(request.method()==='POST')incompatiblePosts++;return send(route,incompatible);});
   await fourth.page.goto(url,{waitUntil:'domcontentloaded'});await fourth.page.getByText('This fight needs its saved robot and combat rules. Your saved result is safe.',{exact:true}).waitFor({timeout:60000});
   await fourth.page.waitForTimeout(900);await fourth.page.keyboard.press('Space');await fourth.page.waitForTimeout(200);assert.equal(incompatiblePosts,0);
-  pass('an unavailable saved build/rules version shows a clear error and never starts or invents a replacement fight');await fourth.context.close();
+  pass(`${reason}: unavailable saved build/rules shows a clear error and never starts or invents a replacement fight`);await fourth.context.close();
+  }
   assert.deepEqual(report.unexpectedApi,[]);assert.deepEqual(report.errors,[]);pass('isolated contexts intercepted every API; no real wallet, service, reward or external network call');
  }catch(e){report.failure=String(e);console.error(e);process.exitCode=1;for(const context of browser.contexts())for(const [n,page] of context.pages().entries()){report.lastBody=await page.locator('body').innerText().catch(()=>'(unavailable)');await page.screenshot({path:path.join(out,'failure-'+n+'.png')}).catch(()=>{});}}
  finally{await browser.close();fs.writeFileSync(path.join(out,rulesOnly?'rules-error-report.json':'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));}

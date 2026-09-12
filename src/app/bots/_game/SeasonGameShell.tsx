@@ -12,7 +12,7 @@ import type { BattlesView } from "../_server/types";
 import type { CampaignView } from "@/lib/bots/campaign-view";
 import { readGameView } from "@/lib/bots/view-fetch";
 import { GAME_DEMO_KEY } from "@/lib/bots/game-demo";
-import { seasonHeroStill } from "@/lib/bots/season/workshop";
+import V6ToyPicture from "../_components/V6ToyPicture";
 import SeasonWorkshop, { type SeasonRoom } from "./SeasonWorkshop";
 import CommunityRoom from "./CommunityRoom";
 import WorkshopTour, { WORKSHOP_TOUR_KEY, WORKSHOP_TOUR_VERSION } from "./WorkshopTour";
@@ -38,12 +38,11 @@ export default function SeasonGameShell() {
   const markTour = () => { try { localStorage.setItem(WORKSHOP_TOUR_KEY, String(WORKSHOP_TOUR_VERSION)); } catch { /* Presentation only. */ } };
   useEffect(() => {
     if (entered.current || !session.ready) return; entered.current = true;
-    try {
-      const seen = Number(localStorage.getItem(WORKSHOP_TOUR_KEY) ?? 0), previous = JSON.parse(localStorage.getItem(GAME_DEMO_KEY) ?? "null");
-      const oldPlayer = !!session.token || previous?.onboarding?.step === "complete";
-      setReturning(oldPlayer);
-      if (seen < WORKSHOP_TOUR_VERSION && !fighting && params.get("tour") !== "1") { if (oldPlayer) setTour(true); else setWelcome(true); }
-    } catch { if (!fighting) setWelcome(true); }
+    let seen = 0, oldPlayer = !!session.token;
+    try { const value = Number(localStorage.getItem(WORKSHOP_TOUR_KEY) ?? 0); if (Number.isFinite(value)) seen = value; } catch { /* The tour also works without storage. */ }
+    try { const previous = JSON.parse(localStorage.getItem(GAME_DEMO_KEY) ?? "null"); oldPlayer ||= previous?.onboarding?.step === "complete"; } catch { /* An unreadable classic save must not override the separate tour choice. */ }
+    setReturning(oldPlayer);
+    if (seen < WORKSHOP_TOUR_VERSION && !fighting && params.get("tour") !== "1") { if (oldPlayer) setTour(true); else setWelcome(true); }
   }, [session.ready, session.token, fighting, params]);
   const navigate = useCallback((next: Room) => { markTour(); setWelcome(false); setTour(false); help.current?.close(); scores.current?.close(); const url = new URL(window.location.href); clearFightQuery(url.searchParams); url.searchParams.delete("panel"); url.searchParams.delete("tour"); url.searchParams.set("collection", "season"); if (next === "garage") url.searchParams.delete("view"); else url.searchParams.set("view", next); window.history.replaceState(null, "", `${url.pathname}${url.search}`); }, []);
   const closeTour = () => { markTour(); setTour(false); setWelcome(false); };
@@ -67,8 +66,8 @@ export default function SeasonGameShell() {
     </main>
     <nav className={css.nav} aria-label="Game rooms">{([{ id: "garage", label: "Garage", Icon: IconGarage }, { id: "parts", label: "Parts", Icon: IconPegboard }, { id: "build", label: "Build", Icon: IconWrench }, { id: "fight", label: "Fight", Icon: IconWeapon }, { id: "community", label: "Community", Icon: IconStar }] as const).map(({ id, label, Icon }) => <button key={id} className={`${css.navButton} ${id === "community" ? css.navExtra : ""}`} aria-current={mode === id ? "page" : undefined} onClick={() => navigate(id)}><Icon size={22} />{label}</button>)}<button className={css.navButton} onClick={() => help.current?.showModal()}><span aria-hidden style={{ fontSize: 23, fontWeight: 800 }}>?</span>Help</button></nav>
     {session.error && <p className={css.status} role="status">{session.error}</p>}
-    {welcome && !trailer && <EntryDialog title="Build your own robot." onClose={() => navigate("garage")}><p>Choose seven parts. Give it a name. Watch it fight.</p><p className={entry.allowance}>Try building now. When the new season opens, join with 250 coins to finish your first robot.</p><button className={entry.primary} onClick={() => navigate("build")}>Build my robot</button><button className={entry.secondary} onClick={() => navigate("garage")}>Look around</button><button className={entry.textButton} onClick={showTour}>Show me around</button><button className={entry.textButton} onClick={() => setTrailer(true)}>Watch trailer</button><small>Trying parts needs no wallet. Your browser choices stay here.</small></EntryDialog>}
-    {tour && <WorkshopTour returning={returning} robotName={state?.roster[0]?.name} robotPreview={state?.roster[0] && seasonHeroStill(state.roster[0].build) ? <img src={seasonHeroStill(state.roster[0].build)!} alt={state.roster[0].name} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : undefined} onClose={closeTour} onBuild={() => { closeTour(); navigate(returning ? "garage" : "build"); }} />}
+    {welcome && !trailer && <EntryDialog title="Build your own robot." onClose={() => navigate("garage")}><p>Choose seven parts. Give it a name. Watch it fight.</p><p className={entry.allowance}>Try building now. Join a season with 250 coins to finish your first robot.</p><button className={entry.primary} onClick={() => navigate("build")}>Build my robot</button><button className={entry.secondary} onClick={() => navigate("garage")}>Look around</button><button className={entry.textButton} onClick={showTour}>Show me around</button><button className={entry.textButton} onClick={() => setTrailer(true)}>Watch trailer</button><small>Trying parts needs no wallet. Your browser choices stay here.</small></EntryDialog>}
+    {tour && <WorkshopTour returning={returning} robotName={state?.roster[0]?.name} robotPreview={state?.roster[0] ? <V6ToyPicture build={state.roster[0].build} title={state.roster[0].name} /> : undefined} onClose={closeTour} onBuild={() => { closeTour(); navigate(returning ? "garage" : "build"); }} />}
     {trailer && <TrailerPlayer onClose={() => setTrailer(false)} />}
     <dialog ref={help} className={seasonCss.dialog} aria-label="Workshop help" onClick={e => { if (e.target === e.currentTarget) help.current?.close(); }}><button autoFocus className={seasonCss.close} onClick={() => help.current?.close()} aria-label="Close help">×</button><h2>Your workshop, at a glance.</h2><WorkshopLesson topic="season" compact /><button className={seasonCss.primary} onClick={showTour}>Show me around</button><p>Season coins and robots belong to that season. Your old collection stays yours.</p><Link href={collectionHref}>Open my saved collection →</Link>{session.token && <button onClick={() => { session.signOut(); help.current?.close(); }}>Disconnect wallet</button>}</dialog>
     <dialog ref={scores} className={seasonCss.dialog} aria-label="Season standings" onClick={e => { if (e.target === e.currentTarget) scores.current?.close(); }}><button autoFocus className={seasonCss.close} onClick={() => scores.current?.close()} aria-label="Close scores">×</button><h2>Season scores</h2>{state?.standings?.length ? <div className={seasonCss.scoreRows}>{state.standings.map(row => <div key={row.wallet}><b>#{row.rank}</b><span><strong>{row.botName}</strong><small>{row.wins} wins · {row.losses} losses</small></span><strong>{row.rating}</strong></div>)}</div> : <p>{state?.season?.phase === "current" ? "No season scores yet. The first player fights will set the board." : "The season has not opened yet. Practice fights do not change anyone’s rank."}</p>}<Link href={fightRoomHref(6, { style: "speed", tier: "3" })}>Try a Speed robot →</Link></dialog>

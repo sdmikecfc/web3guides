@@ -26,7 +26,7 @@ check('a geometric hit has no post-contact random miss; AP only bypasses physica
   const normal=pair(),ap=cloneV6(normal),before=normal.random;normal.stats[1].plating[1]=.35;ap.stats[1].plating[1]=.35;
   assert.equal(impact(normal,100),65);assert.equal(impact(ap,100,{platingBypass:.5}),82.5);assert.equal(normal.random,before);
   const shield=pair('speed','tank');shield.stats[1].plating[1]=.35;ready(shield,1);assert.equal(impact(shield,100,{platingBypass:.5}),8.25);assert.equal(shield.events.at(-1)!.absorbed,90);
-  const rawCap=shield.stats[1].armour[1]*.35;assert.equal(shield.fighters[1].special!.shieldLeft,rawCap-90);const guard=pair();guard.fighters[1].x=0;guard.fighters[1].z=0;guard.fighters[1].yaw=0;guard.stats[1].plating[2]=0;const amount=impact(guard,20,{contact:contact('armL'),source:[0,0,1000]});assert.equal(amount,10);assert.equal(impact(guard,20,{contact:contact('armL'),source:[0,0,-1000]}),20);
+  const rawCap=shield.stats[1].armour[1]*.35;assert.equal(shield.fighters[1].special!.shieldLeft,rawCap-90);const guard=pair();guard.fighters[1].guardPose=1;guard.fighters[1].x=0;guard.fighters[1].z=0;guard.fighters[1].yaw=0;guard.stats[1].plating[2]=0;const amount=impact(guard,20,{contact:contact('armL'),source:[0,0,1000]});assert.equal(amount,10);assert.equal(impact(guard,20,{contact:contact('armL'),source:[0,0,-1000]}),20);
 });
 
 check('24/72 tick control, 120 tick protection, normal damage and interruption',()=>{
@@ -48,7 +48,7 @@ check('rear flank only finishes a pre-damaged limb; front or healthy contacts ca
 check('lost weapon arm stops rifle use; paired blades retain the surviving arm; lost legs stop escapes',()=>{
   const rifle=pair('ranged','tank');rifle.fighters[0].armour[3]=0;advanceFightV6(rifle,900);assert(!rifle.events.some(e=>e.who===0&&e.weapon==='ap_rifle'&&e.kind==='shot'));
   const paired=createFightV6(99,presetV6('speed',3,{weapon:'paired_blades'}),presetV6('tank',3),{autoSpecial:[false,false]});paired.fighters[0].armour[3]=0;advanceFightV6(paired,700);assert(paired.events.some(e=>e.who===0&&e.weapon==='paired_blades'&&e.mount==='left'&&e.kind==='hit'));assert(!paired.events.some(e=>e.who===0&&e.weapon==='paired_blades'&&e.mount==='right'));
-  const feet=pair('ranged','tank');feet.fighters[0].armour[4]=0;advanceFightV6(feet,700);assert(!feet.events.some(e=>e.who===0&&e.kind==='dodge'));assert.equal(feet.fighters[0].dashUntil,0);
+  const feet=pair('ranged','tank');feet.fighters[0].armour[4]=0;advanceFightV6(feet,700);assert(!feet.events.some(e=>e.who===0&&e.kind==='dodge'));assert(feet.fighters[0].dashUntil<=feet.frame,"An interrupted timer is not an active escape");
 });
 
 check('burn refreshes one effect; flame heats and shotgun pellets have individual swept rays',()=>{
@@ -68,6 +68,6 @@ check('all ten weapons complete, fixed steps remain bounded, projectile origins 
   console.log(JSON.stringify({boundedTicks:ticks,physicalShotOrigins:shots}));
 });
 check('coincident centres separate deterministically and stay inside the ring',()=>{
-  for(const at of [0,5400]){const a=pair('tank','tank'),b=cloneV6(a);for(const s of [a,b]){s.fighters.forEach(f=>{f.x=at;f.z=0;f.nextAction=99999;});for(let i=0;i<10;i++)stepFightV6(s);}assert.equal(hashV6(a),hashV6(b));const direction=normalize([a.fighters[1].x-a.fighters[0].x,0,a.fighters[1].z-a.fighters[0].z]),minimum=footprintSupportV6(a.builds[0].collision.proxies,a.fighters[0].armour,rotateY(direction,-a.fighters[0].yaw))+footprintSupportV6(a.builds[1].collision.proxies,a.fighters[1].armour,rotateY(scale(direction,-1),-a.fighters[1].yaw));assert(Math.hypot(a.fighters[0].x-a.fighters[1].x,a.fighters[0].z-a.fighters[1].z)>minimum-2);assert(a.fighters.every(f=>Math.hypot(f.x,f.z)<=f.arenaLimit+1));}
+  for(const at of [0,5400]){const a=pair('tank','tank'),b=cloneV6(a);for(const s of [a,b]){s.fighters.forEach(f=>{f.x=at;f.z=0;f.nextAction=99999;});for(let i=0;i<10;i++)stepFightV6(s);}assert.equal(hashV6(a),hashV6(b));const direction=normalize([a.fighters[1].x-a.fighters[0].x,0,a.fighters[1].z-a.fighters[0].z]),minimum=footprintSupportV6(posedProxiesV6(a,0).filter(p=>p.slot!=="armL"&&p.slot!=="armR"),a.fighters[0].armour,rotateY(direction,-a.fighters[0].yaw))+footprintSupportV6(posedProxiesV6(a,1).filter(p=>p.slot!=="armL"&&p.slot!=="armR"),a.fighters[1].armour,rotateY(scale(direction,-1),-a.fighters[1].yaw));assert(Math.hypot(a.fighters[0].x-a.fighters[1].x,a.fighters[0].z-a.fighters[1].z)>minimum-2);assert(a.fighters.every(f=>Math.hypot(f.x,f.z)<=f.arenaLimit+1));}
 });
 console.log(JSON.stringify({ok:true,groups}));

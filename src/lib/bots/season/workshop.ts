@@ -1,5 +1,5 @@
 import { modularBuild, type CombatBuild, type CombatSocket } from "@/lib/bots/combat-model";
-import { cardV6, statsV6, weaponCompatibilityV6, type CardV6, type BuildV6 } from "@/lib/bots/v6";
+import { cardV6, presetV6, snapshotBuildV6, statsV6, weaponCompatibilityV6, type CardV6, type BuildV6 } from "@/lib/bots/v6";
 import { fightRoomHref } from "@/lib/bots/fight-navigation";
 import type { Part } from "@/app/bots/_engine/parts";
 import type { SeasonDraft, SeasonStateResponse } from "./types";
@@ -18,6 +18,16 @@ export function seasonDraftSummary(draft: SeasonDraft) {
   const compatibility = draft.parts.weapon ? weaponCompatibilityV6(draft.parts.weapon, draft.parts.torso) : { compatible: true, reason: null };
   return { build, cards, count, complete: count === 7 && compatibility.compatible, price: cards.reduce((sum, card) => sum + (card?.price ?? 0), 0), stats: statsV6(build), compatibility };
 }
+/** Missing choices only fill an invisible display rig; they never enter the editable draft or Finish payload. */
+export function seasonDisplayBuild(draft: SeasonDraft): { build: BuildV6; visibleSlots: CombatSocket[]; warning: string | null } | null {
+  const summary = seasonDraftSummary(draft), first = cardV6(draft.parts.torso) ?? summary.cards.find((c): c is CardV6 => !!c);
+  if (!first) return null;
+  const base = presetV6(first.style, first.tier, { ...(first.family ? { family: first.family } : {}) });
+  const parts = Object.fromEntries(BUILD_ORDER.map(socket => [socket, base.parts[socket].id]));
+  const visibleSlots: CombatSocket[] = [];
+  for (const socket of BUILD_ORDER) { const card = cardV6(draft.parts[socket]); if (card?.slot !== socketKind(socket)) continue; if (socket === "weapon" && !weaponCompatibilityV6(card.id, parts.torso).compatible) continue; parts[socket] = card.id; visibleSlots.push(socket); }
+  return { build: snapshotBuildV6(seasonBuild(parts)), visibleSlots, warning: summary.compatibility.reason };
+}
 /** A try-on changes exactly one socket. It never silently swaps an incompatible weapon. */
 export function trySeasonPart(draft: SeasonDraft, socket: CombatSocket, card: CardV6): SeasonDraft {
   if (card.slot !== socketKind(socket)) throw new Error(`Choose a ${SOCKET_NAME[socket].toLowerCase()}.`);
@@ -29,7 +39,7 @@ export function seasonComparison(draft: SeasonDraft, socket: CombatSocket, card:
   return { before, after, afterDraft, gp: after.stats.gp - before.stats.gp, coins: after.price - before.price, deltas: keys.map(key => ({ key, before: before.stats[key], after: after.stats[key], change: after.stats[key] - before.stats[key] })) };
 }
 export const STAT_NAME = { health: "Body strength", speed: "Speed", str: "Push power", dodge: "Dodging", dmg: "Hit power", block: "Guard", luck: "Critical hits", acc: "Aim", atkSpd: "Attack speed" } as const;
-export function seasonPreviewHref(card: CardV6) { return fightRoomHref(6, { style: card.style, tier: String(card.tier), ...(card.weaponKind ? { weapon: card.weaponKind } : {}) }); }
+export function seasonPreviewHref(card: CardV6) { return fightRoomHref(6, { part: card.id }); }
 export function readSeasonDraft(raw: string | null): SeasonDraft | null {
   try { const value = raw ? JSON.parse(raw) : null; if (!value || typeof value.name !== "string" || value.name.length > 40 || !value.parts || typeof value.parts !== "object" || !["early", "balanced", "last-stand"].includes(value.defensePlan)) return null;
     const draft = emptySeasonDraft(); draft.name = value.name; draft.defensePlan = value.defensePlan;

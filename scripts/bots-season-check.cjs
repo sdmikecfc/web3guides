@@ -13,12 +13,12 @@ const player=w=>one('SELECT * FROM mk6_players WHERE season_id=$1 AND wallet=$2'
 const draft=async(w,build,request=randomUUID())=>{const p=await player(w);return rpc('mk6_save_draft',{p_season:season,p_wallet:w,p_request:request,p_revision:p.draft.revision,p_draft:{name:'Fixture robot',parts:partsOf(build),defensePlan:'balanced'}});};
 const finish=async(w,build,revision,request=randomUUID())=>rpc('mk6_finish_bot',{p_season:season,p_wallet:w,p_request:request,p_revision:revision,p_id:randomUUID(),p_build:build});
 const makeBot=async(w,build=presetV6('tank',1))=>{await enroll(w);const d=await draft(w,build);return finish(w,build,d.revision);};
-const start=(w,bot,mode='house',target,request=randomUUID())=>rpc('mk6_start_match',{p_season:season,p_wallet:w,p_request:request,p_id:randomUUID(),p_seed:7,p_payload:{requestId:request,mode,...(bot?{botId:bot.id}:{}),...(target?{targetBotId:target.id}:{})},p_house:presetV6('speed',1),p_loaner:presetV6('tank',1),p_rules:{...SEASON_RULES,engine:RULES_V6||{rulesVersion:'mk6-1'}}});
+const start=(w,bot,mode='house',target,request=randomUUID())=>rpc('mk6_start_match',{p_season:season,p_wallet:w,p_request:request,p_id:randomUUID(),p_seed:7,p_payload:{requestId:request,mode,...(bot?{botId:bot.id}:{}),...(target?{targetBotId:target.id}:{})},p_house:presetV6('speed',1),p_loaner:presetV6('tank',1),p_rules:{...SEASON_RULES,engine:RULES_V6}});
 const snapshot=async()=>({players:(await sql('SELECT * FROM mk6_players ORDER BY season_id,wallet')).rows,bots:(await sql('SELECT * FROM mk6_bots ORDER BY id')).rows,parts:(await sql('SELECT * FROM mk6_owned_parts ORDER BY id')).rows,ledger:(await sql('SELECT * FROM mk6_ledger ORDER BY id')).rows});
 async function complete(row,winner=0){
  // Transaction fixtures supply a server-owned terminal state; real engine integration is a separate check below.
  await sql("UPDATE mk6_matches SET started_at=clock_timestamp()-interval '5 seconds' WHERE id=$1",[row.id]);
- const state={version:6,rulesVersion:'mk6-1',catalogVersion:'mk6-catalog-1',seed:row.seed,frame:120,done:true,winner,builds:row.builds,stats:row.builds.map(b=>b.stats),defensePlans:row.plans,autoSpecial:[false,true],commands:[],events:[]};
+ const state={version:6,rulesVersion:RULES_V6.rulesVersion,catalogVersion:RULES_V6.catalogVersion,seed:row.seed,frame:120,done:true,winner,builds:row.builds,stats:row.builds.map(b=>b.stats),defensePlans:row.plans,autoSpecial:[false,true],commands:[],events:[]};
  const m=await rpc('mk6_match_cas',{p_season:season,p_wallet:row.wallet,p_id:row.id,p_revision:row.revision,p_state:state,p_receipts:[]});
  const result={version:6,seed:row.seed,frames:120,winner,builds:row.builds,commands:[],events:[]};
  return {pending:m,result,settle:()=>rpc('mk6_settle_match',{p_season:season,p_wallet:row.wallet,p_id:row.id,p_result:result})};
@@ -73,8 +73,9 @@ async function main(){
  assert.ok(Date.parse(settled[0].settlement.finishedAt)>Date.parse(starts[0].started_at)-10000);
  pass('assigned opponent locked before reveal; racing starts and settlement retry are atomic; no defender coins');
  const stateRow=await start(w,bot,'house');await sql("UPDATE mk6_matches SET started_at=clock_timestamp()-interval '5 seconds' WHERE id=$1",[stateRow.id]);
- const base={version:6,rulesVersion:'mk6-1',catalogVersion:'mk6-catalog-1',seed:stateRow.seed,frame:1,done:false,winner:null,builds:stateRow.builds,stats:stateRow.builds.map(b=>b.stats),defensePlans:stateRow.plans,autoSpecial:[false,true],commands:[],events:[]};
+ const base={version:6,rulesVersion:RULES_V6.rulesVersion,catalogVersion:RULES_V6.catalogVersion,seed:stateRow.seed,frame:1,done:false,winner:null,builds:stateRow.builds,stats:stateRow.builds.map(b=>b.stats),defensePlans:stateRow.plans,autoSpecial:[false,true],commands:[],events:[]};
  const firstReceipt={inputId:'rejected-first-input',kind:'special',frame:1,accepted:false,reason:'not ready'};
+ await assert.rejects(()=>rpc('mk6_match_cas',{p_season:season,p_wallet:w,p_id:stateRow.id,p_revision:0,p_state:{...base,rulesVersion:'mk6-1'},p_receipts:[]}),/saved combat rules/);
  const stateSaved=await rpc('mk6_match_cas',{p_season:season,p_wallet:w,p_id:stateRow.id,p_revision:0,p_state:base,p_receipts:[firstReceipt]});
  assert.equal(await rpc('mk6_match_cas',{p_season:season,p_wallet:w,p_id:stateRow.id,p_revision:0,p_state:base,p_receipts:[firstReceipt]}),null);
  await assert.rejects(()=>rpc('mk6_match_cas',{p_season:season,p_wallet:w,p_id:stateRow.id,p_revision:stateSaved.revision,p_state:base,p_receipts:[]}),/saved combat rules/);

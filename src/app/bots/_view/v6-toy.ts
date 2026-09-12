@@ -3,11 +3,11 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { FighterPoseV6 } from "@/lib/bots/v6/engine";
-import type { BuildV6, BodySocketV6, EventV6, FighterV6 } from "@/lib/bots/v6/types";
+import type { BuildV6, BodySocketV6, EventV6, FighterV6, SocketV6 } from "@/lib/bots/v6/types";
+import { cardAssetV6, CATALOGUE_ASSET_ROOT_V6 } from "@/lib/bots/v6/assets";
 
 const BASE = "/bots-art/3d/season-v6/";
 const CACHE = new Map<string, Promise<THREE.Group>>();
-const HEROES = ["boiler_knight", "roller_daredevil", "owl_ranger"];
 const V = (a: readonly number[]) => new THREE.Vector3(a[0] / 1000, a[1] / 1000, a[2] / 1000);
 const loader = new GLTFLoader();
 function normalizeRig<T extends THREE.Object3D>(root: T): T {
@@ -24,13 +24,13 @@ function normalizeRig<T extends THREE.Object3D>(root: T): T {
 }
 function source(file: string) {
   let promise = CACHE.get(file);
-  if (!promise) { promise = loader.loadAsync(BASE + file).then(g => g.scene); CACHE.set(file, promise); promise.catch(() => CACHE.delete(file)); }
+  if (!promise) { promise = loader.loadAsync(file.startsWith("/") ? file : BASE + file).then(g => g.scene); CACHE.set(file, promise); promise.catch(() => CACHE.delete(file)); }
   return promise;
 }
 interface Surface { mesh: THREE.Mesh; slot: BodySocketV6; original: Float32Array; originalNormal: Float32Array; rest: Float32Array; normal: Float32Array; inverse: THREE.Matrix4; touched: Uint8Array; depth: Float32Array }
 interface Rest { node: THREE.Object3D; position: THREE.Vector3; quaternion: THREE.Quaternion }
 export interface ToyV6 {
-  root: THREE.Group; slots: Partial<Record<BodySocketV6, THREE.Object3D>>;
+  root: THREE.Group; body: THREE.Group; slots: Partial<Record<BodySocketV6, THREE.Object3D>>;
   pose(fighter: FighterV6, frame: number, shared: FighterPoseV6, reduced?: boolean): void;
   impact(event: EventV6): number; reset(): void; dispose(): void;
   readonly dents: number; readonly scorches: number; readonly changedVertices: number; readonly gripError: number;
@@ -39,21 +39,37 @@ export interface ToyV6 {
 /** A version-six model never substitutes an older random toy. */
 export async function createToyV6(build: BuildV6): Promise<ToyV6> {
   const body = build.parts.torso;
-  if (body.tier !== 3 || !HEROES.includes(body.family ?? "")) throw new Error("This model is waiting for its art review. Try one of the three Tier 3 hero builds.");
-  const signature = build.style === "tank" ? "piledriver" : build.style === "speed" ? "powered_twins" : "shoulder_battery";
-  if (build.parts.weapon.tier !== 3 || build.parts.weapon.signature !== signature) throw new Error("This weapon is waiting for its art review. Your selected weapon has been kept.");
-  const raw = await source(`${body.family}.t3.glb`), root = normalizeRig(raw.clone(true));
+  const review = build.collisionVersion === "mk6-collision-hero-1";
+  const asset = cardAssetV6(body), weaponAsset = cardAssetV6(build.parts.weapon);
+  if (!review && (!asset?.ready || !weaponAsset?.ready)) throw new Error("The chosen model could not load. Your selected parts are saved.");
+  const raw = await source(review ? `${body.family}.t3.glb` : asset!.modelUrl), rig = normalizeRig(raw.clone(true)), root = new THREE.Group();
+  root.name = "robot_world"; rig.name = "robot_body"; root.add(rig);
+  if (!review) {
+    const kit = normalizeRig((await source(weaponAsset!.modelUrl)).clone(true)); rig.add(kit);
+    if (build.capabilities.paired) {
+      const right = kit.getObjectByName("weapon_right"), left = right?.clone(true);
+      if (!left) throw new Error("This weapon is missing its second hand attachment.");
+      left.name = "weapon_left"; kit.add(left);
+    }
+  }
   const leftWeapon = root.getObjectByName("weapon_left");
   if (leftWeapon) leftWeapon.scale.x = -1;
-  if (build.style === "ranged") {
+  if (build.style === "ranged" && build.capabilities.tier3) {
     const sidearm = await source("special-sidearm.t3.glb");
-    for (const side of ["left", "right"]) { const mount = new THREE.Group(); mount.name = `special_${side}`; mount.add(sidearm.clone(true)); mount.visible = false; root.add(mount); }
+    for (const side of ["left", "right"]) { const mount = new THREE.Group(); mount.name = `special_${side}`; const gun = sidearm.clone(true); gun.scale.setScalar(body.tier === 4 ? 1.06 : 1); mount.add(gun); mount.visible = false; rig.add(mount); }
+  }
+  const builtInBlade = build.style === "speed" && build.capabilities.tier3;
+  if (builtInBlade) {
+    const blade = normalizeRig((await source(CATALOGUE_ASSET_ROOT_V6 + "weapons/sword.t3.glb")).clone(true)).getObjectByName("weapon_right");
+    if (!blade) throw new Error("The finishing blade attachment could not load.");
+    for (const side of ["left", "right"]) { const mount = new THREE.Group(); mount.name = `finisher_${side}`; const mesh = blade.clone(true); mesh.scale.setScalar(body.tier === 4 ? 1.06 : 1); if (side === "left") mesh.scale.x *= -1; mount.add(mesh); mount.visible = false; rig.add(mount); }
   }
   for (const slot of ["head", "armL", "armR", "legL", "legR"] as const) {
     const card = build.parts[slot];
-    if (card.tier !== 3 || !HEROES.includes(card.family ?? "")) throw new Error("This part is waiting for its art review. Your selected parts have been kept.");
-    if (card.family === body.family) continue;
-    const other = normalizeRig((await source(`${card.family}.t3.glb`)).clone(true)), donor = other.getObjectByName(`slot_${slot}`)?.clone(true), current = root.getObjectByName(`slot_${slot}`);
+    const partAsset = cardAssetV6(card);
+    if (!review && !partAsset?.ready) throw new Error("The chosen part could not load. Your choices have been kept.");
+    if (card.family === body.family && card.tier === body.tier) continue;
+    const other = normalizeRig((await source(review ? `${card.family}.t3.glb` : partAsset!.modelUrl)).clone(true)), donor = other.getObjectByName(`slot_${slot}`)?.clone(true), current = root.getObjectByName(`slot_${slot}`);
     if (!donor || !current?.parent) throw new Error("A model attachment could not load.");
     donor.position.copy(current.position); donor.quaternion.copy(current.quaternion); current.parent.add(donor); current.removeFromParent();
   }
@@ -99,14 +115,16 @@ export async function createToyV6(build: BuildV6): Promise<ToyV6> {
   function pose(fighter: FighterV6, frame: number, shared: FighterPoseV6, reduced = false) {
     resetPose(); gripError = 0;
     root.position.set(fighter.x / 1000, 0, fighter.z / 1000); root.rotation.y = fighter.yaw / 1000;
+    rig.position.copy(V(shared.body.translation)); rig.quaternion.fromArray(shared.body.orientation);
     const action = fighter.action;
     // Limb and weapon poses come from the same solver as collision detection.
     // Presentation never stretches the arm or invents a separate contact path.
-    if (fighter.armour[1] <= 0) { root.rotation.x = Math.PI / 2; root.position.y = .48; }
+    if (fighter.armour[1] <= 0 && !shared.body.knockdown) { root.rotation.x = Math.PI / 2; root.position.y = .48; }
     for (let i = 0; i < 6; i++) {
       const slot = ["head", "torso", "armL", "armR", "legL", "legR"][i] as BodySocketV6;
       if (slots[slot]) slots[slot]!.visible = fighter.armour[i] > 0;
     }
+    slots.legL!.quaternion.fromArray(shared.legs.left.hipQuaternion); slots.legR!.quaternion.fromArray(shared.legs.right.hipQuaternion);
     for (const side of ["left", "right"] as const) {
       const suffix = side === "left" ? "L" : "R", arm = shared.arms[side];
       slots[`arm${suffix}`]!.quaternion.fromArray(arm.upperQuaternion);
@@ -118,6 +136,7 @@ export async function createToyV6(build: BuildV6): Promise<ToyV6> {
       const index = side === "left" ? 2 : side === "right" ? 3 : 1;
       weapon.visible = fighter.armour[index] > 0;
       if (action?.special === "burst") weapon.visible = false;
+      if (builtInBlade && action?.special === "flank") weapon.visible = false;
       if (action && (action.kind === "punch" || action.kind === "shove") && action.mount === side) weapon.visible = false;
       const mounted = shared.mounts[side];
       if (mounted) { weapon.position.copy(V(mounted.weaponOrigin)); weapon.quaternion.fromArray(mounted.orientation); }
@@ -132,6 +151,12 @@ export async function createToyV6(build: BuildV6): Promise<ToyV6> {
       if (!gun) continue;
       gun.visible = action?.special === "burst" && fighter.armour[side === "left" ? 2 : 3] > 0 && !!mounted;
       if (mounted) { gun.position.copy(V(mounted.weaponOrigin)); gun.quaternion.fromArray(mounted.orientation); }
+    }
+    for (const side of ["left", "right"] as const) {
+      const blade = root.getObjectByName(`finisher_${side}`), posed = shared.weapons[side];
+      if (!blade) continue;
+      blade.visible = action?.special === "flank" && action.mount === side && fighter.armour[side === "left" ? 2 : 3] > 0 && !!posed;
+      if (posed) { blade.position.copy(V(posed.weaponOrigin)); blade.quaternion.fromArray(posed.orientation); }
     }
     root.updateMatrixWorld(true);
   }
@@ -173,7 +198,7 @@ export async function createToyV6(build: BuildV6): Promise<ToyV6> {
     return changed;
   }
   return {
-    root, slots, pose, impact,
+    root, body: rig, slots, pose, impact,
     reset() {
       resetPose(); dents = 0; scorches = 0; changedVertices = 0;
       for (const s of surfaces) {
@@ -190,4 +215,10 @@ export async function createToyV6(build: BuildV6): Promise<ToyV6> {
     },
     get dents() { return dents; }, get scorches() { return scorches; }, get changedVertices() { return changedVertices; }, get gripError() { return Math.max(0, gripError); },
   };
+}
+
+export function setToyVisibilityV6(toy: ToyV6, slot?: SocketV6, visibleSlots?: readonly SocketV6[]) {
+  const visible = new Set(slot ? [slot] : visibleSlots ?? ["head", "torso", "armL", "armR", "legL", "legR", "weapon"]);
+  for (const [part, object] of Object.entries(toy.slots)) object!.visible = visible.has(part as SocketV6);
+  for (const mount of ["left", "right", "shoulder"]) { const weapon = toy.root.getObjectByName(`weapon_${mount}`); if (weapon && !visible.has("weapon")) weapon.visible = false; }
 }

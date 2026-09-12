@@ -17,13 +17,17 @@ export interface LivingRoom {
   dispose(): void;
 }
 
-type Actor = { definition: RoomActor; toy: CombatToy; head: THREE.Quaternion; body: THREE.Quaternion; arm: THREE.Quaternion; legs: { node: THREE.Object3D; quaternion: THREE.Quaternion }[]; floorOffset: number };
+export type RoomDisplayToy = Pick<CombatToy, "root" | "resetPose" | "applyClip" | "dispose"> & { sockets: Record<"head" | "torso" | "armL", THREE.Object3D>; bones: Record<string, THREE.Object3D> };
+type Actor = { definition: RoomActor; toy: RoomDisplayToy; head: THREE.Quaternion; body: THREE.Quaternion; arm: THREE.Quaternion; legs: { node: THREE.Object3D; quaternion: THREE.Quaternion }[]; floorOffset: number };
+/** An explicit loader seam lets isolated review fixtures exercise real failure and retry behavior. */
+export type RoomActorLoader = (definition: RoomActor, quality: "inspection" | "fight") => Promise<RoomDisplayToy>;
+export interface RoomFraming { desktopWidth: number; desktopMinHeight: number; desktopTargetY?: number }
 const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1);
 const STAND_TOP = .44;
 
 /** Source form preview: authentic player meshes retain authored unit scale.
  * Existing room art is projected onto shared wall and floor geometry. */
-export function createLivingRoom(canvas: HTMLCanvasElement, variant: "garage" | "community", referenceShot?: "hero" | "key" | "street"): LivingRoom {
+export function createLivingRoom(canvas: HTMLCanvasElement, variant: "garage" | "community", referenceShot?: "hero" | "key" | "street", loadActor: RoomActorLoader = (definition, quality) => createCombatToy(definition.build, definition.look, false, quality), framing?: RoomFraming): LivingRoom {
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: true, powerPreference: "high-performance" });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .96;
@@ -209,9 +213,9 @@ export function createLivingRoom(canvas: HTMLCanvasElement, variant: "garage" | 
       await Promise.all(wanted.map(async definition => {
         const existing = actors.find(a => a.definition.id === definition.id);
         if (existing && JSON.stringify(existing.definition) === JSON.stringify(definition)) { pending--; report(); return; }
-        let toy: CombatToy | undefined;
+        let toy: RoomDisplayToy | undefined;
         try {
-        toy = await createCombatToy(definition.build, definition.look, false, referenceShot ? "inspection" : "fight"); toy.resetPose();
+        toy = await loadActor(definition, referenceShot ? "inspection" : "fight"); toy.resetPose();
         toy.applyClip("guard", .5, 1, ["armL", "armR", "elbowL", "elbowR", "wristL", "wristR"]);
         toy.root.rotation.y = -.11 + (definition.bay - 3) * -.035;
         toy.root.updateMatrixWorld(true);
@@ -237,11 +241,11 @@ export function createLivingRoom(canvas: HTMLCanvasElement, variant: "garage" | 
     resize(w, h, ratio = 1) {
       width = Math.max(1, w); height = Math.max(1, h); mobile = width < 621;
       renderer.setPixelRatio(Math.min(mobile ? 1.35 : 1.5, ratio)); renderer.setSize(width, height, false);
-      const aspect = width / height, worldWidth = mobile ? 13.0 : 27.5;
-      const vertical = Math.max(mobile ? variant === "community" ? 16.0 : 14.0 : 10.0, worldWidth / aspect);
+      const aspect = width / height, worldWidth = mobile ? 13.0 : framing?.desktopWidth ?? 27.5;
+      const vertical = Math.max(mobile ? variant === "community" ? 16.0 : 14.0 : framing?.desktopMinHeight ?? 10.0, worldWidth / aspect);
       camera.left = -vertical * aspect / 2; camera.right = vertical * aspect / 2; camera.top = vertical / 2; camera.bottom = -vertical / 2;
       camera.position.set(mobile ? .6 : 1.0, mobile ? 16.5 : 10.5, 27);
-      camera.lookAt(0, mobile ? 2.0 : 2.8, mobile ? 2.6 : .1); camera.updateProjectionMatrix(); camera.updateMatrixWorld(); place();
+      camera.lookAt(0, mobile ? 2.0 : framing?.desktopTargetY ?? 2.8, mobile ? 2.6 : .1); camera.updateProjectionMatrix(); camera.updateMatrixWorld(); place();
       // Isolated cinematic references retain real part identity and world scale.
       // These camera crops never run in the player garage or Community room.
       if (referenceShot === "hero" || referenceShot === "key") {

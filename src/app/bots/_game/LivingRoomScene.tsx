@@ -3,7 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { Build } from "../_engine/parts";
 import type { BotLook } from "../_view/look";
-import { createLivingRoom, type LivingRoom } from "../_view/living-room";
+import { createLivingRoom, type LivingRoom, type RoomActorLoader, type RoomFraming } from "../_view/living-room";
 
 export interface RoomActor { id: string; bay: number; build: Build; look: BotLook; activity?: "wave" | "inspect" | "arrive" }
 export interface RoomAnchor { id: string; bay: number; x: number; y: number; width: number; height: number }
@@ -11,11 +11,13 @@ export interface RoomLoadStatus { ready: number; pending: number; failedIds: str
 export interface LivingRoomSceneProps {
   actors: RoomActor[]; selectedId?: string; variant?: "garage" | "community";
   className?: string; onAnchors?: (anchors: RoomAnchor[]) => void; onReady?: () => void; onLoadStatus?: (status: RoomLoadStatus) => void;
+  loadActor?: RoomActorLoader;
+  framing?: RoomFraming;
 }
 export interface LivingRoomSceneHandle { capture(): string | null }
 
 /** One camera, floor and renderer. Accessible DOM controls use projected stands. */
-const LivingRoomScene = forwardRef<LivingRoomSceneHandle, LivingRoomSceneProps>(function LivingRoomScene({ actors, selectedId, variant = "garage", className, onAnchors, onReady, onLoadStatus }, ref) {
+const LivingRoomScene = forwardRef<LivingRoomSceneHandle, LivingRoomSceneProps>(function LivingRoomScene({ actors, selectedId, variant = "garage", className, onAnchors, onReady, onLoadStatus, loadActor, framing }, ref) {
   const canvas = useRef<HTMLCanvasElement>(null), host = useRef<HTMLDivElement>(null);
   const scene = useRef<LivingRoom | null>(null);
   const latest = useRef({ actors, selectedId, onAnchors, onReady, onLoadStatus });
@@ -31,7 +33,7 @@ const LivingRoomScene = forwardRef<LivingRoomSceneHandle, LivingRoomSceneProps>(
     let dead = false, visible = true, frame = 0, previous = 0, ready = false, revision = 0, lastKey = "", modalOpen = false;
     let sampleStart = 0, sampleFrames = 0, metricsAt = 0;
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    try { room = createLivingRoom(element, variant); scene.current = room; }
+    try { room = createLivingRoom(element, variant, undefined, loadActor, framing); scene.current = room; }
     catch (error) { console.error("[living room]", error); setState("failed"); return; }
     const draw = (time = 0) => {
       room.render(motion.matches ? 0 : Math.floor(time * 12) / 12);
@@ -98,10 +100,10 @@ const LivingRoomScene = forwardRef<LivingRoomSceneHandle, LivingRoomSceneProps>(
       room.dispose(); if (scene.current === room) scene.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [variant]);
+  }, [variant, loadActor, framing]);
   useEffect(() => { refresh.current(); }, [key]);
   useEffect(() => { scene.current?.select(selectedId); scene.current?.render(0); }, [selectedId]);
-  return <div ref={host} className={className} data-room-ready={state === "ready"} data-room-variant={variant} style={{ width: "100%", height: "100%", position: "relative" }}>
+  return <div ref={host} className={className} data-room-ready={state === "ready"} data-room-variant={variant} data-room-pending={loadStatus.pending} data-room-failed={loadStatus.failedIds.join(",")} style={{ width: "100%", height: "100%", position: "relative" }}>
     <canvas ref={canvas} aria-hidden="true" style={{ width: "100%", height: "100%", display: "block" }} />
     {(state !== "ready" || loadStatus.failedIds.length > 0) && <div role="status" style={{ position: "absolute", bottom: 10, left: 10, maxWidth: "calc(100% - 20px)", color: "#f4ddbb", background: "#392a20ed", borderRadius: 8, padding: "8px 12px", fontSize: 11 }}>
       {state === "failed" ? "The room picture could not load. Your robot buttons still work." : loadStatus.failedIds.length ? `${loadStatus.failedIds.length} robot picture${loadStatus.failedIds.length === 1 ? "" : "s"} could not load. The others are ready.` : "The robots are arriving…"}

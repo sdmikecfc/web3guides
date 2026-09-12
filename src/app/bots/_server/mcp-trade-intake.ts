@@ -66,17 +66,31 @@ export function createMcpTradeHandlers(deps: IntakeDependencies = { db: botsDb, 
         const url = new URL(req.url), after = url.searchParams.get("after");
         if (Array.from(url.searchParams.keys()).some(k => k !== "after") || url.searchParams.getAll("after").length > 1 || (after !== null && !/^0x[0-9a-f]{40}$/.test(after))) throw new McpIntakeError(400, "invalid_cursor", "after must be a lowercase wallet from the previous page.");
         const db = deps.db();
-        let walletsQuery = db.from("mk_mcp_watchlist").select("wallet,enlisted_at").order("wallet", { ascending: true }).limit(501);
-        if (after) walletsQuery = walletsQuery.gt("wallet", after);
-        const [walletsRead, marketsRead] = await Promise.all([
-          walletsQuery,
+        const walletQuery = (view: string) => {
+          const query = db.from(view).select("wallet,enlisted_at").order("wallet", { ascending: true }).limit(501);
+          return after ? query.gt("wallet", after) : query;
+        };
+        const [walletsRead, seasonRead, marketsRead] = await Promise.all([
+          walletQuery("mk_mcp_watchlist"),
+          // Archived season wallets remain included for later corrections. Never
+          // query the new view while its rollout flag is off (old installations).
+          deps.env.BOTS_SEASON_V1 === "1" ? walletQuery("mk6_mcp_watchlist") : Promise.resolve({ data: [], error: null }),
           db.from("mk_mcp_markets").select("network_id,market_address,token_a,token_b,domain_name", { count: "exact" }).eq("enabled", true).eq("domain_name", "gochujang.com").order("network_id").order("market_address").limit(2000),
         ]);
-        if (walletsRead.error || marketsRead.error || !Array.isArray(walletsRead.data) || !Array.isArray(marketsRead.data) || marketsRead.count !== marketsRead.data.length) throw new Error("Incomplete feed configuration");
-        const wallets = walletsRead.data.slice(0,500);
+        if (walletsRead.error || seasonRead.error || marketsRead.error || !Array.isArray(walletsRead.data) || !Array.isArray(seasonRead.data) || !Array.isArray(marketsRead.data) || marketsRead.count !== marketsRead.data.length) throw new Error("Incomplete feed configuration");
+        const merged = new Map<string, { wallet: string; enlisted_at: string }>();
+        for (const row of [...walletsRead.data, ...seasonRead.data]) {
+          if (!/^0x[0-9a-f]{40}$/.test(row.wallet) || !Number.isFinite(Date.parse(row.enlisted_at))) throw new Error("Invalid watchlist row");
+          const earlier = merged.get(row.wallet);
+          if (!earlier || Date.parse(row.enlisted_at) < Date.parse(earlier.enlisted_at)) merged.set(row.wallet, row);
+        }
+        // Each source contributes501 rows after the same cursor. Taking the first
+        //500 of their sorted union cannot skip a wallet, including overlapping pages.
+        const combined = Array.from(merged.values()).sort((a,b) => a.wallet.localeCompare(b.wallet));
+        const wallets = combined.slice(0,500);
         return response({ ok: true, schemaVersion: 1, generatedAt: new Date(deps.now()).toISOString(),
           wallets: wallets.map(w => ({ wallet: w.wallet, since: w.enlisted_at })),
-          nextCursor: walletsRead.data.length > 500 ? wallets[wallets.length-1].wallet : null,
+          nextCursor: combined.length > 500 ? wallets[wallets.length-1].wallet : null,
           markets: marketsRead.data.map(m => ({ networkId: m.network_id, marketAddress: m.market_address, tokenA: m.token_a, tokenB: m.token_b, domain: m.domain_name })),
           intakePath: "/api/bots/trades/ingest", maxTradesPerBatch: 500, ready: marketsRead.data.length > 0, rewardsEnabled: false });
       } catch (error) { return failure(error); }

@@ -31,20 +31,21 @@ export interface WeaponDefinitionV6 {
   heat:number;burn:number;shock:number;impulse:number;proxy:WeaponProxyV6;
 }
 export interface BuildV6 {
-  version:6;rulesVersion:"mk6-1";catalogVersion:"mk6-catalog-1";assetVersion:string;collisionVersion:string;
+  version:6;rulesVersion:"mk6-2";catalogVersion:"mk6-catalog-1";assetVersion:string;collisionVersion:string;
   appearanceBuild:CombatBuild;parts:Record<SocketV6,PartV6>;gp:number;style:StyleV6;tier:TierV6;
   stats:StatsV6;collision:CollisionSnapshotV6;
   capabilities:{special:SpecialInfoV6;tier3:boolean;weapon:WeaponKindV6;paired:boolean;mount:MountV6;signature:string|null;weaponDefinition:WeaponDefinitionV6};
 }
 export interface ActionV6 {
   id:number;kind:AttackKindV6;mount:MountV6;started:number;windup:number;active:number;recovery:number;
-  released:boolean;hitTargets:BodySocketV6[];targetHeight:number;aim:Vec3;aimLocal:Vec3;aimVelocity:Vec3;aimError:Vec3;lastPoint:Vec3|null;nextPulse:number;
+  released:boolean;hitTargets:BodySocketV6[];targetHeight:number;aim:Vec3;aimLocal:Vec3;aimFrame:number;aimSlot?:BodySocketV6;aimSegment?:"body"|"upper"|"lower"|"rigid";aimVelocity:Vec3;aimError:Vec3;lastPoint:Vec3|null;nextPulse:number;
   special?:"charge"|"flank"|"burst";interrupted?:boolean;slowed?:boolean;burstBudget:number;critical:boolean;emissions:number;pathActive:[number,number];
 }
 export interface SpecialV6 {style:StyleV6;started:number;until:number;shieldLeft:number;finisherUsed:boolean;burstBudget:number}
 export interface BurnV6 {by:SideV6;until:number;nextTick:number;damage:number;slot:BodySocketV6;attackId:number}
 export interface FighterV6 {
-  x:number;z:number;yaw:number;moveX:number;moveZ:number;arenaLimit:number;armour:number[];guard:number;heat:number;overheated:boolean;
+  random:number;
+  x:number;z:number;yaw:number;moveX:number;moveZ:number;gait:number;arenaLimit:number;armour:number[];guard:number;guardPose:number;guardRecoverAt:number;heat:number;overheated:boolean;
   action:ActionV6|null;special:SpecialV6|null;meter:number;damageMeter:number;dealt:number;shots:number;
   stunnedUntil:number;downUntil:number;immuneUntil:number;slowUntil:number;shock:number;shockDecayAt:number;burn:BurnV6|null;
   dodgeUntil:number;nextDodge:number;dashUntil:number;dashX:number;dashZ:number;pushUntil:number;pushX:number;pushZ:number;
@@ -53,15 +54,15 @@ export interface FighterV6 {
 export type EventKindV6="start"|"windup"|"shot"|"hit"|"block"|"miss"|"dodge"|"shove"|"stun"|"knockdown"|"interrupt"|"break"|"ko"|"timeout"|"special_start"|"special_end"|"slow"|"charge"|"flank"|"flame"|"burn"|"shock"|"overheat"|"cooled";
 export interface EventV6 {
   id:number;frame:number;kind:EventKindV6;who:SideV6;target:SideV6;attackId?:number;weapon?:AttackKindV6;mount?:MountV6;slot?:BodySocketV6;
-  damage?:number;absorbed?:number;platingStopped?:number;point?:Vec3;normal?:Vec3;worldPoint?:Vec3;worldNormal?:Vec3;origin?:Vec3;direction?:Vec3;ability?:StyleV6;phase?:number;critical?:boolean;
+  defeatReason?:"body"|"disabled";damage?:number;absorbed?:number;platingStopped?:number;point?:Vec3;normal?:Vec3;worldPoint?:Vec3;worldNormal?:Vec3;origin?:Vec3;direction?:Vec3;ability?:StyleV6;phase?:number;critical?:boolean;
 }
 export interface ProjectileV6 {id:number;attackId:number;who:SideV6;weapon:AttackKindV6;mount:MountV6;x:number;y:number;z:number;vx:number;vy:number;vz:number;radius:number;ttl:number;damage:number;platingBypass:number;burn:number;shock:number;impulse:number}
 export interface SpecialCommandV6 {id:string;who:SideV6;kind:"special";frame:number}
 export interface FightOptionsV6 {autoSpecial?:[boolean,boolean];defensePlans?:[DefensePlanV6,DefensePlanV6];commands?:SpecialCommandV6[]}
 export interface StateV6 {
-  version:6;rulesVersion:"mk6-1";catalogVersion:"mk6-catalog-1";seed:number;random:number;frame:number;done:boolean;winner:SideV6|null;
+  version:6;rulesVersion:"mk6-2";catalogVersion:"mk6-catalog-1";seed:number;initiative:SideV6;random:number;frame:number;done:boolean;winner:SideV6|null;
   builds:[BuildV6,BuildV6];stats:[StatsV6,StatsV6];fighters:[FighterV6,FighterV6];projectiles:ProjectileV6[];events:EventV6[];commands:SpecialCommandV6[];
   autoSpecial:[boolean,boolean];defensePlans:[DefensePlanV6,DefensePlanV6];attackSequence:number;
 }
-export interface ResultV6 {version:6;rulesVersion:"mk6-1";catalogVersion:"mk6-catalog-1";seed:number;builds:[BuildV6,BuildV6];commands:SpecialCommandV6[];autoSpecial:[boolean,boolean];defensePlans:[DefensePlanV6,DefensePlanV6];winner:SideV6;frames:number;hash:string;events:EventV6[]}
+export interface ResultV6 {version:6;rulesVersion:"mk6-2";catalogVersion:"mk6-catalog-1";seed:number;builds:[BuildV6,BuildV6];commands:SpecialCommandV6[];autoSpecial:[boolean,boolean];defensePlans:[DefensePlanV6,DefensePlanV6];winner:SideV6;frames:number;hash:string;events:EventV6[]}
 export interface SpecialReceiptV6 {accepted:boolean;command?:SpecialCommandV6;reason?:string}
