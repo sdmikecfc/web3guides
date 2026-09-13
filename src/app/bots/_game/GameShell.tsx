@@ -73,7 +73,8 @@ function Guide({ children }: { children: React.ReactNode }) { return <div classN
 
 export default function GameShell({ initialFight, initialReplay }: { initialFight?: FightClientProps; initialReplay?: string } = {}) {
   const query = useSearchParams();
-  return seasonPreview && !initialFight && !initialReplay && !query.get("replay") && query.get("collection") !== "classic" && query.get("combat") !== "5" ? <SeasonGameShell /> : <ClassicGameShell initialFight={initialFight} initialReplay={initialReplay} />;
+  const remaster = !initialFight && !initialReplay && (process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_BOTS_REMASTER_PREVIEW === "1") && query.get("view") === "fight" && query.get("combat") === "7";
+  return remaster || seasonPreview && !initialFight && !initialReplay && !query.get("replay") && query.get("collection") !== "classic" && query.get("combat") !== "5" ? <SeasonGameShell /> : <ClassicGameShell initialFight={initialFight} initialReplay={initialReplay} />;
 }
 
 function ClassicGameShell({ initialFight, initialReplay }: { initialFight?: FightClientProps; initialReplay?: string }) {

@@ -1,0 +1,32 @@
+{
+  "schema": "game_dev.result.v1",
+  "operation": "asset.validate",
+  "ok": true,
+  "data": {
+    "schema": "org.gamedebug.asset_validation.v1",
+    "modelPath": "C:\\Users\\Mike\\Documents\\Codex\\2026-09-07\\i-b\\outputs\\v7-assets\\public\\bots-art\\3d\\remaster-v7\\boiler-knight.t3.glb",
+    "passed": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "summary": {
+      "triangles": 84396,
+      "materials": 10,
+      "textures": 2,
+      "hasUVs": true,
+      "hasNormals": true,
+      "hasTangents": true,
+      "sizeMeters": [
+        2.058599778811402,
+        2.6383999013685013,
+        0.93400002643466
+      ]
+    },
+    "failures": [],
+    "checksRun": 11,
+    "inspectorWarnings": [
+      "glTF reader: Missing optional extension, \"KHR_materials_clearcoat\".",
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ],
+    "nextStep": "Passes cleanly."
+  }
+}

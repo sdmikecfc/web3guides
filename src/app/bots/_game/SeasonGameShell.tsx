@@ -23,13 +23,15 @@ import entry from "./entry.module.css";
 import seasonCss from "./season-workshop.module.css";
 
 const SeasonFight = dynamic(() => import("../fight/season/SeasonFightClient"), { ssr: false, loading: () => <div className={css.loading}><p>Opening your ring… Your room buttons stay below.</p></div> });
+const RemasterFight = dynamic(() => import("../fight/remaster/RemasterFightClient"), { ssr: false, loading: () => <div className={css.loading}><p>Opening the remaster… Your room buttons stay below.</p></div> });
 type Room = SeasonRoom | "community";
 const validRoom = (value: string | null): Room => value === "parts" || value === "build" || value === "fight" || value === "community" ? value : "garage";
 /** Separate hydration prevents a season visit from enrolling or changing a legacy garage. */
 export default function SeasonGameShell() {
   const params = useSearchParams(), session = useBotsSession({ seasonOnly: true }), mode = validRoom(params.get("view"));
-  const fighting = mode === "fight" && params.get("combat") === "6";
-  const query = Object.fromEntries(FIGHT_QUERY_KEYS.map(key => [key, params.get(key) ?? undefined]));
+  const remaster = mode === "fight" && params.get("combat") === "7" && (process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_BOTS_REMASTER_PREVIEW === "1");
+  const fighting = mode === "fight" && (params.get("combat") === "6" || remaster);
+  const query = Object.fromEntries([...FIGHT_QUERY_KEYS, ...(remaster ? ["clean"] : [])].map(key => [key, params.get(key) ?? undefined]));
   const [balance, setBalance] = useState<number | null>(null), [state, setState] = useState<SeasonStateResponse | null>(null);
   const [seasonLoadState, setSeasonLoadState] = useState<"loading" | "ready" | "unavailable">("loading");
   const [welcome, setWelcome] = useState(false), [tour, setTour] = useState(false), [returning, setReturning] = useState(false), [trailer, setTrailer] = useState(false);
@@ -44,7 +46,7 @@ export default function SeasonGameShell() {
     setReturning(oldPlayer);
     if (seen < WORKSHOP_TOUR_VERSION && !fighting && params.get("tour") !== "1") { if (oldPlayer) setTour(true); else setWelcome(true); }
   }, [session.ready, session.token, fighting, params]);
-  const navigate = useCallback((next: Room) => { markTour(); setWelcome(false); setTour(false); help.current?.close(); scores.current?.close(); const url = new URL(window.location.href); clearFightQuery(url.searchParams); url.searchParams.delete("panel"); url.searchParams.delete("tour"); url.searchParams.set("collection", "season"); if (next === "garage") url.searchParams.delete("view"); else url.searchParams.set("view", next); window.history.replaceState(null, "", `${url.pathname}${url.search}`); }, []);
+  const navigate = useCallback((next: Room) => { markTour(); setWelcome(false); setTour(false); help.current?.close(); scores.current?.close(); const url = new URL(window.location.href); clearFightQuery(url.searchParams); url.searchParams.delete("panel"); url.searchParams.delete("tour"); url.searchParams.delete("clean"); url.searchParams.set("collection", "season"); if (next === "garage") url.searchParams.delete("view"); else url.searchParams.set("view", next); window.history.replaceState(null, "", `${url.pathname}${url.search}`); }, []);
   const closeTour = () => { markTour(); setTour(false); setWelcome(false); };
   const showTour = () => { help.current?.close(); setWelcome(false); setReturning(!!state?.roster.length || returning); setTour(true); };
   useEffect(() => {
@@ -63,7 +65,7 @@ export default function SeasonGameShell() {
     <header className={css.top}><button className={css.brand} onClick={() => navigate("garage")}>Model Kombat<span className={css.subbrand}>A Doma game</span></button><div className={css.collectionSwitch} aria-label="Choose your garage"><button aria-pressed>Season</button><Link href={collectionHref}>Collection</Link></div><div className={css.topRight}><button className={css.coins} onClick={() => { navigate("garage"); }} aria-label={`${balance ?? 0} season coins`}><span className={css.coin} aria-hidden>✦</span>{balance ?? "—"}<span className={css.desktopOnly}>season coins</span></button><button className={`${css.quiet} ${css.desktopOnly}`} onClick={showTour}>Show me around</button><Link className={`${css.quiet} ${css.rulesLink}`} href="/bots/rules">Rules</Link><button className={css.quiet} disabled={session.busy || session.pending} onClick={() => session.token ? help.current?.showModal() : void session.open()}>{session.token ? "Help" : session.busy || session.pending ? "Connecting…" : "Connect"}</button></div></header>
     <main className={`${css.workspace} ${css.fullRoom}`} aria-label={fighting ? "Fight room" : mode === "community" ? "Community room" : "Season workshop"}>
       <div className={css.seasonHost} hidden={fighting || mode === "community"}><SeasonWorkshop active={!fighting && mode !== "community" && !welcome && !tour && !trailer} mode={mode === "community" ? "garage" : mode} token={session.token} onConnect={() => void session.open()} onNavigate={navigate} onBalance={setBalance} onViewState={setState} onLoadState={setSeasonLoadState} /></div>
-      {fighting && <div className={css.fightHost}><SeasonFight key={JSON.stringify(query)} query={query} embedded onClose={() => navigate("fight")} /></div>}
+      {fighting && <div className={css.fightHost}>{remaster ? <RemasterFight key={JSON.stringify(query)} query={query} embedded onClose={() => navigate("fight")} /> : <SeasonFight key={JSON.stringify(query)} query={query} embedded onClose={() => navigate("fight")} />}</div>}
       {mode === "community" && <CommunityRoom battles={battles} state={battleStatus} campaign={null} seasonScores={seasonScores} onWatch={watch} onPractice={() => { window.location.assign(fightRoomHref(6, { style: "tank", tier: "3" })); }} onScores={() => scores.current?.showModal()} onRetry={() => setRetry(n => n + 1)} />}
     </main>
     <nav className={css.nav} aria-label="Game rooms">{([{ id: "garage", label: "Garage", Icon: IconGarage }, { id: "parts", label: "Parts", Icon: IconPegboard }, { id: "build", label: "Build", Icon: IconWrench }, { id: "fight", label: "Fight", Icon: IconWeapon }, { id: "community", label: "Community", Icon: IconStar }] as const).map(({ id, label, Icon }) => <button key={id} className={`${css.navButton} ${id === "community" ? css.navExtra : ""}`} aria-current={mode === id ? "page" : undefined} onClick={() => navigate(id)}><Icon size={22} />{label}</button>)}<button className={css.navButton} onClick={() => help.current?.showModal()}><span aria-hidden style={{ fontSize: 23, fontWeight: 800 }}>?</span>Help</button></nav>

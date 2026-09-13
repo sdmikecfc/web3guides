@@ -1,0 +1,12 @@
+{
+  "maxTriangles": 85000,
+  "maxMaterials": 14,
+  "minTextureSize": 1024,
+  "minDimensionMeters": 0.5,
+  "maxDimensionMeters": 4,
+  "requireUVs": true,
+  "requireNormals": true,
+  "requireTangentsWithNormalMap": true,
+  "requireBaseColorTexture": false,
+  "requirePowerOfTwoTextures": true
+}
