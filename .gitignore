@@ -50,6 +50,7 @@ next-env.d.ts
 !/art-src/bots/blender/README.md
 !/art-src/bots/blender/build_clay_lab.py
 !/art-src/bots/blender/clay-lab-source.blend
+!/art-src/bots/personal-v8/
 
 .dev-captures/
 .dk-preview/
