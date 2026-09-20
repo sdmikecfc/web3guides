@@ -1,0 +1,404 @@
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import type { SceneFood } from './scene-types';
+
+/** Original toy-diner model kit. Metres, Y-up, floor-centred, front is -Z.
+ * This source builds both world models and catalogue previews. No asset provider. */
+export const PALETTE={cream:'#f7f2e6',porcelain:'#fff9ee',ink:'#293e39',sage:'#365f55',mint:'#94b9a2',tomato:'#bd654e',mustard:'#e3b454',wood:'#876647',oak:'#c59a6c',metal:'#bdcdc7',steel:'#647e77',dark:'#394b46',leaf:'#668b55',paving:'#deded3',bun:'#dfad62',skin:'#e4b38e'};
+const geometries=new Map<string,THREE.BufferGeometry>(),materials=new Map<string,THREE.MeshToonMaterial>();
+export function modelKitStats(){return {geometries:geometries.size,materials:materials.size};}
+const gradient=new THREE.DataTexture(new Uint8Array([105,175,245]),3,1,THREE.RedFormat);
+gradient.minFilter=THREE.NearestFilter;gradient.magFilter=THREE.NearestFilter;gradient.needsUpdate=true;
+export function material(color:string){let result=materials.get(color);if(!result){result=new THREE.MeshToonMaterial({color,gradientMap:gradient});result.userData.sharedKitResource=true;materials.set(color,result);}return result;}
+function geo(key:string,create:()=>THREE.BufferGeometry){let value=geometries.get(key);if(!value){value=create();value.userData.sharedKitResource=true;geometries.set(key,value);}return value;}
+function mesh(geometry:THREE.BufferGeometry,color:string,x=0,y=0,z=0){const m=new THREE.Mesh(geometry,material(color));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;return m;}
+export function box(w:number,h:number,d:number,color:string,x=0,y=h/2,z=0,r=.035){return mesh(geo(`b${w},${h},${d},${r}`,()=>r?new RoundedBoxGeometry(w,h,d,2,Math.min(r,w/3,h/3,d/3)):new THREE.BoxGeometry(w,h,d)),color,x,y,z);}
+export function cylinder(top:number,bottom:number,h:number,color:string,x=0,y=h/2,z=0,sides=12){return mesh(geo(`c${top},${bottom},${h},${sides}`,()=>new THREE.CylinderGeometry(top,bottom,h,sides)),color,x,y,z);}
+function ball(radius:number,color:string,x=0,y=0,z=0){return mesh(geo(`s${radius}`,()=>new THREE.SphereGeometry(radius,12,8)),color,x,y,z);}
+function ring(radius:number,tube:number,color:string,x=0,y=0,z=0){const m=mesh(geo(`r${radius},${tube}`,()=>new THREE.TorusGeometry(radius,tube,5,16)),color,x,y,z);m.rotation.x=Math.PI/2;return m;}
+function group(...parts:THREE.Object3D[]){const g=new THREE.Group();g.add(...parts);return g;}
+/** Bake fixed pieces by paint colour; articulated joints stay separate groups.
+ * This keeps expressive faces and constructed furniture cheap to draw on phones. */
+function packMeshes(root:THREE.Group,key:string){
+  const batches=new Map<string,THREE.Mesh[]>();
+  for(const child of root.children)if(child instanceof THREE.Mesh&&!Array.isArray(child.material)){
+    const paint=(child.material as THREE.MeshToonMaterial).color.getHexString(),batch=batches.get(paint)??[];batch.push(child);batches.set(paint,batch);
+  }
+  batches.forEach((parts,paint)=>{
+    if(parts.length<2)return;
+    const geometry=geo(`packed:${key}:${paint}`,()=>{
+      const positions:number[]=[],normals:number[]=[],point=new THREE.Vector3(),normal=new THREE.Vector3(),normalMatrix=new THREE.Matrix3();
+      for(const part of parts){part.updateMatrix();normalMatrix.getNormalMatrix(part.matrix);const p=part.geometry.getAttribute('position'),n=part.geometry.getAttribute('normal'),indices=part.geometry.index,count=indices?.count??p.count;
+        for(let i=0;i<count;i++){const index=indices?indices.getX(i):i;point.fromBufferAttribute(p,index).applyMatrix4(part.matrix);normal.fromBufferAttribute(n,index).applyMatrix3(normalMatrix).normalize();positions.push(point.x,point.y,point.z);normals.push(normal.x,normal.y,normal.z);}
+      }
+      const result=new THREE.BufferGeometry();result.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));result.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));return result;
+    });
+    root.remove(...parts);root.add(mesh(geometry,`#${paint}`));
+  });
+  return root;
+}
+
+export function createPlate(dirty=false){
+  const g=group(cylinder(.29,.26,.035,PALETTE.porcelain,0,.022),ring(.263,.010,PALETTE.sage,0,.045));
+  if(dirty){const stain=ball(.13,'#ad7954',0,.049);stain.scale.set(1,.06,.75);g.add(stain);for(let i=0;i<3;i++)g.add(ball(.025,i%2?PALETTE.leaf:PALETTE.tomato,-.14+i*.13,.058,.085-i*.02));}
+  return g;
+}
+export function createFoodModel(food:SceneFood):THREE.Group{
+  const dish=buildFoodModel(food),level=Math.max(0,Math.min(10,Math.floor(food.mastery??0)));
+  // Plating is earned from the actual recipe level; raw, burnt and dirty objects
+  // always retain their honest service appearance.
+  if(food.kind!=='dish'||level<3)return dish;
+  const drink=food.recipeId.includes('coffee')||food.recipeId.includes('lemonade')||food.recipeId.includes('shake');
+  const radius=drink?.222:.291,trim=level===10?'#d5a547':'#4d8b76';
+  if(drink)dish.add(cylinder(.242,.226,.021,PALETTE.porcelain,0,.012));
+  dish.add(ring(radius,.012,trim,0,drink?.028:.045));
+  for(let i=0;i<8;i++){
+    const angle=i*Math.PI/4,mark=ball(.012,trim,Math.sin(angle)*(radius-.025),drink?.028:.048,Math.cos(angle)*(radius-.025));mark.scale.y=.3;dish.add(mark);
+  }
+  if(level===10){
+    dish.add(ring(radius-.020,.004,'#e7c678',0,drink?.028:.046));
+    if(!drink)for(let i=0;i<2;i++){
+      const leaf=ball(.042,i?'#93b864':'#518853',-.215+i*.026,.080+i*.009,-.15-i*.033);leaf.scale.set(.52,.22,1);leaf.rotation.y=i?.7:-.35;dish.add(leaf);
+    }
+    const seal=cylinder(.026,.026,.005,'#d5a547',0,drink?.031:.051,-radius+.031,5);seal.rotation.y=Math.PI;dish.add(seal);
+  }
+  dish.userData.presentation=level===10?'masterpiece':'signature';
+  return dish;
+}
+function buildFoodModel(food:SceneFood):THREE.Group{
+  const id=food.recipeId,g=new THREE.Group(),raw=food.kind==='raw',processed=food.kind==='processed';
+  if(food.kind==='dirty')return createPlate(true);
+  if(food.kind==='burnt'){g.add(createPlate());const burnt=ball(.2,'#493f35',0,.09);burnt.scale.y=.34;g.add(burnt);for(let i=0;i<3;i++)g.add(ball(.028,'#6d5946',-.12+i*.11,.13,.04));return g;}
+  const burger=id.includes('burger')||id.includes('sandwich');
+  if(burger){
+    const chicken=id==='fried_chicken_sandwich';
+    if(raw||processed){const color=raw?(chicken?'#e3b397':'#c47566'):chicken?(food.stage==='coated'?'#e4ce9a':'#bd8a48'):'#77523c';g.add(cylinder(.21,.22,.07,color,0,.065));if(processed)for(let i=0;i<3;i++){const mark=box(.30,.008,.022,chicken?'#e6b765':'#4e4033',0,.105,-.11+i*.10,.003);mark.rotation.y=.32;g.add(mark);}if(food.stage==='cooked_patty_and_bacon')for(const x of [-.075,.075])g.add(box(.07,.018,.32,'#b37453',x,.127,0,.012));return g;}
+    g.add(createPlate(),cylinder(.233,.222,.077,PALETTE.bun,0,.098),cylinder(.225,.228,.08,chicken?'#bd8a48':'#70462f',0,.176));
+    for(let i=0;i<5;i++){const leaf=ball(.104,i%2?'#689c49':'#91b85e',Math.cos(i*1.26)*.14,.223,Math.sin(i*1.26)*.14);leaf.scale.set(1,.25,.70);g.add(leaf);}
+    if(id!=='classic_burger'){const cheese=box(.38,.024,.38,PALETTE.mustard,0,.231,0,.009);cheese.rotation.y=.36;g.add(cheese);}
+    g.add(cylinder(.201,.201,.030,'#c6533e',0,.264));
+    if(id==='bacon_deluxe_burger')for(const x of [-.13,.13]){const bacon=box(.075,.023,.49,'#9e6246',x,.269,0,.02);bacon.rotation.y=.16;g.add(bacon,box(.021,.025,.46,'#db9e78',x,.27,0,.009));}
+    if(id==='avocado_burger')for(let i=0;i<3;i++){const avocado=ball(.12,'#a8be6e',-.11+i*.105,.27,-.135);avocado.scale.set(.5,.25,1.1);avocado.rotation.y=-.35;g.add(avocado);}
+    if(chicken)for(const z of [-.23,.23])g.add(cylinder(.08,.08,.025,'#789557',0,.254,z));
+    const dome=mesh(geo('hero-bun-dome',()=>new THREE.SphereGeometry(.247,20,10,0,Math.PI*2,0,Math.PI/2)),PALETTE.bun,0,.281);dome.scale.y=.68;g.add(dome);
+    for(let i=0;i<6;i++){const angle=i*2.4,rad=.05+(i%3)*.048;const sesame=box(.023,.009,.039,'#fff3cb',Math.cos(angle)*rad,.281+Math.sqrt(.247**2-rad**2)*.68,Math.sin(angle)*rad,.005);sesame.rotation.y=angle;g.add(sesame);}return g;
+  }
+  if(id.includes('fries')||id==='onion_rings'||id==='mozzarella_sticks'){
+    if(raw){if(id==='onion_rings'){for(let i=0;i<3;i++)g.add(ring(.1,.025,'#b790a5',-.10+i*.09,.035+i*.015,0));}else if(id==='mozzarella_sticks'){for(let i=0;i<3;i++)g.add(box(.09,.075,.35,'#f7e8bf',-.12+i*.12,.075,0,.023));}else for(let i=0;i<2;i++){const potato=ball(.13,'#c6a06d',i*.16-.08,.10,0);potato.scale.set(.8,.7,1.3);g.add(potato);}return g;}
+    g.add(createPlate());if(id==='onion_rings'){for(let i=0;i<5;i++)g.add(ring(.072,.023,processed?'#e9d2ab':'#e6b867',-.13+i%3*.12,.075+Math.floor(i/3)*.05,-.06+Math.floor(i/3)*.10));return g;}
+    if(id==='mozzarella_sticks'){for(let i=0;i<4;i++){const stick=box(.075,.075,.29,processed?'#ead29d':'#dbae5f',-.16+i*.095,.088,0,.027);stick.rotation.y=.24;g.add(stick);}if(!processed)g.add(cylinder(.067,.075,.053,PALETTE.porcelain,.16,.077,.17),cylinder(.058,.058,.008,PALETTE.tomato,.16,.107,.17));return g;}
+    if(id==='chili_cheese_fries'){for(let i=0;i<9;i++){const fry=box(.035,.037,.29,PALETTE.mustard,(i%5)*.073-.15,.07+Math.floor(i/5)*.04,Math.floor(i/5)*.04,.007);fry.rotation.y=(i%3-1)*.23;g.add(fry);}if(!processed){for(let i=0;i<7;i++){const chili=ball(.053,'#9b6546',Math.sin(i*2.4)*.16,.15,Math.cos(i*2.4)*.11);chili.scale.y=.4;g.add(chili);}for(let i=0;i<3;i++)g.add(box(.28,.012,.022,'#f0ce78',0,.16,-.085+i*.08,.004));}return g;}
+    g.add(box(.34,.17,.25,'#bb5643',0,.155,0,.027),box(.35,.025,.255,PALETTE.tomato,0,.238,0,.010));
+    for(let i=0;i<7;i++){const fry=box(.050,.235+(i%3)*.034,.047,i%2?'#eabb56':'#f7d779',(i%4)*.078-.116,.309,Math.floor(i/4)*.085-.044,.009);fry.rotation.z=(i%4-1.5)*.10;g.add(fry);}
+    const seal=cylinder(.048,.048,.012,PALETTE.porcelain,0,.156,-.132,16);seal.rotation.x=Math.PI/2;g.add(seal,box(.018,.046,.008,PALETTE.mustard,0,.156,-.141,.006));return g;
+  }
+  if(id.includes('coffee')||id.includes('lemonade')||id.includes('shake')){
+    const drink=id.includes('coffee')?'#886246':id.includes('strawberry')?'#df9e99':id.includes('shake')?'#f3debc':'#f1d68a';
+    if(raw&&id==='coffee'){for(let i=0;i<8;i++){const bean=ball(.04,'#806246',Math.cos(i*2.4)*.13,.035+(i%2)*.025,Math.sin(i*2.4)*.12);bean.scale.set(.75,.6,1.1);g.add(bean);}return g;}
+    g.add(cylinder(.135,.09,.30,id==='lemonade'?'#e8d596':PALETTE.porcelain,0,.17),cylinder(.113,.113,.012,raw?'#d8decb':drink,0,.325));
+    if(id.includes('coffee')){const handle=ring(.083,.025,PALETTE.porcelain,.15,.2);handle.rotation.x=0;g.add(handle);}else{const straw=cylinder(.012,.012,.33,PALETTE.tomato,.055,.38);straw.rotation.z=.18;g.add(straw);const label=box(.13,.07,.012,id.includes('strawberry')?'#d9958e':PALETTE.mint,0,.18,-.105,.009);g.add(label);if(!raw&&id.includes('shake')){for(let i=0;i<3;i++)g.add(ball(.075,PALETTE.porcelain,(i-1)*.055,.35+(i%2)*.045,0));if(id==='strawberry_shake')g.add(ball(.03,PALETTE.tomato,0,.43,0));}if(id==='lemonade'){const lemon=cylinder(.074,.074,.018,'#f5d579',-.10,.30,-.07);lemon.rotation.x=Math.PI/2;g.add(lemon);}}return g;
+  }
+  if((raw&&['pancakes','strawberry_waffle','brownie','apple_pie'].includes(id))||(processed&&id==='brownie')){g.add(cylinder(.19,.11,.14,PALETTE.mint,0,.10),cylinder(.17,.17,.016,id==='brownie'?'#9d7559':'#ead9b6',0,.177));const spoon=box(.029,.02,.31,PALETTE.wood,.10,.21,.04,.01);spoon.rotation.x=-.24;g.add(spoon);return g;}
+  if(raw&&id==='ice_cream_sundae'){g.add(cylinder(.20,.17,.19,PALETTE.mint,0,.12),cylinder(.181,.181,.025,PALETTE.porcelain,0,.225),ball(.10,'#efe1c7',0,.25,0));return g;}
+  if((raw||processed)&&id==='hot_dog'){g.add(box(.36,.08,.085,raw?'#cf9276':'#a16b4e',0,.062,0,.035));return g;}
+  g.add(createPlate());
+  if(id==='side_salad'){for(let i=0;i<7;i++){const leaf=ball(.115,i%2?'#719555':'#a1b967',Math.cos(i*2.4)*.14,.10+Math.floor(i/4)*.04,Math.sin(i*2.4)*.12);leaf.scale.y=raw?.7:.4;g.add(leaf);}g.add(ball(.055,PALETTE.tomato,.12,.17,-.07),ball(.048,PALETTE.tomato,-.08,.15,.10));}
+  else if(id==='hot_dog'){g.add(box(.40,.13,.21,PALETTE.bun,0,.115,0,.065),box(.42,.09,.085,'#ae7250',0,.18,0,.035));for(let i=0;i<5;i++){const mustard=box(.07,.012,.025,PALETTE.mustard,-.14+i*.07,.23,(i%2-.5)*.025,.009);mustard.rotation.y=i%2?.4:-.4;g.add(mustard);}}
+  else if(id==='ice_cream_sundae'){g.add(cylinder(.20,.12,.13,'#a8c9bd',0,.12));for(let i=0;i<3;i++)g.add(ball(.11,['#eddec0','#c39575','#f0e8d4'][i],(i-1)*.105,.22+i%2*.07,0));g.add(ball(.032,PALETTE.tomato,0,.405,0));}
+  else if(id==='pancakes'){for(let i=0;i<3;i++)g.add(cylinder(.22-i*.009,.22-i*.009,.052,'#d9af70',0,.09+i*.053));g.add(cylinder(.158,.175,.014,'#a67848',0,.231),box(.10,.035,.085,'#f0d98a',0,.253,-.025,.012));}
+  else if(id==='strawberry_waffle'){g.add(box(.39,.075,.34,PALETTE.bun,0,.10,0,.018));for(let i=0;i<4;i++)for(let j=0;j<3;j++)g.add(box(.062,.009,.065,'#b98948',-.138+i*.091,.142,-.09+j*.09,.009));if(!processed){for(const x of [-.10,.10]){const berry=ball(.055,PALETTE.tomato,x,.19,-.075);berry.scale.y=1.2;g.add(berry);}g.add(ball(.065,PALETTE.porcelain,.02,.20,.075));}}
+  else if(id==='apple_pie'){g.add(cylinder(.23,.205,.10,processed?'#ebce97':'#c99452',0,.104),cylinder(.203,.203,.018,'#a87843',0,.161));for(let i=0;i<4;i++){const offset=(i-1.5)*.085,len=Math.sqrt(.19*.19-offset*offset)*2;g.add(box(len,.025,.035,processed?'#f0d7a4':'#e7bd7b',0,.181,offset,.008),box(.035,.025,len,processed?'#f0d7a4':'#e7bd7b',offset,.191,0,.008));}if(!processed)g.add(ball(.075,PALETTE.porcelain,.17,.13,.14));}
+  else if(id==='brownie'){g.add(box(.32,.12,.28,'#825941',0,.13,0,.017),box(.32,.023,.28,'#624638',0,.202,0,.014));for(let i=0;i<4;i++){const nut=ball(.027,'#c39c69',(i%2)*.13-.065,.225,Math.floor(i/2)*.11-.055);nut.scale.set(1,.4,.8);g.add(nut);}}
+  else if(id==='grilled_cheese'){for(let i=0;i<2;i++){const sandwich=group(cylinder(.22,.22,.07,raw?'#eed3a0':'#d7a259',0,.095,0,3),cylinder(.211,.211,.025,PALETTE.mustard,0,.137,0,3),cylinder(.22,.22,.044,raw?'#f1d7a6':'#ddb375',0,.172,0,3));sandwich.position.set((i-.5)*.20,0,(i-.5)*.08);sandwich.rotation.y=i*Math.PI+.30;g.add(sandwich);}}
+  else if(id==='loaded_nachos'){for(let i=0;i<7;i++){const chip=cylinder(.10,.10,.025,PALETTE.mustard,Math.sin(i*2.4)*.16,.08+(i%2)*.035,Math.cos(i*2.4)*.14,3);chip.rotation.y=i;g.add(chip);}if(!raw){for(let i=0;i<5;i++)g.add(box(.07,.014,.09,'#f0cf79',Math.sin(i*2.4)*.14,.145,Math.cos(i*2.4)*.11,.016));if(!processed)for(let i=0;i<4;i++)g.add(ball(.027,PALETTE.tomato,(i%2)*.19-.095,.17,Math.floor(i/2)*.14-.07));}}
+  else{g.userData.unsupportedRecipe=id;}
+  return g;
+}
+
+/** Rounded enamel housings share a recessed toe kick, framed door and worktop. */
+function cabinet(color=PALETTE.mint,w=.85){
+  const g=new THREE.Group(),panel=color===PALETTE.mint?PALETTE.sage:color;
+  g.add(box(w-.09,.13,.68,PALETTE.dark,0,.105,0,.025),box(w,.60,.80,color,0,.465,0,.065));
+  for(const x of [-w*.36,w*.36])for(const z of [-.28,.28])g.add(cylinder(.025,.032,.13,PALETTE.steel,x,.065,z,8));
+  g.add(box(w-.08,.50,.026,PALETTE.steel,0,.44,-.403,.037),box(w-.12,.46,.026,panel,0,.445,-.420,.035));
+  // A real chrome lip and projecting handle remain readable from the game camera.
+  g.add(box(w+.055,.043,.865,PALETTE.metal,0,.784,0,.023),box(w+.055,.070,.865,PALETTE.porcelain,0,.828,0,.033));
+  for(const x of [-.09,.09])g.add(box(.026,.035,.055,PALETTE.steel,x,.613,-.449,.009));
+  g.add(box(.235,.035,.043,PALETTE.metal,0,.613,-.479,.016));
+  const badge=cylinder(.047,.047,.012,PALETTE.porcelain,-w*.28,.32,-.443,16);badge.rotation.x=Math.PI/2;g.add(badge);
+  for(const x of [-.013,.013])g.add(box(.013,.030,.009,PALETTE.tomato,-w*.28+x,.32,-.452,.004));
+  return packMeshes(g,`cabinet:${color}:${w}`);
+}
+function createChair(color:string){
+  const g=new THREE.Group();
+  // The rear uprights run continuously from the floor into the upholstered back.
+  for(const x of [-.19,.19]){
+    g.add(cylinder(.034,.043,.43,PALETTE.wood,x,.225,-.18,12),box(.058,.93,.062,PALETTE.wood,x,.475,.19,.022));
+    g.add(box(.035,.037,.36,PALETTE.wood,x,.23,0,.011));
+  }
+  g.add(box(.51,.06,.48,PALETTE.wood,0,.431,0,.041),box(.56,.11,.53,color,0,.493,-.008,.078));
+  const backShape=(w:number,bottom:number,top:number)=>{const s=new THREE.Shape(),half=w/2;s.moveTo(-half,bottom);s.lineTo(half,bottom);s.lineTo(half,top-.13);s.quadraticCurveTo(half,top,half-.14,top);s.quadraticCurveTo(0,top+.015,-half+.14,top);s.quadraticCurveTo(-half,top,-half,top-.13);s.closePath();return s;};
+  g.add(mesh(geo('cafe-chair-arched-frame',()=>new THREE.ExtrudeGeometry(backShape(.55,.686,.988),{depth:.075,bevelEnabled:true,bevelSize:.011,bevelThickness:.009,bevelSegments:2,curveSegments:10,steps:1})),PALETTE.wood,0,0,.154));
+  g.add(mesh(geo('cafe-chair-arched-pad',()=>new THREE.ExtrudeGeometry(backShape(.475,.722,.954),{depth:.048,bevelEnabled:true,bevelSize:.012,bevelThickness:.010,bevelSegments:2,curveSegments:10,steps:1})),color,0,0,.106));
+  // Cream piping follows the seat, while one generous tuft keeps the little back readable.
+  g.add(box(.47,.015,.028,PALETTE.porcelain,0,.526,-.249,.010));
+  const tuft=ball(.023,PALETTE.porcelain,0,.846,.091);tuft.scale.z=.42;g.add(tuft);
+  return packMeshes(g,`cafe-chair:${color}`);
+}
+export function createDiningTable(capacity:2|4=2){
+  const g=new THREE.Group(),w=capacity===4?1.72:.88,d=1.72;
+  // A proper cafe pedestal gives knees room and a quieter, recognisable silhouette.
+  for(const z of [-.44,.44]){
+    g.add(box(w*.68,.065,.30,PALETTE.dark,0,.046,z,.08),cylinder(.080,.108,.64,PALETTE.sage,0,.393,z));
+    g.add(cylinder(.091,.102,.075,PALETTE.metal,0,.117,z),cylinder(.098,.080,.06,PALETTE.metal,0,.661,z));
+  }
+  g.add(box(w-.10,.075,d-.10,PALETTE.wood,0,.711,0,.085),box(w,.09,d,PALETTE.tomato,0,.772,0,.11),box(w-.055,.027,d-.055,PALETTE.porcelain,0,.827,0,.095));
+  // An enamel pinstripe gives the tabletop a cafe identity without a busy surface texture.
+  g.add(box(w-.145,.007,d-.145,PALETTE.mint,0,.843,0,.080),box(w-.183,.009,d-.183,PALETTE.porcelain,0,.846,0,.071));
+  // One small bud vase makes a set table feel cared for without hiding the food.
+  g.add(cylinder(.044,.065,.14,PALETTE.sage,.13,.922,-.12),cylinder(.031,.044,.045,PALETTE.sage,.13,1.014,-.12));
+  for(let i=0;i<3;i++){const stem=cylinder(.007,.008,.14,PALETTE.leaf,.13+(i-1)*.018,1.087,-.12);stem.rotation.z=(i-1)*.20;g.add(stem);const flower=ball(.039,[PALETTE.mustard,PALETTE.tomato,PALETTE.porcelain][i],.13+(i-1)*.035,1.151+(i%2)*.025,-.12);flower.scale.y=.62;g.add(flower);}
+  return packMeshes(g,`cafe-table:${capacity}`);
+}
+function plant(){const g=group(cylinder(.20,.15,.33,PALETTE.tomato,0,.18),cylinder(.18,.18,.04,'#866448',0,.35));for(let i=0;i<7;i++){const angle=i*2.4,leaf=ball(.18,i%2?PALETTE.leaf:'#89a971',Math.sin(angle)*.16,.58+Math.cos(i)*.1,Math.cos(angle)*.16);leaf.scale.set(.55,1.3,.6);leaf.rotation.z=Math.sin(angle)*.5;g.add(leaf);}return g;}
+
+export interface CharacterRig {
+  body:THREE.Group;chest:THREE.Group;head:THREE.Group;eyes:THREE.Group[];
+  brows:THREE.Group[];smile:THREE.Group;openMouth:THREE.Group;
+  arms:THREE.Group[];elbows:THREE.Group[];legs:THREE.Group[];knees:THREE.Group[];
+  held:THREE.Group;props:{cook:THREE.Group;spoon:THREE.Group;knife:THREE.Group;wash:THREE.Group;eat:THREE.Group};
+  phase:number;blinkPeriod:number;isChef:boolean;
+}
+function actingProps(){
+  // Tools carry no simulated food or dishes. The real held-item group remains
+  // exclusively owned by the scene's authoritative inventory rendering.
+  const cook=group(cylinder(.018,.020,.22,PALETTE.tomato,0,-.045),box(.098,.11,.021,PALETTE.dark,0,-.205,0,.019));
+  cook.name='acting-spatula';for(const x of [-.027,0,.027])cook.add(box(.010,.063,.023,PALETTE.metal,x,-.208,0,.003));packMeshes(cook,'acting-spatula');
+  const spoon=group(cylinder(.014,.018,.23,PALETTE.wood,0,-.047));const bowl=ball(.048,PALETTE.wood,0,-.202,0);bowl.scale.set(.72,1,.22);spoon.add(bowl);spoon.name='acting-spoon';packMeshes(spoon,'acting-spoon');
+  const knife=group(box(.027,.10,.022,PALETTE.dark,0,.009,0,.010),box(.046,.14,.010,PALETTE.metal,.010,-.112,0,.008));knife.name='acting-knife';
+  const wash=group(box(.105,.048,.085,PALETTE.mustard,0,-.021,-.015,.018),box(.104,.019,.085,PALETTE.sage,0,-.050,-.015,.009));wash.name='acting-sponge';
+  const eat=group(box(.024,.143,.017,PALETTE.steel,0,-.030,0,.007),box(.065,.029,.017,PALETTE.steel,0,-.112,0,.005));
+  eat.name='acting-fork';for(const x of [-.026,0,.026])eat.add(box(.014,.043,.014,PALETTE.steel,x,-.143,0,.004));packMeshes(eat,'acting-fork');
+  for(const prop of [cook,spoon,knife,wash,eat])prop.visible=false;
+  return {cook,spoon,knife,wash,eat};
+}
+export function createCharacter(role='chef',look=0,uniform?:string){
+  const root=new THREE.Group(),body=new THREE.Group(),head=new THREE.Group(),eyes:THREE.Group[]=[],brows:THREE.Group[]=[];root.add(body);body.add(head);
+  const style=Math.abs(Math.floor(look))%20,skin=['#e6ad83','#bf815b','#855337','#f0c29b'][style%4],hair=['#654330','#302d2b','#b87535','#7b6554'][style%4];
+  const shirt=role==='chef'?PALETTE.porcelain:role==='waiter'?PALETTE.porcelain:['#b8594b','#548b98','#c99a43','#527c64','#937093'][style%5];
+  const jacket=ball(.29,shirt,0,.807,0);jacket.scale.set(.95,.95,.63);
+  body.add(jacket,box(.39,.13,.29,PALETTE.dark,0,.608,0,.064),cylinder(.076,.080,.12,skin,0,1.096));
+  // Collar and sleeves meet the torso; a generous apron pocket reads at room scale.
+  for(const side of [-1,1]){const collar=box(.10,.095,.030,role==='customer'?PALETTE.porcelain:shirt,side*.061,1.020,-.151,.019);collar.rotation.z=side*.38;body.add(collar);}
+  if(role!=='customer'){
+    const apron=uniform??(role==='chef'?PALETTE.sage:PALETTE.tomato);
+    body.add(box(.35,.36,.027,apron,0,.738,-.169,.049),box(.23,.20,.029,apron,0,.956,-.163,.035));
+    for(const x of [-.104,.104])body.add(box(.036,.22,.030,apron,x,1.007,-.155,.012));
+    body.add(box(.19,.115,.035,PALETTE.porcelain,0,.755,-.190,.021),box(.13,.018,.012,apron,0,.790,-.213,.006));
+    for(const x of [-.105,.105])body.add(ball(.016,PALETTE.mustard,x,1.009,-.180));
+    const neckerchief=box(.083,.08,.028,role==='chef'?PALETTE.tomato:PALETTE.sage,0,1.048,-.181,.020);neckerchief.rotation.z=Math.PI/4;body.add(neckerchief);
+  }else{
+    body.add(box(.095,.08,.022,PALETTE.porcelain,.107,.915,-.156,.017));
+    for(const y of [.954,.885,.815])body.add(ball(.013,PALETTE.ink,-.023,y,-.159));
+    if(style%3===0)for(const y of [.733,.803])body.add(box(.40,.024,.019,PALETTE.porcelain,0,y,-.164,.006));
+    if(style%3===2)body.add(box(.030,.32,.020,PALETTE.porcelain,-.018,.81,-.165,.006));
+  }
+  // A generous chibi head and simple dark eyes carry expression at phone size.
+  head.position.y=1.274;head.scale.setScalar(1.38);const face=mesh(geo('diner-soft-face',()=>new THREE.SphereGeometry(.260,20,14)),skin);face.scale.set(1.075,1,.95);head.add(face);
+  for(const side of [-1,1]){const cheek=ball(.139,skin,side*.15,-.075,-.053);cheek.scale.set(.93,.80,.89);head.add(cheek);}
+  const haircap=mesh(geo('diner-hair-cap',()=>new THREE.SphereGeometry(.267,16,9,0,Math.PI*2,0,Math.PI*.49)),hair,0,.034,.012);haircap.scale.set(1.07,.95,.96);head.add(haircap);
+  for(const side of [-1,1]){
+    head.add(ball(.050,skin,side*.261,-.014,.001));
+    const innerEar=ball(.025,'#c78068',side*.282,-.009,-.025);innerEar.scale.z=.4;head.add(innerEar);
+    const eyeGroup=new THREE.Group();eyeGroup.position.set(side*.096,.018,-.247);
+    const eye=ball(.036,PALETTE.ink);eye.scale.set(.91,1.13,.44);eyeGroup.add(eye,ball(.008,PALETTE.porcelain,-.009,.016,-.016));head.add(eyeGroup);eyes.push(eyeGroup);
+    const brow=new THREE.Group();brow.position.set(side*.096,.098,-.233);brow.add(box(.072,.016,.018,hair,0,0,0,.008));brow.rotation.z=-side*.10;head.add(brow);brows.push(brow);
+    const cheek=ball(.050,style%4===2?'#a66850':'#d98970',side*.172,-.062,-.208);cheek.scale.set(1,.47,.22);head.add(cheek);
+    if(role!=='chef'&&style%3===1){const curl=ball(.084,hair,side*.214,.048,.025);curl.scale.set(.54,1.70,1.05);head.add(curl);}
+  }
+  head.add(ball(.035,skin,0,-.034,-.265));
+  const smile=new THREE.Group(),openMouth=new THREE.Group();smile.position.set(0,-.078,-.247);openMouth.position.copy(smile.position);
+  smile.add(mesh(geo('diner-curved-smile',()=>new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(new THREE.Vector3(-.045,0,0),new THREE.Vector3(0,-.037,-.003),new THREE.Vector3(.045,0,0)),10,.0085,5,false)),'#814935'));
+  const mouthInside=ball(.031,'#814935',0,-.012,-.001);mouthInside.scale.set(1.16,.86,.25);const tongue=ball(.020,'#df967f',0,-.026,-.008);tongue.scale.set(1,.40,.19);openMouth.add(mouthInside,tongue);openMouth.visible=false;head.add(smile,openMouth);
+  if(role!=='chef'){
+    for(let i=0;i<3;i++){const fringe=ball(.072,hair,-.115+i*.087,.178-(i===0?.015:0),-.128);fringe.scale.set(1.10,.55,.75);fringe.rotation.z=-.20;head.add(fringe);}
+    if(style%4===1){
+      for(const x of [-.096,.096]){const lens=ring(.056,.009,PALETTE.ink,x,.018,-.278);lens.rotation.x=0;head.add(lens);}
+      head.add(box(.079,.010,.012,PALETTE.ink,0,.027,-.282,.005));
+    }
+    if(style%4===2)for(const x of [-.16,.16]){const bun=ball(.085,hair,x,.18,.15);bun.scale.set(1,.85,.9);head.add(bun);}
+    if(style%4===3){const sweep=ball(.095,hair,-.105,.205,-.10);sweep.scale.set(1.2,.55,.75);sweep.rotation.z=.35;head.add(sweep);}
+  }else{
+    head.add(cylinder(.217,.229,.095,PALETTE.porcelain,0,.242),cylinder(.231,.231,.023,PALETTE.sage,0,.218));
+    for(const [x,y,z,r] of [[-.13,.325,0,.112],[0,.363,.012,.138],[.13,.325,0,.112],[0,.325,-.09,.115]]){const puff=ball(r,PALETTE.porcelain,x,y,z);puff.scale.y=.83;head.add(puff);}
+  }
+  packMeshes(head,`head:${role}:${style}`);packMeshes(body,`body:${role}:${style}:${uniform??''}`);
+  const chest=new THREE.Group();for(const part of [...body.children])if(part instanceof THREE.Mesh)chest.add(part);body.add(chest);
+  const arms:THREE.Group[]=[],elbows:THREE.Group[]=[],legs:THREE.Group[]=[],knees:THREE.Group[]=[],props=actingProps();
+  for(const side of [-1,1]){
+    const arm=new THREE.Group(),elbow=new THREE.Group();arm.position.set(side*.255,1.00,0);elbow.position.y=-.207;
+    arm.add(ball(.089,shirt,0,-.029,0),cylinder(.088,.077,.21,shirt,0,-.11),cylinder(.079,.079,.037,PALETTE.porcelain,0,-.208));packMeshes(arm,`upper-arm:${shirt}`);
+    elbow.add(cylinder(.069,.063,.165,skin,0,-.073),ball(.089,skin,0,-.164),ball(.036,skin,-side*.059,-.141,-.044));packMeshes(elbow,`forearm:${skin}:${side}`);
+    if(side===-1){const grip=new THREE.Group();grip.position.y=-.164;grip.add(props.cook,props.spoon,props.knife,props.wash,props.eat);elbow.add(grip);}
+    arm.add(elbow);body.add(arm);arms.push(arm);elbows.push(elbow);
+    const leg=new THREE.Group(),knee=new THREE.Group();leg.position.set(side*.11,.62,0);leg.add(cylinder(.095,.083,.28,PALETTE.dark,0,-.135));knee.position.y=-.27;
+    knee.add(cylinder(.084,.073,.32,PALETTE.dark,0,-.16),box(.207,.096,.298,PALETTE.ink,0,-.300,-.066,.046),box(.210,.019,.299,PALETTE.wood,0,-.340,-.066,.009));
+    packMeshes(knee,'character-knee');leg.add(knee);body.add(leg);legs.push(leg);knees.push(knee);
+  }
+  const held=new THREE.Group();held.position.set(0,.90,-.39);body.add(held);
+  root.userData.rig={body,chest,head,eyes,brows,smile,openMouth,arms,elbows,legs,knees,held,props,phase:(style*1.618+(role==='waiter'?2.4:role==='customer'?.9:0))%7.2,blinkPeriod:4.6+(style%5)*.37,isChef:role==='chef'} satisfies CharacterRig;
+  return root;
+}
+export interface CharacterWork {stationKind?:string;recipeId?:string}
+export function animateCharacter(model:THREE.Group,time:number,pose:string,carrying:boolean,moving:boolean,work?:CharacterWork){
+  const rig=model.userData.rig as CharacterRig;if(!rig)return;
+  const t=time+rig.phase,seated=pose==='sit'||pose==='eat',cooking=pose==='cook'&&!carrying&&!moving,washing=pose==='wash'&&!carrying&&!moving,eating=pose==='eat'&&!carrying&&!moving;
+  const stride=moving?Math.sin(t*9.5)*.43:0,breath=Math.sin(t*1.8);
+  const stirring=cooking&&(!!work?.stationKind&&['drinks','coffee','blender'].includes(work.stationKind)||(work?.stationKind==='prep'&&!!work.recipeId&&['pancakes','strawberry_waffle','brownie'].includes(work.recipeId)));
+  const chopping=cooking&&work?.stationKind==='prep'&&!stirring;
+  rig.props.cook.visible=cooking&&!stirring&&!chopping;rig.props.spoon.visible=stirring;rig.props.knife.visible=chopping;rig.props.wash.visible=washing;rig.props.eat.visible=eating;
+  // Regulars greet briefly, then relax. A held two-arm salute reads as a T-pose.
+  const greetingPhase=((t%7.2)+7.2)%7.2;
+  const greeting=pose==='cheer'&&!carrying&&!moving?Math.max(0,Math.min(1,greetingPhase/.25,(1.8-greetingPhase)/.35)):0;
+  rig.body.position.y=seated?-.15:moving?Math.abs(Math.sin(t*9.5))*.022:0;
+  rig.body.position.x=0;rig.body.rotation.y=moving?Math.sin(t*9.5)*.026:0;
+  rig.chest.scale.set(1+breath*.006,1+breath*.003,1+breath*.013);
+  for(let i=0;i<2;i++){
+    rig.legs[i].rotation.x=seated?Math.PI/2:(i===0?stride:-stride);rig.knees[i].rotation.x=seated?-Math.PI/2:Math.max(0,i===0?-stride:stride)*.3;
+    rig.arms[i].rotation.set(carrying?.90:seated?.62:(i===0?-stride:stride)*.70,0,moving?0:(i===0?-1:1)*.028);
+    rig.elbows[i].rotation.set(carrying?.85:seated?.46:moving?.14:.06,0,0);
+    if(!moving&&!seated&&!carrying)rig.arms[i].rotation.x=breath*.018;
+  }
+  if(cooking){
+    const cycle=t*(stirring?4.2:chopping?7.8:3.8);
+    rig.arms[0].rotation.set(stirring?.95:chopping?.92:.86+Math.sin(cycle)*.055,stirring?Math.cos(cycle)*.09:0,stirring?Math.sin(cycle)*.095:-.035);
+    rig.elbows[0].rotation.x=stirring?.83+Math.sin(cycle)*.035:chopping?.78+Math.sin(cycle)*.17:.77+Math.sin(cycle)*.13;
+    rig.arms[1].rotation.x=.62;rig.elbows[1].rotation.x=.68;
+  }else if(washing){
+    rig.arms[0].rotation.set(.95+Math.sin(t*6.2)*.045,0,Math.sin(t*6.2)*.14);
+    rig.elbows[0].rotation.x=.83-Math.sin(t*6.2)*.07;
+    rig.arms[1].rotation.x=.70;rig.elbows[1].rotation.x=.73;
+  }else if(eating){
+    const lift=(1-Math.cos(t*2.65))*.5;
+    rig.arms[0].rotation.set(.90+lift*.25,0,.12+lift*.10);rig.elbows[0].rotation.set(1+lift*.35,0,.04+lift*.17);
+    rig.arms[1].rotation.x=.78;rig.elbows[1].rotation.x=.70;
+  }else if(greeting>0){
+    rig.arms[0].rotation.x=greeting*(.12+Math.sin(t*13+.6)*.12);
+    rig.arms[0].rotation.z=greeting*(-1.93+Math.sin(t*13)*.17);rig.elbows[0].rotation.x=.16*greeting;
+  }
+  rig.head.rotation.x=cooking||washing?.10+Math.sin(t*2.4)*.018:eating?.045+Math.sin(t*2.65)*.055:breath*.012;
+  rig.head.rotation.y=cooking||washing?Math.sin(t*2)*.018:eating?-.04:Math.sin(t*.58)*.085;
+  rig.head.rotation.z=-greeting*.065+(moving?Math.sin(t*4.75)*.018:0);
+  // Expressions follow real work and meals. Keep the idle face welcoming and
+  // readable; a brief soft squint makes a customer's bite feel enjoyed.
+  const focused=cooking||washing,savor=eating?Math.pow(Math.max(0,Math.sin(t*2.65-.7)),4):0;
+  for(let i=0;i<2;i++){
+    const side=i===0?-1:1;
+    rig.brows[i].position.y=.098+greeting*.014-(focused?.006:0)+savor*.005;
+    rig.brows[i].rotation.z=side*(focused?-.12:.10+greeting*.14+savor*.08);
+  }
+  rig.smile.scale.set(1+greeting*.16+savor*.05,1+greeting*.10,1);
+  rig.openMouth.visible=greeting>.35;
+  rig.openMouth.scale.setScalar(1+greeting*.07);
+  rig.smile.visible=!rig.openMouth.visible;
+  const blinkCycle=((t%rig.blinkPeriod)+rig.blinkPeriod)%rig.blinkPeriod,blink=blinkCycle<.16?1-Math.sin(blinkCycle/.16*Math.PI)*.92:1;
+  for(const eye of rig.eyes){eye.scale.y=blink*(1-savor*.44);eye.children[1].visible=eye.scale.y>.45;}
+}
+
+export interface ModelOptions {tier?:number;color?:string;recipeId?:string;stage?:string;look?:number}
+export function createModel(kind:string,options:ModelOptions={}):THREE.Group{
+  if(kind==='chef'||kind==='waiter'||kind==='customer')return createCharacter(kind,options.look??0,options.color);
+  if(kind==='chair')return createChair(options.color??PALETTE.tomato);
+  if(kind==='table_2'||kind==='table')return createDiningTable(2);
+  if(kind==='table_4')return createDiningTable(4);
+  if(kind==='plant'||kind==='red_planter')return plant();
+  if(kind==='daisy_pot'){const g=group(cylinder(.18,.13,.25,PALETTE.mustard,0,.15));for(let i=0;i<3;i++){const x=(i-1)*.12,y=.54+(i%2)*.15;g.add(cylinder(.01,.012,y-.25,PALETTE.leaf,x,(y+.25)/2,0));for(let p=0;p<6;p++){const petal=ball(.055,PALETTE.porcelain,x+Math.cos(p*Math.PI/3)*.085,y+Math.sin(p*Math.PI/3)*.085,-.015);petal.scale.z=.35;g.add(petal);}g.add(ball(.047,PALETTE.mustard,x,y,-.025));}return g;}
+  if(kind==='parcel'||kind==='delivery'){
+    const g=group(box(.59,.045,.50,PALETTE.wood,0,.057,0,.020));
+    for(const x of [-.277,.277])g.add(box(.035,.40,.50,PALETTE.oak,x,.267,0,.012));
+    for(const z of [-.233,.233])g.add(box(.54,.40,.035,PALETTE.oak,0,.267,z,.012));
+    g.add(box(.46,.07,.37,PALETTE.porcelain,0,.13,0,.030));
+    for(const side of [-1,1]){const flap=new THREE.Group();flap.name=side<0?'parcel-left-flap':'parcel-right-flap';flap.position.set(side*.285,.477,0);flap.add(box(.285,.029,.50,PALETTE.oak,-side*.1425,0,0,.010));g.add(flap);}
+    const tape=group(box(.065,.024,.51,PALETTE.mustard,0,.500,0,.009),box(.065,.44,.019,PALETTE.mustard,0,.274,-.257,.006));tape.name='parcel-tape';g.add(tape);
+    g.add(box(.17,.13,.018,PALETTE.porcelain,.135,.33,-.264,.017));for(let i=0;i<2;i++)g.add(box(.10,.016,.009,PALETTE.sage,.135,.35-i*.044,-.278,.005));return g;
+  }
+  if(kind==='book'){const g=group(box(.55,.51,.41,PALETTE.oak,0,.265,0));const book=group(box(.57,.075,.45,PALETTE.sage,0,.54,0,.025),box(.52,.045,.40,PALETTE.porcelain,0,.554,0,.015),box(.57,.022,.45,PALETTE.sage,0,.589,0,.017));book.rotation.x=.18;book.position.y=.02;g.add(book,box(.20,.012,.14,PALETTE.mustard,0,.616,-.09,.018));return g;}
+  if(kind==='till'){const g=cabinet(PALETTE.tomato,.68);g.add(box(.49,.24,.41,PALETTE.porcelain,0,.97,0,.07),box(.44,.10,.41,PALETTE.wood,0,.90,-.03,.017),box(.29,.14,.022,PALETTE.dark,0,1.04,-.204,.02));for(let row=0;row<2;row++)for(let col=0;col<3;col++)g.add(box(.047,.025,.047,col===2?PALETTE.tomato:PALETTE.mustard,(col-1)*.075,1.102,-.04+row*.063,.008));return g;}
+  if(kind==='trophy'){const g=group(box(.48,.15,.42,PALETTE.oak,0,.08),cylinder(.14,.18,.065,PALETTE.mustard,0,.185),cylinder(.045,.07,.20,PALETTE.mustard,0,.30),cylinder(.22,.07,.28,PALETTE.mustard,0,.52));for(const x of [-.21,.21]){const handle=ring(.12,.035,PALETTE.mustard,x,.53,0);handle.rotation.x=0;g.add(handle);}g.add(box(.22,.08,.015,PALETTE.porcelain,0,.08,-.218,.008));return g;}
+  if(kind==='spill'||kind==='jam'){const g=new THREE.Group();for(let i=0;i<5;i++){const puddle=ball(.22,i%2?'#d4a373':'#bc8055',Math.sin(i*1.8)*.18,.022,Math.cos(i*1.8)*.15);puddle.scale.set(1,.08,.7);g.add(puddle);}const cup=createFoodModel({recipeId:'coffee',kind:'dish'});cup.rotation.z=Math.PI/2;cup.position.set(.25,.105,.12);g.add(cup);return g;}
+  if(kind==='checkered_shelf'){const g=group(box(.72,.81,.43,PALETTE.wood,0,.43),box(.62,.66,.045,PALETTE.sage,0,.46,.215));for(const y of [.19,.48,.81])g.add(box(.73,.05,.47,PALETTE.oak,0,y,0));const teacup=createFoodModel({recipeId:'coffee',kind:'dish'});teacup.position.set(-.16,.5,-.02);teacup.scale.setScalar(.55);g.add(teacup,box(.13,.21,.15,PALETTE.tomato,.18,.32,0,.016),box(.09,.19,.15,PALETTE.mustard,.05,.31,0,.016));return g;}
+  if(kind==='chrome_clock'){const clock=cylinder(.33,.33,.07,PALETTE.metal,0,1.54,.40,32);clock.rotation.x=Math.PI/2;const face=cylinder(.286,.286,.08,PALETTE.porcelain,0,1.54,.389,32);face.rotation.x=Math.PI/2;const g=group(clock,face,box(.023,.19,.017,PALETTE.ink,0,1.61,.34,.004),box(.14,.023,.017,PALETTE.ink,.058,1.54,.34,.004));for(let i=0;i<12;i++)g.add(ball(.012,PALETTE.ink,Math.sin(i*Math.PI/6)*.24,1.54+Math.cos(i*Math.PI/6)*.24,.342));return g;}
+  const wallArt=['milkshake_sign','garden_poster','pete_postcard','marge_badge','dottie_portrait','rex_plate','lin_note','kiki_deck','family_photo','bell_review'];
+  if(wallArt.includes(kind)){const g=group(box(.69,.75,.065,PALETTE.oak,0,1.49,.405,.035),box(.60,.66,.016,kind==='garden_poster'?'#dbe4c5':PALETTE.porcelain,0,1.49,.362,.008));
+    if(kind==='milkshake_sign'){const shake=createFoodModel({recipeId:'strawberry_shake',kind:'dish'});shake.rotation.x=-Math.PI/2;shake.position.set(0,1.42,.33);g.add(shake);}
+    else if(kind==='garden_poster'){for(const x of [-.14,0,.14]){g.add(box(.018,.29,.018,PALETTE.leaf,x,1.42,.338,.004));for(const side of [-1,1]){const leaf=ball(.085,PALETTE.leaf,x+side*.04,1.5+side*.05,.32);leaf.scale.set(.55,1,.16);leaf.rotation.z=side*.6;g.add(leaf);}}}
+    else if(kind==='rex_plate'){const plate=createPlate();plate.rotation.x=-Math.PI/2;plate.position.set(0,1.49,.335);g.add(plate);const star=ball(.09,PALETTE.mustard,0,1.49,.29);star.scale.z=.16;g.add(star);}
+    else if(kind==='kiki_deck'){g.add(box(.18,.44,.055,PALETTE.tomato,0,1.49,.31,.07));for(const y of [1.34,1.64])for(const x of [-.095,.095])g.add(ball(.038,PALETTE.ink,x,y,.30));}
+    else if(kind==='family_photo'||kind==='dottie_portrait'){for(let i=0;i<(kind==='family_photo'?3:1);i++){g.add(ball(.069,PALETTE.skin,(i-1)*.14,1.57,.31),box(.115,.17,.027,[PALETTE.tomato,PALETTE.sage,PALETTE.mustard][i],(i-1)*.14,1.44,.318,.024));}}
+    else if(kind==='marge_badge'){const medal=cylinder(.17,.17,.025,PALETTE.mustard,0,1.49,.327);medal.rotation.x=Math.PI/2;g.add(medal,box(.05,.21,.02,PALETTE.tomato,-.052,1.66,.325),box(.05,.21,.02,PALETTE.tomato,.052,1.66,.325));}
+    else{for(let i=0;i<4;i++)g.add(box(i===0?.34:.40,.016,.012,i===0?PALETTE.tomato:PALETTE.wood,0,1.67-i*.10,.343,.003));}return g;
+  }
+  if(kind==='tip_jar'){const g=group(cylinder(.18,.16,.31,'#b6d3c1',0,.18),cylinder(.19,.19,.035,PALETTE.porcelain,0,.35));for(let i=0;i<5;i++){const coin=cylinder(.052,.052,.014,PALETTE.mustard,(i%3-1)*.07,.11+(i%2)*.035,Math.floor(i/3)*.09-.045);g.add(coin);}return g;}
+  if(kind==='jukebox'){const g=group(box(.73,1.2,.51,PALETTE.tomato,0,.62,0,.17),box(.59,.94,.05,PALETTE.mustard,0,.67,-.265,.16),box(.45,.65,.045,PALETTE.dark,0,.56,-.294,.1));for(let i=0;i<6;i++)g.add(box(.33,.025,.025,PALETTE.wood,0,.31+i*.062,-.325,.009));g.add(box(.29,.21,.025,'#b6d3c1',0,.96,-.319,.04));return g;}
+  if(kind==='neon_sign'){const g=group(box(.82,.42,.04,PALETTE.sage,0,1.3,.41,.07));for(const x of [-.25,-.08,.09,.26])g.add(box(.1,.20,.024,PALETTE.mustard,x,1.3,.379,.025));return g;}
+  if(kind==='tray'){const g=group(box(.66,.045,.43,PALETTE.metal,0,.04,0,.06));for(const x of [-.30,.30])g.add(box(.03,.065,.43,PALETTE.steel,x,.075,0,.015));return g;}
+  if(kind==='food'||kind.startsWith('recipe:'))return createFoodModel({recipeId:options.recipeId??kind.slice(7),kind:'dish',stage:options.stage});
+  if(kind==='dirty_plate')return createPlate(true);
+  if(kind==='bin'){const g=group(cylinder(.29,.245,.65,PALETTE.sage,0,.36),cylinder(.315,.315,.065,PALETTE.mint,0,.705),box(.13,.035,.17,PALETTE.steel,0,.075,-.27,.012));for(let i=0;i<8;i++){const angle=i*Math.PI/4;g.add(box(.017,.45,.017,'#769583',Math.cos(angle)*.259,.38,Math.sin(angle)*.259,.004));}g.userData.surfaceHeight=.76;return g;}
+  if(kind==='queue_bench'){const g=group(box(1.7,.10,.52,PALETTE.oak,0,.50),box(1.7,.27,.09,PALETTE.oak,0,.81,.23));for(const x of [-.67,.67])g.add(box(.075,.53,.07,PALETTE.sage,x,.275,-.17),box(.075,.94,.07,PALETTE.sage,x,.48,.19));return g;}
+  const enamel=kind==='prep'||kind==='pass'?PALETTE.tomato:kind==='grill'||kind==='oven'?PALETTE.sage:PALETTE.mint;
+  const g=cabinet(options.color??enamel,kind==='pass'?1.85:.85);g.userData.surfaceHeight=.91;
+  if(kind==='crate'){
+    g.clear();g.add(box(.82,.24,.77,PALETTE.wood,0,.19),box(.76,.045,.70,'#956d47',0,.33));
+    for(const z of [-.37,.37])for(const y of [.16,.31,.47])g.add(box(.85,.10,.065,PALETTE.oak,0,y,z,.01));
+    for(const x of [-.39,.39])for(const z of [-.32,.32])g.add(box(.055,.52,.055,PALETTE.wood,x,.28,z));
+    for(let i=0;i<4;i++){const bun=ball(.135,PALETTE.bun,(i%2)*.27-.14,.45,Math.floor(i/2)*.26-.13);bun.scale.y=.65;g.add(bun);}
+    g.add(box(.31,.16,.022,PALETTE.porcelain,0,.32,-.410,.026));
+    for(let i=0;i<3;i++)g.add(box(.033,.065,.012,PALETTE.tomato,(i-1)*.063,.32,-.428,.010));g.userData.surfaceHeight=.53;
+  }else if(kind==='grill'){
+    g.add(box(.78,.065,.68,PALETTE.metal,0,.887,0,.025),box(.69,.035,.59,PALETTE.dark,0,.927,0,.021),box(.78,.13,.065,PALETTE.steel,0,.979,.344,.025));
+    for(let i=0;i<7;i++)g.add(box(.61,.018,.025,PALETTE.steel,0,.955,-.235+i*.078,.008));
+    g.add(box(.76,.12,.030,PALETTE.dark,0,.715,-.420,.019));
+    for(const x of [-.235,0,.235]){
+      const surround=cylinder(.056,.056,.020,PALETTE.metal,x,.719,-.446,16),knob=cylinder(.042,.044,.037,PALETTE.tomato,x,.719,-.463,12);surround.rotation.x=knob.rotation.x=Math.PI/2;g.add(surround,knob,box(.011,.026,.008,PALETTE.porcelain,x,.732,-.486,.004));
+    }g.userData.surfaceHeight=.97;
+  }else if(kind==='prep'){
+    g.add(box(.71,.050,.58,PALETTE.wood,0,.890,0,.036),box(.67,.016,.54,PALETTE.oak,0,.923,0,.028));
+    for(const x of [-.23,.23])g.add(box(.019,.006,.48,'#a67a50',x,.935,0,.003));
+    const knife=group(box(.22,.016,.070,PALETTE.metal,0,0,0,.006),box(.14,.027,.042,PALETTE.dark,.171,0,0,.014),box(.025,.024,.072,PALETTE.metal,.112,0,0,.007));knife.position.set(.08,.944,.17);knife.rotation.y=-.22;g.add(knife);g.userData.surfaceHeight=.96;
+  }else if(kind==='fryer'){
+    g.add(box(.71,.21,.64,PALETTE.metal,0,.970,0,.045),box(.56,.026,.46,'#987c48',0,1.083,0,.021));
+    for(const x of [-.287,.287])g.add(box(.027,.062,.48,PALETTE.steel,x,1.098,0,.010));
+    for(const z of [-.245,.245])g.add(box(.60,.062,.028,PALETTE.steel,0,1.098,z,.010));
+    g.add(box(.045,.029,.22,PALETTE.metal,0,1.105,-.326,.010),box(.12,.065,.21,PALETTE.dark,0,1.114,-.477,.027));
+    for(let i=0;i<5;i++)g.add(box(.015,.021,.42,PALETTE.metal,-.23+i*.115,1.100,0,.003));
+    g.add(box(.60,.125,.074,PALETTE.sage,0,1.088,.30,.028));for(const x of [-.14,.14]){const knob=cylinder(.035,.035,.025,PALETTE.mustard,x,1.084,.248);knob.rotation.x=Math.PI/2;g.add(knob);}g.userData.surfaceHeight=1.14;
+  }else if(kind==='sink'){
+    g.add(box(.70,.030,.57,PALETTE.steel,0,.878,0,.075),box(.53,.025,.40,'#729a97',0,.898,0,.075));
+    for(const x of [-.325,.325])g.add(box(.055,.075,.54,PALETTE.metal,x,.925,0,.023));for(const z of [-.25,.25])g.add(box(.64,.07,.055,PALETTE.metal,0,.925,z,.023));
+    g.add(cylinder(.054,.054,.012,PALETTE.steel,0,.919,.035,16));
+    const arch=geo('diner-swan-faucet',()=>new THREE.TubeGeometry(new THREE.CubicBezierCurve3(new THREE.Vector3(-.17,.94,.23),new THREE.Vector3(-.17,1.39,.23),new THREE.Vector3(-.17,1.34,-.035),new THREE.Vector3(-.17,1.12,-.035)),12,.025,7,false));g.add(mesh(arch,PALETTE.metal));
+    g.add(cylinder(.05,.05,.032,PALETTE.steel,-.17,.950,.23),cylinder(.034,.035,.080,PALETTE.metal,.15,.987,.25),box(.13,.030,.031,PALETTE.tomato,.15,1.035,.25,.011));g.userData.surfaceHeight=.965;
+  }else if(kind==='drinks'||kind==='blender'||kind==='coffee'){
+    g.add(box(.46,.07,.38,PALETTE.steel,0,.91),cylinder(.17,.155,.38,kind==='coffee'?'#ba9270':'#f0dba0',0,1.13),cylinder(.185,.185,.055,PALETTE.metal,0,1.345),box(.095,.12,.055,PALETTE.dark,0,1.08,-.18));
+    const cup=createFoodModel({recipeId:kind==='coffee'?'coffee':'lemonade',kind:'raw'});cup.scale.setScalar(.48);cup.position.set(0,.9,-.27);g.add(cup);g.userData.surfaceHeight=1.39;
+  }else if(kind==='oven'){
+    g.add(box(.61,.39,.028,PALETTE.steel,0,.43,-.445),box(.46,.25,.029,'#566a62',0,.43,-.466),box(.42,.038,.05,PALETTE.metal,0,.65,-.475));
+  }else if(kind==='waffle'){
+    g.add(box(.55,.11,.43,PALETTE.mustard,0,.93),box(.45,.10,.34,PALETTE.steel,0,1.04),box(.25,.04,.08,PALETTE.dark,0,1.05,-.24));g.userData.surfaceHeight=1.10;
+  }else if(kind==='pass'){
+    for(const x of [-.75,.75])g.add(cylinder(.022,.024,.64,PALETTE.steel,x,1.15,.24));g.add(box(1.65,.10,.34,PALETTE.tomato,0,1.47,.10),box(1.46,.025,.24,'#f5ce75',0,1.41,.10));
+  }else g.userData.unsupportedModel=kind;
+  if((options.tier??1)>1){const badge=cylinder(.055,.055,.018,PALETTE.mustard,.30,.65,-.438);badge.rotation.x=Math.PI/2;g.add(badge);}
+  return packMeshes(g,`machine:${kind}:${options.color??enamel}:${options.tier??1}`);
+}
+
+/** Dispose unique GPU resources when an owning preview renderer is removed. */
+export function disposeObject(root:THREE.Object3D){
+  const usedGeometry=new Set<THREE.BufferGeometry>(),usedMaterial=new Set<THREE.Material>(),textures=new Set<THREE.Texture>();
+  root.traverse(object=>{if(object instanceof THREE.Mesh||object instanceof THREE.Sprite){if(object instanceof THREE.Mesh)usedGeometry.add(object.geometry);const list=Array.isArray(object.material)?object.material:[object.material];for(const m of list){usedMaterial.add(m);const map=(m as THREE.MeshBasicMaterial).map;if(map)textures.add(map);}}});
+  // The world and its catalogue deliberately share immutable kit resources.
+  // Renderer.dispose releases its own GPU context; removing an icon must not
+  // invalidate geometry currently used by the live diner.
+  usedGeometry.forEach(g=>{if(!g.userData.sharedKitResource)g.dispose();});usedMaterial.forEach(m=>{if(!m.userData.sharedKitResource)m.dispose();});textures.forEach(t=>t.dispose());
+}

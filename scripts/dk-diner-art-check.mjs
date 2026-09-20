@@ -1,0 +1,87 @@
+/** Geometry integrity for the actual Three.js kit; no browser or WebGL required. */
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {resolve,dirname} from 'node:path';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+import {createHash} from 'node:crypto';
+import ts from 'typescript';
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+const threeUrl=pathToFileURL(resolve(root,'node_modules/three/build/three.module.js')).href;
+const THREE=await import(threeUrl);
+async function sourceModule(relative){
+  let source=await readFile(resolve(root,relative),'utf8');
+  source=source.replaceAll("from 'three'",`from '${threeUrl}'`).replaceAll("from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'",`from '${pathToFileURL(resolve(root,'node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js')).href}'`);
+  const result=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext},fileName:relative});
+  return import(`data:text/javascript;base64,${Buffer.from(result.outputText).toString('base64')}`);
+}
+const kit=await sourceModule('src/app/chef/diner-preview/models.ts');
+const {RECIPES,EQUIPMENT}=await sourceModule('src/lib/chef/diner/content.ts');
+const {DECOR}=await sourceModule('src/lib/chef/diner/collections.ts');
+let models=0,triangles=0;
+function inspect(model,label,{minY=-.04,maxY=2.1,maxWidth=2.1,maxDepth=2.1}={}){
+  assert.equal(model.userData.unsupportedModel,undefined,`${label}: generic model fallback`);
+  assert.equal(model.userData.unsupportedRecipe,undefined,`${label}: generic recipe fallback`);
+  model.updateMatrixWorld(true);let meshCount=0,triangleCount=0;
+  model.traverse(object=>{
+    if(!object.isMesh)return;meshCount++;
+    const position=object.geometry.getAttribute('position');assert.ok(position?.count>=3,`${label}: empty mesh`);
+    for(const attribute of [position,object.geometry.getAttribute('normal')])if(attribute)for(const value of attribute.array)assert.ok(Number.isFinite(value),`${label}: nonfinite vertex/normal`);
+    const count=object.geometry.index?.count??position.count;assert.equal(count%3,0,`${label}: incomplete triangle`);triangleCount+=count/3;
+    for(const value of object.matrixWorld.elements)assert.ok(Number.isFinite(value),`${label}: nonfinite transform`);
+    const materials=Array.isArray(object.material)?object.material:[object.material];
+    for(const material of materials)assert.ok(material.isMeshToonMaterial,`${label}: material escaped shared toon specification`);
+  });
+  assert.ok(meshCount>0&&triangleCount>0,`${label}: empty model`);
+  const bounds=new THREE.Box3().setFromObject(model),size=bounds.getSize(new THREE.Vector3());
+  assert.ok(bounds.min.y>=minY,`${label}: below anchor (${bounds.min.y.toFixed(3)})`);
+  assert.ok(bounds.max.y<=maxY,`${label}: exceeds height (${bounds.max.y.toFixed(3)})`);
+  assert.ok(size.x<=maxWidth&&size.z<=maxDepth,`${label}: exceeds footprint ${size.x.toFixed(3)}×${size.z.toFixed(3)}`);
+  assert.ok(size.x>.01&&size.y>.005&&size.z>.01,`${label}: degenerate bounds`);
+  assert.ok(triangleCount<45000,`${label}: geometry budget exceeded (${triangleCount})`);
+  models++;triangles+=triangleCount;return bounds;
+}
+function fingerprint(model){
+  model.updateMatrixWorld(true);const hash=createHash('sha256');
+  model.traverse(object=>{if(!object.isMesh)return;object.geometry.computeBoundingBox();const material=Array.isArray(object.material)?object.material[0]:object.material;
+    hash.update(JSON.stringify([object.geometry.type,object.geometry.getAttribute('position').count,object.geometry.boundingBox,object.matrixWorld.elements.map(n=>Number(n.toFixed(6))),material.color.toArray()]));});
+  return hash.digest('hex');
+}
+const dishFingerprints=new Map();
+for(const recipe of RECIPES){
+  const dish=kit.createFoodModel({recipeId:recipe.id,kind:'dish'}),dishHash=fingerprint(dish);
+  inspect(dish,`${recipe.id}/dish`,{maxY:.7,maxWidth:.75,maxDepth:.75});
+  assert.ok(!dishFingerprints.has(dishHash),`${recipe.id}: identical plated presentation to ${dishFingerprints.get(dishHash)}`);dishFingerprints.set(dishHash,recipe.id);
+  for(const kind of ['raw','burnt','dirty']){
+    const model=kit.createFoodModel({recipeId:recipe.id,kind});inspect(model,`${recipe.id}/${kind}`,{maxY:.7,maxWidth:.75,maxDepth:.75});
+    assert.notEqual(fingerprint(model),dishHash,`${recipe.id}/${kind}: indistinguishable geometry from served dish`);
+  }
+  for(const step of recipe.steps.slice(0,-1)){const model=kit.createFoodModel({recipeId:recipe.id,kind:'processed',stage:step.output});inspect(model,`${recipe.id}/${step.output}`,{maxY:.7,maxWidth:.75,maxDepth:.75});assert.notEqual(fingerprint(model),dishHash,`${recipe.id}/${step.output}: unfinished ingredient renders as completed dish`);}
+}
+for(const item of EQUIPMENT)for(const tier of item.tiers){
+  const model=kit.createModel(item.id,{tier:tier.tier});
+  inspect(model,`${item.id}/tier${tier.tier}`,{maxWidth:item.footprint[0]+.12,maxDepth:item.footprint[1]+.12});
+  const before=new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());model.rotation.y=Math.PI/2;
+  const after=new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());assert.ok(Math.abs(before.x-after.z)<1e-5&&Math.abs(before.z-after.x)<1e-5,`${item.id}: rotation changes footprint size`);
+}
+for(const decor of DECOR)inspect(kit.createModel(decor.id),decor.id,{maxWidth:1.12,maxDepth:1.12});
+for(const id of ['chair','plant','parcel','delivery','book','till','trophy','spill','jam'])inspect(kit.createModel(id),id);
+for(const role of ['chef','waiter','customer'])for(let look=0;look<8;look++){
+  const actor=kit.createModel(role,{look}),rig=actor.userData.rig;
+  const anchor=inspect(actor,`${role}/${look}`);assert.ok(Math.abs(anchor.min.y)<.025,`${role}: feet do not meet floor anchor`);assert.equal(rig.arms.length,2);assert.equal(rig.legs.length,2);assert.equal(rig.knees.length,2);
+  assert.ok(rig.held.position.z<0,`${role}: carried item is behind character`);
+  for(const pose of ['walk','carry','cook','wash','sit','eat']){kit.animateCharacter(actor,.2,pose,pose==='carry',pose==='walk');inspect(actor,`${role}/${look}/${pose}`,{minY:-.09});}
+  kit.animateCharacter(actor,0,'sit',false,false);const hip=new THREE.Vector3();rig.legs[0].getWorldPosition(hip);assert.ok(hip.y>.43&&hip.y<.56,`${role}: seated hip misses chair cushion`);
+}
+// Removing temporary previews must preserve shared world resources, while
+// unique canvas/card materials and selection geometry are actually disposed.
+const shared=kit.createModel('prep');let sharedDisposed=false;shared.children[0].geometry.addEventListener('dispose',()=>{sharedDisposed=true;});kit.disposeObject(shared);assert.equal(sharedDisposed,false,'catalogue disposal invalidates live shared geometry');
+const unique=new THREE.Group(),geometry=new THREE.BoxGeometry(1,1,1),material=new THREE.MeshToonMaterial();let geometryDisposed=false,materialDisposed=false;
+geometry.addEventListener('dispose',()=>{geometryDisposed=true;});material.addEventListener('dispose',()=>{materialDisposed=true;});unique.add(new THREE.Mesh(geometry,material));kit.disposeObject(unique);assert.ok(geometryDisposed&&materialDisposed,'unique resources leak on disposal');
+const warmStats=kit.modelKitStats();
+for(let cycle=0;cycle<10;cycle++){
+  for(const recipe of RECIPES)kit.disposeObject(kit.createFoodModel({recipeId:recipe.id,kind:'dish'}));
+  for(const item of EQUIPMENT)kit.disposeObject(kit.createModel(item.id));
+  for(const decor of DECOR)kit.disposeObject(kit.createModel(decor.id));
+}
+assert.deepEqual(kit.modelKitStats(),warmStats,'rebuilding the same catalog grows the retained geometry/material cache');
+console.log(`Diner art integrity PASS: ${RECIPES.length} distinct plated recipes; ${EQUIPMENT.length} equipment types; ${DECOR.length} decor types; ${models} geometry/pose cases; ${triangles.toLocaleString()} checked triangles. No WebGL or visual approval claimed.`);
