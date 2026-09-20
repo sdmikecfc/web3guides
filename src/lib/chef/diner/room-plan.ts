@@ -37,7 +37,7 @@ export function bathroomBays(plan:Pick<RoomPlan,'stage'|'w'>&Partial<Pick<RoomPl
 export function createRestaurantBlueprint(stage:RestaurantStage):{roomPlan:RoomPlan;layout:HomePlacement[];staff:{chefs:number;waiters:number;cashiers:number}} {
  const spec=RESTAURANT_STAGES[stage],kitchenWidth=stage==='burger_shop'?5:stage==='diner'?8:9,bathX=spec.w-spec.bathroomBays-1;
  const modules:RoomModule[]=[{id:'staff-gate',kind:'lift_gate',x:kitchenWidth-1,y:3,rotation:0},{id:'service-counter',kind:stage==='burger_shop'?'display_counter':stage==='diner'?'service_hatch':'internal_pass',x:stage==='burger_shop'?1:stage==='diner'?6:3,y:stage==='restaurant'?2:3,rotation:0}];
- if(stage==='burger_shop')modules.push({id:'starter-console',kind:'console',x:9,y:5,rotation:1});
+ if(stage==='burger_shop')modules.push({id:'starter-console',kind:'console',x:0,y:5,rotation:3});
  if(stage==='diner')modules.push({id:'diner-bar',kind:'chef_bar',x:0,y:4,rotation:0});
  const bays=bathroomBays({stage,w:spec.w});modules.push({id:'toilet-1',kind:'toilet',...bays.toilets[0],rotation:0,condition:100},{id:'handwash-1',kind:'handwash_sink',...bays.sinks[0],rotation:2,condition:100});
  const edges:RoomEdge[]=[];
@@ -47,7 +47,7 @@ export function createRestaurantBlueprint(stage:RestaurantStage):{roomPlan:RoomP
  // reserved bay remains an editable floor location, not an invisible fixture.
  for(let x=bathX;x<spec.w;x++)edges.push({id:`bath-front-${x}`,a:{x,y:3},b:{x,y:4},kind:x===bathX?'door':'wall',zoneId:'bathroom'});
  for(let y=0;y<4;y++)if(bathX>kitchenWidth)edges.push({id:`bath-side-${y}`,a:{x:bathX-1,y},b:{x:bathX,y},kind:'wall',zoneId:'bathroom'});
- for(const [i,p] of bays.toilets.entries()){edges.push({id:`stall-door-${i}`,a:{x:p.x,y:1},b:{x:p.x,y:2},kind:'door',zoneId:'bathroom'});if(i>0)for(const y of [0,1])edges.push({id:`stall-side-${i}-${y}`,a:{x:p.x-1,y},b:{x:p.x,y},kind:'wall',zoneId:'bathroom'});}
+ for(const [i,p] of bays.toilets.entries()){edges.push({id:`stall-door-${i}`,a:{x:p.x,y:1},b:{x:p.x,y:2},kind:'door',zoneId:'bathroom'});for(const y of [0,1])edges.push({id:`stall-side-${i}-${y}`,a:{x:p.x-1,y},b:{x:p.x,y},kind:'wall',zoneId:'bathroom'});}
  const roomPlan:RoomPlan={version:1,stage,w:spec.w,h:spec.h,modules,edges,zones:[{id:'kitchen',kind:'kitchen',x:0,y:0,w:kitchenWidth,h:4},{id:'bathroom',kind:'bathroom',x:bathX,y:0,w:spec.w-bathX,h:4}]};
  const layout:HomePlacement[]=[{id:'home-grill',equipmentId:'grill',x:0,y:0,rotation:0},{id:'home-prep',equipmentId:'prep',x:2,y:0,rotation:0},{id:'home-sink',equipmentId:'sink',x:4,y:0,rotation:0}];
  if(stage==='restaurant')layout.push({id:'home-table-1',equipmentId:'table_2',x:2,y:6,rotation:0},{id:'home-table-2',equipmentId:'table_2',x:6,y:6,rotation:0},{id:'home-table-3',equipmentId:'table_2',x:10,y:6,rotation:0});
@@ -79,12 +79,16 @@ export function alignRoomMounts(layout:HomePlacement[],plan:RoomPlan):HomePlacem
 export function validateRoomMount(plan:RoomPlan,p:HomePlacement):string|null {
  const mount=p.mount;if(!mount)return null;const decor=DECOR_BY_ID[p.equipmentId];if(!decor||!Number.isInteger(mount.slot)||mount.slot<0)return 'Only suitable decorations can be mounted.';
  if(mount.kind==='wall')return decor.wall&&resolveRoomMount(plan,mount)?null:'Choose a clear solid wall for this decoration.';
- if(mount.kind==='counter')return ['red_planter','daisy_pot','herb_planter'].includes(p.equipmentId)&&resolveRoomMount(plan,mount)?null:'Choose a free display spot away from the till and serving dishes.';
+ if(mount.kind==='counter')return decor.counter&&resolveRoomMount(plan,mount)?null:'Choose a free display spot away from the till and serving dishes.';
  return 'Choose a wall or counter mount.';
 }
 export function resolveRoomMount(plan:RoomPlan,mount:{kind:'wall'|'counter';targetId:string;slot:number}):{x:number;y:number;rotation:0|1|2|3;surfaceHeight:number}|null {
  if(!Number.isInteger(mount.slot)||mount.slot<0)return null;
- if(mount.kind==='wall'){const edge=plan.edges.find(e=>e.id===mount.targetId&&e.kind==='wall');return edge&&mount.slot===0?{x:(edge.a.x+edge.b.x)/2,y:(edge.a.y+edge.b.y)/2,rotation:edge.a.x===edge.b.x?0:1,surfaceHeight:1.5}:null;}
+ if(mount.kind==='wall'){
+  if(mount.targetId==='outer-back')return mount.slot<plan.w?{x:mount.slot,y:-.55,rotation:0,surfaceHeight:1.5}:null;
+  if(mount.targetId==='outer-side')return mount.slot<plan.h?{x:-.55,y:mount.slot,rotation:3,surfaceHeight:1.5}:null;
+  const edge=plan.edges.find(e=>e.id===mount.targetId&&e.kind==='wall');return edge&&mount.slot===0?{x:(edge.a.x+edge.b.x)/2,y:(edge.a.y+edge.b.y)/2,rotation:edge.a.x===edge.b.x?0:1,surfaceHeight:1.5}:null;
+ }
  const module=plan.modules.find(m=>m.id===mount.targetId);if(!module||!['display_counter','internal_pass','console','chef_bar'].includes(module.kind)||(['display_counter','internal_pass'].includes(module.kind)&&mount.slot===0))return null;
  const point=roomModuleGeometry(module).cells[mount.slot];if(!point)return null;
  // Along the top, between meal centers. Cross-depth offsets would overhang a
@@ -119,7 +123,7 @@ export function validateRoomPlan(value:RoomPlan,layout:HomePlacement[]=[]):strin
  for(const zone of [...kitchens,...bathrooms])for(let y=zone.y;y<zone.y+zone.h;y++)for(let x=zone.x;x<zone.x+zone.w;x++)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const a={x,y},b={x:x+dx,y:y+dy};if(!inside(b)||inZone(zone,b))continue;const edge=value.edges.find(e=>sameEdge(e,{a,b}));if(!edge||(zone.kind==='kitchen'?edge.kind==='door':!['wall','door'].includes(edge.kind)))return 'Keep the kitchen and bathroom boundaries enclosed, with their proper openings.';}
  for(const m of value.modules)if(m.kind==='lift_gate'){const g=roomModuleGeometry(m),edge=moduleEdges(m)[0];if(roomZoneAt(value,g.back)?.kind!=='kitchen'||roomZoneAt(value,edge.b)?.kind==='kitchen'||roomZoneAt(value,edge.b)?.kind==='bathroom')return 'Place the lift gate between the kitchen and public floor.';}
  for(const edge of value.edges)if(edge.kind==='staff_gate'&&!value.modules.some(m=>m.kind==='lift_gate'&&moduleEdges(m).some(e=>sameEdge(e,edge))))return 'Every staff opening needs a visible lift gate.';
- const mounts=new Set<string>();for(const p of layout){if(p.mount){const error=validateRoomMount(value,p),resolved=resolveRoomMount(value,p.mount);if(error)return error;if(!resolved||p.x!==Math.floor(resolved.x)||p.y!==Math.floor(resolved.y))return 'Keep mounted decoration aligned with its support.';const slot=`${p.mount.kind}:${p.mount.targetId}:${p.mount.slot}`;if(mounts.has(slot))return 'This display spot already holds a decoration.';mounts.add(slot);continue;}const def=EQUIPMENT_BY_ID[p.equipmentId]??DECOR_BY_ID[p.equipmentId];if(!def)return 'Choose a known furnishing.';const [width,height]=p.rotation%2?[def.footprint[1],def.footprint[0]]:def.footprint;for(let y=0;y<height;y++)for(let x=0;x<width;x++){const point={x:p.x+x,y:p.y+y};if(!inside(point)||solid.has(key(point)))return 'Furniture overlaps a room module or another furnishing.';solid.add(key(point));}}
+ const mounts=new Set<string>(),occupied=new Set(solid);for(const p of layout){if(p.mount){const error=validateRoomMount(value,p),resolved=resolveRoomMount(value,p.mount);if(error)return error;if(!resolved||p.x!==Math.floor(resolved.x)||p.y!==Math.floor(resolved.y))return 'Keep mounted decoration aligned with its support.';const slot=`${p.mount.kind}:${p.mount.targetId}:${p.mount.slot}`;if(mounts.has(slot))return 'This display spot already holds a decoration.';mounts.add(slot);continue;}const def=EQUIPMENT_BY_ID[p.equipmentId]??DECOR_BY_ID[p.equipmentId];if(!def)return 'Choose a known furnishing.';const [width,height]=p.rotation%2?[def.footprint[1],def.footprint[0]]:def.footprint;for(let y=0;y<height;y++)for(let x=0;x<width;x++){const point={x:p.x+x,y:p.y+y};if(!inside(point)||occupied.has(key(point)))return 'Furniture overlaps a room module or another furnishing.';occupied.add(key(point));if(!DECOR_BY_ID[p.equipmentId]?.passable)solid.add(key(point));}}
  if(!value.modules.some(m=>['display_counter','service_hatch','internal_pass'].includes(m.kind)))return 'Add a food handoff counter.';
  const door={x:Math.floor(value.w/2),y:value.h-1};if(solid.has(key(door)))return 'Keep the restaurant entrance clear.';
  const chairs=new Set<string>();for(const m of value.modules)for(const seat of roomModuleGeometry(m).seats){if(!inside(seat)||solid.has(key(seat))||chairs.has(key(seat)))return 'Give each stool its own clear floor space.';chairs.add(key(seat));}

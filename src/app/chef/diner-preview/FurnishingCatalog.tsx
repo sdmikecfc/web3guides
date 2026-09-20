@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import { COSMETICS, DECOR, FRIENDSHIP_LEVELS, REGULARS, finishPrice } from '@/lib/chef/diner/collections';
+import { COSMETICS, DECOR, FRIENDSHIP_LEVELS, REGULARS, finishPrice, decorResaleValue } from '@/lib/chef/diner/collections';
 import { ROOM_PALETTES, ROOM_FINISH_DEFAULTS, type RoomFinishSlot } from '@/lib/chef/diner/collections';
 import type { RoomFinishChoice } from './RoomFinishPreview';
 import { renovationRequirements } from '@/lib/chef/diner/renovation';
@@ -27,6 +27,7 @@ const money=(value:number)=>Math.floor(value).toLocaleString('en-US');
 const colors:Record<string,string>={cream:'#f4ebd7',mint:'#a7c8af',rose:'#deb5a7',terracotta:'#c98162',checker:'#88ae98'};
 export function FurnishingCatalog({state,send,place,moreStyle,onGrow,onCook,onStaff,onRecipes,onPreviewFinish,onPreviewRoomFinish}:Props){
   const [view,setView]=useState<'furnish'|'storage'|'style'>('furnish');
+  const [sale,setSale]=useState<string|null>(null),[notice,setNotice]=useState('');
   const equipment=HOME_EQUIPMENT.map(item=>{
     const owned=state.equipment[item.id],placed=state.home.layout.filter(p=>p.equipmentId===item.id).length;
     return {id:item.id,name:item.name,footprint:item.footprint,placed,stored:Math.max(0,(owned?.homeCopies??0)-placed),tier:owned?.tier??1,
@@ -36,7 +37,7 @@ export function FurnishingCatalog({state,send,place,moreStyle,onGrow,onCook,onSt
   const decor=DECOR.filter(item=>!item.memento||state.decorOwned[item.id]>0).map(item=>{
     const placed=state.home.layout.filter(p=>p.equipmentId===item.id).length;
     return {id:item.id,name:item.name,footprint:item.footprint,placed,stored:Math.max(0,(state.decorOwned[item.id]??0)-placed),tier:1,
-      price:item.price,locked:!!item.memento,kind:'decor' as const,detail:item.memento?'A little memory, earned on your travels.':item.wall?'A finishing touch for your wall.':'A little colour for your favourite corner.',wall:!!item.wall};
+      price:item.price,locked:!!item.memento,kind:'decor' as const,detail:item.memento?'A little memory, earned on your travels.':item.counter?'A little character for your counter. Move it or keep it in storage.':item.passable?'A welcoming touch that guests can walk across.':item.wall?'A finishing touch for your wall.':'A little colour for your favourite corner.',wall:!!item.wall};
   });
   const all=[...equipment,...decor],storedCount=all.reduce((sum,item)=>sum+item.stored,0),available=all.filter(item=>view==='storage'?item.stored>0:!item.locked||item.stored>0);
   const renovation=renovationRequirements(state);
@@ -66,6 +67,8 @@ export function FurnishingCatalog({state,send,place,moreStyle,onGrow,onCook,onSt
         {(onStaff||onRecipes)&&<div className={css.usefulLinks}>{onStaff&&<button onClick={onStaff}><DinerIcon name="friends" size={23}/><span><strong>Your kitchen crew</strong><small>{crew} / {crewSlots} staff · {crew<crewSlots?'Hire a chef or waiter for 500 coins':'More staff slots open as you level up'}</small></span><DinerIcon name="arrow" size={15}/></button>}{onRecipes&&<button onClick={onRecipes}><DinerIcon name="book" size={23}/><span><strong>Make the menu yours</strong><small>Choose dishes and use ingredients to raise their level</small></span><DinerIcon name="arrow" size={15}/></button>}</div>}
       </>}
       <div className={css.collectionHeading}><p>{view==='storage'?'Yours already. Find it a lovely spot.':'Good things for your little diner.'}</p><span><DinerIcon name="coin" size={17}/>{money(state.coins)}</span></div>
+      {view==='storage'&&<p className={css.note}>Move a decoration here with Store. Place it again whenever you like, or sell a spare.</p>}
+      {notice&&<p className={css.note} role="status">{notice}</p>}
       {available.length?<div className={css.grid}>{available.map(item=><article className={css.item} key={item.id}>
         <div className={css.preview}><div className={css.platform}/><ModelIcon kind={item.id} tier={item.tier} label={item.name} size={180}/>{item.stored>0&&<span className={css.stored}>Yours · {item.stored}</span>}</div>
         <div className={css.body}><span className={css.category}>{item.wall?'Wall decoration':item.kind==='decor'?'For the joy of it':`${item.footprint.join(' × ')} tiles`}</span><h3>{item.name}</h3><p>{item.detail}</p><span className={css.ownership}>{item.placed?`${item.placed} in your restaurant`:item.kind==='equipment'?`Tier ${item.tier}`:'Make it yours'}</span>
@@ -74,6 +77,7 @@ export function FurnishingCatalog({state,send,place,moreStyle,onGrow,onCook,onSt
             const bought=send(item.kind==='equipment'?{type:'buyHomeEquipment',equipmentId:item.id}:{type:'buyDecor',decorId:item.id});if(bought)place(item.id);
           }}>{item.stored?<><DinerIcon name="decorate" size={17}/>Place</>:<><DinerIcon name="coin" size={17}/>{money(item.price)} <small>· buy & place</small></>}</button>
           {!item.stored&&!item.locked&&state.coins<item.price&&<small className={css.shortfall}>{money(item.price-state.coins)} more coins</small>}
+          {view==='storage'&&item.kind==='decor'&&!item.locked&&item.stored>0&&(sale===item.id?<div className={css.sale}><span>Sell one for {money(decorResaleValue(item.id)??0)} coins?</span><button onClick={()=>{if(send({type:'sellDecor',decorId:item.id})){setSale(null);setNotice(`${item.name} sold for ${money(decorResaleValue(item.id)??0)} coins.`);}}}>Sell one</button><button onClick={()=>setSale(null)}>Keep it</button></div>:<button className={css.sell} onClick={()=>setSale(item.id)}>Sell · {money(decorResaleValue(item.id)??0)} coins</button>)}
         </div>
       </article>)}</div>:<div className={css.empty}><DinerIcon name="gift" size={40}/><h3>Everything has a home.</h3><p>New finds and stored furnishings will wait here.</p><button onClick={()=>setView('furnish')}>Browse furniture</button></div>}
       {view==='furnish'&&discoveries.length>0&&<section className={css.discovery} aria-label="Equipment to discover"><div className={css.discoveryHeading}><DinerIcon name="truck" size={25}/><div><h3>Bring something good home</h3><p>Discover equipment on a truck trip. Then buy copies for your restaurant here.</p></div></div><div className={css.discoveries}>{discoveries.map(item=><article key={item.id}><ModelIcon kind={item.id} label={item.name} size={110}/><h4>{item.name}</h4><p>{item.detail}</p><strong className={css.source}>{item.id==='fryer'&&!state.tutorial.finished?'A gift after your first adventure':'Find at a truck shop stop'}</strong><small>Restaurant copy: {money(item.price)} coins</small></article>)}</div>{onCook&&<button className={css.roadButton} onClick={onCook}>Explore with the truck<DinerIcon name="arrow" size={17}/></button>}</section>}

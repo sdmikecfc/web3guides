@@ -88,7 +88,7 @@ test("home layout conserves ownership, course selection needs its machines", () 
   const state = fresh(); rejected(state, { type: "homeLayout", layout: [...state.home.layout, { id: "forged", equipmentId: "fryer", x: 6, y: 3, rotation: 0 }] }, "invalid_layout");
   rejected(state, { type: "setHomeMenu", menu: { ...state.home.menu, starter: ["fries"] } }, "invalid_menu");
   rejected(state, { type: "homeLayout", layout: state.home.layout.map(p => p.id === "home-grill" ? { ...p, x: 5, y: 7 } : p) }, "invalid_layout");
-  assert.equal(action(state, { type: "homeLayout", layout: state.home.layout }).home.layout.length, 3);
+  assert.deepEqual(action(state, { type: "homeLayout", layout: state.home.layout }).home.layout, state.home.layout);
 });
 test("route growth requires recipes plus finale; forged rewards and unknown fields refuse atomically", () => {
   const state = started(); rejected(state, { type: "service", action: { type: "tick", ticks: 0, coins: 99999 } } as any, "invalid_service_action");
@@ -97,7 +97,7 @@ test("route growth requires recipes plus finale; forged rewards and unknown fiel
   assert.equal(DINER_RULES.sourceAllowances.crate + DINER_RULES.sourceAllowances.market + DINER_RULES.sourceAllowances.garden + DINER_RULES.sourceAllowances.kindness + DINER_RULES.sourceAllowances.truck, 7);
 });
 test("visible home configuration is the measured economy configuration", () => {
-  const state = fresh(), config = homeSimulationConfig(state); assert.equal(config.arrivalRate, 60);
+  const state = fresh(), config = homeSimulationConfig(state); assert.equal(config.arrivalRate, 60.72); // Six distinct welcome pieces add twelve charm.
   assert.deepEqual(dinerRates(state), measureHomeRates(config)); assert.ok(dinerRates(state).plates >= 50);
   const meal = action(state, { type: "staffMeal", recipeId: "classic_burger" }); assert.equal(homeSimulationConfig(meal).staffSpeedMultiplier, 1.1);
   rejected(meal, { type: "staffMeal", recipeId: "fries" }, "meal_unavailable");
@@ -209,7 +209,7 @@ test("inherited object keys cannot become ingredients, recipes or staff-meal rec
   assert.equal(state.daily.staffMeal,null);assert.deepEqual(state.pantry,{});
 });
 test("Dottie unlocks through a purchasable daisy pot and real sundae output, without deferred gear",()=>{
-  let state=fresh();state.recipes.ice_cream_sundae={level:0};
+  let state=fresh();state.home.layout=state.home.layout.filter(p=>p.equipmentId!=='daisy_pot');state.decorOwned.daisy_pot=0;state.recipes.ice_cream_sundae={level:0};
   state=action(state,{type:'setHomeMenu',menu:{...state.home.menu,dessert:['ice_cream_sundae']}});
   assert.equal(regularAvailable(state,'dottie'),false);
   state=action(state,{type:'buyDecor',decorId:'daisy_pot'});assert.equal(regularAvailable(state,'dottie'),false);

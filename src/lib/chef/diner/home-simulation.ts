@@ -78,12 +78,18 @@ function tableTarget(w:HomeWorld,actor:HomeActor,table:HomeTable,seatId?:string|
  if(table.moduleId&&!table.servicePoints.some(p=>at(actor,p))&&w.actors.some(other=>other!==actor&&(table.servicePoints.some(p=>Math.hypot(other.x-p.x,other.y-p.y)<.7)||other.path.some(p=>table.servicePoints.some(q=>at(p,q))))))return null;
  return nearestTarget(w,actor,tableContactPoints(table,seatId));}
 function pickupTarget(w:HomeWorld,actor:HomeActor,station:HomeStation):Point|null{if(station.moduleId)return nearestTarget(w,actor,[station.handoff]);return nearestTarget(w,actor,[station.handoff,...perimeter(w,station.id).filter(p=>!at(p,station.front)&&!at(p,station.handoff))]);}
-function usefulCells(w:HomeWorld):Set<string>{const cache=geometry(w);return cache.useful??(cache.useful=new Set([key(w.door),...neighbors(w.door).map(key),...chairCells(w),...w.stations.flatMap(st=>[key(st.front),key(st.handoff)]),...w.tables.flatMap(table=>table.servicePoints.map(key)),...w.bathrooms.map(f=>key(f.front)),...w.roomModules.filter(m=>m.kind==='display_counter').flatMap(m=>{const g=roomModuleGeometry(m);return [key(g.orderBack),key(g.orderFront)];})]));}
+function usefulCells(w:HomeWorld):Set<string>{const cache=geometry(w);return cache.useful??(cache.useful=new Set([key(w.door),...neighbors(w.door).map(key),...chairCells(w),...w.stations.flatMap(st=>[key(st.front),key(st.handoff)]),...w.tables.flatMap(table=>table.servicePoints.map(key)),...w.bathrooms.map(f=>key(f.front)),...w.roomModules.filter(m=>m.kind==='display_counter').flatMap(m=>{const g=roomModuleGeometry(m);return [key(g.orderBack),key(g.orderFront)];}),...w.roomModules.filter(m=>m.kind==='lift_gate').flatMap(m=>{const g=roomModuleGeometry(m);return [...g.cells,g.front,g.back,...neighbors(g.front)].map(key);})]));}
+// Servers belong on the dining floor between jobs, where guests can see them.
+// Their active routes may still use the staff gate or kitchen collection pass.
+function idleZone(w:HomeWorld,role:HomeActor['role'],point:Point):boolean {
+ if(!w.config.roomPlan)return true;const zone=roomZoneAt(w.config.roomPlan,point)?.kind;
+ return role==='waiter'?zone!=='kitchen'&&zone!=='bathroom':zone==='kitchen';
+}
 function park(w:HomeWorld,actor:HomeActor):void{
  if(actor.path.length)return;const useful=usefulCells(w),current={x:Math.round(actor.x),y:Math.round(actor.y)};
  const passing=[...w.actors.filter(other=>other!==actor),...w.customers.filter(c=>c.phase!=='queue')],usedPaths=new Set(passing.flatMap(other=>other.path.map(key)));
- if(!useful.has(key(current))&&!usedPaths.has(key(current))&&at(actor,current)){actor.goal=null;return;}
- const options:Point[]=[];for(let y=0;y<w.config.h;y++)for(let x=0;x<w.config.w;x++)if(canWalk(w,{x,y})&&(!w.config.roomPlan||actor.role!=='chef'||roomZoneAt(w.config.roomPlan,{x,y})?.kind==='kitchen')&&!useful.has(key({x,y}))&&!usedPaths.has(key({x,y}))&&!at(current,{x,y}))options.push({x,y});
+ if(idleZone(w,actor.role,current)&&!useful.has(key(current))&&!usedPaths.has(key(current))&&at(actor,current)){actor.goal=null;return;}
+ const options:Point[]=[];for(let y=0;y<w.config.h;y++)for(let x=0;x<w.config.w;x++)if(canWalk(w,{x,y})&&idleZone(w,actor.role,{x,y})&&!useful.has(key({x,y}))&&!usedPaths.has(key({x,y}))&&!at(current,{x,y}))options.push({x,y});
  const target=nearestTarget(w,actor,options);if(target&&!at(actor,target))route(w,actor,target);
 }
 function yieldPath(w:HomeWorld,actor:HomeActor,blocker:Point&{id:string;path?:Point[]}):Point[]|null{
@@ -124,7 +130,7 @@ export function createHomeWorld(input:HomeSimulationConfig):HomeWorld {
   const w:HomeWorld={version:1,config,tick:0,nextId:1,nextArrival:20,menu:[],door:{x:Math.floor(config.w/2),y:config.h-1},walkable:Array.from({length:config.w*config.h},()=>true),actors:[],stations:[],tables:[],customers:[],orders:[],roomModules:config.roomPlan?.modules??[],bathrooms:[],fixtureWear:true,metrics:{coins:0,reputation:0,plates:0,platesByRecipe:{},arrivals:0,turnedAway:0,seatBusy:0,chefBusy:0,waiterBusy:0,washed:0,ordersTaken:0,fixtureUses:{},bathroomMisses:0,tips:0},notice:''};
   const ids=new Set<string>();let invalid=!!(config.roomPlan&&(config.w!==config.roomPlan.w||config.h!==config.roomPlan.h||validateRoomPlan(config.roomPlan,config.layout)));
   for(const m of w.roomModules)if(ROOM_FIXTURES[m.kind]?.solid)for(const c of roomModuleGeometry(m).cells){if(!canWalk(w,c))invalid=true;else w.walkable[c.y*config.w+c.x]=false;}
-  for(const p of config.layout){if(!p||ids.has(p.id)||(!EQUIPMENT_BY_ID[p.equipmentId]&&!DECOR_BY_ID[p.equipmentId])||!Number.isInteger(p.x)||!Number.isInteger(p.y)||![0,1,2,3].includes(p.rotation)){invalid=true;continue;}ids.add(p.id);for(const c of footprint(p)){if(!canWalk(w,c)||(c.x===w.door.x&&c.y===w.door.y)){invalid=true;continue;}w.walkable[c.y*config.w+c.x]=false;}}
+  for(const p of config.layout){if(!p||ids.has(p.id)||(!EQUIPMENT_BY_ID[p.equipmentId]&&!DECOR_BY_ID[p.equipmentId])||!Number.isInteger(p.x)||!Number.isInteger(p.y)||![0,1,2,3].includes(p.rotation)){invalid=true;continue;}ids.add(p.id);for(const c of footprint(p)){const passable=DECOR_BY_ID[p.equipmentId]?.passable;if(!canWalk(w,c)||(!passable&&c.x===w.door.x&&c.y===w.door.y)){invalid=true;continue;}if(!passable)w.walkable[c.y*config.w+c.x]=false;}}
   for(const p of config.layout){if(!EQUIPMENT_BY_ID[p.equipmentId])continue;const front=frontOf(p),reachable=homePath(w,w.door,front)!==null,tier=Math.floor(bounded(config.equipment[p.equipmentId]?.tier??1,1,1,EQUIPMENT_BY_ID[p.equipmentId].tiers.length));
     if(!reachable)continue;
     if(kinds.includes(p.equipmentId as StationKind)){const kind=p.equipmentId as StationKind,capacity=EQUIPMENT_BY_ID[kind].tiers[tier-1].capacity;w.stations.push({id:p.id,kind,x:p.x,y:p.y,rotation:p.rotation,tier,front,handoff:{...front},slots:Array.from({length:capacity},()=>({item:null,job:null,orderId:null,workerId:null}))});}
@@ -146,8 +152,8 @@ export function createHomeWorld(input:HomeSimulationConfig):HomeWorld {
   for(const role of ['chef','waiter','cashier'] as const)for(let i=0;i<(role==='chef'?config.chefs:role==='waiter'?config.waiters:config.cashiers??0);i++)w.actors.push({...w.door,id:`${role}_${i+1}`,role,path:[],goal:null,blockedTicks:0,held:null,task:null,pose:'idle'});
   const useful=usefulCells(w),spawnCells:Point[]=[];for(let y=0;y<config.h;y++)for(let x=0;x<config.w;x++)if(canWalk(w,{x,y})&&!useful.has(key({x,y}))&&homePath(w,w.door,{x,y},chairCells(w)))spawnCells.push({x,y});
   spawnCells.sort((a,b)=>a.y-b.y||a.x-b.x);
-  w.actors.forEach((actor,index)=>{const point=spawnCells[index];if(point){actor.x=point.x;actor.y=point.y;}});
-  if(config.roomPlan){const pass=w.stations.find(st=>st.moduleId);for(const actor of w.actors){if(actor.role==='cashier'&&pass){const point=orderPoint(w,'back')??pass.front;actor.x=point.x;actor.y=point.y;continue;}const options=spawnCells.filter(p=>!w.actors.some(other=>other!==actor&&at(other,p))&&(actor.role!=='chef'||roomZoneAt(config.roomPlan!,p)?.kind==='kitchen'));if(options.length){actor.x=options[0].x;actor.y=options[0].y;}}}
+  if(config.roomPlan){const pass=w.stations.find(st=>st.moduleId);for(const actor of w.actors){if(actor.role==='cashier'&&pass){const point=orderPoint(w,'back')??pass.front;actor.x=point.x;actor.y=point.y;continue;}const point=spawnCells.find(p=>idleZone(w,actor.role,p)&&!w.actors.some(other=>other!==actor&&at(other,p)));if(point){actor.x=point.x;actor.y=point.y;}}}
+  else w.actors.forEach((actor,index)=>{const point=spawnCells[index];if(point){actor.x=point.x;actor.y=point.y;}});
   return w;
 }
 function emptyStation(w:HomeWorld,kind:StationKind,from:HomeActor):{station:HomeStation;index:number}|null {
@@ -325,7 +331,7 @@ export function stepHomeWorld(w:HomeWorld,ticks=1):void {
     // No actor, order or appliance can change before the next arrival. Skip
     // these exact empty ticks; busy counters are zero and no RNG is consumed.
     if(!w.customers.length&&!w.orders.length&&w.tables.every(table=>table.seats.every(seat=>seat.status==='clean'))&&w.stations.every(st=>st.slots.every(slot=>!slot.item&&!slot.job))&&w.actors.every(actor=>!actor.task&&!actor.held&&!actor.path.length)){
-      const useful=usefulCells(w);if(w.actors.every(actor=>actor.role==='cashier'||!useful.has(key(actor)))){const until=w.menu.length&&w.config.arrivalRate>0?Math.max(0,Math.ceil(w.nextArrival)-1):ticks-i,skip=Math.min(ticks-i,until);if(skip>0){w.tick+=skip;if(w.menu.length&&w.config.arrivalRate>0)w.nextArrival-=skip;i+=skip-1;continue;}}
+      const useful=usefulCells(w);if(w.actors.every(actor=>actor.role==='cashier'||idleZone(w,actor.role,actor)&&!useful.has(key(actor)))){const until=w.menu.length&&w.config.arrivalRate>0?Math.max(0,Math.ceil(w.nextArrival)-1):ticks-i,skip=Math.min(ticks-i,until);if(skip>0){w.tick+=skip;if(w.menu.length&&w.config.arrivalRate>0)w.nextArrival-=skip;i+=skip-1;continue;}}
     }
     w.tick++;
     if(w.menu.length&&w.config.arrivalRate>0&&--w.nextArrival<=0)spawn(w);

@@ -1,8 +1,9 @@
 /** Restaurant changes are explicit plans; an old room is never silently replaced. */
 import type { DinerState, HomePlacement } from './progression';
 import { createDinerCareer, type DinerCareer } from './career';
-import { createRestaurantBlueprint, RESTAURANT_STAGES, type RestaurantStage, type RoomModuleKind, type RoomPlan } from './room-plan';
+import { createRestaurantBlueprint, RESTAURANT_STAGES, resolveRoomMount, type RestaurantStage, type RoomModuleKind, type RoomPlan } from './room-plan';
 import { ROUTES } from './content';
+import { STARTER_TRINKETS } from './collections';
 
 export type FixtureInventory=Record<string,{kind:RoomModuleKind;condition:number}>;
 export interface RenovationBackup {id:string;at:number;stage:RestaurantStage|null;w:number;h:number;expansion:number;layout:HomePlacement[];roomPlan?:RoomPlan;staff:DinerState['home']['staff']}
@@ -15,6 +16,18 @@ export const RENOVATION_RULES={version:1,introductoryCreditLimit:12,
 export function createRenovationState(stage?:RestaurantStage):RenovationState{return {version:1,completed:stage?[stage]:[],baseline:{services:0,introductory:0,byDifficulty:{},multiRecipe:{two:0,three:0}},backups:[]};}
 export function fixtureInventoryFor(plan:RoomPlan):FixtureInventory{return Object.fromEntries(plan.modules.map(m=>[m.id,{kind:m.kind,condition:m.condition??100}]));}
 export function currentRestaurantStage(state:Pick<DinerState,'home'>):RestaurantStage|null{return state.home.roomPlan?.stage??null;}
+/** A furnished welcome kit for a brand-new room, never applied over a player's layout. */
+export function starterTrinketLayout(plan:RoomPlan):HomePlacement[] {
+  if(plan.stage!=='burger_shop')return [];
+  const counter=plan.modules.find(m=>m.kind==='display_counter'),console=plan.modules.find(m=>m.kind==='console');
+  const mounts:Array<{equipmentId:string;mount:NonNullable<HomePlacement['mount']>}>=[];
+  if(counter)mounts.push({equipmentId:'burger_mascot',mount:{kind:'counter',targetId:counter.id,slot:1}});
+  if(console)mounts.push({equipmentId:'retro_radio',mount:{kind:'counter',targetId:console.id,slot:0}},{equipmentId:'condiment_caddy',mount:{kind:'counter',targetId:console.id,slot:2}});
+  mounts.push({equipmentId:'burger_print',mount:{kind:'wall',targetId:'outer-side',slot:4}});
+  const layout:HomePlacement[]=mounts.flatMap(({equipmentId,mount})=>{const at=resolveRoomMount(plan,mount);return at?[{id:`welcome-${equipmentId}`,equipmentId,x:Math.floor(at.x),y:Math.floor(at.y),rotation:at.rotation,mount}]:[];});
+  layout.push({id:'welcome-daisy_pot',equipmentId:'daisy_pot',x:8,y:6,rotation:0},{id:'welcome-welcome_mat',equipmentId:'welcome_mat',x:Math.floor(plan.w/2),y:plan.h-1,rotation:0});
+  return layout;
+}
 export interface RenovationRequirement {id:string;label:string;current:number;target:number;met:boolean}
 export function renovationRequirements(state:DinerState,requested?:RestaurantStage){
   const currentStage=currentRestaurantStage(state),nextStage:RestaurantStage|null=currentStage===null?'burger_shop':currentStage==='burger_shop'?'diner':currentStage==='diner'?'restaurant':null,stage=requested??nextStage;
@@ -42,13 +55,15 @@ export function getRenovationPreview(state:DinerState,requested?:RestaurantStage
   const stage=requirements.stage,blueprint=createRestaurantBlueprint(stage),owned=state.home.fixtureInventory??{},plan=blueprint.roomPlan;
   const staff={chefs:Math.max(blueprint.staff.chefs,state.home.staff.chefs),waiters:Math.max(blueprint.staff.waiters,state.home.staff.waiters+(stage==='burger_shop'?0:state.home.staff.cashiers??0)),cashiers:stage==='burger_shop'?Math.max(blueprint.staff.cashiers,state.home.staff.cashiers??0):0};
   for(const module of plan.modules){const previous=owned[module.id];if(['toilet','handwash_sink'].includes(module.kind)){if(previous?.kind===module.kind)module.condition=previous.condition;}else module.id=`${stage}-${module.id}`;}
+  const includedDecor:Record<string,number>=stage==='burger_shop'&&!state.starterTrinkets?Object.fromEntries(STARTER_TRINKETS.map(id=>[id,1])):{};
+  if(Object.keys(includedDecor).length)blueprint.layout.push(...starterTrinketLayout(plan));
   const includesTables=stage==='restaurant'&&!state.renovation?.completed.includes(stage),includedFurniture:Record<string,number>=includesTables?{table_2:3}:{};
   // Existing appliances can supply the blueprint; missing core copies are a
   // one-time room kit for legacy adoption, never repeats on undo/re-renovation.
-  for(const placement of blueprint.layout){if(placement.equipmentId==='table_2')continue;if(!(state.equipment[placement.equipmentId]?.homeCopies))includedFurniture[placement.equipmentId]=1;}
+  for(const placement of blueprint.layout){if(placement.equipmentId==='table_2'||Object.hasOwn(includedDecor,placement.equipmentId))continue;if(!(state.equipment[placement.equipmentId]?.homeCopies))includedFurniture[placement.equipmentId]=1;}
   const used:Record<string,number>={};for(const p of blueprint.layout)used[p.equipmentId]=(used[p.equipmentId]??0)+1;
   const retainedStorage=Object.fromEntries(Object.entries(state.equipment).map(([id,item])=>[id,Math.max(0,item.homeCopies+(includedFurniture[id as keyof typeof includedFurniture]??0)-(used[id]??0))]).filter(([,n])=>Number(n)>0));
   const oldPlan=state.home.roomPlan?{...state.home.roomPlan,modules:state.home.roomPlan.modules.map(({condition,...module})=>module)}:undefined;
-  const token=`renovation-v1:${hash({stage,home:{w:state.home.w,h:state.home.h,layout:state.home.layout,roomPlan:oldPlan},equipment:state.equipment,staff:state.home.staff,completed:state.renovation?.completed,services:state.career?.services,cost:requirements.cost})}`;
-  return {...requirements,stage,token,roomPlan:plan,layout:blueprint.layout,staff,includedFurniture,retainedStorage,before:{w:state.home.w,h:state.home.h,layout:structuredClone(state.home.layout),roomPlan:state.home.roomPlan?structuredClone(state.home.roomPlan):undefined}};
+  const token=`renovation-v1:${hash({stage,home:{w:state.home.w,h:state.home.h,layout:state.home.layout,roomPlan:oldPlan},equipment:state.equipment,decorOwned:state.decorOwned,starterTrinkets:state.starterTrinkets,staff:state.home.staff,completed:state.renovation?.completed,services:state.career?.services,cost:requirements.cost})}`;
+  return {...requirements,stage,token,roomPlan:plan,layout:blueprint.layout,staff,includedFurniture,includedDecor,retainedStorage,before:{w:state.home.w,h:state.home.h,layout:structuredClone(state.home.layout),roomPlan:state.home.roomPlan?structuredClone(state.home.roomPlan):undefined}};
 }

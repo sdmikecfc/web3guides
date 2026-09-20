@@ -321,12 +321,19 @@ export function createCharacter(role='chef',look=0,uniform?:string){
   // Collar and sleeves meet the torso; a generous apron pocket reads at room scale.
   for(const side of [-1,1]){const collar=box(.10,.095,.030,role==='customer'?PALETTE.porcelain:shirt,side*.061,1.020,-.151,.019);collar.rotation.z=side*.38;body.add(collar);}
   if(role!=='customer'){
-    const apron=uniform??(role==='chef'?PALETTE.sage:PALETTE.tomato);
+    // The default crew share a palette, but the server needs a distinct silhouette
+    // and apron at playing size. Purchased uniform colours still carry through.
+    const apron=role==='waiter'&&(!uniform||uniform===PALETTE.sage)?'#b94f43':uniform??(role==='chef'?PALETTE.sage:PALETTE.tomato);
     body.add(box(.35,.36,.027,apron,0,.738,-.169,.049),box(.23,.20,.029,apron,0,.956,-.163,.035));
     for(const x of [-.104,.104])body.add(box(.036,.22,.030,apron,x,1.007,-.155,.012));
     body.add(box(.19,.115,.035,PALETTE.porcelain,0,.755,-.190,.021),box(.13,.018,.012,apron,0,.790,-.213,.006));
     for(const x of [-.105,.105])body.add(ball(.016,PALETTE.mustard,x,1.009,-.180));
     const neckerchief=box(.083,.08,.028,role==='chef'?PALETTE.tomato:PALETTE.sage,0,1.048,-.181,.020);neckerchief.rotation.z=Math.PI/4;body.add(neckerchief);
+    if(role==='waiter'){
+      const towel=group(box(.135,.245,.028,PALETTE.porcelain,.210,.665,-.102,.013),box(.022,.212,.005,apron,.184,.660,-.120,.004),box(.10,.012,.005,PALETTE.mustard,.211,.557,-.120,.003));
+      towel.name='server-towel';towel.rotation.z=-.10;body.add(towel);
+      const badge=group(box(.113,.055,.019,PALETTE.mustard,-.054,.956,-.189,.018),box(.052,.010,.009,PALETTE.porcelain,-.054,.956,-.203,.004));badge.name='server-badge';body.add(badge);
+    }
   }else{
     body.add(box(.095,.08,.022,PALETTE.porcelain,.107,.915,-.156,.017));
     for(const y of [.954,.885,.815])body.add(ball(.013,PALETTE.ink,-.023,y,-.159));
@@ -698,6 +705,55 @@ function createHerbPlanter(){
   }
   g.add(box(.20,.089,.010,'#eadabc',0,.201,-.186,.014));for(const x of [-.055,0,.055])g.add(box(.017,.012,.006,PALETTE.sage,x,.2,-.193,.003));return packMeshes(g,'decor-herb-planter');
 }
+/** These are miniature counter ornaments, authored at catalogue scale; the
+ * common counter mount makes their real footprint about a third of a tile. */
+function createBurgerMascot(){
+  const g=group(cylinder(.32,.34,.047,PALETTE.sage,0,.027,0,24),cylinder(.29,.31,.018,PALETTE.porcelain,0,.059,0,24));
+  const spring=new THREE.CatmullRomCurve3(Array.from({length:41},(_,i)=>{const a=i/40*Math.PI*6;return new THREE.Vector3(Math.cos(a)*.057,.078+i/40*.105,Math.sin(a)*.057);}));
+  g.add(mesh(geo('burger-bobble-spring',()=>new THREE.TubeGeometry(spring,40,.013,6,false)),PALETTE.steel));
+  g.add(cylinder(.232,.219,.071,'#cf9854',0,.217,0,24),cylinder(.242,.242,.039,'#73513c',0,.277,0,24),cylinder(.238,.238,.025,PALETTE.tomato,0,.331,0,24));
+  const cheese=box(.36,.012,.36,PALETTE.mustard,0,.305,0,.005);cheese.rotation.y=Math.PI/4;g.add(cheese);
+  for(let i=0;i<8;i++){const a=i*Math.PI/4,leaf=ball(.087,i%2?'#9fb86e':'#749357',Math.cos(a)*.185,.353,Math.sin(a)*.185);leaf.scale.set(1,.21,.86);leaf.rotation.y=-a;g.add(leaf);}
+  g.add(cylinder(.257,.254,.040,PALETTE.bun,0,.382,0,24));
+  const bun=mesh(geo('burger-mascot-dome',()=>new THREE.SphereGeometry(.258,20,10,0,Math.PI*2,0,Math.PI/2)),PALETTE.bun,0,.401);bun.scale.y=.70;g.add(bun);
+  for(let i=0;i<6;i++){const a=i*2.4,r=.050+(i%3)*.055,seed=box(.024,.010,.039,PALETTE.porcelain,Math.cos(a)*r,.401+Math.sqrt(.258**2-r*r)*.70,Math.sin(a)*r,.006);seed.rotation.y=a;g.add(seed);}
+  for(const side of [-1,1]){const eye=ball(.019,PALETTE.ink,side*.070,.445,-.242);eye.scale.z=.45;g.add(eye);const cheek=ball(.025,PALETTE.tomato,side*.114,.420,-.236);cheek.scale.set(1,.40,.18);g.add(cheek);}
+  const smile=new THREE.CatmullRomCurve3([new THREE.Vector3(-.032,.419,-.253),new THREE.Vector3(0,.405,-.255),new THREE.Vector3(.032,.419,-.253)]);g.add(mesh(geo('burger-mascot-smile',()=>new THREE.TubeGeometry(smile,8,.008,5,false)),PALETTE.ink));
+  g.name='decor-burger-mascot';return packMeshes(g,'decor-burger-mascot');
+}
+function createRetroRadio(){
+  const g=group(box(.68,.395,.29,PALETTE.porcelain,0,.238,0,.090),box(.625,.290,.019,'#b94f43',0,.244,-.147,.047));
+  for(const x of [-.23,.23])g.add(box(.10,.038,.17,PALETTE.wood,x,.023,0,.014));
+  const speaker=cylinder(.113,.113,.013,PALETTE.ink,-.146,.244,-.167,24);speaker.rotation.x=Math.PI/2;g.add(speaker);
+  for(let row=-3;row<=3;row++)for(let col=-3;col<=3;col++)if(row*row+col*col<12)g.add(ball(.0057,PALETTE.metal,-.146+col*.030,.244+row*.030,-.177));
+  g.add(box(.154,.034,.011,'#ddbe83',.155,.309,-.167,.011),box(.014,.027,.006,PALETTE.tomato,.177,.309,-.176,.004));
+  const dial=cylinder(.066,.066,.034,PALETTE.porcelain,.150,.206,-.180,20);dial.rotation.x=Math.PI/2;g.add(dial,box(.009,.039,.006,PALETTE.sage,.150,.215,-.201,.003));
+  for(const x of [-.095,.095])g.add(box(.020,.063,.037,PALETTE.wood,x,.453,.025,.007));g.add(box(.21,.027,.038,PALETTE.wood,0,.479,.025,.009));
+  const antenna=group(cylinder(.012,.015,.31,PALETTE.metal,0,.155),ball(.022,PALETTE.metal,0,.316));antenna.position.set(-.23,.409,.08);antenna.rotation.z=.22;g.add(antenna);
+  g.name='decor-retro-radio';return packMeshes(g,'decor-retro-radio');
+}
+function createCondimentCaddy(){
+  const g=group(box(.67,.035,.38,PALETTE.oak,0,.023,0,.019));
+  for(const x of [-.316,.316])g.add(box(.036,.147,.36,PALETTE.oak,x,.112,0,.013));
+  for(const z of [-.177,.177])g.add(box(.65,.109,.026,PALETTE.wood,0,.092,z,.011));
+  for(const [x,color]of [[-.188,'#b94f43'],[-.005,PALETTE.mustard]] as const){
+    g.add(cylinder(.070,.078,.208,color,x,.161,0,16),cylinder(.036,.070,.061,color,x,.295,0,16),cylinder(.020,.032,.056,PALETTE.porcelain,x,.353,0,12),cylinder(.031,.032,.019,color,x,.321,0,12));
+    g.add(box(.087,.093,.012,PALETTE.porcelain,x,.167,-.075,.021),box(.041,.014,.006,color,x,.169,-.084,.005));
+  }
+  g.add(box(.020,.162,.32,PALETTE.oak,.109,.119,0,.006));
+  for(let i=0;i<4;i++){const napkin=box(.15,.218,.015,i%2?PALETTE.porcelain:'#eadfca',.216,.160+i*.012,-.047+i*.035,.007);napkin.rotation.z=-.10;g.add(napkin);}
+  g.name='decor-condiment-caddy';return packMeshes(g,'decor-condiment-caddy');
+}
+function createWelcomeMat(){
+  const g=group(box(.88,.018,.64,PALETTE.wood,0,.011,0,.014),box(.84,.007,.60,PALETTE.porcelain,0,.023,0,.010));
+  for(let x=0;x<8;x++)for(let z=0;z<6;z++)g.add(box(.098,.003,.093,(x+z)%2?'#d9927c':'#efd2b8',-.35+x*.10,.028,-.235+z*.094,.001));
+  g.add(box(.37,.003,.37,PALETTE.porcelain,0,.031,0,.090));
+  // A sewn burger emblem, flat like ink on a rug rather than a loose meal.
+  g.add(box(.245,.003,.089,PALETTE.bun,0,.034,-.071,.041),box(.259,.003,.018,PALETTE.leaf,0,.034,-.013,.006),box(.247,.003,.034,'#76513b',0,.034,.020,.011),box(.25,.003,.063,PALETTE.bun,0,.034,.071,.022));
+  for(const x of [-.066,0,.066])g.add(box(.014,.003,.023,PALETTE.porcelain,x,.037,-.075,.004));
+  for(const x of [-.387,.387])for(let z=0;z<7;z++)g.add(box(.010,.003,.040,PALETTE.porcelain,x,.032,-.24+z*.08,.003));
+  g.name='decor-welcome-mat';return packMeshes(g,'decor-welcome-mat');
+}
 export function createModel(kind:string,options:ModelOptions={}):THREE.Group{
   if(['display_counter','console','chef_bar','lift_gate','staff_door','service_hatch','internal_pass','toilet','handwash_sink','stool','counter_till','counter_book'].includes(kind))return roomFixture(kind,options.roomColors);
   if(kind==='fridge')return createFridge(options.color??PALETTE.sage);
@@ -712,6 +768,10 @@ export function createModel(kind:string,options:ModelOptions={}):THREE.Group{
   if(kind==='plant'||kind==='red_planter')return plant();
   if(kind==='leafy_plant')return createLeafyPlant();
   if(kind==='herb_planter')return createHerbPlanter();
+  if(kind==='burger_mascot')return createBurgerMascot();
+  if(kind==='retro_radio')return createRetroRadio();
+  if(kind==='condiment_caddy')return createCondimentCaddy();
+  if(kind==='welcome_mat')return createWelcomeMat();
   if(kind==='daisy_pot'){const g=group(cylinder(.18,.13,.25,PALETTE.mustard,0,.15));for(let i=0;i<3;i++){const x=(i-1)*.12,y=.54+(i%2)*.15;g.add(cylinder(.01,.012,y-.25,PALETTE.leaf,x,(y+.25)/2,0));for(let p=0;p<6;p++){const petal=ball(.055,PALETTE.porcelain,x+Math.cos(p*Math.PI/3)*.085,y+Math.sin(p*Math.PI/3)*.085,-.015);petal.scale.z=.35;g.add(petal);}g.add(ball(.047,PALETTE.mustard,x,y,-.025));}return g;}
   if(kind==='parcel'||kind==='delivery'){
     const g=group(box(.59,.045,.50,PALETTE.wood,0,.057,0,.020));

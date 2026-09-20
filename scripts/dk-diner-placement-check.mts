@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { createDiner, dispatchDiner, homeSimulationConfig, sanitizeDinerSave, type DinerCommand, type DinerState } from '../src/lib/chef/diner/progression';
 import { createHomeWorld } from '../src/lib/chef/diner/home-simulation';
 import { makeTable } from '../src/lib/chef/diner/geometry';
-import { createPlacementDraft, movePlacementDraft, previewPlacement, rotatePlacementDraft } from '../src/app/chef/diner-preview/placement-preview';
+import { aimHomeMount, createPlacementDraft, movePlacementDraft, previewPlacement, rotatePlacementDraft } from '../src/app/chef/diner-preview/placement-preview';
 const now=Date.UTC(2026,8,20,8);
 const fresh=()=>createLegacyDinerFixture(now,'placement-check');
 function act(state:DinerState,command:DinerCommand){const result=dispatchDiner(state,command,{now});assert.equal(result.error,undefined,`${command.type}: ${result.error}`);return result.state;}
@@ -79,5 +79,17 @@ test('staged starter uses its actual grill cell and commits a stored fryer witho
  const state=createDiner(now,'staged-placement');state.equipment.fryer.homeCopies=1;const original=structuredClone(state.home.roomPlan),grill=state.home.layout.find(p=>p.equipmentId==='grill')!;
  const draft=createPlacementDraft(state,'home','fryer','staged-fryer');assert.equal(previewPlacement(state,draft).error,null);assert(previewPlacement(state,movePlacementDraft(draft,grill.x,grill.y,true)).error);
  const committed=act(state,previewPlacement(state,draft).command);assert.equal(committed.home.layout.filter(p=>p.equipmentId==='fryer').length,1);assert.deepEqual(committed.home.roomPlan,original);assert(sanitizeDinerSave(committed));
+});
+test('wall art previews snap to exterior walls, commit facing into the room and reload on the same support',()=>{
+ let state=createDiner(now,'outer-wall-placement');state.decorOwned.burger_print=Math.max(1,state.decorOwned.burger_print??0);
+ const existing=state.home.layout.find(p=>p.equipmentId==='burger_print'),id=existing?.id??'wall-burger-print';
+ let draft=createPlacementDraft(state,'home','burger_print',id,!!existing);
+ for(const [x,y,targetId,slot,rotation] of [[-.55,4,'outer-side',4,3],[5,-.55,'outer-back',5,0]] as const){
+  const before=JSON.stringify(state);draft=aimHomeMount(state,draft,x,y,true);const preview=previewPlacement(state,draft);
+  assert.equal(preview.error,null);assert.deepEqual(draft.mount,{kind:'wall',targetId,slot});assert.equal(preview.object!.x,x);assert.equal(preview.object!.y,y);assert.equal(preview.object!.rotation,rotation);assert.equal(JSON.stringify(state),before);
+  state=act(state,preview.command);const reloaded=sanitizeDinerSave(JSON.stringify(state))!;assert(reloaded);assert.deepEqual(reloaded.home.layout.find(p=>p.id===id)!.mount,draft.mount);
+  state=reloaded;draft={...draft,existing:true};
+ }
+ assert(previewPlacement(state,{...draft,mount:{kind:'wall',targetId:'outer-back',slot:state.home.w}}).error);
 });
 console.log(`Diner placement: ${groups} groups passed.`);

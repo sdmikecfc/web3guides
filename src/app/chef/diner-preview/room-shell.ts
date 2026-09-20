@@ -59,7 +59,7 @@ export function createRoomShell(plan:RoomPlan,data:Pick<DinerSceneData,'sign'|'m
   }
   const tiles=new THREE.InstancedMesh(new THREE.BoxGeometry(1,.06,1),new THREE.MeshToonMaterial({color:'#fff'}),cells.length),matrix=new THREE.Matrix4();tiles.userData.tiles=cells;tiles.receiveShadow=true;cells.forEach((cell,i)=>{matrix.makeTranslation(cell.x,.065,cell.y);tiles.setMatrixAt(i,matrix);tiles.setColorAt(i,new THREE.Color(cell.color));});root.add(tiles);
   const back=partition(plan.w+.12,2.78,colors.counter,new THREE.Vector3(0,0,-1),.85);back.name='room-wall:outer-back';back.position.set((plan.w-1)/2,.095,-.55);root.add(back);
-  const side=partition(plan.h+.12,2.40,colors.counter,new THREE.Vector3(-1,0,0),.85);side.rotation.y=Math.PI/2;side.position.set(-.55,.095,(plan.h-1)/2);root.add(side);
+  const side=partition(plan.h+.12,2.40,colors.counter,new THREE.Vector3(-1,0,0),.85);side.name='room-wall:outer-side';side.rotation.y=Math.PI/2;side.position.set(-.55,.095,(plan.h-1)/2);root.add(side);
   // Broad plaster and orderly dado rails replace the tiny decorative wall clutter.
   for(const panel of [back,side]){const u=panel.userData.cutaway.upper as THREE.Group;for(const child of u.children)if(child instanceof THREE.Mesh)child.material=material(wallColor);}
   for(const edge of plan.edges){
@@ -69,8 +69,17 @@ export function createRoomShell(plan:RoomPlan,data:Pick<DinerSceneData,'sign'|'m
     const color=bathroom?TILE:colors.counter,height=bathroom?1.92:plan.stage==='burger_shop'?1.03:2.16;
     if(edge.kind==='door'){
       const door=new THREE.Group();door.name=`room-door:${edge.id}`;door.position.set(x,.095,y);door.rotation.y=dx?Math.PI/2:0;
+      const entrance=(roomZoneAt(plan,edge.a)?.kind==='bathroom')!==(roomZoneAt(plan,edge.b)?.kind==='bathroom');
       for(const px of [-.45,.45])door.add(box(.09,1.91,.115,WOOD,px,.955,0,.015));door.add(box(.98,.10,.13,WOOD,0,1.93,0,.018));
       const hinge=new THREE.Group();hinge.name='room-door-hinge';hinge.position.set(-.40,.12,0);hinge.add(box(.80,1.55,.06,bathroom?TILE:CREAM,.40,.775,0,.025),box(.027,.11,.024,WOOD,.72,.86,-.047,.009));
+      if(entrance){
+        door.userData.bathroomEntrance=true;
+        door.add(box(.78,.025,.32,CREAM,0,.012,0,.01));
+        // Keep the real doorway readable when its neighbouring walls cut away.
+        const plaque=lettering(['WC'],.40,.23,CREAM,WOOD);plaque.name='bathroom-entry-sign';plaque.position.set(.40,1.26,.038);hinge.add(plaque);
+        const reverse=plaque.clone();reverse.rotation.y=Math.PI;reverse.position.z=-.038;hinge.add(reverse);
+        hinge.add(box(.25,.045,.025,PALETTE.metal,.60,.91,.049,.006));
+      }
       door.add(hinge);door.userData.doorEdge=edge;door.userData.doorNormal=new THREE.Vector3(dx,0,dy);door.userData.pick={id:`edge:${edge.id}`};root.add(door);
     }else{
       const panel=partition(1.01,height,color,new THREE.Vector3(dx,0,dy),Math.min(.63,height));panel.position.set(x,.095,y);panel.rotation.y=dx?Math.PI/2:0;panel.name=`room-wall:${edge.id}`;panel.userData.pick={id:`edge:${edge.id}`};root.add(panel);
@@ -105,6 +114,6 @@ export function updateRoomShell(root:THREE.Object3D,data:DinerSceneData,toCamera
   root.traverse(object=>{
     if(object.userData.wallOwner)object.visible=object.userData.wallOwner.userData.cutaway.upper.scale.y>.80;
     const cut=object.userData.cutaway;if(cut){const near=toCamera.dot(cut.normal)>.05,target=near?0:1;cut.upper.scale.y+=(target-cut.upper.scale.y)*Math.min(1,dt*12);cut.upper.visible=cut.upper.scale.y>.015;cut.cap.position.y=cut.low+(cut.height-cut.low)*cut.upper.scale.y+.015;}
-    const edge=object.userData.doorEdge;if(edge){object.scale.y+=((toCamera.dot(object.userData.doorNormal)>.05?.46:1)-object.scale.y)*Math.min(1,dt*12);const hinge=object.getObjectByName('room-door-hinge');if(hinge){const moving=data.people.some(person=>person.pose==='walk'&&Math.hypot(person.x-(edge.a.x+edge.b.x)/2,person.y-(edge.a.y+edge.b.y)/2)<.85);hinge.rotation.y+=((moving?-1.40:0)-hinge.rotation.y)*Math.min(1,dt*10);}}
+    const edge=object.userData.doorEdge;if(edge){object.scale.y+=((!object.userData.bathroomEntrance&&toCamera.dot(object.userData.doorNormal)>.05?.46:1)-object.scale.y)*Math.min(1,dt*12);const hinge=object.getObjectByName('room-door-hinge');if(hinge){const moving=data.people.some(person=>person.pose==='walk'&&Math.hypot(person.x-(edge.a.x+edge.b.x)/2,person.y-(edge.a.y+edge.b.y)/2)<.85);hinge.rotation.y+=((moving?-1.40:0)-hinge.rotation.y)*Math.min(1,dt*10);}}
   });
 }

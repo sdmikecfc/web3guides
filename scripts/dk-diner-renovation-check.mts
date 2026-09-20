@@ -65,7 +65,7 @@ test('bathroom wear is partition-independent, clock-safe and shared by online an
  const online=dispatchDiner(initial,{type:'settle'},{now:now+3600000,online:true});const offline=dispatchDiner(initial,{type:'settle'},{now:now+6000000});assert.equal(online.error,undefined);assert.equal(offline.error,undefined);assert(Math.abs(online.state.home.till.coins-offline.state.home.till.coins)<1e-6);assert(Math.abs(online.state.home.fixtureInventory!['handwash-1'].condition-offline.state.home.fixtureInventory!['handwash-1'].condition)<1e-6);
 });
 test('room commits validate layout and ownership together and mounted decor does not invent an extra copy',()=>{
- let s=createDiner(now);s.coins=5000;s=act(s,{type:'buyDecor',decorId:'daisy_pot'});
+ let s=createDiner(now);s.home.layout=s.home.layout.filter(p=>!p.id.startsWith('welcome-'));s.decorOwned={};s.coins=5000;s=act(s,{type:'buyDecor',decorId:'daisy_pot'});
  const mount={kind:'counter' as const,targetId:'service-counter',slot:1},position=resolveRoomMount(s.home.roomPlan!,mount)!;assert(position);
  const secondMount={...mount,slot:2},secondPosition=resolveRoomMount(s.home.roomPlan!,secondMount)!;assert(secondPosition);
  const item={id:'counter-daisies',equipmentId:'daisy_pot',x:Math.floor(position.x),y:Math.floor(position.y),rotation:position.rotation,mount};
@@ -92,7 +92,7 @@ test('three-person shop capacity includes its cashier and restoration restores t
  let room=eligible();room=act(room,{type:'renovateHome',stage:'diner',previewToken:getRenovationPreview(room)!.token});assert.equal(room.staffMembers.find(m=>m.id==='cashier-1')!.role,'waiter');room=act(room,{type:'restoreRenovation',backupId:room.renovation.backups[0].id});assert.equal(room.staffMembers.find(m=>m.id==='cashier-1')!.role,'cashier');
 });
 test('saved favourites retain their original room context across renovation and cannot move its stage on apply',()=>{
- let s=eligible();s=act(s,{type:'buyDecor',decorId:'daisy_pot'});const mount={kind:'counter' as const,targetId:'service-counter',slot:1},point=resolveRoomMount(s.home.roomPlan!,mount)!;
+ let s=eligible();s.home.layout=s.home.layout.filter(p=>!p.id.startsWith('welcome-'));s=act(s,{type:'buyDecor',decorId:'daisy_pot'});const mount={kind:'counter' as const,targetId:'service-counter',slot:1},point=resolveRoomMount(s.home.roomPlan!,mount)!;
  s=act(s,{type:'homeRoomPlan',roomPlan:s.home.roomPlan!,layout:[...s.home.layout,{id:'favourite-flowers',equipmentId:'daisy_pot',x:Math.floor(point.x),y:Math.floor(point.y),rotation:point.rotation,mount}]});s=act(s,{type:'saveLayout',name:'My first counter'});const saved=structuredClone(s.savedLayouts[0]);
  s=act(s,{type:'renovateHome',stage:'diner',previewToken:getRenovationPreview(s)!.token});assert.deepEqual(s.savedLayouts[0],saved);assert(sanitizeDinerSave(s));reject(s,{type:'loadLayout',layoutId:saved.id},'invalid_layout');assert.equal(s.home.roomPlan!.stage,'diner');
  s=act(s,{type:'restoreRenovation',backupId:s.renovation.backups[0].id});s=act(s,{type:'loadLayout',layoutId:saved.id});assert.deepEqual(s.home.layout,saved.layout);assert(sanitizeDinerSave(s));

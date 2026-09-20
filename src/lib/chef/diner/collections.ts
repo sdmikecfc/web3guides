@@ -1,18 +1,22 @@
 import type { DinerState } from "./progression";
 import type { Course } from "./types";
 
-export interface DecorDef { id: string; name: string; footprint: [number, number]; price: number; setId: string; wall?: boolean; memento?: boolean }
+export interface DecorDef { id: string; name: string; footprint: [number, number]; price: number; setId: string; wall?: boolean; counter?: boolean; passable?: boolean; memento?: boolean }
 export const DECOR: DecorDef[] = [
-  { id: "red_planter", name: "Cherry-red planter", footprint: [1, 1], price: 150, setId: "fifties" },
+  { id: "red_planter", name: "Cherry-red planter", footprint: [1, 1], price: 150, setId: "fifties", counter: true },
   { id: "chrome_clock", name: "Chrome wall clock", footprint: [1, 1], price: 150, setId: "fifties", wall: true },
   { id: "milkshake_sign", name: "Milkshake print", footprint: [1, 1], price: 150, setId: "fifties", wall: true },
   { id: "checkered_shelf", name: "Checkered keepsake shelf", footprint: [1, 1], price: 300, setId: "fifties" },
-  { id: "daisy_pot", name: "Daisy pot", footprint: [1, 1], price: 150, setId: "garden" },
+  { id: "daisy_pot", name: "Daisy pot", footprint: [1, 1], price: 150, setId: "garden", counter: true },
   { id: "garden_poster", name: "Kitchen garden print", footprint: [1, 1], price: 150, setId: "garden", wall: true },
   { id: "coffee_print", name: "Morning coffee print", footprint: [1, 1], price: 250, setId: "extras", wall: true },
   { id: "burger_print", name: "House burger print", footprint: [1, 1], price: 250, setId: "extras", wall: true },
   { id: "leafy_plant", name: "Tall rubber plant", footprint: [1, 1], price: 450, setId: "extras" },
-  { id: "herb_planter", name: "Kitchen herb planter", footprint: [1, 1], price: 300, setId: "extras" },
+  { id: "herb_planter", name: "Kitchen herb planter", footprint: [1, 1], price: 300, setId: "extras", counter: true },
+  { id: "burger_mascot", name: "Little burger buddy", footprint: [1, 1], price: 180, setId: "welcome", counter: true },
+  { id: "retro_radio", name: "Lunch-break radio", footprint: [1, 1], price: 220, setId: "welcome", counter: true },
+  { id: "condiment_caddy", name: "Ketchup & mustard caddy", footprint: [1, 1], price: 120, setId: "welcome", counter: true },
+  { id: "welcome_mat", name: "Gingham welcome mat", footprint: [1, 1], price: 120, setId: "welcome", passable: true },
   { id: "pete_postcard", name: "Pete's first postcard", footprint: [1, 1], price: 0, setId: "mementos", wall: true, memento: true },
   { id: "marge_badge", name: "Marge's thank-you badge", footprint: [1, 1], price: 0, setId: "mementos", wall: true, memento: true },
   { id: "dottie_portrait", name: "Dottie and her poodle", footprint: [1, 1], price: 0, setId: "mementos", wall: true, memento: true },
@@ -23,6 +27,11 @@ export const DECOR: DecorDef[] = [
   { id: "bell_review", name: "Mr Bell's framed review", footprint: [1, 1], price: 0, setId: "mementos", wall: true, memento: true },
 ];
 export const DECOR_BY_ID: Record<string, DecorDef> = Object.fromEntries(DECOR.map(d => [d.id, d]));
+export const STARTER_TRINKETS = ['burger_mascot', 'retro_radio', 'condiment_caddy', 'daisy_pot', 'burger_print', 'welcome_mat'] as const;
+/** One spare slot preserves the welcome gift for old collections at their cap. */
+export const MAX_DECOR_COPIES = 1001;
+/** Fixed coin prices only; earned friendship keepsakes cannot be sold. */
+export function decorResaleValue(id:string):number|null {const item=Object.hasOwn(DECOR_BY_ID,id)?DECOR_BY_ID[id]:null;return item&&!item.memento?Math.floor(item.price/2):null;}
 export const REGULARS = [
   { id: "old_pete", name: "Old Pete", favourite: "classic_burger", quirk: "A friendly word for every road ahead.", hint: "He has been here since opening day.", memento: "pete_postcard" },
   { id: "marge", name: "Marge", favourite: "coffee", quirk: "The night nurse always appreciates a fresh coffee.", hint: "Put coffee on your menu.", memento: "marge_badge" },

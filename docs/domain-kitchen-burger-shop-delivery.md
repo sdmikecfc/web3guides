@@ -13,6 +13,8 @@ This implementation changes the standalone Three.js diner at `/chef/diner-previe
 - Bathrooms wear through actual use, including bounded offline operation. Select the fixture and hold the nearby control briefly to wipe it or pay for a repair. Possessions and mastery are never removed by poor condition.
 - Public visits share the physical room adapter, including architecture, furniture and seated characters. They exclude private upkeep/parcel interactions.
 
+The starter stools now face the opposite wall from the bathroom. The server spawns and waits on public floor in a cherry apron; the cashier stays at the till. The bathroom entrance keeps its full door frame and WC sign, and the first stall has its missing side partition. New shops include six owned decorations: a burger mascot, radio, condiment caddy, daisy pot, burger print and walkable welcome mat. These can be moved or stored; stored decorations can be sold for the displayed resale amount. Existing staged saves receive the collection once in storage, preserving customized layouts. Only an exact untouched earlier starter is repositioned automatically. Reloading, restoring a saved layout or repeating a command cannot replace a sold copy.
+
 The development-only `/chef/room-review` shows all three rooms and live service without loading or writing any account.
 
 ## Growth and music
