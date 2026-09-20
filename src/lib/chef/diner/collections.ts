@@ -72,6 +72,15 @@ export function finishPrice(slot: FinishSlot, id: string): number | null {
   const prices = slot === "floor" ? FINISH_RULES.prices.floor : slot === "wall" ? FINISH_RULES.prices.wall : null;
   return prices && Object.prototype.hasOwnProperty.call(prices, id) ? (prices as Record<string, number>)[id] : null;
 }
-export interface DinerStaff { id: string; name: string; role: "chef" | "waiter"; named: boolean; outfit: string; look: number }
+export type RoomFinishSlot='counter'|'worktop'|'upholstery'|'sign';
+export const ROOM_PALETTES={
+  counter:[{id:'tomato',name:'Tomato enamel',color:'#bd654e',price:0},{id:'sage',name:'Deep sage',color:'#365f55',price:250},{id:'cream',name:'Warm cream',color:'#f7f2e6',price:250}],
+  worktop:[{id:'porcelain',name:'Porcelain',color:'#fff9ee',price:0},{id:'walnut',name:'Walnut',color:'#876647',price:300},{id:'charcoal',name:'Charcoal',color:'#394b46',price:300}],
+  upholstery:[{id:'cherry',name:'Cherry vinyl',color:'#bd654e',price:0},{id:'mint',name:'Soft mint',color:'#94b9a2',price:200},{id:'mustard',name:'Golden mustard',color:'#e3b454',price:200}],
+  sign:[{id:'cream',name:'Cream sign',color:'#f7f2e6',price:0},{id:'sage',name:'Sage sign',color:'#365f55',price:200},{id:'coral',name:'Coral sign',color:'#bd654e',price:200}],
+} as const;
+export const ROOM_FINISH_DEFAULTS:Record<RoomFinishSlot,string>={counter:'tomato',worktop:'porcelain',upholstery:'cherry',sign:'cream'};
+export function roomFinishPrice(slot:RoomFinishSlot,id:string):number|null {return Object.hasOwn(ROOM_PALETTES,slot)?ROOM_PALETTES[slot].find(f=>f.id===id)?.price??null:null;}
+export interface DinerStaff { id: string; name: string; role: "chef" | "waiter" | "cashier"; named: boolean; outfit: string; look: number }
 export const RECRUITS = [{ id: "jo", name: "Jo", role: "waiter" }, { id: "bea", name: "Bea", role: "chef" }, { id: "gus", name: "Gus", role: "waiter" }] as const;
-export interface SavedDinerLayout { id: string; name: string; layout: DinerState["home"]["layout"]; menu: Record<Course, string[]> }
+export interface SavedDinerLayout { id: string; name: string; layout: DinerState["home"]["layout"]; menu: Record<Course, string[]>; room?:Pick<DinerState["home"],"w"|"h"|"roomPlan"> }

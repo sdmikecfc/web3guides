@@ -6,7 +6,7 @@ type SurfaceObject=Object3D&{material?:Material|Material[]};
 
 /** Truck crew are visual work feedback, not selection surfaces. Mark their root
  * so hats, animated limbs, tools and carried dishes all follow the same rule. */
-export function setActorPicking(root:Object3D,mode:'truck'|'home',person:{id:string;role:'chef'|'waiter'|'customer';tableId?:string|null;seatId?:string|null}){
+export function setActorPicking(root:Object3D,mode:'truck'|'home',person:{id:string;role:'chef'|'waiter'|'cashier'|'customer';tableId?:string|null;seatId?:string|null}){
   root.userData.inputPassthrough=mode==='truck'&&person.role!=='customer';
   root.userData.pick=person.tableId?{id:person.tableId,seatId:person.seatId??undefined}:mode==='home'?{id:person.id}:undefined;
 }

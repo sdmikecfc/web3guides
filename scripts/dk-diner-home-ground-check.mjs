@@ -22,6 +22,9 @@ const modelUrl=moduleUrl('src/app/chef/diner-preview/models.ts',[['three',threeU
 const spaceUrl=moduleUrl('src/lib/chef/diner/home-spatial.ts');
 const boardUrl=moduleUrl('src/app/chef/diner-preview/home-board.ts',[['three',threeUrl],['./models',modelUrl],['../../../lib/chef/diner/home-spatial',spaceUrl]]);
 const {createHomeBoard}=await import(boardUrl),models=await import(modelUrl);
+// These are the preserved open-room/terrace fixtures. Staged-room geometry is
+// covered separately by dk-diner-room-art-check and room-plan-check.
+function legacyDiner(now,seed){const state=createDiner(now,seed);delete state.home.roomPlan;delete state.home.fixtureInventory;state.home.w=state.home.h=8;state.home.staff={chefs:1,waiters:1,cashiers:0};state.home.layout=[{id:'grill',equipmentId:'grill',x:1,y:0,rotation:0},{id:'prep',equipmentId:'prep',x:3,y:0,rotation:0},{id:'sink',equipmentId:'sink',x:5,y:0,rotation:0},{id:'table',equipmentId:'table_2',x:2,y:3,rotation:0}];state.equipment.table_2.homeCopies=1;return state;}
 let groups=0,samples=0;
 const check=(name,fn)=>{fn();groups++;console.log(`PASS ${name}`);};
 function assertSupported(scene){
@@ -30,7 +33,7 @@ function assertSupported(scene){
   for(const person of scene.people.filter(item=>item.id.startsWith('regular:')))assert.ok(person.y>=scene.height,'regular occupies owned interior');
 }
 for(const size of [8,10,12,14])check(`${size}×${size}: exact simulated positions and supported welcome terrace`,()=>{
-  const state=createDiner(20*86400000+1000,`ground-${size}`);state.home.w=state.home.h=size;state.updatedAt+=7200000;state.daily.regularProgress.old_pete=1;
+  const state=legacyDiner(20*86400000+1000,`ground-${size}`);state.home.w=state.home.h=size;state.updatedAt+=7200000;state.daily.regularProgress.old_pete=1;
   const space=spatial.homeSpatial(size,size),world=createHomeWorld(homeSimulationConfig(state));
   for(let tick=0;tick<6000;tick+=20){stepHomeWorld(world,20);const scene=homeScene(state,world,null,'#bd6a50');assertSupported(scene);samples++;
     for(const actor of [...world.actors,...world.customers]){const drawn=scene.people.find(person=>person.id===actor.id);assert.equal(drawn.x,actor.x);assert.equal(drawn.y,actor.y);}
@@ -52,7 +55,7 @@ for(const size of [8,10,12,14])check(`${size}×${size}: exact simulated position
   const bad=structuredClone(world);bad.actors[0].x=-1;const unmodified=homeScene(state,bad,null,'#bd6a50').people.find(person=>person.id===bad.actors[0].id);assert.equal(unmodified.x,-1,'adapter silently clamps invalid position');assert.equal(spatial.homeSupportAt(size,size,unmodified.x,unmodified.y),null);
 });
 check('incident markers retain IDs, avoid furniture/seats and expose real work progress',()=>{
-  const state=createDiner(20*86400000+1000,'chores-ground');state.updatedAt+=7200000;
+  const state=legacyDiner(20*86400000+1000,'chores-ground');state.updatedAt+=7200000;
   const before=homeIncidents(state);assert.equal(before.length,2);
   const first=before[0];state.homeTask={incidentId:first.id,progressTicks:Math.floor(first.requiredTicks/2),phase:'working'};
   let scene=homeScene(state,createHomeWorld(homeSimulationConfig(state)),null,'#bd6a50');let marker=scene.objects.find(item=>item.id===first.id);assert.equal(marker.state,'working');assert.equal(marker.progress,.5);
@@ -64,7 +67,7 @@ check('incident markers retain IDs, avoid furniture/seats and expose real work p
 });
 check('single-seat home tables render one chair from the simulation in every rotation',()=>{
   for(const rotation of [0,1,2,3]){
-    const state=createDiner(20*86400000+1000,`solo-table-${rotation}`);
+    const state=legacyDiner(20*86400000+1000,`solo-table-${rotation}`);
     const placement=state.home.layout.find(item=>item.equipmentId==='table_2');
     placement.equipmentId='table_1';placement.rotation=rotation;
     state.equipment.table_1.homeCopies=1;

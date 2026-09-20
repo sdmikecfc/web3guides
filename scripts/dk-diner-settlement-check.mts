@@ -4,7 +4,7 @@ import * as homeSimulation from '../src/lib/chef/diner/home-simulation';
 import { createDiner, dispatchDiner, DINER_RULES, type DinerState } from '../src/lib/chef/diner/progression';
 const now=Date.UTC(2026,8,25,12),hour=DINER_RULES.hourMs;let calls=0,groups=0;
 const descriptor=Object.getOwnPropertyDescriptor(homeSimulation,'measureHomeRates')!;
-const measured:homeSimulation.HomeRates={coins:200,reputation:10,plates:8,platesByRecipe:{classic_burger:8},bottleneck:'arrivals',rates:{arrivals:8,seats:20,kitchen:20,waiters:20},menu:['classic_burger']};
+const measured:homeSimulation.HomeRates={coins:200,reputation:10,plates:8,platesByRecipe:{classic_burger:8},bottleneck:'arrivals',rates:{arrivals:8,seats:20,kitchen:20,waiters:20},menu:['classic_burger'],fixtureUses:{},bathroomMisses:0};
 // Count dependency calls, not wall-clock time. The source rate is fixed so this
 // regression remains independent of staff-routing and economy tuning.
 Object.defineProperty(homeSimulation,'measureHomeRates',{...descriptor,value:()=>{calls++;return structuredClone(measured);}});

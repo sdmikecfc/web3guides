@@ -1,5 +1,5 @@
 /** Diner preview authority. No legacy kitchen state or client reward totals enter here. */
-import { activeDinerMode, createDiner, dinerCommandTicks, dinerDay, dinerPauseCommand, dispatchDiner, type DinerCommand, type DinerState } from "./progression";
+import { activeDinerMode, createDiner, migrateDinerRestaurant, dinerCommandTicks, dinerDay, dinerPauseCommand, dispatchDiner, type DinerCommand, type DinerState } from "./progression";
 import { SERVICE_RULES } from "./content";
 
 export const DINER_AUTHORITY_RULES = { version: 1, tickMs: SERVICE_RULES.tickMs, maxActions: 128, maxTicks: 100, maxGapMs: 5_000, presenceGapMs: 30_000, maxBytes: 48_000 } as const;
@@ -11,6 +11,8 @@ export class DinerAuthorityError extends Error {
 export function createDinerRecord(now: number, seed: string): DinerRecord {
   return { state: createDiner(now, seed), revision: 0, clock: { lastAt: now, creditMs: 0, pausedForAbsence: false } };
 }
+/** Load-only defaults retain the same revision and clock until a normal CAS commits them. */
+export function migrateDinerRecord(record:DinerRecord):DinerRecord { return {...structuredClone(record),state:migrateDinerRestaurant(record.state)}; }
 const playing = (state: DinerState) => activeDinerMode(state)!==null;
 export function validateDinerEnvelope(value: unknown): DinerEnvelope {
   const body = value as Partial<DinerEnvelope> | null;

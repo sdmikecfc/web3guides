@@ -1,3 +1,4 @@
+import {createLegacyDinerFixture} from './dk-diner-legacy-fixture';
 /** Physical daily parcel: shared server clock, persistent parts, existing ingredient receipts. */
 import assert from 'node:assert/strict';
 import { createDiner, dailyIngredientParcel, dinerDay, DINER_RULES, dispatchDiner, homeIncidents, sanitizeDinerSave, type DinerCommand, type DinerState } from '../src/lib/chef/diner/progression';
@@ -73,11 +74,13 @@ test('midnight expires partial opening and old timed chunks cannot mint a new da
   rejected(result.record.state,{type:'beginHomeTask',incidentId:oldId},'incident_unavailable',midnight+100);
   const fresh=dailyIngredientParcel(result.record.state);assert.notEqual(fresh.id,oldId);assert.equal(fresh.claimed,false);
 });
-test('scene reflects unclaimed progress on the terrace and removes only the claimed ingredient parcel',()=>{
-  let state=createDiner(now);const target=dailyIngredientParcel(state),scene=()=>homeScene(state,null,'home-parcel','sage'),find=()=>scene().objects.find(o=>o.id==='home-parcel');
-  assert.equal(find()!.state,'ready');assert.equal(find()!.progress,0);assert.equal(find()!.x,target.x);assert.equal(find()!.y,state.home.h+2);
+test('staged entrance and legacy terrace parcels reflect progress and remove only the claimed parcel',()=>{
+ for(const initial of [createDiner(now),createLegacyDinerFixture(now)]){
+  let state=initial;const target=dailyIngredientParcel(state),scene=()=>homeScene(state,null,'home-parcel','sage'),find=()=>scene().objects.find(o=>o.id==='home-parcel');
+  assert.equal(find()!.state,'ready');assert.equal(find()!.progress,0);assert.equal(find()!.x,target.x);assert.equal(find()!.y,target.y);if(state.home.roomPlan)assert(target.y>=0&&target.y<state.home.h,'staged parcel stays inside the entrance');else assert.equal(target.y,state.home.h+2,'legacy parcel remains on the terrace');
   state=choosePart(state,'tape');assert.equal(find()!.state,'working');state=act(state,tick(30));assert.equal(find()!.progress,4/12);assert.equal(find()!.state,'ready');
   state=act(choosePart(state,'leftFlap'),tick(30));state=act(choosePart(state,'rightFlap'),tick(30));assert.equal(find(),undefined);assert(scene().objects.some(o=>o.id.startsWith('incident:')));assert(scene().objects.some(o=>o.id==='home-till'));
+ }
 });
 test('home scene work props and facing come from actual cooking and washing tasks',()=>{
   const state=createDiner(now),world=createHomeWorld(homeSimulationConfig(state)),seen=new Set<string>();

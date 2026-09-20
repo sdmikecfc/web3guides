@@ -1,3 +1,6 @@
+import {createLegacyDinerFixture} from './dk-diner-legacy-fixture';
+import {createRestaurantBlueprint} from '../src/lib/chef/diner/room-plan';
+import {fixtureInventoryFor} from '../src/lib/chef/diner/renovation';
 /** Direct home gestures, with actual authority clock and no external I/O. */
 import assert from 'node:assert/strict';
 import { activeDinerMode, createDiner, DINER_RULES, dinerClockBoundary, dinerPauseCommand, dinerRates, dinerTickCommand, dispatchDiner, homeIncidents, homeSimulationConfig, sanitizeDinerSave, type DinerCommand, type DinerState } from '../src/lib/chef/diner/progression';
@@ -82,10 +85,14 @@ test('manual modes and editing pause home work and never resume it after returni
 });
 test('targets remain reachable inside the room, off furniture/chairs, distinct and stable across reload',()=>{
   for(const size of [8,10,12,14]){
-    const state=createDiner(now);state.home.w=state.home.h=size;state.home.expansion=(size-8)/2;
+    const state=createLegacyDinerFixture(now);state.home.w=state.home.h=size;state.home.expansion=(size-8)/2;
     const jobs=homeIncidents(state),world=createHomeWorld(homeSimulationConfig(state)),seatKeys=new Set(world.tables.flatMap(table=>table.seats).map(seat=>`${seat.x},${seat.y}`));
     assert.equal(jobs.length,2);assert.notDeepEqual({x:jobs[0].x,y:jobs[0].y},{x:jobs[1].x,y:jobs[1].y});assert.deepEqual(homeIncidents(sanitizeDinerSave(state)!),jobs);
     for(const job of jobs){assert(homePath(world,world.door,job));assert(!seatKeys.has(`${job.x},${job.y}`));assert(job.x>=0&&job.y>=0&&job.x<size&&job.y<size);}
+  }
+  for(const stage of ['burger_shop','diner','restaurant'] as const){
+    const state=createDiner(now),blueprint=createRestaurantBlueprint(stage);Object.assign(state.home,{w:blueprint.roomPlan.w,h:blueprint.roomPlan.h,roomPlan:blueprint.roomPlan,layout:blueprint.layout,staff:blueprint.staff,fixtureInventory:fixtureInventoryFor(blueprint.roomPlan)});state.equipment.table_2.homeCopies=stage==='restaurant'?3:0;
+    const jobs=homeIncidents(state),world=createHomeWorld(homeSimulationConfig(state));assert(sanitizeDinerSave(state));assert.equal(jobs.length,2);assert.deepEqual(homeIncidents(sanitizeDinerSave(state)!),jobs);for(const job of jobs){assert(homePath(world,world.door,job),`${stage}: chore ${job.id} must be reachable`);assert(!world.tables.flatMap(t=>t.seats).some(seat=>seat.x===job.x&&seat.y===job.y));}
   }
   let state=started();state=scrub(state,20);const before=homeIncidents(state)[0];state.decorOwned.daisy_pot=1;
   state=act(state,{type:'homeLayout',layout:[...state.home.layout,{id:'new-pot',equipmentId:'daisy_pot',x:before.x,y:before.y,rotation:0}]});const after=homeIncidents(state)[0];

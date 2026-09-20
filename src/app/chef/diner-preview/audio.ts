@@ -64,6 +64,7 @@ export interface DkSfx {
   muted: () => boolean;
   setMuted: (m: boolean) => void;
   setEffectsMuted: (m: boolean) => void;
+  setEffectsVolume: (volume: number) => void;
   setMusicMuted: (m: boolean) => void;
   musicMuted: () => boolean;
   destroy: () => void;
@@ -73,6 +74,7 @@ export function createDkSfx(startUnmuted: boolean): DkSfx {
   let ctx: AudioContext | null = null;
   let muted = !startUnmuted;
   let master: GainNode | null = null;
+  let effectsVolume = 1;
   let voiceCount = 0;
   let musicMuted = !startUnmuted;
   let musicBus: GainNode | null = null;
@@ -142,7 +144,7 @@ export function createDkSfx(startUnmuted: boolean): DkSfx {
   function ensureMaster(c: AudioContext): GainNode {
     if (master) return master;
     const gain = c.createGain();
-    gain.gain.value = 0.9;
+    gain.gain.value = 0.9 * effectsVolume;
     const comp = c.createDynamicsCompressor();
     const t = c.currentTime;
     comp.threshold.setValueAtTime(-18, t);
@@ -236,7 +238,7 @@ export function createDkSfx(startUnmuted: boolean): DkSfx {
         const t = ctx.currentTime;
         master.gain.cancelScheduledValues(t);
         master.gain.setValueAtTime(master.gain.value, t);
-        master.gain.linearRampToValueAtTime(m ? 0 : 0.9, t + 0.05);
+        master.gain.linearRampToValueAtTime(m ? 0 : 0.9 * effectsVolume, t + 0.05);
       } catch {
         // never break the game over an audio param
       }
@@ -250,6 +252,7 @@ export function createDkSfx(startUnmuted: boolean): DkSfx {
     if(musicBus){const t=c.currentTime;musicBus.gain.cancelScheduledValues(t);musicBus.gain.setValueAtTime(musicBus.gain.value,t);musicBus.gain.linearRampToValueAtTime(m?0:.14,t+.35);}
   }
   function setMuted(m:boolean):void{setEffectsMuted(m);setMusicMuted(m);}
+  function setEffectsVolume(value:number):void{effectsVolume=Math.max(0,Math.min(1,Number.isFinite(value)?value:1));setEffectsMuted(muted);}
   function destroy():void{
     disposed=true;
     if(musicTimer)clearInterval(musicTimer);
@@ -257,5 +260,5 @@ export function createDkSfx(startUnmuted: boolean): DkSfx {
     try{ambience?.stop();void ctx?.close();}catch{/* already closed */}
     ambience=null;musicBus=null;master=null;ctx=null;
   }
-  return { play, muted: () => muted, setMuted, setEffectsMuted, setMusicMuted, musicMuted:()=>musicMuted, destroy };
+  return { play, muted: () => muted, setMuted, setEffectsMuted, setEffectsVolume, setMusicMuted, musicMuted:()=>musicMuted, destroy };
 }

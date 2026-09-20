@@ -17,6 +17,15 @@ export interface HomeCameraFit {
   projectedBounds:{minX:number;maxX:number;minY:number;maxY:number};
 }
 
+/** The phone starts with the entire miniature in view. Extra bottom space lifts
+ * the room above onboarding; a taller preview sheet always keeps its full inset. */
+export function homeCameraPresentation(width:number,hasRoomPlan:boolean,previewInset?:number){
+  const phone=width<700;
+  return {azimuthOffset:phone?(hasRoomPlan?Math.PI/6:Math.PI/12):Math.PI/4,
+    insets:{bottom:phone&&hasRoomPlan?Math.max(225,previewInset??0):previewInset??125},
+    scaleBoost:hasRoomPlan&&!phone&&!previewInset?1.04:1};
+}
+
 // Conservative silhouette envelopes, including counter-top attachments. These do
 // not read GPU geometry or change collision footprints, stations, or navigation.
 const HEIGHTS:Record<string,number>={
@@ -28,22 +37,22 @@ const CONTEXT_IDS=new Set(['home-till','home-binder','home-collections','home-pa
 const own = <T,>(catalog:Record<string,T>,id:string):T|undefined => Object.prototype.hasOwnProperty.call(catalog,id)?catalog[id]:undefined;
 
 /** Build once per layout/dimensions change. Actors, jobs and transient chores do not affect composition. */
-export function createHomeCameraBounds(scene:Pick<DinerSceneData,'width'|'height'|'objects'|'tables'>):HomeCameraBounds {
+export function createHomeCameraBounds(scene:Pick<DinerSceneData,'width'|'height'|'objects'|'tables'|'roomPlan'>):HomeCameraBounds {
   const space=homeSpatial(scene.width,scene.height),boxes:HomeCameraBox[]=[];
   const add=(x0:number,y0:number,z0:number,x1:number,y1:number,z1:number)=>boxes.push({min:{x:x0,y:y0,z:z0},max:{x:x1,y:y1,z:z1}});
   const floor=(z:number)=>z<scene.height-.5?space.interior.elevation:space.terrace.elevation;
 
   // The full supported board fixes the composition when customers or daily
   // parcels appear/disappear. Only real walls receive the full wall height.
-  add(space.bounds.minX,-.18,space.bounds.minY,space.bounds.maxX,.10,space.bounds.maxY);
-  add(-.70,0,-.70,scene.width-.30,2.55,-.24);
+  add(space.bounds.minX,-.18,space.bounds.minY,space.bounds.maxX,.10,scene.roomPlan?scene.height+.22:space.bounds.maxY);
+  add(-.70,0,-.70,scene.width-.30,scene.roomPlan?2.98:2.55,-.24);
   add(-.70,0,-.70,-.24,2.55,scene.height-.30);
   add(space.door.x-1.02,0,scene.height-.75,space.door.x+1.02,2.50,scene.height+.60);
 
   // Reserve the four permanent terrace destinations even after a parcel claim,
   // plus the regular's standing space even when nobody is visiting.
-  for(const point of Object.values(space.context))add(point.x-.50,0,point.y-.50,point.x+.50,1.65,point.y+.50);
-  add(space.regular.x-.48,0,space.regular.y-.48,space.regular.x+.48,2.05,space.regular.y+.48);
+  if(!scene.roomPlan){for(const point of Object.values(space.context))add(point.x-.50,0,point.y-.50,point.x+.50,1.65,point.y+.50);
+  add(space.regular.x-.48,0,space.regular.y-.48,space.regular.x+.48,2.05,space.regular.y+.48);}
 
   for(const object of scene.objects){
     if(object.id.startsWith('incident:')||CONTEXT_IDS.has(object.id)||object.kind==='spill'||object.kind==='parcel')continue;
@@ -52,7 +61,7 @@ export function createHomeCameraBounds(scene:Pick<DinerSceneData,'width'|'height
     add(object.x-.54,y,object.y-.54,object.x+w-.46,y+(own(HEIGHTS,object.kind)??2.35),object.y+h-.46);
   }
   for(const table of scene.tables){
-    const turned=(table.rotation??0)%2===1,w=table.capacity===4||turned?2:1,h=table.capacity===4||!turned?2:1,y=floor(table.y);
+    const turned=(table.rotation??0)%2===1,raw=table.footprint??[table.capacity===4?2:1,table.capacity===1?1:2],w=raw[turned?1:0],h=raw[turned?0:1],y=floor(table.y);
     add(table.x-.54,y,table.y-.54,table.x+w-.46,y+1.10,table.y+h-.46);
     for(const seat of table.seats)add(seat.x-.45,y,seat.y-.45,seat.x+.45,y+1.35,seat.y+.45);
   }

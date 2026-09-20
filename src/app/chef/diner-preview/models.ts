@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import type { SceneFood } from './scene-types';
+import type { SceneFood,SceneObject } from './scene-types';
+
+/** Align original floor-authored art with a real architectural support. */
+export function configureRoomMount(model:THREE.Group,object:SceneObject){
+  model.scale.setScalar(object.mount?.kind==='counter'?(object.kind==='herb_planter'?.32:.52):1);model.position.set(0,0,0);
+  if(object.mount?.kind==='wall'){const back=object.kind==='chrome_clock'?.435:.49,offset=-(back+.052),angle=Math.PI-(object.rotation??0)*Math.PI/2;model.position.set(Math.sin(angle)*offset,0,Math.cos(angle)*offset);}
+}
 
 /** Original toy-diner model kit. Metres, Y-up, floor-centred, front is -Z.
  * This source builds both world models and catalogue previews. No asset provider. */
@@ -309,7 +315,7 @@ function cheekPatch(side:number,color:string){
 export function createCharacter(role='chef',look=0,uniform?:string){
   const root=new THREE.Group(),body=new THREE.Group(),head=new THREE.Group(),eyes:THREE.Group[]=[],brows:THREE.Group[]=[];root.add(body);body.add(head);
   const style=Math.abs(Math.floor(look))%20,skin=['#e6ad83','#bf815b','#855337','#f0c29b'][style%4],hair=['#654330','#302d2b','#b87535','#7b6554'][style%4];
-  const shirt=role==='chef'?PALETTE.porcelain:role==='waiter'?PALETTE.porcelain:['#b8594b','#548b98','#c99a43','#527c64','#937093'][style%5];
+  const shirt=role==='chef'||role==='waiter'?PALETTE.porcelain:role==='cashier'?'#b94f43':['#b8594b','#548b98','#c99a43','#527c64','#937093'][style%5];
   const jacket=ball(.29,shirt,0,.807,0);jacket.scale.set(.95,.95,.63);
   body.add(jacket,box(.39,.13,.29,PALETTE.dark,0,.608,0,.064),cylinder(.076,.080,.12,skin,0,1.096));
   // Collar and sleeves meet the torso; a generous apron pocket reads at room scale.
@@ -358,6 +364,7 @@ export function createCharacter(role='chef',look=0,uniform?:string){
     }
     if(style%4===2)for(const x of [-.16,.16]){const bun=ball(.085,hair,x,.18,.15);bun.scale.set(1,.85,.9);head.add(bun);}
     if(style%4===3){const sweep=ball(.095,hair,-.105,.205,-.10);sweep.scale.set(1.2,.55,.75);sweep.rotation.z=.35;head.add(sweep);}
+    if(role==='cashier'){head.add(box(.45,.076,.31,PALETTE.porcelain,0,.236,-.022,.035),box(.43,.035,.17,'#b94f43',0,.204,-.210,.025));}
   }else{
     head.add(cylinder(.217,.229,.095,PALETTE.porcelain,0,.242),cylinder(.231,.231,.023,PALETTE.sage,0,.218));
     for(const [x,y,z,r] of [[-.13,.325,0,.112],[0,.363,.012,.138],[.13,.325,0,.112],[0,.325,-.09,.115]]){const puff=ball(r,PALETTE.porcelain,x,y,z);puff.scale.y=.83;head.add(puff);}
@@ -379,7 +386,7 @@ export function createCharacter(role='chef',look=0,uniform?:string){
   root.userData.rig={body,chest,head,eyes,brows,smile,openMouth,arms,elbows,legs,knees,held,props,phase:(style*1.618+(role==='waiter'?2.4:role==='customer'?.9:0))%7.2,blinkPeriod:4.6+(style%5)*.37,isChef:role==='chef'} satisfies CharacterRig;
   return root;
 }
-export interface CharacterWork {stationKind?:string;recipeId?:string}
+export interface CharacterWork {stationKind?:string;recipeId?:string;seatHeight?:number}
 export function animateCharacter(model:THREE.Group,time:number,pose:string,carrying:boolean,moving:boolean,work?:CharacterWork){
   const rig=model.userData.rig as CharacterRig;if(!rig)return;
   const t=time+rig.phase,seated=pose==='sit'||pose==='eat',cooking=pose==='cook'&&!carrying&&!moving,washing=pose==='wash'&&!carrying&&!moving,eating=pose==='eat'&&!carrying&&!moving;
@@ -390,7 +397,7 @@ export function animateCharacter(model:THREE.Group,time:number,pose:string,carry
   // Regulars greet briefly, then relax. A held two-arm salute reads as a T-pose.
   const greetingPhase=((t%7.2)+7.2)%7.2;
   const greeting=pose==='cheer'&&!carrying&&!moving?Math.max(0,Math.min(1,greetingPhase/.25,(1.8-greetingPhase)/.35)):0;
-  rig.body.position.y=seated?-.15:moving?Math.abs(Math.sin(t*9.5))*.022:0;
+  rig.body.position.y=seated?(work?.seatHeight??.48)-.63:moving?Math.abs(Math.sin(t*9.5))*.022:0;
   rig.body.position.x=0;rig.body.rotation.y=moving?Math.sin(t*9.5)*.026:0;
   rig.chest.scale.set(1+breath*.006,1+breath*.003,1+breath*.013);
   for(let i=0;i<2;i++){
@@ -412,11 +419,15 @@ export function animateCharacter(model:THREE.Group,time:number,pose:string,carry
     const lift=(1-Math.cos(t*2.65))*.5;
     rig.arms[0].rotation.set(.90+lift*.25,0,.12+lift*.10);rig.elbows[0].rotation.set(1+lift*.35,0,.04+lift*.17);
     rig.arms[1].rotation.x=.78;rig.elbows[1].rotation.x=.70;
+  }else if(pose==='takeOrder'&&!moving&&!carrying){
+    rig.arms[0].rotation.set(.78,0,-.10);rig.elbows[0].rotation.x=.85;
+    rig.arms[1].rotation.set(.58+Math.sin(t*3)*.08,0,.10);rig.elbows[1].rotation.x=.65;
+    rig.head.rotation.x=.04+Math.sin(t*3)*.025;
   }else if(greeting>0){
     rig.arms[0].rotation.x=greeting*(.12+Math.sin(t*13+.6)*.12);
     rig.arms[0].rotation.z=greeting*(-1.93+Math.sin(t*13)*.17);rig.elbows[0].rotation.x=.16*greeting;
   }
-  rig.head.rotation.x=cooking||washing?.10+Math.sin(t*2.4)*.018:eating?.045+Math.sin(t*2.65)*.055:breath*.012;
+  rig.head.rotation.x=cooking||washing?.10+Math.sin(t*2.4)*.018:eating?.045+Math.sin(t*2.65)*.055:pose==='takeOrder'?.04+Math.sin(t*3)*.025:breath*.012;
   rig.head.rotation.y=cooking||washing?Math.sin(t*2)*.018:eating?-.04:Math.sin(t*.58)*.085;
   rig.head.rotation.z=-greeting*.065+(moving?Math.sin(t*4.75)*.018:0);
   // Expressions follow real work and meals. Keep the idle face welcoming and
@@ -588,7 +599,82 @@ function createFramedPrint(kind:string){
   packMeshes(art,`wall-print-v2:${kind}`);art.traverse(object=>{if(object instanceof THREE.Mesh)object.castShadow=false;});
   const result=group(frame,art);result.name=`framed-print:${kind}`;result.userData.wallMountPlane=back;return result;
 }
-export interface ModelOptions {tier?:number;color?:string;recipeId?:string;stage?:string;look?:number;stock?:number}
+export interface ModelOptions {tier?:number;color?:string;recipeId?:string;stage?:string;look?:number;stock?:number;roomColors?:{counter:string;worktop:string;upholstery:string}}
+/** Constructed restaurant fixtures share the floor-centred, front -Z contract. */
+function roomFixture(kind:string,colors?:ModelOptions['roomColors']){
+  const red=kind==='stool'?colors?.upholstery??'#b94f43':colors?.counter??'#b94f43',cream=['toilet','handwash_sink'].includes(kind)?PALETTE.porcelain:colors?.worktop??'#fff1d8',walnut='#745038',chrome='#b3c7bd',g=new THREE.Group();g.name=`room-fixture:${kind}`;const paletteKey=JSON.stringify(colors??{}),enamelHighlight='#'+new THREE.Color(red).lerp(new THREE.Color(PALETTE.porcelain),.16).getHexString();
+  if(kind==='stool'){
+    for(const x of [-.165,.165])for(const z of [-.165,.165]){const leg=cylinder(.025,.032,.65,chrome,x,.33,z,10);leg.rotation.z=-x*.15;g.add(leg);}
+    g.add(ring(.212,.018,chrome,0,.30,0),cylinder(.237,.23,.058,chrome,0,.657),cylinder(.244,.239,.080,red,0,.707,0,24),cylinder(.217,.218,.010,enamelHighlight,0,.751,0,24));
+    return packMeshes(g,`room-stool-v1:${paletteKey}`);
+  }
+  if(kind==='toilet'){
+    g.add(box(.32,.32,.39,PALETTE.porcelain,0,.175,.03,.12),box(.35,.055,.47,cream,0,.039,0,.055));
+    const bowl=ball(.285,PALETTE.porcelain,0,.427,-.081);bowl.scale.set(1,.65,1.22);g.add(bowl);
+    const hollow=cylinder(.222,.197,.020,'#638d91',0,.566,-.098,28);hollow.scale.z=1.31;g.add(hollow);
+    const water=cylinder(.125,.133,.021,'#abd0ce',0,.579,-.10,24);water.scale.z=1.34;g.add(water);
+    const seat=ring(.226,.039,cream,0,.589,-.098);seat.scale.z=1.31;g.add(seat);
+    g.add(box(.46,.49,.185,PALETTE.porcelain,0,.750,.226,.065),box(.49,.065,.22,cream,0,1.026,.23,.028),box(.068,.018,.040,chrome,.133,1.066,.223,.009));
+    g.userData.surfaceHeight=.61;return packMeshes(g,'room-toilet-v1');
+  }
+  if(kind==='handwash_sink'){
+    g.add(box(.56,.69,.46,'#bb9570',0,.357,0,.035),box(.59,.052,.49,walnut,0,.062,0,.022),box(.62,.068,.51,cream,0,.744,0,.047));
+    for(const x of [-.14,.14])g.add(box(.235,.51,.022,'#d4b187',x,.388,-.247,.019),cylinder(.013,.014,.13,walnut,x,.399,-.265,8));
+    const basin=cylinder(.221,.192,.042,'#7eaaa7',0,.787,-.019,28);basin.scale.z=.72;g.add(basin);const rim=ring(.229,.028,PALETTE.porcelain,0,.811,-.019);rim.scale.z=.74;g.add(rim);
+    const faucet=geo('handwash-swan-faucet',()=>new THREE.TubeGeometry(new THREE.CubicBezierCurve3(new THREE.Vector3(0,.792,.168),new THREE.Vector3(0,1.12,.168),new THREE.Vector3(0,1.11,-.025),new THREE.Vector3(0,.932,-.025)),14,.018,7,false));g.add(mesh(faucet,chrome),cylinder(.045,.045,.014,chrome,0,.80,.167));
+    g.add(box(.053,.115,.061,red,-.194,.867,.135,.013),box(.046,.018,.034,chrome,-.194,.928,.128,.005));g.userData.surfaceHeight=.83;return packMeshes(g,'room-handwash-v1');
+  }
+  if(kind==='counter_till'){
+    g.add(box(.38,.070,.32,walnut,0,.040,0,.022),box(.32,.19,.27,cream,0,.16,.015,.038),box(.23,.10,.022,'#314e47',0,.225,-.125,.012));
+    for(let r=0;r<2;r++)for(let c=0;c<3;c++)g.add(box(.042,.015,.044,c===2?red:PALETTE.mustard,(c-1)*.065,.195,-.045+r*.06,.004));return packMeshes(g,'room-till-v1');
+  }
+  if(kind==='counter_book'){
+    g.add(box(.49,.042,.35,red,0,.027,0,.022),box(.45,.026,.31,cream,0,.061,0,.016),box(.49,.021,.35,red,0,.084,0,.018),box(.037,.075,.35,walnut,-.226,.053,0,.013),box(.19,.009,.16,cream,.017,.100,-.025,.022));return packMeshes(g,'room-counter-book-v1');
+  }
+  if(kind==='lift_gate'){
+    for(const x of [-.445,.445])g.add(box(.10,.97,.35,red,x,.492,0,.021),box(.125,.035,.40,cream,x,.986,0,.017));
+    const leaf=new THREE.Group();leaf.name='lift-gate-leaf';leaf.position.set(-.393,1.00,0);leaf.add(box(.79,.068,.42,walnut,.395,0,0,.026),box(.75,.012,.39,cream,.395,.04,0,.02));packMeshes(leaf,'room-gate-leaf-v1');g.add(leaf);return g;
+  }
+  if(kind==='staff_door'){
+    // The door lies on the same cell edge as the engine's staff-only opening.
+    // A real jamb carries the hinge; the leaf swings into the kitchen cell.
+    const assembly=new THREE.Group();assembly.name='staff-door-assembly';assembly.position.z=-.50;
+    for(const x of [-.447,.447])assembly.add(box(.114,2.06,.19,walnut,x,1.03,0,.016),box(.035,2.02,.025,cream,x,1.01,-.109,.006));
+    assembly.add(box(1.01,.13,.21,walnut,0,2.04,0,.016));
+    const leaf=new THREE.Group();leaf.name='staff-door-leaf';leaf.position.set(-.383,.025,0);
+    leaf.add(box(.762,1.91,.073,red,.381,.955,0,.020),box(.670,1.10,.017,cream,.381,1.322,-.049,.025),box(.665,.050,.022,walnut,.381,.731,-.052,.010));
+    const rim=ring(.169,.024,chrome,.381,1.422,-.073);rim.rotation.x=0;
+    const glass=cylinder(.148,.148,.019,'#a9cecb',.381,1.422,-.074,24);glass.rotation.x=Math.PI/2;
+    leaf.add(rim,glass,box(.062,.26,.025,chrome,.657,.948,-.063,.018),box(.034,.185,.014,cream,.657,.948,-.081,.009),box(.63,.19,.019,chrome,.381,.17,-.05,.017));
+    packMeshes(leaf,'room-staff-door-leaf:'+paletteKey);assembly.add(leaf);g.add(assembly);return g;
+  }
+  if(kind==='service_hatch'||kind==='internal_pass'){
+    const w=kind==='service_hatch'?1:2;g.add(box(w-.08,.93,.58,red,0,.505,0,.025),box(w-.025,.085,.61,walnut,0,.064,0,.022),box(w,.10,.70,walnut,0,1.04,0,.042),box(w-.08,.023,.62,cream,0,1.10,0,.028));
+    for(const x of [-w/2+.065,w/2-.065])g.add(box(.11,1.08,.17,walnut,x,1.60,.13,.017));g.add(box(w,.15,.22,red,0,2.10,.13,.025));
+    if(kind==='service_hatch'){
+      const panel=new THREE.Group();panel.name='hatch-window';
+      for(const x of [-.205,.205]){const pane=box(.37,.79,.026,'#c4e0d8',x,1.63,x<0?.14:.18,.008);pane.material=material('#c4e0d8').clone();pane.material.userData.sharedKitResource=false;pane.material.transparent=true;pane.material.opacity=.20;pane.material.depthWrite=false;pane.userData.inputPassthrough=true;(x<0?panel:g).add(pane);}
+      for(const x of [-.405,-.005])panel.add(box(.029,.87,.050,cream,x,1.62,.125,.008));for(const y of [1.195,2.045])panel.add(box(.426,.035,.051,cream,-.205,y,.125,.008));g.add(panel);
+    }
+    g.userData.surfaceHeight=1.13;return g;
+  }
+  const length=kind==='chef_bar'?6:3,isConsole=kind==='console',top=1.03;
+  if(isConsole){for(const x of [-length/2+.28,length/2-.28])g.add(box(.09,.99,.09,walnut,x,.503,.11,.018),box(.10,.09,.51,walnut,x,.926,-.015,.018));}
+  else{
+    g.add(box(length-.08,.91,.69,red,0,.471,0,.035),box(length-.04,.10,.72,walnut,0,.073,0,.026));
+    for(let i=0;i<length;i++){const x=i-(length-1)/2;g.add(box(0.82,0.61,0.025,enamelHighlight,x,0.52,-0.361,0.023));}
+  }
+  g.add(box(length+.02,.105,isConsole?.62:.84,walnut,0,top,0,.055),box(length-.035,.021,isConsole?.575:.79,cream,0,top+.064,0,.038));
+  if(!isConsole){g.add(box(length-.04,.050,.035,chrome,0,.94,-.414,.015));for(const x of [-length/2+.30,length/2-.30])g.add(cylinder(.025,.025,.21,chrome,x,.24,-.51));const rail=cylinder(.023,.023,length-.6,chrome,0,.28,-.52,10);rail.rotation.z=Math.PI/2;g.add(rail);}
+  if(kind==='display_counter'){
+    // Condiments and the receipt rail leave the centre handoff slots clear.
+    const x=-1.12;g.add(box(.48,.033,.29,walnut,x,1.126,.16,.018));
+    for(const [dx,paint]of [[-.12,'#b94f43'],[.05,'#e3b454']] as const){g.add(cylinder(.058,.068,.158,paint,x+dx,1.224,.16,16),cylinder(.019,.046,.063,cream,x+dx,1.334,.16,12),box(.060,.054,.012,cream,x+dx,1.223,.094,.010));}
+    g.add(box(.13,.105,.12,chrome,x+.21,1.194,.16,.019),box(.11,.12,.036,cream,x+.21,1.222,.14,.008),box(1.08,.023,.030,chrome,.27,1.216,.343,.006));
+    for(let i=0;i<3;i++){const paper=box(.14,.20,.010,cream,-.04+i*.27,1.110,.354,.003);paper.rotation.z=(i-1)*.035;g.add(paper,box(.082,.008,.011,walnut,-.04+i*.27,1.125,.346,.003));}
+  }
+  g.userData.surfaceHeight=1.11;return packMeshes(g,`room-${kind}-v1:${paletteKey}`);
+}
 function createLeafyPlant(){
   const g=group(cylinder(.225,.164,.385,PALETTE.porcelain,0,.202,0,20),cylinder(.239,.231,.065,PALETTE.tomato,0,.401,0,20),cylinder(.205,.205,.025,'#766149',0,.434,0,20));
   for(let i=0;i<12;i++){const a=i*Math.PI/6,start=new THREE.Vector3(Math.sin(a)*.178,.084,Math.cos(a)*.178),end=new THREE.Vector3(Math.sin(a)*.217,.352,Math.cos(a)*.217),rib=cylinder(.009,.009,start.distanceTo(end),'#dbc9a5',0,0,0,5);rib.position.copy(start).add(end).multiplyScalar(.5);rib.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),end.clone().sub(start).normalize());g.add(rib);}
@@ -613,11 +699,12 @@ function createHerbPlanter(){
   g.add(box(.20,.089,.010,'#eadabc',0,.201,-.186,.014));for(const x of [-.055,0,.055])g.add(box(.017,.012,.006,PALETTE.sage,x,.2,-.193,.003));return packMeshes(g,'decor-herb-planter');
 }
 export function createModel(kind:string,options:ModelOptions={}):THREE.Group{
+  if(['display_counter','console','chef_bar','lift_gate','staff_door','service_hatch','internal_pass','toilet','handwash_sink','stool','counter_till','counter_book'].includes(kind))return roomFixture(kind,options.roomColors);
   if(kind==='fridge')return createFridge(options.color??PALETTE.sage);
   if(kind==='plates')return createPlateRack(options.stock??2);
   if(kind==='cups')return createCupStand(options.stock??2);
   if(kind==='boxes')return createBoxStand();
-  if(kind==='chef'||kind==='waiter'||kind==='customer')return createCharacter(kind,options.look??0,options.color);
+  if(kind==='chef'||kind==='waiter'||kind==='customer'||kind==='cashier')return createCharacter(kind,options.look??0,options.color);
   if(kind==='chair')return createChair(options.color??PALETTE.tomato);
   if(kind==='table_1')return createDiningTable(1);
   if(kind==='table_2'||kind==='table')return createDiningTable(2);
@@ -641,6 +728,13 @@ export function createModel(kind:string,options:ModelOptions={}):THREE.Group{
   if(kind==='spill'||kind==='jam'){const g=new THREE.Group();for(let i=0;i<5;i++){const puddle=ball(.22,i%2?'#d4a373':'#bc8055',Math.sin(i*1.8)*.18,.022,Math.cos(i*1.8)*.15);puddle.scale.set(1,.08,.7);g.add(puddle);}const cup=createFoodModel({recipeId:'coffee',kind:'dish'});cup.rotation.z=Math.PI/2;cup.position.set(.25,.105,.12);g.add(cup);return g;}
   if(kind==='checkered_shelf'){const g=group(box(.72,.81,.43,PALETTE.wood,0,.43),box(.62,.66,.045,PALETTE.sage,0,.46,.215));for(const y of [.19,.48,.81])g.add(box(.73,.05,.47,PALETTE.oak,0,y,0));const teacup=createFoodModel({recipeId:'coffee',kind:'dish'});teacup.position.set(-.16,.5,-.02);teacup.scale.setScalar(.55);g.add(teacup,box(.13,.21,.15,PALETTE.tomato,.18,.32,0,.016),box(.09,.19,.15,PALETTE.mustard,.05,.31,0,.016));return g;}
   if(kind==='chrome_clock'){const clock=cylinder(.33,.33,.07,PALETTE.metal,0,1.54,.40,32);clock.rotation.x=Math.PI/2;const face=cylinder(.286,.286,.08,PALETTE.porcelain,0,1.54,.389,32);face.rotation.x=Math.PI/2;const g=group(clock,face,box(.023,.19,.017,PALETTE.ink,0,1.61,.34,.004),box(.14,.023,.017,PALETTE.ink,.058,1.54,.34,.004));for(let i=0;i<12;i++)g.add(ball(.012,PALETTE.ink,Math.sin(i*Math.PI/6)*.24,1.54+Math.cos(i*Math.PI/6)*.24,.342));return g;}
+  if(kind==='keepsake_shelf'){
+    const g=group(box(.88,.74,.045,PALETTE.sage,0,1.49,.467,.025),box(.93,.080,.35,PALETTE.oak,0,1.16,.315,.022),box(.93,.065,.35,PALETTE.oak,0,1.875,.315,.022));
+    for(const x of [-.437,.437])g.add(box(.055,.70,.35,PALETTE.oak,x,1.52,.315,.014));
+    for(const [x,color]of [[-.28,PALETTE.tomato],[-.16,PALETTE.sage]] as const)g.add(box(.105,.28,.22,color,x,1.337,.28,.012),box(.070,.016,.012,PALETTE.porcelain,x,1.41,.162,.003));
+    if((options.stock??0)>0){const trophy=createModel('trophy');trophy.scale.setScalar(.42);trophy.position.set(.16,1.203,.28);g.add(trophy);}else{g.add(box(.25,.21,.035,PALETTE.porcelain,.13,1.32,.29,.019),box(.20,.16,.008,PALETTE.mint,.13,1.32,.268,.012));}
+    g.userData.wallMountPlane=.49;return packMeshes(g,'room-keepsake-shelf:'+((options.stock??0)>0));
+  }
   if(FRAMED_PRINTS.includes(kind))return createFramedPrint(kind);
   if(kind==='tip_jar'){const g=group(cylinder(.18,.16,.31,'#b6d3c1',0,.18),cylinder(.19,.19,.035,PALETTE.porcelain,0,.35));for(let i=0;i<5;i++){const coin=cylinder(.052,.052,.014,PALETTE.mustard,(i%3-1)*.07,.11+(i%2)*.035,Math.floor(i/3)*.09-.045);g.add(coin);}return g;}
   if(kind==='jukebox'){const g=group(box(.73,1.2,.51,PALETTE.tomato,0,.62,0,.17),box(.59,.94,.05,PALETTE.mustard,0,.67,-.265,.16),box(.45,.65,.045,PALETTE.dark,0,.56,-.294,.1));for(let i=0;i<6;i++)g.add(box(.33,.025,.025,PALETTE.wood,0,.31+i*.062,-.325,.009));g.add(box(.29,.21,.025,'#b6d3c1',0,.96,-.319,.04));return g;}
@@ -703,7 +797,7 @@ export function createModel(kind:string,options:ModelOptions={}):THREE.Group{
 /** Dispose unique GPU resources when an owning preview renderer is removed. */
 export function disposeObject(root:THREE.Object3D){
   const usedGeometry=new Set<THREE.BufferGeometry>(),usedMaterial=new Set<THREE.Material>(),textures=new Set<THREE.Texture>();
-  root.traverse(object=>{if(object instanceof THREE.Mesh||object instanceof THREE.Sprite){if(object instanceof THREE.Mesh)usedGeometry.add(object.geometry);const list=Array.isArray(object.material)?object.material:[object.material];for(const m of list){usedMaterial.add(m);const map=(m as THREE.MeshBasicMaterial).map;if(map)textures.add(map);}}});
+  root.traverse(object=>{if(object instanceof THREE.Mesh||object instanceof THREE.Sprite||object instanceof THREE.Line){if(object instanceof THREE.Mesh||object instanceof THREE.Line)usedGeometry.add(object.geometry);const list=Array.isArray(object.material)?object.material:[object.material];for(const m of list){usedMaterial.add(m);const map=(m as THREE.MeshBasicMaterial).map;if(map)textures.add(map);}}});
   // The world and its catalogue deliberately share immutable kit resources.
   // Renderer.dispose releases its own GPU context; removing an icon must not
   // invalidate geometry currently used by the live diner.

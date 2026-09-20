@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { animateCharacter,box,cylinder,createModel,createFoodModel,disposeObject,material,PALETTE,type CharacterRig } from './models';
+import { animateCharacter,box,cylinder,createModel,createFoodModel,disposeObject,material,PALETTE,configureRoomMount,type CharacterRig } from './models';
 import type { DinerSceneData,DinerSceneProps,SceneFood,ScenePerson,SceneObject,SceneTable } from './scene-types';
 import { homeSpatial, homeSupportAt, HOME_TERRACE_ELEVATION } from '../../../lib/chef/diner/home-spatial';
 import { createHomeBoard } from './home-board';
@@ -7,9 +7,10 @@ import { createCafeWallLight,createHomeAmbience,type HomeAmbience } from './home
 import { HOME_GESTURE_RULES,homeSpillScale } from '../../../lib/chef/diner/home-gesture';
 import { firstVisibleSceneSurface,setActorPicking } from './scene-picking';
 import { createCookingEffects,type CookingEffects } from './cooking-effects';
-import { createHomeCameraBounds,fitHomeCamera,type HomeCameraBounds } from './home-camera';
+import { createHomeCameraBounds,fitHomeCamera,homeCameraPresentation,type HomeCameraBounds } from './home-camera';
 import { createEquipmentTrailer } from './trailer';
 import { createPlacementGhost,projectPlacementTile } from './placement-ghost';
+import { createRoomShell,updateRoomShell,roomColors } from './room-shell';
 
 type ScenePick={id:string;seatId?:string};
 type PersonView={root:THREE.Group;body:THREE.Group;previous:THREE.Vector3;destination:THREE.Vector3;changed:number;angle:number;foodKey:string;person:ScenePerson;order:THREE.Group|null;orderKey:string;uniform:string};
@@ -21,7 +22,8 @@ const ELEVATION=35*Math.PI/180;
 const point3=(x:number,y:number,height=0)=>new THREE.Vector3(x,height,y);
 const foodKey=(food?:SceneFood|null)=>food?`${food.recipeId}:${food.kind}:${food.stage??''}:${food.ingredientId??''}:${food.vesselKind??''}:${food.cold??false}:${food.mastery??0}`:'';
 const rotationAngle=(facing:number)=>Math.PI-facing*Math.PI/2;
-const tableCenter=(table:SceneTable)=>({x:table.x+(table.capacity!==1&&(table.capacity===4||(table.rotation??0)%2===1)?.5:0),y:table.y+(table.capacity!==1&&(table.capacity===4||(table.rotation??0)%2===0)?.5:0)});
+const tableShape=(table:SceneTable)=>{const raw=table.footprint??[table.capacity===4?2:1,table.capacity===1?1:2];return (table.rotation??0)%2?[raw[1],raw[0]]:raw;};
+const tableCenter=(table:SceneTable)=>{const [w,h]=tableShape(table);return {x:table.x+(w-1)/2,y:table.y+(h-1)/2};};
 const cosmetics:Record<string,string>={cream:PALETTE.cream,mint:PALETTE.mint,rose:'#e5b9a9',tomato:PALETTE.tomato,cherry:PALETTE.tomato,sage:PALETTE.sage,sky:'#8cabb8',buttercream:'#eacb85',classic:PALETTE.sage};
 
 function textPlane(text:string,w:number,h:number,color=PALETTE.porcelain,bg=PALETTE.sage){
@@ -134,10 +136,10 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
   let homePointer:{incidentId:string;x:number;y:number}|null=null,scrubPointerId:number|null=null,lastHomeSample=0;
   const floorHeight=(x:number,y:number)=>mode==='home'?(homeSupportAt(data.width,data.height,x,y)?.elevation??-.11):(x>=-.5&&x<data.width-.5&&y>=-.5&&y<data.height-.5)?.455:(x>.48&&x<1.52&&y<data.height+.5)?Math.max(.06,.455-(y-data.height+.5)*.36):.065;
   function buildStatic(){
-    const key=`${data.width}:${data.height}:${data.pavementWidth}:${data.pavementHeight}:${data.sign}:${data.paint}:${data.floor}:${data.wall}:${data.wrap}:${JSON.stringify(data.trailer)}`;if(key===staticKey)return;staticKey=key;
+    const key=JSON.stringify([data.width,data.height,data.pavementWidth,data.pavementHeight,data.sign,data.paint,data.floor,data.wall,data.wrap,data.trailer,data.roomPlan&&{...data.roomPlan,modules:data.roomPlan.modules.map(({condition,...module})=>module)},data.roomFinishes,data.menu]);if(key===staticKey)return;staticKey=key;
     disposeObject(staticRoot);staticRoot.clear();homeAmbience=null;
-    staticRoot.add(mode==='truck'?truckShell(data.width,data.height,data.sign??'The Little Diner',cosmetics[data.wrap??'']??data.paint??PALETTE.tomato):homeShell(data.width,data.height,data.sign??'The Little Diner',cosmetics[data.wall??'cream']??PALETTE.cream));
-    if(mode==='home'){staticRoot.add(createHomeBoard(data.width,data.height,data.floor));homeAmbience=createHomeAmbience(data.width,data.height);staticRoot.add(homeAmbience.root);}
+    staticRoot.add(mode==='truck'?truckShell(data.width,data.height,data.sign??'The Little Diner',cosmetics[data.wrap??'']??data.paint??PALETTE.tomato):data.roomPlan?createRoomShell(data.roomPlan,data):homeShell(data.width,data.height,data.sign??'The Little Diner',cosmetics[data.wall??'cream']??PALETTE.cream));
+    if(mode==='home'&&!data.roomPlan){staticRoot.add(createHomeBoard(data.width,data.height,data.floor));homeAmbience=createHomeAmbience(data.width,data.height);staticRoot.add(homeAmbience.root);}
     const coords:Array<{x:number;y:number;h:number;color:string}>=[];
     const floorColors=data.floor==='terracotta'?['#cb8c72','#dca68b']:data.floor==='cream'?['#f2ece0','#eee7da']:['#8eaf9b','#f5f0e6'];
     if(mode==='truck')for(let y=0;y<data.height;y++)for(let x=0;x<data.width;x++)coords.push({x,y,h:floorHeight(x,y),color:floorColors[(x+y)%2]});
@@ -159,14 +161,12 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
   function fitCamera(){
     if(mode==='home'){
       homeCameraBounds??=createHomeCameraBounds(data);
-      // A shallower portrait azimuth uses the phone's tall canvas while both
-      // interior walls remain behind the kitchen. Truck driving views stay separate.
-      const azimuthOffset=width<700?Math.PI/12:Math.PI/4;
-      const fit=fitHomeCamera({bounds:homeCameraBounds,width,height,rotation,azimuthOffset}),dx=focus.x-baseFocus.x,dz=focus.z-baseFocus.z;
+      const {azimuthOffset,insets,scaleBoost}=homeCameraPresentation(width,!!data.roomPlan,data.previewInset);
+      const fit=fitHomeCamera({bounds:homeCameraBounds,width,height,rotation,azimuthOffset,insets}),dx=focus.x-baseFocus.x,dz=focus.z-baseFocus.z;
       baseFocus.set(fit.focus.x,fit.focus.y,fit.focus.z);focus.set(baseFocus.x+dx,baseFocus.y,baseFocus.z+dz);
       const angle=rotation+azimuthOffset,distance=22;
       camera.position.set(focus.x+Math.sin(angle)*Math.cos(ELEVATION)*distance,focus.y+Math.sin(ELEVATION)*distance,focus.z+Math.cos(angle)*Math.cos(ELEVATION)*distance);camera.lookAt(focus);
-      const vertical=fit.vertical/zoom,{top,bottom,left,right}=fit.insets;
+      const vertical=fit.vertical/zoom/scaleBoost,{top,bottom,left,right}=fit.insets;
       camera.top=vertical/2;camera.bottom=-vertical/2;camera.left=-vertical*width/height/2;camera.right=vertical*width/height/2;
       camera.setViewOffset(width,height,width/2-(left+(width-left-right)/2),height/2-(top+(height-top-bottom)/2),width,height);camera.updateProjectionMatrix();camera.updateMatrixWorld();return;
     }
@@ -184,7 +184,7 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
   function resize(){width=Math.max(1,host.clientWidth);height=Math.max(1,host.clientHeight);renderer.setSize(width,height,false);fitCamera();}
   const observer=new ResizeObserver(resize);observer.observe(host);
   function makeStation(object:SceneObject){
-    const root=new THREE.Group(),model=createModel(object.kind,{tier:object.tier,color:object.color,stock:object.stock}),food=new THREE.Group();root.add(model,food);root.userData.pick={id:object.id} satisfies ScenePick;
+    const root=new THREE.Group(),model=createModel(object.kind,{tier:object.tier,color:object.color,stock:object.stock,roomColors:roomColors(data)}),food=new THREE.Group();root.add(model,food);root.userData.pick={id:object.id} satisfies ScenePick;
     const halo=new THREE.Mesh(new THREE.RingGeometry(.48,.535,32),new THREE.MeshBasicMaterial({color:PALETTE.mustard,transparent:true,opacity:.85,depthWrite:false}));halo.rotation.x=-Math.PI/2;halo.position.y=.017;root.add(halo);
     const progress=new THREE.Mesh(new THREE.PlaneGeometry(.72,.055),new THREE.MeshBasicMaterial({color:PALETTE.sage,side:THREE.DoubleSide}));progress.position.set(0,object.kind==='spill'?.54:object.kind==='parcel'?.85:1.43,0);root.add(progress);
     const steam=new THREE.Group();
@@ -195,15 +195,19 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
     const cooking=['grill','prep','fryer','oven','blender','coffee','drinks','waffle','pass'].includes(object.kind)?createCookingEffects():null;
     if(cooking)root.add(cooking.group);
     for(const feedback of [progress,halo,steam])feedback.userData.inputPassthrough=true;
-    const result={root,model,food,foodKey:'',progress,halo,steam,cooking,kind:`${object.kind}:${object.tier}:${object.color}:${object.stock}`};stationRoot.add(root);stationViews.set(object.id,result);return result;
+    const result={root,model,food,foodKey:'',progress,halo,steam,cooking,kind:`${object.kind}:${object.tier}:${object.color}:${object.stock}:${JSON.stringify(data.roomFinishes)}`};stationRoot.add(root);stationViews.set(object.id,result);return result;
   }
   function syncObjects(){
     const ids=new Set(data.objects.map(o=>o.id));for(const [id,view] of stationViews)if(!ids.has(id)){view.cooking?.dispose();disposeObject(view.root);stationRoot.remove(view.root);stationViews.delete(id);}
-    for(const object of data.objects){let view=stationViews.get(object.id);if(view&&view.kind!==`${object.kind}:${object.tier}:${object.color}:${object.stock}`){view.cooking?.dispose();disposeObject(view.root);stationRoot.remove(view.root);stationViews.delete(object.id);view=undefined;}view??=makeStation(object);
+    for(const object of data.objects){let view=stationViews.get(object.id);if(view&&view.kind!==`${object.kind}:${object.tier}:${object.color}:${object.stock}:${JSON.stringify(data.roomFinishes)}`){view.cooking?.dispose();disposeObject(view.root);stationRoot.remove(view.root);stationViews.delete(object.id);view=undefined;}view??=makeStation(object);
       const footprint=object.footprint??(object.kind==='pass'||object.kind==='queue_bench'?[2,1]:[1,1]),facing=object.rotation??0;
       const fw=facing%2?footprint[1]:footprint[0],fh=facing%2?footprint[0]:footprint[1];
       const basket=view.model.getObjectByName('fryer-basket');if(basket)basket.position.y=object.basketRaised?.22:0;view.food.position.y=object.basketRaised?.22:0;
-      view.root.position.set(object.x+(fw-1)/2,floorHeight(object.x,object.y),object.y+(fh-1)/2);view.model.rotation.y=rotationAngle(facing);view.food.rotation.y=rotationAngle(facing);
+      view.root.position.set(object.x+(fw-1)/2,object.elevation??floorHeight(object.x,object.y),object.y+(fh-1)/2);view.model.rotation.y=rotationAngle(facing);view.food.rotation.y=rotationAngle(facing);
+      configureRoomMount(view.model,object);
+      const gate=view.model.getObjectByName('lift-gate-leaf');if(gate)gate.userData.openAngle=object.gateOpen?1.48:0;
+      const staffDoor=view.model.getObjectByName('staff-door-leaf');if(staffDoor)staffDoor.userData.openYaw=object.gateOpen?-1.45:0;
+      const window=view.model.getObjectByName('hatch-window');if(window)window.userData.slideTarget=object.slots?.some(slot=>slot.food)?.34:0;
       const slots=object.slots?.length?object.slots:[{food:object.food}],key=slots.map(slot=>foodKey(slot.food)).join('|');
       if(view.foodKey!==key){view.food.clear();slots.forEach((slot,index)=>{if(!slot.food)return;const food=createFoodModel(slot.food),columns=slots.length>4?3:Math.min(2,slots.length),rows=Math.ceil(slots.length/columns),span=object.kind==='pass'?.50:.28;food.position.set((index%columns-(columns-1)/2)*span,(view.model.userData.surfaceHeight??.93)+.015,(Math.floor(index/columns)-(rows-1)/2)*.31);food.scale.setScalar(slots.length>2?.60:slots.length>1?.73:1);view.food.add(food);});view.foodKey=key;}
       const states=object.slots?.map(slot=>slot.state)??[object.state],burning=states.includes('burning'),ready=states.includes('ready'),working=states.includes('working'),progress=object.slots?.find(slot=>slot.state==='working')?.progress??object.progress;
@@ -223,13 +227,13 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
   }
   function syncTables(){
     const ids=new Set(data.tables.map(t=>t.id));for(const [id,view] of tableViews)if(!ids.has(id)){disposeObject(view.root);tableRoot.remove(view.root);tableViews.delete(id);}
-    for(const table of data.tables){const key=JSON.stringify([table.x,table.y,table.capacity,table.rotation,table.seats.map(s=>[s.id,s.x,s.y])]);let view=tableViews.get(table.id);
+    for(const table of data.tables){const key=JSON.stringify([table.x,table.y,table.capacity,table.rotation,table.kind,table.footprint,data.roomFinishes,table.seats.map(s=>[s.id,s.x,s.y,s.surface])]);let view=tableViews.get(table.id);
       const center=tableCenter(table);
-      if(!view||view.key!==key){if(view){disposeObject(view.root);tableRoot.remove(view.root);}const root=new THREE.Group(),model=createModel(`table_${table.capacity}`),food=new THREE.Group();model.position.set(center.x,floorHeight(table.x,table.y),center.y);model.rotation.y=-(table.rotation??0)*Math.PI/2;model.userData.pick={id:table.id} satisfies ScenePick;root.add(model,food);
-        for(const seat of table.seats){const chair=createModel('chair',{color:mode==='truck'?PALETTE.tomato:PALETTE.mint});chair.position.set(seat.x,floorHeight(seat.x,seat.y),seat.y);chair.lookAt(center.x,chair.position.y,center.y);chair.rotateY(Math.PI);chair.userData.pick={id:table.id,seatId:seat.id} satisfies ScenePick;root.add(chair);}
-        const halo=new THREE.Mesh(new THREE.PlaneGeometry(table.capacity===4?1.98:.98,table.capacity===1?.98:1.98),new THREE.MeshBasicMaterial({color:PALETTE.mustard,transparent:true,opacity:.32,depthWrite:false}));halo.rotation.x=-Math.PI/2;halo.rotation.z=-(table.rotation??0)*Math.PI/2;halo.position.set(center.x,floorHeight(table.x,table.y)+.006,center.y);root.add(halo);tableRoot.add(root);view={root,key,food,foodKey:'',halo};tableViews.set(table.id,view);}
+      if(!view||view.key!==key){if(view){disposeObject(view.root);tableRoot.remove(view.root);}const root=new THREE.Group(),model=createModel(table.kind??`table_${table.capacity}`,{roomColors:roomColors(data)}),food=new THREE.Group();model.position.set(center.x,floorHeight(table.x,table.y),center.y);model.rotation.y=table.kind?rotationAngle(table.rotation??0):-(table.rotation??0)*Math.PI/2;model.userData.pick={id:table.id} satisfies ScenePick;root.add(model,food);
+        for(const seat of table.seats){const chair=createModel(table.kind?'stool':'chair',{color:mode==='truck'?PALETTE.tomato:data.roomPlan?roomColors(data).upholstery:PALETTE.mint,roomColors:roomColors(data)});chair.position.set(seat.x,floorHeight(seat.x,seat.y),seat.y);chair.lookAt(seat.surface?.x??center.x,chair.position.y,seat.surface?.y??center.y);chair.rotateY(Math.PI);chair.userData.pick={id:table.id,seatId:seat.id} satisfies ScenePick;root.add(chair);}
+        const [tw,th]=tableShape(table),halo=new THREE.Mesh(new THREE.PlaneGeometry(tw-.02,th-.02),new THREE.MeshBasicMaterial({color:PALETTE.mustard,transparent:true,opacity:.32,depthWrite:false}));halo.rotation.x=-Math.PI/2;halo.position.set(center.x,floorHeight(table.x,table.y)+.006,center.y);root.add(halo);tableRoot.add(root);view={root,key,food,foodKey:'',halo};tableViews.set(table.id,view);}
       view.halo.userData.inputPassthrough=true;view.halo.visible=table.id===data.selectedId||table.id===data.guideTarget;
-      const keyFood=JSON.stringify(table.seats.map(s=>[s.id,foodKey(s.item),s.status]));if(view.foodKey!==keyFood){view.food.clear();for(const seat of table.seats){if(!seat.item)continue;const food=createFoodModel(seat.item);const dx=seat.x-center.x,dz=seat.y-center.y;food.position.set(center.x+(table.capacity===1?0:dx*((table.rotation??0)%2?.65:table.capacity===2?.16:.33)),floorHeight(table.x,table.y)+.85,center.y+(table.capacity===1?0:dz*((table.rotation??0)%2?(table.capacity===2?.16:.33):.65)));food.scale.setScalar(.80);food.userData.pick={id:table.id,seatId:seat.id} satisfies ScenePick;view.food.add(food);}view.foodKey=keyFood;}
+      const keyFood=JSON.stringify(table.seats.map(s=>[s.id,foodKey(s.item),s.status]));if(view.foodKey!==keyFood){view.food.clear();for(const seat of table.seats){if(!seat.item)continue;const food=createFoodModel(seat.item);const dx=seat.x-center.x,dz=seat.y-center.y;food.position.set(seat.surface?.x??center.x+(table.capacity===1?0:dx*((table.rotation??0)%2?.65:table.capacity===2?.16:.33)),floorHeight(table.x,table.y)+(table.surfaceHeight??.85),seat.surface?.y??center.y+(table.capacity===1?0:dz*((table.rotation??0)%2?(table.capacity===2?.16:.33):.65)));food.scale.setScalar(.80);food.userData.pick={id:table.id,seatId:seat.id} satisfies ScenePick;view.food.add(food);}view.foodKey=keyFood;}
     }
   }
   function makeOrder(recipeId:string,needsClear=false){
@@ -251,12 +255,12 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
       else if(view.uniform!==uniform&&person.role!=='customer'){view.root.remove(view.body);view.body=createModel(person.role,{look:person.look??0,color:uniform});view.root.add(view.body);view.uniform=uniform;view.foodKey='';}
       if(view.destination.distanceToSquared(destination)>0.00001){view.previous.copy(view.root.position);view.destination.copy(destination);view.changed=now;const delta=destination.clone().sub(view.previous);if(delta.lengthSq()>.00001)view.angle=Math.atan2(-delta.x,-delta.z);}
       if(person.target)view.angle=Math.atan2(view.root.position.x-person.target.x,view.root.position.z-person.target.y);
-      if(person.pose==='sit'||person.pose==='eat'){const table=data.tables.find(t=>t.id===person.tableId);if(table){const center=tableCenter(table);view.angle=Math.atan2(person.x-center.x,person.y-center.y);}}
+      if(person.pose==='sit'||person.pose==='eat'){const table=data.tables.find(t=>t.id===person.tableId);if(table){const center=table.seats.find(seat=>seat.id===person.seatId)?.surface??tableCenter(table);view.angle=Math.atan2(person.x-center.x,person.y-center.y);}}
       const rig=view.body.userData.rig as CharacterRig,key=foodKey(person.held);if(key!==view.foodKey){rig.held.clear();if(person.held){const held=createFoodModel(person.held);held.scale.setScalar(.75);rig.held.add(held);}view.foodKey=key;}
       const needsClear=!!person.tableId&&data.tables.find(table=>table.id===person.tableId)?.seats.find(seat=>seat.id===person.seatId)?.item?.kind==='dirty';
       const orderKey=person.order?`${person.order.recipeId}:${needsClear}`:'';if(orderKey!==view.orderKey){if(view.order){disposeObject(view.order);view.root.remove(view.order);}view.order=person.order?makeOrder(person.order.recipeId,needsClear):null;if(view.order){view.order.position.y=person.pose==='sit'||person.pose==='eat'?1.72:2.07;view.root.add(view.order);}view.orderKey=orderKey;}
       if(view.order){view.order.position.y=person.pose==='sit'||person.pose==='eat'?1.72:2.07;const bar=view.order.userData.bar as THREE.Mesh,patience=Math.max(0,Math.min(1,person.order?.patience??1));bar.scale.x=Math.max(.01,patience);bar.position.x=-.275+.275*patience;(bar.material as THREE.MeshToonMaterial).color.set(patience<.25?PALETTE.tomato:PALETTE.leaf);}
-      setActorPicking(view.root,mode,person);view.person=person;
+      setActorPicking(view.root,mode,person);view.root.visible=!person.hidden;view.person=person;
     }
   }
   function syncEdit(){
@@ -273,7 +277,7 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
   }
   function syncScene(){
     if(mode==='home'){
-      const key=JSON.stringify([data.width,data.height,data.objects.filter(o=>!o.id.startsWith('incident:')&&o.kind!=='parcel'&&o.kind!=='spill').map(o=>[o.id,o.kind,o.x,o.y,o.rotation,o.footprint]),data.tables.map(t=>[t.id,t.x,t.y,t.rotation,t.capacity,t.seats.map(s=>[s.x,s.y])])]);
+      const key=JSON.stringify([data.width,data.height,data.roomPlan?.stage,data.objects.filter(o=>!o.id.startsWith('incident:')&&o.kind!=='parcel'&&o.kind!=='spill').map(o=>[o.id,o.kind,o.x,o.y,o.rotation,o.footprint]),data.tables.map(t=>[t.id,t.x,t.y,t.rotation,t.capacity,t.footprint,t.seats.map(s=>[s.x,s.y])])]);
       if(key!==homeCameraKey){homeCameraBounds=createHomeCameraBounds(data);homeCameraKey=key;}
     }
     buildStatic();syncObjects();syncTables();syncPeople();syncEdit();
@@ -351,13 +355,18 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
     homeAmbience?.update(time,!reducedMotion&&!data.paused);
     if(!data.paused)actingTime+=delta;
     for(const view of personViews.values()){const progress=Math.min(1,(now-view.changed)/50);view.root.position.lerpVectors(view.previous,view.destination,progress);let angle=THREE.MathUtils.euclideanModulo(view.angle-view.body.rotation.y+Math.PI,Math.PI*2)-Math.PI;view.body.rotation.y+=angle*Math.min(1,delta*18);animateCharacter(view.body,actingTime,view.person.pose??'idle',!!view.person.held,!data.paused&&(view.person.pose==='walk'||progress<1),view.person.work);if(view.order)view.order.quaternion.copy(camera.quaternion);}
+    const toCamera=camera.position.clone().sub(focus).normalize();
     for(const [id,view] of stationViews){view.progress.quaternion.copy(camera.quaternion);
       view.cooking?.update(delta,!!data.paused,reducedMotion);
       if(view.steam.userData.scrubbing)view.steam.visible=homePointer?.incidentId===id;
       if(view.steam.visible)view.steam.children.forEach((p,i)=>{if(view.steam.userData.scrubbing&&homePointer){const cloth=p.name==='cleaning-cloth',x=homePointer.x-view.root.position.x,z=homePointer.y-view.root.position.z;p.visible=cloth||now-lastHomeSample<150;p.position.set(x+(cloth?0:Math.sin(time*4+i*2)*.065),cloth?.056:.078+Math.sin(time*4+i)*.012,z+(cloth?0:Math.cos(time*4+i*2)*.065));p.rotation.y=cloth?-.22:0;if(!cloth)p.scale.setScalar(.65+Math.sin(time*5+i)*.2);}else{p.position.y=1.22+((time*.24+i*.15)%.43);p.scale.setScalar(.6+((time*.6+i*.3)%1));}});
-      for(const child of view.model.children)if(typeof child.userData.openAngle==='number')child.rotation.z+=(child.userData.openAngle-child.rotation.z)*Math.min(1,delta*12);
+      for(const child of view.model.children){if(typeof child.userData.openAngle==='number')child.rotation.z+=(child.userData.openAngle-child.rotation.z)*Math.min(1,delta*12);if(typeof child.userData.slideTarget==='number')child.position.x+=(child.userData.slideTarget-child.position.x)*Math.min(1,delta*10);}
+      const staffDoor=view.model.getObjectByName('staff-door-leaf'),doorAssembly=view.model.getObjectByName('staff-door-assembly');
+      if(staffDoor)staffDoor.rotation.y+=((staffDoor.userData.openYaw??0)-staffDoor.rotation.y)*Math.min(1,delta*12);
+      if(doorAssembly){const near=toCamera.x*-Math.sin(view.model.rotation.y)+toCamera.z*-Math.cos(view.model.rotation.y)>.05;doorAssembly.scale.y+=((near?.46:1)-doorAssembly.scale.y)*Math.min(1,delta*12);}
     }
-    const toCamera=camera.position.clone().sub(focus).normalize();staticRoot.traverse(object=>{if(!object.userData.wallNormal||!(object instanceof THREE.Mesh))return;const near=toCamera.dot(object.userData.wallNormal)>.12,m=object.material as THREE.MeshToonMaterial;m.transparent=true;const target=near?.16:1;m.opacity+=(target-m.opacity)*Math.min(1,delta*8);m.depthWrite=!near;object.castShadow=!near;});
+    staticRoot.traverse(object=>{if(!object.userData.wallNormal||!(object instanceof THREE.Mesh))return;const near=toCamera.dot(object.userData.wallNormal)>.12,m=object.material as THREE.MeshToonMaterial;m.transparent=true;const target=near?.16:1;m.opacity+=(target-m.opacity)*Math.min(1,delta*8);m.depthWrite=!near;object.castShadow=!near;});
+    if(data.roomPlan){updateRoomShell(staticRoot,data,toCamera,delta);for(const object of data.objects){if(object.mount?.kind!=='wall')continue;const view=stationViews.get(object.id),wall=staticRoot.getObjectByName(`room-wall:${object.mount.targetId}`);if(view)view.root.visible=!wall?.userData.cutaway||wall.userData.cutaway.upper.scale.y>.8;}}
     renderer.render(scene,camera);
     if(callbacks.onAnchors&&now-anchorsAt>=100){
       anchorsAt=now;callbacks.onAnchors(data.objects.filter(object=>mode==='truck'||object.kind==='spill'||object.kind==='parcel').map(object=>{

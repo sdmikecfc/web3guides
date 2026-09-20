@@ -1,6 +1,10 @@
 "use client";
 import { useState } from 'react';
 import { COSMETICS, DECOR, FRIENDSHIP_LEVELS, REGULARS, finishPrice } from '@/lib/chef/diner/collections';
+import { ROOM_PALETTES, ROOM_FINISH_DEFAULTS, type RoomFinishSlot } from '@/lib/chef/diner/collections';
+import type { RoomFinishChoice } from './RoomFinishPreview';
+import { renovationRequirements } from '@/lib/chef/diner/renovation';
+import { STAGE_COPY } from './RenovationPreview';
 import { HOME_EQUIPMENT } from '@/lib/chef/diner/content';
 import { DINER_RULES, staffSlots, type DinerCommand, type DinerState } from '@/lib/chef/diner/progression';
 import { ModelIcon } from './ModelIcon';
@@ -9,6 +13,7 @@ import css from './furnishing-catalog.module.css';
 
 type Props={state:DinerState;send:(command:DinerCommand)=>boolean;place:(id:string)=>void;moreStyle:()=>void;
   onGrow?:()=>void;onCook?:()=>void;onStaff?:()=>void;onRecipes?:()=>void;
+  onPreviewRoomFinish?:(choice:RoomFinishChoice)=>void;
   onPreviewFinish?:(slot:'floor'|'wall',id:string)=>void;
 };
 const effects:Record<string,string>={
@@ -20,7 +25,7 @@ const effects:Record<string,string>={
 };
 const money=(value:number)=>Math.floor(value).toLocaleString('en-US');
 const colors:Record<string,string>={cream:'#f4ebd7',mint:'#a7c8af',rose:'#deb5a7',terracotta:'#c98162',checker:'#88ae98'};
-export function FurnishingCatalog({state,send,place,moreStyle,onGrow,onCook,onStaff,onRecipes,onPreviewFinish}:Props){
+export function FurnishingCatalog({state,send,place,moreStyle,onGrow,onCook,onStaff,onRecipes,onPreviewFinish,onPreviewRoomFinish}:Props){
   const [view,setView]=useState<'furnish'|'storage'|'style'>('furnish');
   const equipment=HOME_EQUIPMENT.map(item=>{
     const owned=state.equipment[item.id],placed=state.home.layout.filter(p=>p.equipmentId===item.id).length;
@@ -34,8 +39,8 @@ export function FurnishingCatalog({state,send,place,moreStyle,onGrow,onCook,onSt
       price:item.price,locked:!!item.memento,kind:'decor' as const,detail:item.memento?'A little memory, earned on your travels.':item.wall?'A finishing touch for your wall.':'A little colour for your favourite corner.',wall:!!item.wall};
   });
   const all=[...equipment,...decor],storedCount=all.reduce((sum,item)=>sum+item.stored,0),available=all.filter(item=>view==='storage'?item.stored>0:!item.locked||item.stored>0);
-  const next=state.home.expansion+1,nextSize=DINER_RULES.floors[next],nextLevel=DINER_RULES.expansionLevels[next],nextPrice=DINER_RULES.expansionPrices[next];
-  const crew=state.home.staff.chefs+state.home.staff.waiters,crewSlots=staffSlots(state);
+  const renovation=renovationRequirements(state);
+  const crew=state.home.staff.chefs+state.home.staff.waiters+(state.home.staff.cashiers??0),crewSlots=staffSlots(state);
   const discoveries=equipment.filter(item=>item.locked&&!item.stored);
   return <div className={css.catalog}>
     <div className={css.tools} role="group" aria-label="Decoration collection">
@@ -51,12 +56,13 @@ export function FurnishingCatalog({state,send,place,moreStyle,onGrow,onCook,onSt
           <small>{state.cosmetics[slot]===id?'In your room':owned?'Owned':`${money(price)} coins`}</small>
         </button>;})}
       </div></section>)}
+      {state.home.roomPlan&&onPreviewRoomFinish&&<section className={css.finishSection}><h3>Counters, stools & your sign</h3><div className={css.finishes}>{(Object.keys(ROOM_PALETTES) as RoomFinishSlot[]).map(slot=><button key={slot} onClick={()=>onPreviewRoomFinish({slot,id:(state.home.finishes?.[slot]??ROOM_FINISH_DEFAULTS[slot])})}><span className={css.swatch} style={{backgroundColor:ROOM_PALETTES[slot].find(f=>f.id===(state.home.finishes?.[slot]??ROOM_FINISH_DEFAULTS[slot]))?.color}}/><strong>{slot==='upholstery'?'Seats':slot==='counter'?'Counter fronts':slot==='worktop'?'Worktops':'Sign'}</strong><small>Preview colors in your room</small></button>)}</div></section>}
       <p className={css.note}>Finishes cover the whole room. Once owned, you can switch them whenever you like.</p>
       <section className={css.keepsakes} aria-label="Friendship keepsakes"><h3>Little gifts from your regulars</h3><p>Greet a regular after their favourite meal. Friendship level 3 earns a keepsake for your wall.</p><div className={css.keepsakeStrip}>{REGULARS.map(regular=>{const item=DECOR.find(item=>item.id===regular.memento)!,owned=(state.decorOwned[item.id]??0)>0,count=state.collections.regulars[regular.id]??0;return <div key={item.id}><ModelIcon kind={item.id} label={item.name} size={100}/><strong>{item.name}</strong><small>{owned?'In your collection':`From ${regular.name}`}</small><span>{owned?'Earned':`${Math.min(count,FRIENDSHIP_LEVELS[2])} / ${FRIENDSHIP_LEVELS[2]} greetings`}</span></div>;})}</div></section>
       <button className={css.moreStyle} onClick={moreStyle}>Keepsakes & saved rooms <DinerIcon name="arrow" size={17}/></button>
     </div>:<>
       {view==='furnish'&&<>
-        <section className={css.growth} aria-label="Grow restaurant"><DinerIcon name="home" size={29}/><div><h3>Room to grow</h3><p>Your room is {state.home.w} × {state.home.h}.{nextSize?` Next: ${nextSize} × ${nextSize}, with more space for tables and your favourite finds.`:' This is your largest room. Make every corner yours.'}</p>{nextSize&&<span>Restaurant level {nextLevel} · <DinerIcon name="coin" size={13}/>{money(nextPrice)}<small>{state.restaurantLevel<nextLevel?`You’re level ${state.restaurantLevel}`:state.coins<nextPrice?`${money(nextPrice-state.coins)} more coins`:'Ready when you are'}</small></span>}</div>{onGrow&&<button onClick={onGrow}>Grow restaurant<DinerIcon name="arrow" size={15}/></button>}</section>
+        <section className={css.growth} aria-label="Grow restaurant"><DinerIcon name="home" size={29}/><div><h3>{renovation.stage?STAGE_COPY[renovation.stage].name:'Your full restaurant'}</h3><p>{renovation.stage?STAGE_COPY[renovation.stage].description:'Make every corner yours.'}</p>{renovation.stage&&<span>{renovation.cost?`${money(renovation.cost)} coins + cooking accomplishments`:'A new burger shop, included'}<small>{renovation.allowed?'Ready to preview':'See your progress & preview the room'}</small></span>}</div>{onGrow&&<button onClick={onGrow}>Renovations<DinerIcon name="arrow" size={15}/></button>}</section>
         {(onStaff||onRecipes)&&<div className={css.usefulLinks}>{onStaff&&<button onClick={onStaff}><DinerIcon name="friends" size={23}/><span><strong>Your kitchen crew</strong><small>{crew} / {crewSlots} staff · {crew<crewSlots?'Hire a chef or waiter for 500 coins':'More staff slots open as you level up'}</small></span><DinerIcon name="arrow" size={15}/></button>}{onRecipes&&<button onClick={onRecipes}><DinerIcon name="book" size={23}/><span><strong>Make the menu yours</strong><small>Choose dishes and use ingredients to raise their level</small></span><DinerIcon name="arrow" size={15}/></button>}</div>}
       </>}
       <div className={css.collectionHeading}><p>{view==='storage'?'Yours already. Find it a lovely spot.':'Good things for your little diner.'}</p><span><DinerIcon name="coin" size={17}/>{money(state.coins)}</span></div>

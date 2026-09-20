@@ -50,7 +50,7 @@ export default function DinerScene(props:DinerSceneProps){
         <select aria-label="Choose a scene target" value="" onChange={event=>{const [id,seat]=event.target.value.split('|');if(id)props.onTarget(id,seat);}}>
           <option value="">Select station or seat</option>
           {props.scene.objects.map(object=><option key={object.id} value={object.id} data-target-id={object.id}>{object.id.startsWith('incident:')?(object.kind==='spill'?'Spill · wipe across it':'Delivery · peel tape and open flaps'):object.id==='home-parcel'?'Daily ingredient parcel':object.id==='home-binder'?'Cookbook':object.id==='home-till'?'Restaurant till':object.id==='home-collections'?'Collections':EQUIPMENT_BY_ID[object.kind]?.name??object.kind.replaceAll('_',' ')}</option>)}
-          {props.mode==='home'&&props.scene.people.filter(person=>person.role!=='customer'||person.id.startsWith('regular:')).map(person=><option key={person.id} value={person.id}>{person.id.startsWith('regular:')?'Your regular':person.role==='chef'?'Chef':'Waiter'}</option>)}
+          {props.mode==='home'&&props.scene.people.filter(person=>person.role!=='customer'||person.id.startsWith('regular:')).map(person=><option key={person.id} value={person.id}>{person.id.startsWith('regular:')?'Your regular':person.role==='chef'?'Chef':person.role==='cashier'?'Cashier':'Waiter'}</option>)}
           {props.scene.tables.flatMap(table=>table.seats.map((seat,i)=><option key={seat.id} value={`${table.id}|${seat.id}`} data-target-id={table.id} data-seat-id={seat.id}>{table.id.replaceAll('_',' ')} · seat {i+1} · {seat.status}{seat.item?.kind==='dirty'&&seat.status!=='dirty'?' · clear dirty dish':''}</option>))}
         </select>
       </label>

@@ -1,26 +1,23 @@
 "use client";
-import { DINER_RULES, dinerRates, staffSlots, type DinerCommand, type DinerState } from '@/lib/chef/diner/progression';
-import { DinerIcon } from './DinerIcon';
+import { useState } from 'react';
+import { dinerRates, type DinerCommand, type DinerState } from '@/lib/chef/diner/progression';
+import { renovationRequirements } from '@/lib/chef/diner/renovation';
+import { careerIngredientRewards } from '@/lib/chef/diner/career';
+import { RECIPES } from '@/lib/chef/diner/content';
+import { STAGE_COPY } from './RenovationPreview';
 import css from './diner.module.css';
 
-export function HomeGrowth({ state, send, open }: { state: DinerState; send: (command: DinerCommand) => boolean; open: (panel: 'catalogue' | 'recipes' | 'staff' | 'map') => void }) {
-  const next = state.home.expansion + 1, full = next >= DINER_RULES.floors.length;
-  const level = DINER_RULES.expansionLevels[next], price = DINER_RULES.expansionPrices[next];
-  const rates = dinerRates(state), buzz = state.buzz.filter(at => state.updatedAt >= at && state.updatedAt - at < DINER_RULES.buzzHours * DINER_RULES.hourMs).length;
-  const counts = { chefs: state.home.staff.chefs, waiters: state.home.staff.waiters };
+export function HomeGrowth({state,send,open,preview}:{state:DinerState;send:(command:DinerCommand)=>boolean;open:(panel:'catalogue'|'recipes'|'staff'|'map')=>void;preview:()=>void}) {
+  const next=renovationRequirements(state),rates=dinerRates(state),bundles=careerIngredientRewards(state),available=bundles.filter(b=>b.available&&!b.claimed);
+  const eligible=RECIPES.filter(r=>state.recipes[r.id]&&state.recipes[r.id].level<10),[recipe,setRecipe]=useState(eligible[0]?.id??'');
+  const choice=eligible.some(r=>r.id===recipe)?recipe:eligible[0]?.id;
   return <>
-    <div className={css.statBox}><span className={css.eyebrow}>Your next building project</span><strong>{full ? 'Your full-size diner' : `${state.home.w} × ${state.home.h} → ${DINER_RULES.floors[next]} × ${DINER_RULES.floors[next]}`}</strong>
-      <p className={css.small}>{full ? 'There is room for your whole collection.' : 'More floor space for tables, machines and the little things that make it yours. Existing furniture stays in place.'}</p>
-      {!full && <><p className={css.small}>{state.restaurantLevel >= level ? '✓' : '○'} Restaurant level {level} · currently {state.restaurantLevel}<br />{state.coins >= price ? '✓' : '○'} {price.toLocaleString()} coins · you have {Math.floor(state.coins).toLocaleString()}</p><button className={css.primary} disabled={state.restaurantLevel < level || state.coins < price} onClick={() => send({ type: 'expandHome' })}>Expand restaurant · {price.toLocaleString()} coins</button><p className={css.tiny}>Collect the till and cook truck lunches to earn reputation for restaurant levels.</p></>}
+    <div className={css.statBox}><span className={css.eyebrow}>{next.currentStage?STAGE_COPY[next.currentStage].name:'Your original restaurant'}</span><strong>{next.stage?STAGE_COPY[next.stage].name:'Your full restaurant'}</strong><p className={css.small}>{next.stage?STAGE_COPY[next.stage].description:'Keep collecting dishes and making every corner your own.'}</p>
+      {next.stage&&<><p className={css.small}>{next.cost?`${next.cost.toLocaleString()} coins, recipe mastery and good lunches on the road.`:'Your new burger-shop layout is included. Preview it before changing anything.'}</p><button className={css.primary} onClick={preview}>Preview {next.stage==='burger_shop'?'burger shop':'renovation'}</button><p className={css.tiny}>Your old room is saved. Displaced furnishings stay in storage; your money, recipes and finishes stay yours.</p></>}
     </div>
-    <h3 className={css.sectionTitle}>Bring your diner to life</h3>
-    <p className={css.panelLead}>{rates.coins > 0 ? `Your current layout can earn about ${Math.round(rates.coins)} coins per hour while open.` : 'Your kitchen needs a usable machine, staff and reachable dining seats before it can serve.'} {rates.bottleneck === 'arrivals' ? 'You have capacity to spare. Build a reputation to bring more guests through the door.' : rates.bottleneck === 'seats' ? 'Dining seats are your current limit. Add reachable tables before hiring more staff.' : rates.bottleneck === 'kitchen' ? 'The kitchen is your current limit. Check your machines and cooking crew.' : 'Serving is your current limit. Give waiters clear routes and add help when you have a crew slot.'}</p>
-    <div className={css.list}>
-      <div className={css.row}><DinerIcon name="book" /><div><h3>Make a house favourite</h3><p>Upgrade the recipes your diner serves. Mastery improves their value and attracts more customers.</p></div><button className={css.button} onClick={() => open('recipes')}>Cookbook</button></div>
-      <div className={css.row}><DinerIcon name="truck" /><div><h3>Get the neighbourhood talking</h3><p>Complete a truck service for a four-hour visit boost. {buzz ? `${buzz} of ${DINER_RULES.buzzMax} boosts active.` : 'No truck-service boosts are active yet.'}</p></div><button className={css.button} onClick={() => open('map')}>Take the truck</button></div>
-      <div className={css.row}><DinerIcon name="decorate" /><div><h3>Make room for a better lunch</h3><p>Tables add seats; discovered machines add dishes. Different decorations give a small customer boost. Floor and wall colors are for looks.</p></div><button className={css.button} onClick={() => open('catalogue')}>Shop</button></div>
-      <div className={css.row}><DinerIcon name="friends" /><div><h3>Care for your crew</h3><p>{counts.chefs} chef{counts.chefs === 1 ? '' : 's'} · {counts.waiters} waiter{counts.waiters === 1 ? '' : 's'} · {staffSlots(state)} total crew slots. A daily staff meal makes the team 10% faster.</p></div><button className={css.button} onClick={() => open('staff')}>Crew</button></div>
-    </div>
-    <p className={css.notice}>More furniture means more capacity, not instant crowds. Recipe mastery, restaurant levels, decoration and a little truck-service buzz grow demand.</p>
+    {next.stage&&next.cost>0&&<><h3 className={css.sectionTitle}>Getting there</h3><div className={css.list}>{next.requirements.map(r=><div className={css.row} key={r.id}><span aria-label={r.met?'Complete':'In progress'}>{r.met?'✓':'○'}</span><div><h3>{r.label}</h3><progress aria-label={r.label} max={Math.max(1,r.target)} value={Math.min(r.current,r.target)}/><p>{Math.floor(r.current).toLocaleString()} / {r.target.toLocaleString()}</p></div></div>)}</div><p className={css.notice}>Real truck services count. Practice and replayed claims don’t. Only a limited number of introductory lunches count, so try a busier route and serve different dishes.</p></>}
+    <h3 className={css.sectionTitle}>Ingredients you earned</h3><p className={css.small}>Cooking milestones give complete upgrade sets for a dish you choose. Each parcel is yours once; no need to wait for a lucky daily delivery.</p>
+    {available.length>0&&choice?<><label className={css.field}>For which dish?<select aria-label="Recipe for achievement ingredients" value={choice} onChange={e=>setRecipe(e.target.value)}>{eligible.map(r=><option key={r.id} value={r.id}>{r.name} · level {state.recipes[r.id].level}</option>)}</select></label><div className={css.list}>{available.map(b=><div className={css.row} key={b.id}><div><h3>{b.services} good lunches</h3><p>Up to {b.sets} complete recipe upgrades.</p></div><button className={css.primary} onClick={()=>send({type:'claimCareerIngredients',achievementId:b.id,recipeId:choice})}>Collect</button></div>)}</div></>:<p className={css.notice}>{bundles.find(b=>!b.available)?`Next parcel: ${bundles.find(b=>!b.available)!.progress} / ${bundles.find(b=>!b.available)!.services} completed services.`:'All currently available parcels have been collected.'}</p>}
+    <h3 className={css.sectionTitle}>Make today a little better</h3><p className={css.small}>About {Math.round(rates.coins)} coins an hour with your current layout. {rates.bottleneck==='seats'?'Reachable seats are your current limit.':rates.bottleneck==='kitchen'?'Your cooking capacity is the current limit.':rates.bottleneck==='waiters'?'Serving capacity is your current limit.':'Recipe mastery and truck-service buzz bring more guests.'}</p><div className={css.actions}><button className={css.button} onClick={()=>open('recipes')}>Improve a dish</button><button className={css.button} onClick={()=>open('catalogue')}>Furnish</button><button className={css.button} onClick={()=>open('map')}>Take the truck</button></div>
   </>;
 }

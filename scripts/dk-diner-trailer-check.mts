@@ -12,7 +12,7 @@ function reject(s:DinerState,command:DinerCommand,code:string){const result=disp
 function install(s:DinerState){return act(s,{type:'setupLayout',stations:[...s.truckConfig.stations,{id:'grill',kind:'grill',x:1,y:0,facing:0},{id:'prep',kind:'prep',x:2,y:0,facing:0}],tables:s.truckConfig.tables});}
 check('fresh trailer has exactly one owned seat and portable tools; home remains unchanged',()=>{
   const s=fresh();assert.equal(s.truckConfig.tables.length,1);assert.equal(s.truckConfig.tables[0].capacity,1);assert.deepEqual(s.truckConfig.tableCopies,{table_1:1,table_2:0,table_4:0});
-  assert.deepEqual(truckStorage(s).filter(p=>p.available).map(p=>p.equipmentId).sort(),['grill','prep']);assert.equal(s.home.layout.find(p=>p.id==='table-1')!.equipmentId,'table_2');
+  assert.deepEqual(truckStorage(s).filter(p=>p.available).map(p=>p.equipmentId).sort(),['grill','prep']);assert.equal(s.home.roomPlan!.stage,'burger_shop');assert.deepEqual(install(s).home,s.home);
   assert.match(truckSetupError(s)!,/grill/);assert.equal(truckSetupError(install(s)),null);assert.deepEqual(s.truckConfig.stations.map(p=>p.kind),['crate','sink','bin','fridge','plates']);
 });
 check('one chair rotates around its one-cell table and remains reachable after reload',()=>{

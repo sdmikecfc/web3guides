@@ -14,7 +14,7 @@ function started(tutorial = false) { let state = prepared(); state.tutorial.fini
 function atService(tutorial = false) { const state = started(tutorial); return action(state, { type: "chooseNode", nodeId: state.run!.available[0] }); }
 
 test("separate fresh namespace has no old wealth or owned home fryer", () => {
-  const state = fresh(); assert.equal(state.version, 1); assert.equal(state.home.w, 8); assert.equal(state.home.h, 8);
+  const state = fresh(); assert.equal(state.version, 1); assert.equal(state.home.w, 10); assert.equal(state.home.h, 8);
   assert.equal(state.recipes.classic_burger.level, 0); assert.equal(state.equipment.fryer.homeCopies, 0);
   assert.equal(validateDinerHome(state, state.home.layout), null); assert.ok(dinerRates(state).coins > 0);
 });
@@ -87,8 +87,8 @@ test("seven source units are bounded, with two truck run receipts and no regular
 test("home layout conserves ownership, course selection needs its machines", () => {
   const state = fresh(); rejected(state, { type: "homeLayout", layout: [...state.home.layout, { id: "forged", equipmentId: "fryer", x: 6, y: 3, rotation: 0 }] }, "invalid_layout");
   rejected(state, { type: "setHomeMenu", menu: { ...state.home.menu, starter: ["fries"] } }, "invalid_menu");
-  rejected(state, { type: "homeLayout", layout: state.home.layout.map(p => p.id === "grill-1" ? { ...p, x: 4, y: 7 } : p) }, "invalid_layout");
-  assert.equal(action(state, { type: "homeLayout", layout: state.home.layout }).home.layout.length, 4);
+  rejected(state, { type: "homeLayout", layout: state.home.layout.map(p => p.id === "home-grill" ? { ...p, x: 5, y: 7 } : p) }, "invalid_layout");
+  assert.equal(action(state, { type: "homeLayout", layout: state.home.layout }).home.layout.length, 3);
 });
 test("route growth requires recipes plus finale; forged rewards and unknown fields refuse atomically", () => {
   const state = started(); rejected(state, { type: "service", action: { type: "tick", ticks: 0, coins: 99999 } } as any, "invalid_service_action");
@@ -159,10 +159,10 @@ test("optional home jobs pay fixed once-only coins and skipping leaves measured 
 });
 test("decor, skins and saved layouts preserve ownership and create only bounded charm", () => {
   let state = action(fresh(), { type: "buyDecor", decorId: "red_planter" }); assert.equal(state.decorOwned.red_planter, 1);
-  const layout = [...state.home.layout, { id: "plant", equipmentId: "red_planter", x: 7, y: 0, rotation: 0 as const }];
+  const layout = [...state.home.layout, { id: "plant", equipmentId: "red_planter", x: 6, y: 5, rotation: 0 as const }];
   state = action(state, { type: "homeLayout", layout }); assert.ok(homeSimulationConfig(state).arrivalRate <= 60 * 1.1);
-  state = action(state, { type: "skinEquipment", placementId: "grill-1", skinId: "cherry" }); state = action(state, { type: "saveLayout", name: "My first room" });
-  state = action(state, { type: "homeLayout", layout: state.home.layout.filter(p => p.id !== "plant") }); state = action(state, { type: "loadLayout", layoutId: state.savedLayouts[0].id }); assert.equal(state.home.layout.find(p => p.id === "grill-1")!.skin, "cherry"); assert.ok(state.home.layout.some(p => p.id === "plant"));
+  state = action(state, { type: "skinEquipment", placementId: "home-grill", skinId: "cherry" }); state = action(state, { type: "saveLayout", name: "My first room" });
+  state = action(state, { type: "homeLayout", layout: state.home.layout.filter(p => p.id !== "plant") }); state = action(state, { type: "loadLayout", layoutId: state.savedLayouts[0].id }); assert.equal(state.home.layout.find(p => p.id === "home-grill")!.skin, "cherry"); assert.ok(state.home.layout.some(p => p.id === "plant"));
   rejected(state, { type: "buyDecor", decorId: "pete_postcard" }, "decor_unavailable");
   rejected(state, { type: "homeLayout", layout: [...state.home.layout, { id: "duplicate-plant", equipmentId: "red_planter", x: 6, y: 0, rotation: 0 }] }, "invalid_layout"); assert.ok(sanitizeDinerSave(state));
 });
@@ -213,11 +213,11 @@ test("Dottie unlocks through a purchasable daisy pot and real sundae output, wit
   state=action(state,{type:'setHomeMenu',menu:{...state.home.menu,dessert:['ice_cream_sundae']}});
   assert.equal(regularAvailable(state,'dottie'),false);
   state=action(state,{type:'buyDecor',decorId:'daisy_pot'});assert.equal(regularAvailable(state,'dottie'),false);
-  state=action(state,{type:'homeLayout',layout:[...state.home.layout,{id:'daisies',equipmentId:'daisy_pot',x:7,y:0,rotation:0}]});
+  state=action(state,{type:'homeLayout',layout:[...state.home.layout,{id:'daisies',equipmentId:'daisy_pot',x:6,y:5,rotation:0}]});
   assert.equal(regularAvailable(state,'dottie'),true);assert.equal(state.equipment.queue_bench,undefined);
   rejected(state,{type:'serveRegular',regularId:'dottie'},'regular_not_ready');
   state=action(state,{type:'serveRegular',regularId:'dottie'},now+hour);assert.equal(state.collections.regulars.dottie,1);
   assert(HOME_EQUIPMENT.some(e=>e.id==='table_2'));const table=fresh();table.coins=1000;
-  const bought=action(table,{type:'buyHomeEquipment',equipmentId:'table_2'});assert.equal(bought.equipment.table_2.homeCopies,2);assert.equal(bought.coins,40);
+  const bought=action(table,{type:'buyHomeEquipment',equipmentId:'table_2'});assert.equal(bought.equipment.table_2.homeCopies,1);assert.equal(bought.coins,40);
 });
 console.log(`Diner progression: ${groups} groups passed.`);

@@ -1,8 +1,9 @@
 import * as THREE from 'three';
-import { createModel, PALETTE } from './models';
+import { createModel, PALETTE,configureRoomMount } from './models';
 import type { ScenePlacement, SceneTable } from './scene-types';
 
-const tableCenter=(table:SceneTable)=>({x:table.x+(table.capacity!==1&&(table.capacity===4||(table.rotation??0)%2===1)?.5:0),y:table.y+(table.capacity!==1&&(table.capacity===4||(table.rotation??0)%2===0)?.5:0)});
+const tableShape=(table:SceneTable)=>{const raw=table.footprint??[table.capacity===4?2:1,table.capacity===1?1:2];return (table.rotation??0)%2?[raw[1],raw[0]]:raw;};
+const tableCenter=(table:SceneTable)=>{const [w,h]=tableShape(table);return {x:table.x+(w-1)/2,y:table.y+(h-1)/2};};
 
 /** One floor projection for mouse previews and clicks from mouse, touch or pen.
  * Furniture is intentionally not an obstacle to choosing an invalid draft tile. */
@@ -24,15 +25,17 @@ export function createPlacementGhost(placement:ScenePlacement,floorHeight:(x:num
     const object=placement.object,facing=object.rotation??0,footprint=object.footprint??(object.kind==='pass'||object.kind==='queue_bench'?[2,1]:[1,1]);
     const width=footprint[facing%2?1:0],height=footprint[facing%2?0:1];
     const model=createModel(object.kind,{tier:object.tier,color:object.color,stock:object.stock});
-    model.name='placement-object';model.position.set(object.x+(width-1)/2,floorHeight(object.x,object.y),object.y+(height-1)/2);model.rotation.y=Math.PI-facing*Math.PI/2;root.add(model);
+    model.name='placement-object';model.rotation.y=Math.PI-facing*Math.PI/2;
+    if(object.mount){const holder=new THREE.Group();holder.position.set(object.x+(width-1)/2,object.elevation??floorHeight(object.x,object.y),object.y+(height-1)/2);holder.add(model);configureRoomMount(model,object);root.add(holder);}
+    else{model.position.set(object.x+(width-1)/2,object.elevation??floorHeight(object.x,object.y),object.y+(height-1)/2);root.add(model);}
     for(let y=0;y<height;y++)for(let x=0;x<width;x++)cells.push({x:object.x+x,y:object.y+y});
   }
   if(placement.table){
     const table=placement.table,center=tableCenter(table),facing=table.rotation??0;
-    const model=createModel(`table_${table.capacity}`);model.name='placement-table';model.position.set(center.x,floorHeight(table.x,table.y),center.y);model.rotation.y=-facing*Math.PI/2;root.add(model);
-    const width=table.capacity===4?2:table.capacity===2&&facing%2?2:1,height=table.capacity===4?2:table.capacity===2&&!(facing%2)?2:1;
+    const model=createModel(table.kind??`table_${table.capacity}`);model.name='placement-table';model.position.set(center.x,floorHeight(table.x,table.y),center.y);model.rotation.y=table.kind?Math.PI-facing*Math.PI/2:-facing*Math.PI/2;root.add(model);
+    const [width,height]=tableShape(table);
     for(let y=0;y<height;y++)for(let x=0;x<width;x++)cells.push({x:table.x+x,y:table.y+y});
-    for(const seat of table.seats){const chair=createModel('chair',{color:mode==='truck'?PALETTE.tomato:PALETTE.mint});chair.name=`placement-seat:${seat.id}`;chair.position.set(seat.x,floorHeight(seat.x,seat.y),seat.y);chair.lookAt(center.x,chair.position.y,center.y);chair.rotateY(Math.PI);root.add(chair);cells.push({x:seat.x,y:seat.y,chair:true});}
+    for(const seat of table.seats){const chair=createModel(table.kind?'stool':'chair',{color:mode==='truck'?PALETTE.tomato:PALETTE.mint});chair.name=`placement-seat:${seat.id}`;chair.position.set(seat.x,floorHeight(seat.x,seat.y),seat.y);chair.lookAt(seat.surface?.x??center.x,chair.position.y,seat.surface?.y??center.y);chair.rotateY(Math.PI);root.add(chair);cells.push({x:seat.x,y:seat.y,chair:true});}
   }
   const materials=new Map<THREE.Material,THREE.Material>();
   root.traverse(object=>{

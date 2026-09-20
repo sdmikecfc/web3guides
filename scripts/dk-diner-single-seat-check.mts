@@ -1,10 +1,11 @@
+import {createLegacyDinerFixture} from './dk-diner-legacy-fixture';
 /** One-seat tables use distinct home/truck inventories. No network or old-save writes. */
 import assert from 'node:assert/strict';
 import { EQUIPMENT_BY_ID, HOME_EQUIPMENT, TRUCK_EQUIPMENT } from '../src/lib/chef/diner/content';
 import { createDiner, dispatchDiner, DINER_RULES, homeIncidents, homeSimulationConfig, sanitizeDinerSave, validateDinerHome, type DinerCommand, type DinerState } from '../src/lib/chef/diner/progression';
 import { createHomeWorld, stepHomeWorld } from '../src/lib/chef/diner/home-simulation';
 const now=Date.UTC(2026,8,25,12);let groups=0;
-const fresh=()=>createDiner(now,'single-seat');
+const fresh=()=>createLegacyDinerFixture(now,'single-seat');
 function check(name:string,run:()=>void){run();groups++;console.log(`PASS ${name}`);}
 function act(state:DinerState,command:DinerCommand){const result=dispatchDiner(state,command,{now});assert.equal(result.error,undefined,`${command.type}: ${result.error}`);return result.state;}
 function purchased(){const state=fresh();state.coins=2000;return act(state,{type:'buyHomeEquipment',equipmentId:'table_1'});}
@@ -63,5 +64,9 @@ check('new one-seat placements cannot share a chair, while older saved layouts r
     for(const proposed of [layout,[...layout].reverse()]){const rejected=dispatchDiner(mixed,{type:'homeLayout',layout:proposed},{now});assert.equal(rejected.code,'invalid_layout',`one chair overlaps ${equipmentId}`);assert.deepEqual(rejected.state,mixed);}
   }
   assert.equal(dispatchDiner(state,{type:'homeLayout',layout:[...machines,{id:'south-solo',equipmentId:'table_1',x:4,y:3,rotation:0},{id:'other-solo',equipmentId:'table_1',x:6,y:5,rotation:2}]},{now}).error,undefined);
+});
+check('a staged burger shop can buy a single seat without replacing its included console',()=>{
+ let state=createDiner(now,'staged-single');state.coins=2000;const original=structuredClone(state.home.roomPlan);assert.equal(state.equipment.table_2.homeCopies,0);state=act(state,{type:'buyHomeEquipment',equipmentId:'table_1'});state=act(state,{type:'homeLayout',layout:[...state.home.layout,{id:'extra-stool-table',equipmentId:'table_1',x:3,y:5,rotation:0}]});
+ assert.deepEqual(state.home.roomPlan,original);const world=createHomeWorld(homeSimulationConfig(state));assert.equal(world.tables.reduce((sum,t)=>sum+t.capacity,0),4);assert(world.tables.some(t=>t.capacity===3));assert.equal(world.tables.find(t=>t.id==='extra-stool-table')!.capacity,1);assert(sanitizeDinerSave(state));
 });
 console.log(`PASS ${groups} diner single-seat groups`);

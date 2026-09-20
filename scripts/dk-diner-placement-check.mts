@@ -1,3 +1,4 @@
+import {createLegacyDinerFixture} from './dk-diner-legacy-fixture';
 /** Real layout validation and persistence behind the local editor preview. */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -6,7 +7,7 @@ import { createHomeWorld } from '../src/lib/chef/diner/home-simulation';
 import { makeTable } from '../src/lib/chef/diner/geometry';
 import { createPlacementDraft, movePlacementDraft, previewPlacement, rotatePlacementDraft } from '../src/app/chef/diner-preview/placement-preview';
 const now=Date.UTC(2026,8,20,8);
-const fresh=()=>createDiner(now,'placement-check');
+const fresh=()=>createLegacyDinerFixture(now,'placement-check');
 function act(state:DinerState,command:DinerCommand){const result=dispatchDiner(state,command,{now});assert.equal(result.error,undefined,`${command.type}: ${result.error}`);return result.state;}
 let groups=0;function test(name:string,run:()=>void){run();groups++;console.log(`ok ${name}`);}
 test('stored furniture can rotate before placement without spending or mutating the live layout',()=>{
@@ -73,5 +74,10 @@ test('input handlers keep hover, taps and rotation local and expose an explicit 
   const tile=source.slice(source.indexOf('const onTile='),source.indexOf('const onHoverTile='));assert.match(tile,/if\(editing\)\{setPlacement/);assert.ok(!tile.includes("type:'homeLayout'"));assert.ok(!tile.includes("type:'setupLayout'"));
   assert.match(source,/const confirmPlacement=.*previewPlacement\(current,placement\)/);assert.match(source,/if\(preview.error\)/);assert.match(source,/send\(preview.command\)/);
   assert.match(source,/disabled=\{!placementPreview\|\|!!placementPreview.error\}/);assert.ok(source.includes('onHoverTile={onHoverTile}'));
+});
+test('staged starter uses its actual grill cell and commits a stored fryer without changing room structure',()=>{
+ const state=createDiner(now,'staged-placement');state.equipment.fryer.homeCopies=1;const original=structuredClone(state.home.roomPlan),grill=state.home.layout.find(p=>p.equipmentId==='grill')!;
+ const draft=createPlacementDraft(state,'home','fryer','staged-fryer');assert.equal(previewPlacement(state,draft).error,null);assert(previewPlacement(state,movePlacementDraft(draft,grill.x,grill.y,true)).error);
+ const committed=act(state,previewPlacement(state,draft).command);assert.equal(committed.home.layout.filter(p=>p.equipmentId==='fryer').length,1);assert.deepEqual(committed.home.roomPlan,original);assert(sanitizeDinerSave(committed));
 });
 console.log(`Diner placement: ${groups} groups passed.`);

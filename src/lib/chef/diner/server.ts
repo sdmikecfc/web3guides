@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { CONTENT_VERSION } from "./content";
-import { createDinerRecord, DinerAuthorityError, type DinerRecord } from "./authority";
+import { createDinerRecord, migrateDinerRecord, DinerAuthorityError, type DinerRecord } from "./authority";
 import { requireDinerWalletSession } from "./wallet-auth-server";
 
 export function dinerServerEnabled() { return process.env.DINER_PREVIEW_SERVER_ENABLED === "true" && !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && !!process.env.SUPABASE_SERVICE_ROLE_KEY && !!process.env.DINER_PREVIEW_APP_URL; }
@@ -24,7 +24,8 @@ export async function loadDinerRecord(db: ReturnType<typeof dinerDb>, player: st
     if (error) throw new DinerAuthorityError("preview_unavailable", "The preview database has not been prepared or could not be reached.", 503);
     if (data) {
       if (data.state?.version !== 1 || data.state?.contentVersion !== CONTENT_VERSION) throw new DinerAuthorityError("version_mismatch", "This saved preview needs its matching rules version.", 409);
-      return { state: data.state, clock: data.clock, revision: Number(data.revision) };
+      try { return migrateDinerRecord({ state: data.state, clock: data.clock, revision: Number(data.revision) }); }
+      catch { throw new DinerAuthorityError("saved_state_invalid", "This saved restaurant could not be migrated safely. Its original record has been preserved.", 409); }
     }
     const record = createDinerRecord(now, `diner:${player}`);
     const initialized = await db.rpc("diner_preview_initialize", { p_player: player, p_state: record.state, p_clock: record.clock });

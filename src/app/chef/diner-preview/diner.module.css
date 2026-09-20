@@ -121,3 +121,5 @@
 
 .supplyPicker small{display:block;font-size:10px;color:#777b62;margin-top:3px}@media(max-width:700px){.game:has(.packing) .recipePills{display:none}}
 .renameTitle{display:inline-flex;align-items:center;gap:8px;border:0;padding:0;background:none;color:inherit;font:inherit;cursor:pointer;text-align:left}.renameTitle svg{opacity:.55}.renameTitle:hover svg{opacity:1}.renameTitle:focus-visible{outline:3px solid #659381;outline-offset:4px;border-radius:4px}
+
+@media(max-width:700px){.homeCoach{left:12px;right:12px;bottom:150px;top:auto;width:auto;max-width:366px;padding:11px 14px;min-height:0}.homeCoach h3{font-size:17px;line-height:1.2;margin:3px 0}.homeCoach p{display:none}.homeCoach>button{margin-top:6px!important;min-height:40px;padding:8px 13px}.homeCoach .coachStep{font-size:8px}}
