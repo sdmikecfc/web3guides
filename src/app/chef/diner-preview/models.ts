@@ -38,8 +38,76 @@ function packMeshes(root:THREE.Group,key:string){
   return root;
 }
 
+function createPatty(cooked=false){
+  const g=group(cylinder(.214,.225,.075,cooked?'#785039':'#b65c53',0,.043,0,24));
+  if(cooked)for(let i=0;i<3;i++){const mark=box(.30,.009,.022,'#47372e',0,.084,-.105+i*.10,.004);mark.rotation.y=.32;g.add(mark);}
+  else for(let i=0;i<7;i++){const a=i*2.4,r=.045+(i%3)*.056,fleck=box(.019,.005,.035,'#dfa28e',Math.cos(a)*r,.083,Math.sin(a)*r,.007);fleck.rotation.y=a;g.add(fleck);}
+  return packMeshes(g,`supply-patty:${cooked}`);
+}
+function createBun(){
+  const g=group(cylinder(.231,.220,.061,'#cc9450',0,.035,0,24),cylinder(.234,.234,.023,'#f2d099',0,.077,0,24));
+  const dome=mesh(geo('supply-bun-dome',()=>new THREE.SphereGeometry(.238,20,10,0,Math.PI*2,0,Math.PI/2)),PALETTE.bun,0,.091);dome.scale.y=.62;g.add(dome);
+  for(let i=0;i<7;i++){const a=i*2.4,r=.038+(i%3)*.045,seed=box(.021,.009,.034,'#fff0ca',Math.cos(a)*r,.091+Math.sqrt(.238**2-r*r)*.62,Math.sin(a)*r,.005);seed.rotation.y=a;g.add(seed);}
+  return packMeshes(g,'supply-sesame-bun');
+}
+/** Loose supplies never inherit a complete recipe's plate or toppings. */
+export function createIngredientModel(id:string){
+  if(id==='beef')return createPatty();
+  if(id==='bun')return createBun();
+  const g=new THREE.Group();
+  const ellipsoid=(r:number,color:string,x:number,y:number,z:number,sx=1,sy=1,sz=1)=>{const m=ball(r,color,x,y,z);m.scale.set(sx,sy,sz);g.add(m);return m;};
+  const leaf=(x:number,y:number,z:number,color=PALETTE.leaf)=>ellipsoid(.12,color,x,y,z,.65,.18,1.15);
+  if(id==='potato'){for(let i=0;i<2;i++){ellipsoid(.14,'#c8a073',i*.16-.08,.112,i*.065-.033,.82,.78,1.12);for(let p=0;p<2;p++)ellipsoid(.012,'#987448',i*.16-.11+p*.055,.216,i*.065-.02,.7,.3,1);}}
+  else if(id==='cheese'){g.add(cylinder(.255,.255,.105,'#e6b852',0,.061,0,3));for(const [x,z,r] of [[0,.07,.026],[-.09,-.07,.020],[.08,-.10,.017]])g.add(cylinder(r,r,.004,'#c88d35',x,.116,z,16));}
+  else if(id==='lettuce'){for(let i=0;i<6;i++){const a=i*2.4;ellipsoid(.15,i%2?'#88ad59':'#b4c777',Math.cos(a)*.11,.115+(i%2)*.025,Math.sin(a)*.10,.9,.68,.8);}ellipsoid(.14,'#c5d48c',0,.18,0,.8,.55,.8);}
+  else if(id==='tomato'||id==='apple'){ellipsoid(.19,id==='tomato'?'#c45b47':'#c75f50',0,.166,0,1,.87,1);g.add(cylinder(.012,.015,.07,PALETTE.wood,0,.331,0,8));for(let i=0;i<(id==='tomato'?4:1);i++){const l=leaf(Math.sin(i*1.57)*.046,.316,Math.cos(i*1.57)*.046);l.scale.multiplyScalar(.58);l.rotation.y=i*1.57;}}
+  else if(id==='onion'){ellipsoid(.17,'#bb94a5',0,.148,0,1,.87,1);g.add(cylinder(.022,.065,.095,'#d9b8c6',0,.31,0,16));for(const x of [-.025,0,.025])g.add(box(.008,.008,.063,'#aa875b',x,.013,.09,.003));}
+  else if(id==='egg'){const egg=ellipsoid(.15,'#f4e5c9',0,.182,0,.83,1.20,.83);egg.rotation.z=.18;}
+  else if(id==='milk'){g.add(box(.24,.34,.22,PALETTE.porcelain,0,.18,0,.016),box(.24,.105,.22,PALETTE.mint,0,.403,0,.021),box(.23,.11,.014,PALETTE.sage,0,.19,-.117,.010),cylinder(.034,.034,.027,PALETTE.porcelain,.054,.469,0,12));}
+  else if(id==='flour'||id==='sugar'){const color=id==='flour'?'#ddc799':'#e7d4d1';g.add(box(.31,.32,.23,color,0,.17,0,.048),box(.29,.04,.14,PALETTE.porcelain,0,.34,0,.011),box(.20,.16,.014,PALETTE.porcelain,0,.19,-.123,.018));if(id==='flour')for(let i=0;i<3;i++){const stalk=box(.012,.115,.007,PALETTE.oak,(i-1)*.038,.19,-.136,.003);stalk.rotation.z=(i-1)*.2;g.add(stalk);}else for(const x of [-.043,.043])g.add(box(.062,.062,.013,'#dba6a1',x,.19,-.137,.008));}
+  else if(id==='cooking_oil'||id==='maple_syrup'){const color=id==='cooking_oil'?'#d8b75d':'#a77444';g.add(box(.23,.29,.19,color,0,.157,0,.055),cylinder(.047,.066,.09,color,0,.347,0,16),cylinder(.061,.061,.033,PALETTE.sage,0,.409,0,16),box(.15,.13,.014,PALETTE.porcelain,0,.175,-.101,.018));if(id==='maple_syrup'){const h=ring(.07,.018,PALETTE.oak,.123,.269,0);h.rotation.x=0;g.add(h);}else g.add(box(.038,.081,.01,PALETTE.leaf,0,.177,-.116,.014));}
+  else if(id==='bacon'){for(let i=0;i<2;i++){g.add(box(.095,.032,.38,'#bd7770',(i-.5)*.12,.026,0,.022),box(.025,.006,.35,'#eac3a6',(i-.5)*.12+.013,.045,0,.009));}}
+  else if(id==='chicken'){ellipsoid(.20,'#e2b196',-.015,.082,0,1.08,.41,.78);ellipsoid(.10,'#ecc0a5',.14,.058,.035,1.1,.52,.63);}
+  else if(id==='pickles'){for(let i=0;i<3;i++){g.add(cylinder(.102,.104,.025,'#5f8650',(i-1)*.10,.019+i*.012,0,20),cylinder(.078,.078,.005,'#a3b875',(i-1)*.10,.034+i*.012,0,20));}}
+  else if(id==='bread'){g.add(box(.31,.085,.32,'#bd8b50',0,.049,0,.062),box(.265,.014,.27,'#f1d8a2',0,.099,0,.049));}
+  else if(id==='butter'){g.add(box(.34,.014,.25,PALETTE.porcelain,0,.012,0,.014),box(.25,.09,.18,'#eed384',0,.064,0,.018),box(.15,.014,.20,'#e6ece1',.10,.083,0,.010));}
+  else if(id==='ice_cream'){g.add(cylinder(.205,.165,.17,PALETTE.mint,0,.089,0,20),ring(.193,.014,PALETTE.porcelain,0,.182));for(let i=0;i<3;i++)ellipsoid(.102,'#f2e5c9',(i-1)*.081,.19+(i%2)*.037,0,1,.8,1);}
+  else if(id==='coffee_beans'){for(let i=0;i<7;i++){const a=i*2.4;const bean=ellipsoid(.046,'#775540',Math.cos(a)*.11,.038+(i%2)*.02,Math.sin(a)*.10,.7,.6,1);bean.rotation.y=a;}}
+  else if(id==='lemon'){const lemon=ellipsoid(.17,'#efc858',0,.13,0,1.15,.72,.77);lemon.rotation.y=.3;ellipsoid(.039,'#edce70',-.17,.13,.046,1,.65,.7);}
+  else if(id==='sausage'){g.add(box(.41,.10,.115,'#c08b75',0,.058,0,.048));for(const x of [-.218,.218])g.add(box(.025,.047,.043,'#d4a18a',x,.058,0,.012));}
+  else if(id==='corn'){ellipsoid(.20,'#e4bc57',0,.112,0,.55,.53,1.04);for(let i=0;i<5;i++)for(const x of [-.052,.025])ellipsoid(.033,'#f2d47c',x,.198,-.14+i*.068,.8,.40,.85);for(const x of [-.12,.12]){const l=leaf(x,.075,.04);l.scale.set(.63,.13,1.62);l.rotation.y=x*1.8;}}
+  else if(id==='chocolate'){g.add(box(.33,.044,.26,'#69483a',0,.028,0,.013));for(let x=0;x<3;x++)for(let z=0;z<2;z++)g.add(box(.092,.02,.103,'#865e47',(x-1)*.10,.060,(z-.5)*.12,.014));}
+  else if(id==='strawberry'){for(let i=0;i<2;i++){ellipsoid(.115,'#c85f55',(i-.5)*.17,.10,i*.07-.035,1,.87,1);for(let p=0;p<3;p++)ellipsoid(.010,'#f2d494',(i-.5)*.17+(p-1)*.038,.204,i*.07-.04,.65,.28,1);const l=leaf((i-.5)*.17,.205,i*.07-.035);l.scale.multiplyScalar(.42);}}
+  else if(id==='avocado'){ellipsoid(.205,'#426b42',0,.101,0,.73,.49,1);ellipsoid(.185,'#a9bf70',0,.114,0,.73,.34,1);ellipsoid(.074,'#92704b',0,.163,.035,1,.53,1);}
+  else if(id==='chili'){const curve=new THREE.CubicBezierCurve3(new THREE.Vector3(-.18,.052,.08),new THREE.Vector3(-.05,.073,.01),new THREE.Vector3(.13,.075,-.11),new THREE.Vector3(.16,.078,-.15));g.add(mesh(geo('supply-chili',()=>new THREE.TubeGeometry(curve,12,.038,9,false)),'#bd4e40'),box(.018,.031,.09,PALETTE.leaf,-.193,.064,.125,.008));}
+  else {g.userData.unsupportedIngredient=id;g.add(box(.19,.12,.19,PALETTE.cream,0,.063,0,.035));}
+  return packMeshes(g,`supply-ingredient:${id}`);
+}
+export function createCleanPlate(){
+  const g=group(cylinder(.276,.249,.026,'#e4e8e1',0,.018,0,32),cylinder(.286,.272,.019,PALETTE.porcelain,0,.038,0,32),ring(.268,.010,'#fffdf6',0,.051));
+  g.name='food-plate';return packMeshes(g,'supply-clean-plate');
+}
+export function createCup(dirty=false){
+  // Hollow porcelain, including the inside wall and floor; an empty cup is not
+  // a filled drinks cylinder with a different label.
+  const profile=[[0,.012],[.081,.012],[.099,.028],[.135,.288],[.132,.309],[.117,.310],[.099,.053],[0,.053]].map(([x,y])=>new THREE.Vector2(x,y));
+  const g=group(mesh(geo('supply-hollow-cup',()=>new THREE.LatheGeometry(profile,28)),PALETTE.porcelain));
+  const handle=ring(.075,.020,PALETTE.porcelain,.143,.170);handle.rotation.x=0;g.add(handle);
+  if(dirty){g.add(cylinder(.074,.074,.004,'#9b7351',0,.057,0,20));const smear=box(.065,.045,.009,'#bf9571',0,.272,-.129,.014);smear.rotation.x=-.15;g.add(smear);}
+  g.name='food-vessel';g.userData.vesselKind='cup';return packMeshes(g,`supply-cup:${dirty}`);
+}
+export function createFryBox(dirty=false){
+  const g=group(box(.29,.024,.21,'#edcf9d',0,.019,0,.009));
+  // Four thin connected panels leave the opening visibly empty.
+  g.add(box(.345,.151,.017,PALETTE.tomato,0,.103,-.116,.014),box(.35,.225,.017,PALETTE.tomato,0,.140,.116,.015));
+  for(const side of [-1,1]){const wall=box(.018,.202,.229,PALETTE.tomato,side*.159,.130,0,.012);wall.rotation.z=-side*.08;g.add(wall);}
+  const seal=cylinder(.042,.042,.010,PALETTE.porcelain,0,.102,-.131,20);seal.rotation.x=Math.PI/2;g.add(seal,box(.016,.042,.007,PALETTE.mustard,0,.102,-.140,.005));
+  if(dirty)for(const x of [-.063,.052])g.add(cylinder(.032,.040,.004,'#ad895d',x,.034,.021,12));
+  g.name='food-vessel';g.userData.vesselKind='fry_box';return packMeshes(g,`supply-fry-box:${dirty}`);
+}
 export function createPlate(dirty=false){
   const g=group(cylinder(.29,.26,.035,PALETTE.porcelain,0,.022),ring(.263,.010,PALETTE.sage,0,.045));
+  g.name='food-plate';
   if(dirty){const stain=ball(.13,'#ad7954',0,.049);stain.scale.set(1,.06,.75);g.add(stain);for(let i=0;i<3;i++)g.add(ball(.025,i%2?PALETTE.leaf:PALETTE.tomato,-.14+i*.13,.058,.085-i*.02));}
   return g;
 }
@@ -48,6 +116,12 @@ export function createFoodModel(food:SceneFood):THREE.Group{
   // Plating is earned from the actual recipe level; raw, burnt and dirty objects
   // always retain their honest service appearance.
   if(food.kind!=='dish'||level<3)return dish;
+  if(food.vesselKind==='cup'||food.vesselKind==='fry_box'){
+    // A signature stamp belongs to the actual serving vessel. Do not conjure
+    // a porcelain coaster/plate under a takeaway carton or a pooled clean cup.
+    const carton=food.vesselKind==='fry_box',stamp=cylinder(.040,.040,.007,level===10?'#d5a547':'#4d8b76',0,carton?.102:.17,carton?-.148:-.140,level===10?5:20);
+    stamp.rotation.x=Math.PI/2;dish.add(stamp);dish.userData.presentation=level===10?'masterpiece':'signature';return dish;
+  }
   const drink=food.recipeId.includes('coffee')||food.recipeId.includes('lemonade')||food.recipeId.includes('shake');
   const radius=drink?.222:.291,trim=level===10?'#d5a547':'#4d8b76';
   if(drink)dish.add(cylinder(.242,.226,.021,PALETTE.porcelain,0,.012));
@@ -67,30 +141,45 @@ export function createFoodModel(food:SceneFood):THREE.Group{
 }
 function buildFoodModel(food:SceneFood):THREE.Group{
   const id=food.recipeId,g=new THREE.Group(),raw=food.kind==='raw',processed=food.kind==='processed';
-  if(food.kind==='dirty')return createPlate(true);
+  const vessel=food.vesselKind??(food.stage==='clean_cup'?'cup':food.stage==='empty_fry_box'?'fry_box':'plate');
+  if(food.kind==='ingredient')return createIngredientModel(food.ingredientId??'');
+  if(food.kind==='plate')return vessel==='cup'?createCup():vessel==='fry_box'?createFryBox():createCleanPlate();
+  if(id==='fries'&&processed&&(food.stage==='cut_potatoes'||food.stage==='prepared_fries')){
+    const cooked=food.stage==='prepared_fries';
+    for(let i=0;i<9;i++){const fry=box(.041,.040,.31,cooked?(i%2?'#e8bb57':'#f3d174'):(i%2?'#f0dfb4':'#e6d5a8'),(i%5-2)*.062,.029+Math.floor(i/5)*.043,(i%2-.5)*.041,.009);fry.rotation.y=(i%3-1)*.22;g.add(fry);}
+    g.userData.unplated=true;return packMeshes(g,`loose-fries:${cooked}`);
+  }
+  if(processed&&food.stage===`prepared_${id}`){
+    const prepared=buildFoodModel({...food,kind:'dish'});
+    for(const child of [...prepared.children])if(child.name==='food-plate'||child.name==='food-vessel')prepared.remove(child);
+    const base=new THREE.Box3().setFromObject(prepared).min.y;
+    if(Number.isFinite(base))for(const child of prepared.children)child.position.y-=base-.008;
+    prepared.userData.unplated=true;return prepared;
+  }
+  if(food.kind==='dirty')return vessel==='cup'?createCup(true):vessel==='fry_box'?createFryBox(true):createPlate(true);
   if(food.kind==='burnt'){g.add(createPlate());const burnt=ball(.2,'#493f35',0,.09);burnt.scale.y=.34;g.add(burnt);for(let i=0;i<3;i++)g.add(ball(.028,'#6d5946',-.12+i*.11,.13,.04));return g;}
   const burger=id.includes('burger')||id.includes('sandwich');
   if(burger){
     const chicken=id==='fried_chicken_sandwich';
     if(raw||processed){const color=raw?(chicken?'#e3b397':'#c47566'):chicken?(food.stage==='coated'?'#e4ce9a':'#bd8a48'):'#77523c';g.add(cylinder(.21,.22,.07,color,0,.065));if(processed)for(let i=0;i<3;i++){const mark=box(.30,.008,.022,chicken?'#e6b765':'#4e4033',0,.105,-.11+i*.10,.003);mark.rotation.y=.32;g.add(mark);}if(food.stage==='cooked_patty_and_bacon')for(const x of [-.075,.075])g.add(box(.07,.018,.32,'#b37453',x,.127,0,.012));return g;}
     g.add(createPlate(),cylinder(.233,.222,.077,PALETTE.bun,0,.098),cylinder(.225,.228,.08,chicken?'#bd8a48':'#70462f',0,.176));
-    for(let i=0;i<5;i++){const leaf=ball(.104,i%2?'#689c49':'#91b85e',Math.cos(i*1.26)*.14,.223,Math.sin(i*1.26)*.14);leaf.scale.set(1,.25,.70);g.add(leaf);}
+    if(id!=='classic_burger')for(let i=0;i<5;i++){const leaf=ball(.104,i%2?'#689c49':'#91b85e',Math.cos(i*1.26)*.14,.223,Math.sin(i*1.26)*.14);leaf.scale.set(1,.25,.70);g.add(leaf);}
     if(id!=='classic_burger'){const cheese=box(.38,.024,.38,PALETTE.mustard,0,.231,0,.009);cheese.rotation.y=.36;g.add(cheese);}
-    g.add(cylinder(.201,.201,.030,'#c6533e',0,.264));
+    if(id!=='classic_burger')g.add(cylinder(.201,.201,.030,'#c6533e',0,.264));
     if(id==='bacon_deluxe_burger')for(const x of [-.13,.13]){const bacon=box(.075,.023,.49,'#9e6246',x,.269,0,.02);bacon.rotation.y=.16;g.add(bacon,box(.021,.025,.46,'#db9e78',x,.27,0,.009));}
     if(id==='avocado_burger')for(let i=0;i<3;i++){const avocado=ball(.12,'#a8be6e',-.11+i*.105,.27,-.135);avocado.scale.set(.5,.25,1.1);avocado.rotation.y=-.35;g.add(avocado);}
     if(chicken)for(const z of [-.23,.23])g.add(cylinder(.08,.08,.025,'#789557',0,.254,z));
-    const dome=mesh(geo('hero-bun-dome',()=>new THREE.SphereGeometry(.247,20,10,0,Math.PI*2,0,Math.PI/2)),PALETTE.bun,0,.281);dome.scale.y=.68;g.add(dome);
-    for(let i=0;i<6;i++){const angle=i*2.4,rad=.05+(i%3)*.048;const sesame=box(.023,.009,.039,'#fff3cb',Math.cos(angle)*rad,.281+Math.sqrt(.247**2-rad**2)*.68,Math.sin(angle)*rad,.005);sesame.rotation.y=angle;g.add(sesame);}return g;
+    const bunBase=id==='classic_burger'?.217:.281,dome=mesh(geo('hero-bun-dome',()=>new THREE.SphereGeometry(.247,20,10,0,Math.PI*2,0,Math.PI/2)),PALETTE.bun,0,bunBase);dome.scale.y=.68;g.add(dome);
+    for(let i=0;i<6;i++){const angle=i*2.4,rad=.05+(i%3)*.048;const sesame=box(.023,.009,.039,'#fff3cb',Math.cos(angle)*rad,bunBase+Math.sqrt(.247**2-rad**2)*.68,Math.sin(angle)*rad,.005);sesame.rotation.y=angle;g.add(sesame);}return g;
   }
   if(id.includes('fries')||id==='onion_rings'||id==='mozzarella_sticks'){
     if(raw){if(id==='onion_rings'){for(let i=0;i<3;i++)g.add(ring(.1,.025,'#b790a5',-.10+i*.09,.035+i*.015,0));}else if(id==='mozzarella_sticks'){for(let i=0;i<3;i++)g.add(box(.09,.075,.35,'#f7e8bf',-.12+i*.12,.075,0,.023));}else for(let i=0;i<2;i++){const potato=ball(.13,'#c6a06d',i*.16-.08,.10,0);potato.scale.set(.8,.7,1.3);g.add(potato);}return g;}
-    g.add(createPlate());if(id==='onion_rings'){for(let i=0;i<5;i++)g.add(ring(.072,.023,processed?'#e9d2ab':'#e6b867',-.13+i%3*.12,.075+Math.floor(i/3)*.05,-.06+Math.floor(i/3)*.10));return g;}
+    if(vessel!=='fry_box')g.add(createPlate());if(id==='onion_rings'){for(let i=0;i<5;i++)g.add(ring(.072,.023,processed?'#e9d2ab':'#e6b867',-.13+i%3*.12,.075+Math.floor(i/3)*.05,-.06+Math.floor(i/3)*.10));return g;}
     if(id==='mozzarella_sticks'){for(let i=0;i<4;i++){const stick=box(.075,.075,.29,processed?'#ead29d':'#dbae5f',-.16+i*.095,.088,0,.027);stick.rotation.y=.24;g.add(stick);}if(!processed)g.add(cylinder(.067,.075,.053,PALETTE.porcelain,.16,.077,.17),cylinder(.058,.058,.008,PALETTE.tomato,.16,.107,.17));return g;}
     if(id==='chili_cheese_fries'){for(let i=0;i<9;i++){const fry=box(.035,.037,.29,PALETTE.mustard,(i%5)*.073-.15,.07+Math.floor(i/5)*.04,Math.floor(i/5)*.04,.007);fry.rotation.y=(i%3-1)*.23;g.add(fry);}if(!processed){for(let i=0;i<7;i++){const chili=ball(.053,'#9b6546',Math.sin(i*2.4)*.16,.15,Math.cos(i*2.4)*.11);chili.scale.y=.4;g.add(chili);}for(let i=0;i<3;i++)g.add(box(.28,.012,.022,'#f0ce78',0,.16,-.085+i*.08,.004));}return g;}
-    g.add(box(.34,.17,.25,'#bb5643',0,.155,0,.027),box(.35,.025,.255,PALETTE.tomato,0,.238,0,.010));
+    const carton=createFryBox();carton.position.y=vessel==='fry_box'?0:.055;g.add(carton);
     for(let i=0;i<7;i++){const fry=box(.050,.235+(i%3)*.034,.047,i%2?'#eabb56':'#f7d779',(i%4)*.078-.116,.309,Math.floor(i/4)*.085-.044,.009);fry.rotation.z=(i%4-1.5)*.10;g.add(fry);}
-    const seal=cylinder(.048,.048,.012,PALETTE.porcelain,0,.156,-.132,16);seal.rotation.x=Math.PI/2;g.add(seal,box(.018,.046,.008,PALETTE.mustard,0,.156,-.141,.006));return g;
+    return g;
   }
   if(id.includes('coffee')||id.includes('lemonade')||id.includes('shake')){
     const drink=id.includes('coffee')?'#886246':id.includes('strawberry')?'#df9e99':id.includes('shake')?'#f3debc':'#f1d68a';
@@ -145,10 +234,10 @@ function createChair(color:string){
   const tuft=ball(.023,PALETTE.porcelain,0,.846,.091);tuft.scale.z=.42;g.add(tuft);
   return packMeshes(g,`cafe-chair:${color}`);
 }
-export function createDiningTable(capacity:2|4=2){
-  const g=new THREE.Group(),w=capacity===4?1.72:.88,d=1.72;
+export function createDiningTable(capacity:1|2|4=2){
+  const g=new THREE.Group(),w=capacity===4?1.72:.88,d=capacity===1?.88:1.72;
   // A proper cafe pedestal gives knees room and a quieter, recognisable silhouette.
-  for(const z of [-.44,.44]){
+  for(const z of capacity===1?[0]:[-.44,.44]){
     g.add(box(w*.68,.065,.30,PALETTE.dark,0,.046,z,.08),cylinder(.080,.108,.64,PALETTE.sage,0,.393,z));
     g.add(cylinder(.091,.102,.075,PALETTE.metal,0,.117,z),cylinder(.098,.080,.06,PALETTE.metal,0,.661,z));
   }
@@ -156,8 +245,9 @@ export function createDiningTable(capacity:2|4=2){
   // An enamel pinstripe gives the tabletop a cafe identity without a busy surface texture.
   g.add(box(w-.145,.007,d-.145,PALETTE.mint,0,.843,0,.080),box(w-.183,.009,d-.183,PALETTE.porcelain,0,.846,0,.071));
   // One small bud vase makes a set table feel cared for without hiding the food.
-  g.add(cylinder(.044,.065,.14,PALETTE.sage,.13,.922,-.12),cylinder(.031,.044,.045,PALETTE.sage,.13,1.014,-.12));
-  for(let i=0;i<3;i++){const stem=cylinder(.007,.008,.14,PALETTE.leaf,.13+(i-1)*.018,1.087,-.12);stem.rotation.z=(i-1)*.20;g.add(stem);const flower=ball(.039,[PALETTE.mustard,PALETTE.tomato,PALETTE.porcelain][i],.13+(i-1)*.035,1.151+(i%2)*.025,-.12);flower.scale.y=.62;g.add(flower);}
+  const vaseX=capacity===1?.24:.13,vaseZ=capacity===1?-.26:-.12;
+  g.add(cylinder(.044,.065,.14,PALETTE.sage,vaseX,.922,vaseZ),cylinder(.031,.044,.045,PALETTE.sage,vaseX,1.014,vaseZ));
+  for(let i=0;i<3;i++){const stem=cylinder(.007,.008,.14,PALETTE.leaf,vaseX+(i-1)*.018,1.087,vaseZ);stem.rotation.z=(i-1)*.20;g.add(stem);const flower=ball(.039,[PALETTE.mustard,PALETTE.tomato,PALETTE.porcelain][i],vaseX+(i-1)*.035,1.151+(i%2)*.025,vaseZ);flower.scale.y=.62;g.add(flower);}
   return packMeshes(g,`cafe-table:${capacity}`);
 }
 function plant(){const g=group(cylinder(.20,.15,.33,PALETTE.tomato,0,.18),cylinder(.18,.18,.04,'#866448',0,.35));for(let i=0;i<7;i++){const angle=i*2.4,leaf=ball(.18,i%2?PALETTE.leaf:'#89a971',Math.sin(angle)*.16,.58+Math.cos(i)*.1,Math.cos(angle)*.16);leaf.scale.set(.55,1.3,.6);leaf.rotation.z=Math.sin(angle)*.5;g.add(leaf);}return g;}
@@ -182,6 +272,40 @@ function actingProps(){
   for(const prop of [cook,spoon,knife,wash,eat])prop.visible=false;
   return {cook,spoon,knife,wash,eat};
 }
+const headWidthAt=(y:number)=>1.055+.042*Math.exp(-(((y+.065)/.10)**2));
+const headFrontAt=(x:number,y:number)=>-.95*Math.sqrt(Math.max(0,.26**2-y*y-(x/headWidthAt(y))**2));
+function continuousHeadGeometry(){
+  return geo('character-continuous-head',()=>{
+    const geometry=new THREE.SphereGeometry(.26,32,24),p=geometry.getAttribute('position');
+    for(let i=0;i<p.count;i++)p.setXYZ(i,p.getX(i)*headWidthAt(p.getY(i)),p.getY(i),p.getZ(i)*.95);
+    geometry.computeVertexNormals();return geometry;
+  });
+}
+function fittedHairGeometry(){
+  return geo('character-fitted-hair',()=>{
+    const columns=32,rows=16,geometry=new THREE.SphereGeometry(1,columns,rows,0,Math.PI*2,0,Math.PI/2),p=geometry.getAttribute('position');
+    for(let row=0;row<=rows;row++)for(let col=0;col<=columns;col++){
+      const phi=col/columns*Math.PI*2,front=Math.max(0,-Math.sin(phi));
+      const hairline=.01+.125*front*front,theta=row/rows*Math.acos(hairline/.26),y=.26*Math.cos(theta),radius=.26*Math.sin(theta);
+      p.setXYZ(row*(columns+1)+col,-Math.cos(phi)*radius*headWidthAt(y)*1.035,y*1.035,Math.sin(phi)*radius*.95*1.035);
+    }
+    geometry.computeVertexNormals();return geometry;
+  });
+}
+/** Pigment follows the skin surface; an overlapping flattened sphere would
+ * intersect it and produce the jagged second-face patches seen at close zoom. */
+function cheekPatch(side:number,color:string){
+  const geometry=geo(`character-cheek-pigment:${side}`,()=>{
+    const positions:number[]=[],cx=side*.17,cy=-.064;
+    for(let i=0;i<24;i++){
+      for(const [x,y] of [[cx,cy],[cx+Math.cos(i/24*Math.PI*2)*.044,cy+Math.sin(i/24*Math.PI*2)*.021],[cx+Math.cos((i+1)/24*Math.PI*2)*.044,cy+Math.sin((i+1)/24*Math.PI*2)*.021]])positions.push(x,y,headFrontAt(x,y)-.003);
+    }
+    // Front faces point toward -Z.
+    for(let i=0;i<positions.length;i+=9)for(let axis=0;axis<3;axis++){const value=positions[i+3+axis];positions[i+3+axis]=positions[i+6+axis];positions[i+6+axis]=value;}
+    const result=new THREE.BufferGeometry();result.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));result.computeVertexNormals();return result;
+  });
+  return mesh(geometry,color);
+}
 export function createCharacter(role='chef',look=0,uniform?:string){
   const root=new THREE.Group(),body=new THREE.Group(),head=new THREE.Group(),eyes:THREE.Group[]=[],brows:THREE.Group[]=[];root.add(body);body.add(head);
   const style=Math.abs(Math.floor(look))%20,skin=['#e6ad83','#bf815b','#855337','#f0c29b'][style%4],hair=['#654330','#302d2b','#b87535','#7b6554'][style%4];
@@ -204,21 +328,27 @@ export function createCharacter(role='chef',look=0,uniform?:string){
     if(style%3===2)body.add(box(.030,.32,.020,PALETTE.porcelain,-.018,.81,-.165,.006));
   }
   // A generous chibi head and simple dark eyes carry expression at phone size.
-  head.position.y=1.274;head.scale.setScalar(1.38);const face=mesh(geo('diner-soft-face',()=>new THREE.SphereGeometry(.260,20,14)),skin);face.scale.set(1.075,1,.95);head.add(face);
-  for(const side of [-1,1]){const cheek=ball(.139,skin,side*.15,-.075,-.053);cheek.scale.set(.93,.80,.89);head.add(cheek);}
-  const haircap=mesh(geo('diner-hair-cap',()=>new THREE.SphereGeometry(.267,16,9,0,Math.PI*2,0,Math.PI*.49)),hair,0,.034,.012);haircap.scale.set(1.07,.95,.96);head.add(haircap);
+  head.position.y=1.274;head.scale.setScalar(1.38);
+  // One continuous shaped surface supplies the skull, chin and cheeks. Keep it
+  // identifiable outside the static material batch for topology regression checks.
+  const faceSurface=group(mesh(continuousHeadGeometry(),skin));faceSurface.name='face-surface';head.add(faceSurface);
+  const haircap=mesh(fittedHairGeometry(),hair);head.add(haircap);
+  const blush=group(cheekPatch(-1,style%4===2?'#a66850':'#d98970'),cheekPatch(1,style%4===2?'#a66850':'#d98970'));
+  blush.name='face-pigment';packMeshes(blush,`face-pigment:${style%4}`);blush.traverse(part=>{part.castShadow=false;});head.add(blush);
   for(const side of [-1,1]){
     head.add(ball(.050,skin,side*.261,-.014,.001));
     const innerEar=ball(.025,'#c78068',side*.282,-.009,-.025);innerEar.scale.z=.4;head.add(innerEar);
-    const eyeGroup=new THREE.Group();eyeGroup.position.set(side*.096,.018,-.247);
+    const eyeGroup=new THREE.Group();eyeGroup.position.set(side*.096,.018,headFrontAt(side*.096,.018)-.010);
     const eye=ball(.036,PALETTE.ink);eye.scale.set(.91,1.13,.44);eyeGroup.add(eye,ball(.008,PALETTE.porcelain,-.009,.016,-.016));head.add(eyeGroup);eyes.push(eyeGroup);
-    const brow=new THREE.Group();brow.position.set(side*.096,.098,-.233);brow.add(box(.072,.016,.018,hair,0,0,0,.008));brow.rotation.z=-side*.10;head.add(brow);brows.push(brow);
-    const cheek=ball(.050,style%4===2?'#a66850':'#d98970',side*.172,-.062,-.208);cheek.scale.set(1,.47,.22);head.add(cheek);
+    const brow=new THREE.Group();brow.position.set(side*.096,.098,headFrontAt(side*.096,.098)-.010);brow.add(box(.072,.016,.030,hair,0,0,0,.008));brow.rotation.z=-side*.10;head.add(brow);brows.push(brow);
     if(role!=='chef'&&style%3===1){const curl=ball(.084,hair,side*.214,.048,.025);curl.scale.set(.54,1.70,1.05);head.add(curl);}
   }
-  head.add(ball(.035,skin,0,-.034,-.265));
+  head.add(ball(.035,skin,0,-.034,headFrontAt(0,-.034)-.008));
   const smile=new THREE.Group(),openMouth=new THREE.Group();smile.position.set(0,-.078,-.247);openMouth.position.copy(smile.position);
-  smile.add(mesh(geo('diner-curved-smile',()=>new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(new THREE.Vector3(-.045,0,0),new THREE.Vector3(0,-.037,-.003),new THREE.Vector3(.045,0,0)),10,.0085,5,false)),'#814935'));
+  smile.add(mesh(geo('diner-fitted-smile',()=>{
+    const points=[];for(let i=0;i<=12;i++){const t=i/12,x=-.045+.09*t,y=-.037*2*t*(1-t);points.push(new THREE.Vector3(x,y,headFrontAt(x,y-.078)+.247-.003));}
+    return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),12,.0085,5,false);
+  }),'#814935'));
   const mouthInside=ball(.031,'#814935',0,-.012,-.001);mouthInside.scale.set(1.16,.86,.25);const tongue=ball(.020,'#df967f',0,-.026,-.008);tongue.scale.set(1,.40,.19);openMouth.add(mouthInside,tongue);openMouth.visible=false;head.add(smile,openMouth);
   if(role!=='chef'){
     for(let i=0;i<3;i++){const fringe=ball(.072,hair,-.115+i*.087,.178-(i===0?.015:0),-.128);fringe.scale.set(1.10,.55,.75);fringe.rotation.z=-.20;head.add(fringe);}
@@ -305,10 +435,65 @@ export function animateCharacter(model:THREE.Group,time:number,pose:string,carry
   for(const eye of rig.eyes){eye.scale.y=blink*(1-savor*.44);eye.children[1].visible=eye.scale.y>.45;}
 }
 
-export interface ModelOptions {tier?:number;color?:string;recipeId?:string;stage?:string;look?:number}
+function createFridge(color=PALETTE.sage){
+  // An actual open cold compartment: separate insulated walls, recessed back,
+  // supported shelves and a low threshold. Nothing is placed inside a solid box.
+  const g=group(box(.87,.15,.78,color,0,.115,0,.055),box(.91,.15,.81,color,0,1.325,0,.065),box(.075,1.12,.78,color,-.402,.752,0,.028),box(.075,1.12,.78,color,.402,.752,0,.028),box(.74,1.12,.075,color,0,.752,.352,.025),box(.70,1.03,.018,'#557c78',0,.749,.306,.012));
+  for(const x of [-.322,.322])for(const z of [-.28,.28])g.add(cylinder(.032,.037,.07,PALETTE.dark,x,.035,z,10));
+  for(const x of [-.356,.356])g.add(box(.042,1.06,.037,PALETTE.porcelain,x,.744,-.388,.015));
+  for(const y of [.24,.745]){
+    g.add(box(.71,.045,.65,PALETTE.porcelain,0,y,-.03,.018),box(.72,.045,.032,PALETTE.metal,0,y,-.365,.010));
+    // Shallow white food trays visibly support the chilled patties.
+    g.add(box(.60,.026,.39,'#e9f0e6',0,y+.036,-.083,.033));
+    for(const x of [-.15,.15]){const patty=createPatty();patty.scale.setScalar(.56);patty.position.set(x,y+.051,-.088);g.add(patty);}
+  }
+  // One quiet snowflake badge and a warm metal handle communicate refrigeration.
+  const badge=cylinder(.064,.064,.012,PALETTE.porcelain,-.275,1.326,-.411,24);badge.rotation.x=Math.PI/2;g.add(badge);
+  for(let i=0;i<3;i++){const stroke=box(.009,.080,.006,PALETTE.sage,-.275,1.326,-.421,.003);stroke.rotation.z=i*Math.PI/3;g.add(stroke);}
+  g.add(box(.036,.255,.041,PALETTE.metal,.398,.866,-.418,.015),box(.25,.023,.018,PALETTE.mint,.051,1.326,-.415,.009));
+  for(const x of [-.18,-.09,0,.09,.18])g.add(box(.036,.055,.016,PALETTE.dark,x,.116,-.396,.007));
+  g.userData.surfaceHeight=.79;g.userData.coldCompartment=true;
+  return packMeshes(g,`supply-fridge:${color}`);
+}
+function createPlateRack(stock=2){
+  const count=Math.max(0,Math.min(12,Number.isFinite(stock)?Math.floor(stock):2));
+  const g=group(box(.76,.06,.68,PALETTE.oak,0,.617,0,.033),box(.69,.025,.60,PALETTE.porcelain,0,.660,0,.019),box(.73,.055,.59,PALETTE.oak,0,.159,0,.026));
+  for(const x of [-.323,.323])for(const z of [-.274,.274])g.add(cylinder(.026,.034,.64,PALETTE.sage,x,.325,z,12));
+  for(const x of [-.358,.358])g.add(box(.045,.08,.65,PALETTE.sage,x,.676,0,.016));
+  g.add(box(.73,.08,.035,PALETTE.sage,0,.676,.321,.013),box(.34,.105,.020,PALETTE.sage,0,.546,-.334,.019));
+  const badge=cylinder(.036,.036,.010,PALETTE.porcelain,0,.548,-.350,24);badge.rotation.x=Math.PI/2;g.add(badge);
+  // This is finite inventory. No decorative spare plates appear on the lower shelf.
+  for(let i=0;i<count;i++){const plate=createCleanPlate();plate.position.y=.674+i*.035;plate.name=`clean-plate-${i}`;g.add(plate);}
+  g.userData.stock=count;g.userData.surfaceHeight=.674+Math.max(0,count-1)*.035+.061;
+  return packMeshes(g,'supply-plate-rack');
+}
+function createCupStand(stock=2){
+  const count=Math.max(0,Math.min(4,Number.isFinite(stock)?Math.floor(stock):2));
+  const g=group(box(.76,.060,.68,PALETTE.oak,0,.617,0,.033),box(.69,.025,.60,PALETTE.porcelain,0,.660,0,.019),box(.73,.055,.59,PALETTE.oak,0,.159,0,.026));
+  for(const x of [-.323,.323])for(const z of [-.274,.274])g.add(cylinder(.026,.034,.64,PALETTE.sage,x,.325,z,12));
+  for(const x of [-.358,.358])g.add(box(.045,.08,.65,PALETTE.mint,x,.676,0,.016));
+  g.add(box(.73,.08,.035,PALETTE.mint,0,.676,.321,.013),box(.34,.105,.020,PALETTE.sage,0,.546,-.334,.019));
+  g.add(box(.054,.050,.008,PALETTE.porcelain,-.008,.550,-.351,.013));const handle=ring(.021,.008,PALETTE.porcelain,.029,.55,-.352);handle.rotation.x=0;g.add(handle);
+  for(let i=0;i<count;i++){const cup=createCup();cup.scale.setScalar(.72);cup.position.set((i%2-.5)*.32,.674,(Math.floor(i/2)-.5)*.32);cup.name=`clean-cup-${i}`;g.add(cup);}
+  g.userData.stock=count;g.userData.surfaceHeight=.905;return packMeshes(g,'supply-cup-stand');
+}
+function createBoxStand(){
+  const g=group(box(.74,.055,.62,PALETTE.oak,0,.620,0,.033),box(.67,.032,.55,PALETTE.porcelain,0,.663,0,.018),box(.70,.055,.54,PALETTE.oak,0,.170,0,.025));
+  for(const x of [-.309,.309])for(const z of [-.24,.24])g.add(cylinder(.026,.034,.64,PALETTE.tomato,x,.325,z,12));
+  for(const x of [-.32,.32])g.add(box(.045,.075,.57,PALETTE.tomato,x,.7,0,.015));
+  g.add(box(.68,.075,.035,PALETTE.tomato,0,.7,.271,.015));
+  for(let i=0;i<3;i++){const carton=createFryBox();carton.position.set(0,.686+i*.050,0);g.add(carton);}
+  g.userData.surfaceHeight=1.065;return packMeshes(g,'supply-box-stand');
+}
+export interface ModelOptions {tier?:number;color?:string;recipeId?:string;stage?:string;look?:number;stock?:number}
 export function createModel(kind:string,options:ModelOptions={}):THREE.Group{
+  if(kind==='fridge')return createFridge(options.color??PALETTE.sage);
+  if(kind==='plates')return createPlateRack(options.stock??2);
+  if(kind==='cups')return createCupStand(options.stock??2);
+  if(kind==='boxes')return createBoxStand();
   if(kind==='chef'||kind==='waiter'||kind==='customer')return createCharacter(kind,options.look??0,options.color);
   if(kind==='chair')return createChair(options.color??PALETTE.tomato);
+  if(kind==='table_1')return createDiningTable(1);
   if(kind==='table_2'||kind==='table')return createDiningTable(2);
   if(kind==='table_4')return createDiningTable(4);
   if(kind==='plant'||kind==='red_planter')return plant();
@@ -368,10 +553,13 @@ export function createModel(kind:string,options:ModelOptions={}):THREE.Group{
     const knife=group(box(.22,.016,.070,PALETTE.metal,0,0,0,.006),box(.14,.027,.042,PALETTE.dark,.171,0,0,.014),box(.025,.024,.072,PALETTE.metal,.112,0,0,.007));knife.position.set(.08,.944,.17);knife.rotation.y=-.22;g.add(knife);g.userData.surfaceHeight=.96;
   }else if(kind==='fryer'){
     g.add(box(.71,.21,.64,PALETTE.metal,0,.970,0,.045),box(.56,.026,.46,'#987c48',0,1.083,0,.021));
-    for(const x of [-.287,.287])g.add(box(.027,.062,.48,PALETTE.steel,x,1.098,0,.010));
-    for(const z of [-.245,.245])g.add(box(.60,.062,.028,PALETTE.steel,0,1.098,z,.010));
-    g.add(box(.045,.029,.22,PALETTE.metal,0,1.105,-.326,.010),box(.12,.065,.21,PALETTE.dark,0,1.114,-.477,.027));
-    for(let i=0;i<5;i++)g.add(box(.015,.021,.42,PALETTE.metal,-.23+i*.115,1.100,0,.003));
+    const basket=new THREE.Group();basket.name='fryer-basket';basket.userData.restY=0;basket.userData.raisedY=.22;
+    for(const x of [-.247,.247])basket.add(box(.025,.13,.42,PALETTE.steel,x,1.078,0,.009));
+    for(const z of [-.212,.212])basket.add(box(.52,.13,.024,PALETTE.steel,0,1.078,z,.009));
+    basket.add(box(.045,.029,.29,PALETTE.metal,0,1.123,-.326,.010),box(.12,.065,.21,PALETTE.dark,0,1.123,-.477,.027));
+    for(let i=0;i<5;i++)basket.add(box(.016,.019,.42,PALETTE.metal,-.20+i*.10,1.020,0,.003));
+    for(let i=0;i<5;i++)basket.add(box(.48,.019,.015,PALETTE.metal,0,1.020,-.17+i*.085,.003));
+    packMeshes(basket,'fryer-moving-basket');g.add(basket);
     g.add(box(.60,.125,.074,PALETTE.sage,0,1.088,.30,.028));for(const x of [-.14,.14]){const knob=cylinder(.035,.035,.025,PALETTE.mustard,x,1.084,.248);knob.rotation.x=Math.PI/2;g.add(knob);}g.userData.surfaceHeight=1.14;
   }else if(kind==='sink'){
     g.add(box(.70,.030,.57,PALETTE.steel,0,.878,0,.075),box(.53,.025,.40,'#729a97',0,.898,0,.075));

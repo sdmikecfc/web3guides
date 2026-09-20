@@ -3,7 +3,9 @@ import { createDinerEvent, dispatchDinerEvent, EVENT_DEFINITIONS, EVENT_RULES, e
 import { activeDinerMode, createDiner, dinerTickCommand, dispatchDiner, generateDinerMap, sanitizeDinerSave, type DinerCommand, type DinerState } from '../src/lib/chef/diner/progression';
 import { createDinerRecord, DinerAuthorityError, replayDiner, type DinerRecord } from '../src/lib/chef/diner/authority';
 import { createRally, finishRally, rallyScore, rallyWeek, RALLY_RULES, startRally } from '../src/lib/chef/diner/rally';
-import { RECIPE_BY_ID, ROUTES } from '../src/lib/chef/diner/content';
+import { RECIPE_BY_ID, ROUTES, ingredientSupply } from '../src/lib/chef/diner/content';
+import { serviceMissingIngredients,serviceRecipeSteps } from '../src/lib/chef/diner/service';
+import {recipeVessel,vesselSupplyStation} from '../src/lib/chef/diner/batch';
 import { buildServiceLoadout, serviceGeometry } from '../src/lib/chef/diner/geometry';
 import type { ServiceAction, ServiceState } from '../src/lib/chef/diner/types';
 
@@ -20,22 +22,25 @@ class Cook {
   constructor(readonly get:()=>ServiceState,readonly send:(action:ServiceAction)=>void){}
   tick(n=1){this.send({type:'tick',ticks:n});}
   until(predicate:()=>boolean,limit=2000){let ticks=0;while(!predicate()&&ticks++<limit&&['playing','closing'].includes(this.get().phase))this.tick();assert(predicate(),`Cooking timed out: ${this.get().notice}`);}
-  touch(targetId:string,recipeId?:string,seatId?:string){this.send({type:'interact',targetId,recipeId,seatId});this.until(()=>this.get().chef.path.length===0);}
+  touch(targetId:string,recipeId?:string,seatId?:string,ingredientId?:string){this.send({type:'interact',targetId,recipeId,seatId,ingredientId});this.until(()=>this.get().chef.path.length===0);}
   dish(recipeId:string){
-    this.touch('crate',recipeId);assert.equal(this.get().chef.held?.recipeId,recipeId);
-    for(const [index,step] of RECIPE_BY_ID[recipeId].steps.entries()){
-      const station=this.get().stations.find(s=>s.kind===step.station)!;this.touch(station.id);this.send({type:'hold',active:true});
+    if(recipeId==='fries'&&this.get().config.batchVersion&&this.get().stations.some(st=>st.slots.some(slot=>slot.batch?.phase==='raised'))){this.touch('boxes');this.touch('fryer');return;}
+    const physical=this.get().config.physicalSupplies,primary=RECIPE_BY_ID[recipeId].ingredients[0];this.touch(physical?ingredientSupply(primary):'crate',recipeId,undefined,physical?primary:undefined);assert.equal(this.get().chef.held?.recipeId,recipeId);
+    for(const [index,step] of serviceRecipeSteps(this.get(),recipeId).entries()){
+      const station=this.get().stations.find(s=>s.kind===step.station)!,missing=serviceMissingIngredients(this.get().chef.held!);this.touch(station.id);
+      for(const ingredientId of missing){this.touch(ingredientSupply(ingredientId),recipeId,undefined,ingredientId);this.touch(station.id);}
+      this.send({type:'hold',active:true});
       this.until(()=>this.get().stations.find(s=>s.id===station.id)!.slots.some(slot=>slot.job?.ready));
-      this.send({type:'hold',active:false});this.touch(station.id);assert.equal(this.get().chef.held?.step,index+1);
+      this.send({type:'hold',active:false});if(physical&&index===serviceRecipeSteps(this.get(),recipeId).length-1){if(recipeId==='fries'&&this.get().config.batchVersion)this.touch(station.id);this.touch(this.get().config.batchVersion?vesselSupplyStation(recipeVessel(recipeId))!:'plates');}this.touch(station.id);assert.equal(this.get().chef.held?.step,index+1);
     }
   }
-  wash(tableId:string,seatId:string){this.touch(tableId,undefined,seatId);assert.equal(this.get().chef.held?.kind,'dirty');this.touch('sink');this.send({type:'hold',active:true});this.until(()=>this.get().stations.find(s=>s.kind==='sink')!.slots.every(slot=>!slot.item));this.send({type:'hold',active:false});}
+  wash(tableId:string,seatId:string){this.touch(tableId,undefined,seatId);if(!this.get().chef.held)return;assert.equal(this.get().chef.held?.kind,'dirty');this.touch('sink');this.send({type:'hold',active:true});this.until(()=>this.get().stations.find(s=>s.kind==='sink')!.slots.every(slot=>!slot.item));this.send({type:'hold',active:false});}
   run(allowMisses=false){this.send({type:'open'});let guard=0;
     while(['playing','closing'].includes(this.get().phase)&&guard++<1000){
       const s=this.get();if(s.served+s.missed>=s.config.customers){this.tick(20);continue;}
       const guest=s.customers.filter(c=>c.phase==='seated').sort((a,b)=>a.patience-b.patience)[0];
-      if(guest){this.dish(guest.recipeId);this.touch(guest.tableId!,undefined,guest.seatId!);assert.equal(this.get().customers.find(c=>c.id===guest.id)?.phase,'eating',this.get().notice);continue;}
-      const dirty=s.tables.flatMap(table=>table.seats.filter(seat=>seat.status==='dirty').map(seat=>({tableId:table.id,seatId:seat.id})))[0];
+      if(guest&&s.tables.some(table=>table.seats.some(seat=>seat.customerId===guest.id&&seat.item?.kind==='dirty'))){this.wash(guest.tableId!,guest.seatId!);continue;}if(guest&&(!s.config.physicalSupplies||recipeVessel(guest.recipeId)==='fry_box'||(recipeVessel(guest.recipeId)==='cup'?s.cleanCups:s.cleanPlates)>0)){this.dish(guest.recipeId);this.touch(guest.tableId!,undefined,guest.seatId!);assert.equal(this.get().customers.find(c=>c.id===guest.id)?.phase,'eating',this.get().notice);continue;}
+      const dirty=s.tables.flatMap(table=>table.seats.filter(seat=>seat.item?.kind==='dirty').map(seat=>({tableId:table.id,seatId:seat.id})))[0];
       if(dirty){this.wash(dirty.tableId,dirty.seatId);continue;}this.tick(10);
     }
     assert.equal(this.get().phase,'complete',this.get().notice);if(!allowMisses)assert.equal(this.get().missed,0);
@@ -107,10 +112,10 @@ test('rally clock uses server elapsed and cannot borrow time from ordinary cooki
   r=replayDiner(r,[{type:'rallyService',action:{type:'tick',ticks:20}}],now+1000).record;assert.equal(r.state.rally.service!.tick,20);
   assert.equal(replayDiner(r,[{type:'rallyService',action:{type:'tick',ticks:1}}],now+10000).record.state.rally.service!.phase,'paused');
 });
-test('first two tutorial services retain patience and alternate burger/fries; third is scripted',()=>{
-  let s=act(createDiner(now,'patient-intro'),{type:'startRun'});s=act(s,{type:'chooseNode',nodeId:s.run!.available[0]});s=act(s,{type:'service',action:{type:'open'}});
+test('first tutorial waits patiently for the first burger and its dirty-plate wash',()=>{
+  let s=createDiner(now,'patient-intro');s=act(s,{type:'setupLayout',stations:[...s.truckConfig.stations,{id:'grill',kind:'grill',x:1,y:0,facing:0},{id:'prep',kind:'prep',x:2,y:0,facing:0}],tables:s.truckConfig.tables});s=act(s,{type:'startRun'});s=act(s,{type:'chooseNode',nodeId:s.run!.available[0]});s=act(s,{type:'service',action:{type:'open'}});
   for(let i=0;i<100;i++)s=act(s,{type:'service',action:{type:'tick',ticks:100}});
-  assert.equal(s.run!.service!.strikes,0);assert.equal(s.run!.service!.missed,0);assert.deepEqual(s.run!.service!.customers.map(c=>c.recipeId),['classic_burger','fries','classic_burger','fries']);
+  assert.equal(s.run!.service!.strikes,0);assert.equal(s.run!.service!.missed,0);assert.deepEqual(s.run!.service!.customers.map(c=>c.recipeId),['classic_burger']);
   for(const customer of s.run!.service!.customers)assert.equal(customer.patience,customer.phase==='seated'?customer.maxPatience:customer.queuePatience);
   assert(sanitizeDinerSave(s));
 });
@@ -120,16 +125,16 @@ test('qualified trip ingredients arrive even when every stop chose coins; cap re
   assert.equal(s.daily.truckRuns.length,2);assert.equal(s.daily.minted,2);assert.equal(Object.values(s.pantry).reduce((a,b)=>a+b,0),2);
 });
 
-test('all three route finales complete through legal paths, cooking, washing and stop choices',()=>{
+test('all three cosy route finales complete through legal paths, physical boxed batches, clearing and stop choices',()=>{
   for(const route of ROUTES){
     // Returning-player fixtures own preceding routes and tier-two kitchen tools; never service results.
-    let s=createDiner(now,`route-proof-${route.id}`);s.tutorial.finished=true;s.truckTier=route.tier;s.restaurantLevel=5;for(const id of ['grill','prep','sink','fryer'])s.equipment[id].tier=2;
+    let s=createDiner(now,`route-proof-${route.id}`);s=act(s,{type:'settings',cosy:true});s.tutorial.finished=true;s.truckTier=route.tier;s.restaurantLevel=5;s.recipes.fries={level:0};s.equipment.boxes={tier:1,truckOwned:true,homeCopies:0};for(const id of ['grill','prep','sink','fryer']){s.equipment[id].tier=2;s.equipment[id].truckOwned=true;}
     for(const earlier of ROUTES.filter(r=>r.tier<route.tier)){s.collections.routeWins.push(earlier.id);for(const id of earlier.recipeIds)s.recipes[id]={level:0};}
-    s=act(s,{type:'setTruckMenu',recipeIds:['fries']});
+    s=act(s,{type:'buyTruckTable',capacity:2});s=act(s,{type:'setTruckMenu',recipeIds:['fries']});
     const compact=buildServiceLoadout(s.truckTier,['fries'],{fryer:2,sink:2});
-    s=act(s,{type:'setupLayout',stations:compact.stations.map(({id,kind,x,y,facing})=>({id,kind,x,y,facing})),tables:[{id:'table_1',x:0,y:serviceGeometry(s.truckTier).pavement.y,capacity:2,rotation:0}]});
+    s=act(s,{type:'setupLayout',stations:compact.stations.map(({id,kind,x,y,facing})=>({id,kind,x,y,facing})),tables:[{id:'table_1',x:0,y:serviceGeometry(s.truckTier).pavement.y+1,capacity:2,rotation:0}]});
     s=act(s,{type:'startRun',routeId:route.id});
-    let serviced=0,stops=0,paid=0,washed=0,ticks=0;
+    let serviced=0,stops=0,paid=0,washed=0,cleared=0,ticks=0;
     while(s.run){
       const nodes=s.run.map.filter(node=>s.run!.available.includes(node.id));
       const preference=['slow','medium','special','busy','finale','bonus','ingredients','shop','event'];
@@ -137,7 +142,7 @@ test('all three route finales complete through legal paths, cooking, washing and
       s=act(s,{type:'chooseNode',nodeId:node.id});
       if(s.run!.service){
         const cook=new Cook(()=>{assert(s.run?.service,`${route.id}: run ended during service ${serviced}`);return s.run.service;},action=>{s=act(s,{type:'service',action});});cook.run(true);
-        serviced++;paid+=s.run!.service!.paid;washed+=s.run!.service!.washed;ticks+=s.run!.service!.tick;s=act(s,{type:'finishService'});
+        serviced++;cleared+=s.run!.service!.paid-s.run!.service!.tables.flatMap(table=>table.seats).filter(seat=>seat.status==='dirty').length;paid+=s.run!.service!.paid;washed+=s.run!.service!.washed;ticks+=s.run!.service!.tick;s=act(s,{type:'finishService'});
       }else if(node.kind==='shop'){
         const offer=s.run!.offers.find(o=>o.kind==='recipe'&&o.price<=s.run!.haul);if(offer)s=act(s,{type:'buyOffer',offerId:offer.id});s=act(s,{type:'leaveNode'});stops++;
       }else if(node.kind==='event'){
@@ -148,8 +153,8 @@ test('all three route finales complete through legal paths, cooking, washing and
         stops++;
       }else {s=act(s,{type:'chooseGift',choice:'coins'});stops++;}
     }
-    assert.equal(s.lastRun!.reason,'won',route.id);assert.equal(serviced,7);assert.equal(stops,5);assert(s.collections.routeWins.includes(route.id));assert(paid>70);assert(washed>50);
-    console.log(`  ${route.name}: ${serviced} services, ${stops} stops, ${paid} real meals, ${washed} washes, ${(ticks/1200).toFixed(1)} simulated minutes`);
+    assert.equal(s.lastRun!.reason,'won',route.id);assert.equal(serviced,7);assert.equal(stops,5);assert(s.collections.routeWins.includes(route.id));assert(paid>70);assert.equal(washed,0);assert(cleared>50);
+    console.log(`  ${route.name}: ${serviced} services, ${stops} stops, ${paid} real meals, ${cleared} cleared cartons, ${(ticks/1200).toFixed(1)} simulated minutes`);
   }
 });
 

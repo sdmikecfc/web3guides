@@ -6,7 +6,7 @@ import { dispatchDiner, type DinerCommand } from "../src/lib/chef/diner/progress
 import { SERVICE_RULES } from "../src/lib/chef/diner/content";
 const now = Date.UTC(2026, 8, 20, 8);
 let groups = 0; const test = (name: string, fn: () => void) => { fn(); groups++; console.log(`ok ${name}`); };
-function playing() { const record = createDinerRecord(now, "authority-test"); record.state = dispatchDiner(record.state, { type: "startRun" }, { now }).state; record.state = dispatchDiner(record.state, { type: "chooseNode", nodeId: record.state.run!.available[0] }, { now }).state; record.state = dispatchDiner(record.state, { type: "service", action: { type: "open" } }, { now }).state; return record; }
+function playing() { const record = createDinerRecord(now, "authority-test"); record.state=dispatchDiner(record.state,{type:'setupLayout',stations:[...record.state.truckConfig.stations,{id:'grill',kind:'grill',x:1,y:0,facing:0},{id:'prep',kind:'prep',x:2,y:0,facing:0}],tables:record.state.truckConfig.tables},{now}).state; record.state = dispatchDiner(record.state, { type: "startRun" }, { now }).state; record.state = dispatchDiner(record.state, { type: "chooseNode", nodeId: record.state.run!.available[0] }, { now }).state; record.state = dispatchDiner(record.state, { type: "service", action: { type: "open" } }, { now }).state; assert.equal(record.state.run!.service!.phase,'playing');return record; }
 function throws(fn: () => unknown, code: string) { assert.throws(fn, error => error instanceof DinerAuthorityError && error.code === code); }
 const tick = (ticks: number): DinerCommand => ({ type: "service", action: { type: "tick", ticks } });
 test("clock matches shared tick duration and spend cannot exceed server elapsed", () => {

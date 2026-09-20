@@ -9,6 +9,6 @@ export const metadata: Metadata = {
 };
 
 export default function DinerPreviewPage() {
-  if (process.env.NODE_ENV !== "development" && process.env.DINER_PREVIEW_ENABLED !== "true") notFound();
+  if (process.env.NODE_ENV !== "development" && process.env.DINER_PREVIEW_ENABLED === "false") notFound();
   return <DinerClient />;
 }

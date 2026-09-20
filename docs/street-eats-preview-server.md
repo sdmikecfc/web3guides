@@ -4,7 +4,9 @@ This is a fresh, separate preview. Its browser key is `street_eats_preview_v1`, 
 
 ## Deploying the browser preview
 
-Set `DINER_PREVIEW_ENABLED=true` for the production build and runtime to expose `/chef/diner-preview`. The production page otherwise returns 404; setting only a runtime variable after the page has been prerendered is insufficient. On the existing Kitchen hostname, use `/diner-preview`. The root restaurant route remains the older game. The art bench stays development-only.
+The browser preview is available by default. `domainkitchen.xyz` and `www.domainkitchen.xyz` open it at `/`, `/chef` and `/chef/`. `/diner-preview` and `/chef/diner-preview` remain direct aliases. Explicit `/game` and `/chef/game` retain the legacy game and its independent saves; the older `chef.web3guides.com` homepage also retains its existing behavior. The art bench stays development-only.
+
+For an explicit rollback, set `DINER_PREVIEW_ENABLED=false` at build and runtime and redeploy. This restores the dedicated-domain homepage to the legacy game and makes the new diner page return 404. No enable flag is needed for an ordinary deployment of the new guest game.
 
 For a browser-only preview, explicitly keep `DINER_PREVIEW_SERVER_ENABLED=false`. This does not require the new database migrations and leaves progress on each browser. Enable online features only after the separate provisioning and transaction checks below. Build/deploy a clean checkout of the intended commit: a Vercel CLI deployment from a dirty workspace can include unrelated uncommitted files.
 

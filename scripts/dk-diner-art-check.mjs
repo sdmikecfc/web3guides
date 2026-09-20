@@ -15,12 +15,13 @@ async function sourceModule(relative){
   return import(`data:text/javascript;base64,${Buffer.from(result.outputText).toString('base64')}`);
 }
 const kit=await sourceModule('src/app/chef/diner-preview/models.ts');
-const {RECIPES,EQUIPMENT}=await sourceModule('src/lib/chef/diner/content.ts');
+const {RECIPES,EQUIPMENT,INGREDIENTS}=await sourceModule('src/lib/chef/diner/content.ts');
 const {DECOR}=await sourceModule('src/lib/chef/diner/collections.ts');
 let models=0,triangles=0;
 function inspect(model,label,{minY=-.04,maxY=2.1,maxWidth=2.1,maxDepth=2.1}={}){
   assert.equal(model.userData.unsupportedModel,undefined,`${label}: generic model fallback`);
   assert.equal(model.userData.unsupportedRecipe,undefined,`${label}: generic recipe fallback`);
+  assert.equal(model.userData.unsupportedIngredient,undefined,`${label}: generic ingredient fallback`);
   model.updateMatrixWorld(true);let meshCount=0,triangleCount=0;
   model.traverse(object=>{
     if(!object.isMesh)return;meshCount++;
@@ -47,6 +48,48 @@ function fingerprint(model){
   return hash.digest('hex');
 }
 const dishFingerprints=new Map();
+const ingredientFingerprints=new Map();
+for(const ingredient of INGREDIENTS){
+  const food={recipeId:'classic_burger',kind:'ingredient',ingredientId:ingredient.id,stage:`raw_${ingredient.id}`};
+  const model=kit.createFoodModel(food),hash=fingerprint(model);
+  inspect(model,`ingredient/${ingredient.id}`,{maxY:.7,maxWidth:.75,maxDepth:.75});
+  assert.ok(!ingredientFingerprints.has(hash),`${ingredient.id}: visually identical to ${ingredientFingerprints.get(hash)}`);
+  ingredientFingerprints.set(hash,ingredient.id);
+  assert.equal(fingerprint(kit.createFoodModel({...food,mastery:10})),hash,`${ingredient.id}: mastery decorated a loose supply`);
+  assert.ok(!model.getObjectByName('food-plate'),`${ingredient.id}: supply arrived on an unearned plate`);
+}
+const emptyPlate=kit.createFoodModel({recipeId:'classic_burger',kind:'plate'});
+inspect(emptyPlate,'clean supply plate',{maxY:.1,maxWidth:.65,maxDepth:.65});
+assert.notEqual(fingerprint(emptyPlate),fingerprint(kit.createPlate(true)),'clean and dirty plates are indistinguishable');
+assert.equal(fingerprint(emptyPlate),fingerprint(kit.createFoodModel({recipeId:'classic_burger',kind:'plate',mastery:10})),'mastery alters clean supply plates');
+emptyPlate.traverse(object=>{if(object.isMesh){const color=object.material.color;assert.ok(Math.max(color.r,color.g,color.b)-Math.min(color.r,color.g,color.b)<.18,'clean plate has a coloured earned rim');}});
+for(const stock of [0,1,2,4,6,12]){
+  const rack=kit.createModel('plates',{stock});inspect(rack,`plates/stock${stock}`,{maxWidth:.81,maxDepth:.81});
+  assert.equal(rack.userData.stock,stock);assert.equal(rack.children.filter(child=>/^clean-plate-\d+$/.test(child.name)).length,stock,'rack stock does not match visible plate count');
+  assert.ok(new THREE.Box3().setFromObject(rack).min.y<.02,'plate rack does not stand on the floor');
+}
+for(const stock of [0,1,2,3,4]){
+  const stand=kit.createModel('cups',{stock});inspect(stand,`cups/stock${stock}`,{maxWidth:.81,maxDepth:.81});
+  assert.equal(stand.userData.stock,stock);assert.equal(stand.children.filter(child=>/^clean-cup-\d+$/.test(child.name)).length,stock,'cup stand stock does not match visible vessels');
+}
+for(const vesselKind of ['cup','fry_box']){
+  const clean=kit.createFoodModel({recipeId:vesselKind==='cup'?'coffee':'fries',kind:'plate',vesselKind});
+  const dirty=kit.createFoodModel({recipeId:vesselKind==='cup'?'coffee':'fries',kind:'dirty',vesselKind});
+  inspect(clean,`clean/${vesselKind}`,{maxY:.7,maxWidth:.75,maxDepth:.75});inspect(dirty,`dirty/${vesselKind}`,{maxY:.7,maxWidth:.75,maxDepth:.75});
+  assert.notEqual(fingerprint(clean),fingerprint(dirty),`${vesselKind}: dirty vessel indistinguishable`);
+  assert.notEqual(fingerprint(clean),fingerprint(emptyPlate),`${vesselKind}: generic plate substituted`);
+  assert(!clean.getObjectByName('food-plate'),'non-plate vessel incorrectly includes a plate');
+  for(const mastery of [0,3,10]){const served=kit.createFoodModel({recipeId:vesselKind==='cup'?'coffee':'fries',kind:'dish',vesselKind,mastery});inspect(served,`served/${vesselKind}/mastery${mastery}`,{maxY:.7,maxWidth:.75,maxDepth:.75});assert(!served.getObjectByName('food-plate'),'serving or mastery conjures a plate');}
+}
+const fryer=kit.createModel('fryer'),basket=fryer.getObjectByName('fryer-basket');
+assert(basket,'fryer has no physical movable basket');const restingBasket=new THREE.Box3().setFromObject(basket),warmBasketKit=kit.modelKitStats();
+basket.position.y=basket.userData.raisedY;const raisedBasket=new THREE.Box3().setFromObject(basket);
+assert(Math.abs(raisedBasket.min.y-restingBasket.min.y-.22)<1e-5&&raisedBasket.min.y>1.1,'raised basket does not clear the oil');
+assert.deepEqual(kit.modelKitStats(),warmBasketKit,'raising the real basket allocates replacement geometry');
+const fridge=kit.createModel('fridge');fridge.updateMatrixWorld(true);
+assert.equal(fridge.userData.coldCompartment,true,'fridge lacks its explicit open-cold-storage model');
+// The visible cold compartment contains physical patty surfaces before the back wall.
+for(const shelfY of [.315,.820]){const hits=new THREE.Raycaster(new THREE.Vector3(-.15,shelfY,-2),new THREE.Vector3(0,0,1)).intersectObject(fridge,true);assert.ok(hits.length>0,'empty fridge stock ray');assert.equal(hits[0].object.material.color.getHexString(),'b65c53','cold stock is occluded by an opaque cabinet front');}
 for(const recipe of RECIPES){
   const dish=kit.createFoodModel({recipeId:recipe.id,kind:'dish'}),dishHash=fingerprint(dish);
   inspect(dish,`${recipe.id}/dish`,{maxY:.7,maxWidth:.75,maxDepth:.75});
@@ -56,7 +99,13 @@ for(const recipe of RECIPES){
     assert.notEqual(fingerprint(model),dishHash,`${recipe.id}/${kind}: indistinguishable geometry from served dish`);
   }
   for(const step of recipe.steps.slice(0,-1)){const model=kit.createFoodModel({recipeId:recipe.id,kind:'processed',stage:step.output});inspect(model,`${recipe.id}/${step.output}`,{maxY:.7,maxWidth:.75,maxDepth:.75});assert.notEqual(fingerprint(model),dishHash,`${recipe.id}/${step.output}: unfinished ingredient renders as completed dish`);}
+  const prepared=kit.createFoodModel({recipeId:recipe.id,kind:'processed',stage:`prepared_${recipe.id}`});
+  inspect(prepared,`${recipe.id}/needs-plate`,{maxY:.7,maxWidth:.75,maxDepth:.75});
+  assert.equal(prepared.userData.unplated,true);assert.ok(!prepared.getObjectByName('food-plate'),`${recipe.id}: a plate appeared before plating`);
+  assert.notEqual(fingerprint(prepared),dishHash,`${recipe.id}: unplated food looks served`);
 }
+const cookedPatty=kit.createFoodModel({recipeId:'classic_burger',kind:'processed',ingredientId:'beef',stage:'cooked_patty'});
+assert.notEqual(fingerprint(cookedPatty),fingerprint(kit.createIngredientModel('beef')),'raw and grilled patties are indistinguishable');
 for(const item of EQUIPMENT)for(const tier of item.tiers){
   const model=kit.createModel(item.id,{tier:tier.tier});
   inspect(model,`${item.id}/tier${tier.tier}`,{maxWidth:item.footprint[0]+.12,maxDepth:item.footprint[1]+.12});

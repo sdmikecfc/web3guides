@@ -1,22 +1,22 @@
 import assert from 'node:assert/strict';
 import { CONTENT_VERSION, EQUIPMENT_BY_ID, INGREDIENTS, RECIPES, RECIPE_BY_ID, ROUTES, SERVICE_RULES, TRUCK_TIERS, recipePrice } from '../src/lib/chef/diner/content';
 import { buildServiceLoadout, makeStation, makeTable, serviceGeometry, servicePath, starterStations, starterTables, stationFootprint, stationWorkingCell, tableFootprint, validateServiceLayout } from '../src/lib/chef/diner/geometry';
-import { createService, dispatchService, sanitizeService, serviceReadyError, serviceResult, serviceTargetIntent, stepService } from '../src/lib/chef/diner/service';
+import { createService, dispatchService, sanitizeService, serviceReadyError, serviceResult, serviceRecipeSteps, serviceTargetIntent, stepService } from '../src/lib/chef/diner/service';
 import type { CreateServiceOptions, ServiceAction, ServiceState } from '../src/lib/chef/diner/types';
 
 let groups=0;
 function check(name:string,run:()=>void){run();groups++;console.log(`PASS ${name}`);}
 class Driver {
   s:ServiceState;
-  constructor(options:CreateServiceOptions={}){this.s=dispatchService(createService(options),{type:'open'});assert.equal(this.s.phase,'playing',this.s.notice);}
+  constructor(options:CreateServiceOptions={}){this.s=dispatchService(createService({physicalSupplies:false,stations:starterStations(options.tier??1).filter(st=>!['fridge','plates'].includes(st.kind)),...options}),{type:'open'});assert.equal(this.s.phase,'playing',this.s.notice);}
   act(action:ServiceAction){this.s=dispatchService(this.s,action);}
   tick(n=1){stepService(this.s,n);}
   until(done:()=>boolean,limit=12000){let n=0;while(!done()&&n++<limit&&['playing','closing'].includes(this.s.phase))this.tick();assert(done(),`Timed out at ${this.s.tick}: ${this.s.notice}`);}
   interact(targetId:string,recipeId?:string,seatId?:string){this.act({type:'interact',targetId,recipeId,seatId});this.until(()=>this.s.chef.path.length===0,1000);}
   cook(recipeId:string){
     this.interact('crate',recipeId);assert.equal(this.s.chef.held?.recipeId,recipeId);
-    for(let i=0;i<RECIPE_BY_ID[recipeId].steps.length;i++){
-      const definition=RECIPE_BY_ID[recipeId].steps[i],station=this.s.stations.find(st=>st.kind===definition.station)!;
+    for(let i=0;i<serviceRecipeSteps(this.s,recipeId).length;i++){
+      const definition=serviceRecipeSteps(this.s,recipeId)[i],station=this.s.stations.find(st=>st.kind===definition.station)!;
       assert(station,definition.station);this.interact(station.id);
       const itemId=station.id;this.act({type:'hold',active:true});
       this.until(()=>!!this.s.stations.find(st=>st.id===itemId)?.slots.some(slot=>slot.job?.ready),1000);
@@ -34,8 +34,8 @@ class Driver {
   run(){let decisions=0;while(['playing','closing'].includes(this.s.phase)&&decisions++<200){
     if(this.s.served+this.s.missed>=this.s.config.customers){this.tick(20);continue;}
     const seated=this.s.customers.filter(c=>c.phase==='seated').sort((a,b)=>a.patience-b.patience)[0];
-    if(seated){this.serve(seated.id);continue;}
-    const dirty=this.s.tables.flatMap(t=>t.seats.filter(seat=>seat.status==='dirty').map(seat=>({tableId:t.id,seatId:seat.id})))[0];
+    if(seated){const dirtySeat=this.s.tables.find(table=>table.id===seated.tableId)?.seats.find(seat=>seat.id===seated.seatId&&seat.item?.kind==='dirty');if(dirtySeat){this.wash(seated.tableId!,seated.seatId!);continue;}this.serve(seated.id);continue;}
+    const dirty=this.s.tables.flatMap(t=>t.seats.filter(seat=>seat.item?.kind==='dirty').map(seat=>({tableId:t.id,seatId:seat.id})))[0];
     if(dirty){this.wash(dirty.tableId,dirty.seatId);continue;}
     this.tick(20);
   }assert.equal(this.s.phase,'complete',`Bot did not finish: ${this.s.notice}`);}
@@ -50,10 +50,23 @@ check('complete versioned diner catalog and reachable geometry at four truck siz
   const doorBlocked=starterStations();doorBlocked.push(makeStation('extra','coffee',1,2));assert(validateServiceLayout(1,doorBlocked,starterTables()));
   assert(buildServiceLoadout(1,['classic_burger','fries','lemonade','coffee']).error,'five-station menu cannot silently overflow starter');
 });
-check('actual input bot completes the default eight-customer burger/fries service deterministically',()=>{
+check('actual input bot retains legacy eight-customer burger/fries service deterministically',()=>{
   const a=new Driver({seed:'full-service'});a.run();const b=new Driver({seed:'full-service'});b.run();
   assert.deepEqual(a.s,b.s);assert.equal(a.s.served,8);assert.equal(a.s.paid,8);assert.equal(a.s.strikes,0);assert(a.s.washed>=6);assert(a.s.coins>0);assert.equal(a.s.spawned,8);
   console.log(`  eight customers, ${a.s.coins} haul coins, ${(a.s.tick/20).toFixed(1)} seconds, ${a.s.washed} washed plates`);
+});
+check('keyboard interruption preserves physical movement, avoids backtracking, and centers before turns',()=>{
+  const d=new Driver({seed:'keyboard',customers:1});d.act({type:'move',x:1,y:5});d.tick(3);
+  assert(Math.abs(d.s.chef.y-2.48)<1e-9);const first={x:d.s.chef.x,y:d.s.chef.y};
+  d.act({type:'move',x:1,y:3});assert.equal(d.s.chef.y,first.y,'input alone must not teleport');d.tick();assert(d.s.chef.y>first.y,'same-direction key must not briefly walk backwards');
+  const beforeReverse=d.s.chef.y;d.act({type:'move',x:1,y:2});assert.equal(d.s.chef.y,beforeReverse);d.tick();assert(d.s.chef.y<beforeReverse,'opposite key reverses within the current clear corridor');
+  d.act({type:'move',x:2,y:2});const beforeTurn={x:d.s.chef.x,y:d.s.chef.y};d.tick();assert.equal(d.s.chef.x,beforeTurn.x,'a turn centers on the corridor instead of cutting the corner');assert(d.s.chef.y<beforeTurn.y);
+  let guard=0;while(d.s.chef.path.length&&guard++<100){const p={x:d.s.chef.x,y:d.s.chef.y};d.tick();assert(Math.hypot(d.s.chef.x-p.x,d.s.chef.y-p.y)<=SERVICE_RULES.chefSpeed/20+1e-8);assert(servicePath(1,d.s.stations,d.s.tables,d.s.chef,d.s.chef.path.at(-1)??{x:2,y:2}));}
+  assert.deepEqual({x:d.s.chef.x,y:d.s.chef.y},{x:2,y:2});assert(sanitizeService(d.s));
+  // UI initial-key cancellation is a normal move to the rounded current cell,
+  // followed by the desired neighbor. A blocked neighbor cannot revive a click target.
+  d.act({type:'interact',targetId:'crate',recipeId:'classic_burger'});d.tick();const rounded={x:Math.round(d.s.chef.x),y:Math.round(d.s.chef.y)};d.act({type:'move',...rounded});d.act({type:'move',x:3,y:2});
+  assert.equal(d.s.chef.targetId,null);d.until(()=>d.s.chef.path.length===0);assert.deepEqual({x:d.s.chef.x,y:d.s.chef.y},rounded);assert.equal(d.s.chef.held,null);
 });
 check('all 22 recipes execute their real ordered station chains and yield one matching plated item',()=>{
   for(const recipe of RECIPES){const layout=buildServiceLoadout(1,[recipe.id]);assert.equal(layout.error,null,recipe.id);const d=new Driver({seed:recipe.id,menu:[recipe.id],customers:1,arrivalTicks:2000,queuePatienceTicks:12000,tablePatienceTicks:12000,...layout});d.cook(recipe.id);assert.equal(d.s.chef.held?.stage,`plated_${recipe.id}`);}
@@ -69,14 +82,14 @@ check('risk cooking burns unattended food and cold dishes earn base price withou
   const burnt=new Driver({menu:['classic_burger'],customers:1,tablePatienceTicks:12000});burnt.interact('crate','classic_burger');burnt.interact('grill');burnt.tick(220);assert.equal(burnt.s.stations.find(st=>st.kind==='grill')!.slots[0].item?.kind,'burnt');burnt.interact('grill');assert.equal(burnt.s.chef.held?.kind,'burnt');burnt.act({type:'discard'});burnt.until(()=>!burnt.s.chef.path.length);assert.equal(burnt.s.chef.held,null);
   const cold=new Driver({menu:['fries'],customers:1,tablePatienceTicks:12000});cold.until(()=>cold.s.customers.some(c=>c.phase==='seated'));cold.cook('fries');cold.tick(SERVICE_RULES.coldTicks);assert.equal(cold.s.chef.held?.cold,true);const customer=cold.s.customers[0];cold.interact(customer.tableId!,undefined,customer.seatId!);const served=cold.s.customers[0];assert.equal(served.tip,0);assert.equal(served.payment,recipePrice('fries'));assert.equal(cold.s.combo,0);cold.until(()=>cold.s.phase==='complete');assert.equal(cold.s.coins,recipePrice('fries'));
 });
-check('independent table seats stay locked through clearing until the exact meal plate is washed',()=>{
+check('independent seats admit guests before clearing and washing settles only the exact old meal',()=>{
   const d=new Driver({seed:'seat-identity',menu:['fries'],customers:3,arrivalTicks:20,queuePatienceTicks:12000,tablePatienceTicks:12000});d.until(()=>d.s.customers.filter(c=>c.phase==='seated').length===2);
   assert.equal(d.s.customers.filter(c=>c.phase==='queue').length,1);const first=d.s.customers[0];d.serve(first.id);d.until(()=>d.s.tables[0].seats.some(seat=>seat.status==='dirty'));
-  const firstSeat=d.s.tables[0].seats.find(seat=>seat.id===first.seatId)!;const otherSeat=d.s.tables[0].seats.find(seat=>seat.id!==first.seatId)!;const otherMeal=otherSeat.mealId;
-  d.interact(first.tableId!,undefined,first.seatId!);const plate=JSON.parse(JSON.stringify(d.s.chef.held));assert.equal(plate.meal.mealId,first.mealId);assert.equal(d.s.tables[0].seats.find(seat=>seat.id===first.seatId)?.status,'awaitingWash');d.tick(20);assert.equal(d.s.customers.filter(c=>c.phase==='queue').length,1);
-  d.act({type:'discard'});d.until(()=>!d.s.chef.path.length);assert.equal(d.s.chef.held?.id,plate.id,'bin must not destroy the only release receipt');
+  const firstSeat=d.s.tables[0].seats.find(seat=>seat.id===first.seatId)!;const otherSeat=d.s.tables[0].seats.find(seat=>seat.id!==first.seatId)!;const otherMeal=otherSeat.mealId;d.until(()=>d.s.customers[2].phase==='seated');
+  d.interact(first.tableId!,undefined,first.seatId!);const plate=JSON.parse(JSON.stringify(d.s.chef.held));assert.equal(plate.meal.mealId,first.mealId);assert.equal(d.s.tables[0].seats.find(seat=>seat.id===first.seatId)?.status,'occupied');d.tick(20);assert.equal(d.s.customers.filter(c=>c.phase==='queue').length,0);
+  d.act({type:'discard'});d.until(()=>!d.s.chef.path.length);assert.equal(d.s.chef.held?.id,plate.id,'bin must not destroy the dirty meal receipt');
   d.interact('sink');d.act({type:'hold',active:true});d.until(()=>d.s.washed===1);assert.equal(d.s.tables[0].seats.find(seat=>seat.id===otherSeat.id)?.mealId,otherMeal);assert.equal(d.s.customers.filter(c=>c.phase==='queue').length,0);
-  const after=d.s.tables[0].seats.find(seat=>seat.id===firstSeat.id)!;assert.notEqual(after.mealId,plate.meal.mealId);assert.equal(after.status,'reserved');
+  const after=d.s.tables[0].seats.find(seat=>seat.id===firstSeat.id)!;assert.notEqual(after.mealId,plate.meal.mealId);assert(['reserved','occupied'].includes(after.status));
   // A corrupt duplicate plate cannot release a newly seated meal or grant another wash.
   d.s.chef.held=plate;d.interact('sink');d.act({type:'hold',active:true});d.until(()=>d.s.stations.find(st=>st.kind==='sink')!.slots.every(slot=>!slot.item));assert.equal(d.s.washed,1);assert.notEqual(d.s.tables[0].seats.find(seat=>seat.id===firstSeat.id)?.status,'clean');
 });
@@ -118,7 +131,7 @@ check('rotated table footprints and seats survive setup, full service and reload
 check('accessible action labels distinguish taking, timed cooking, holding, serving and dirty cleanup',()=>{
   const d=new Driver({menu:['classic_burger'],customers:2,tablePatienceTicks:12000});assert.match(serviceTargetIntent(d.s,'crate').label,/Take.*ingredients/);d.interact('crate','classic_burger');assert.equal(serviceTargetIntent(d.s,'grill').label,'Grill');d.interact('grill');assert.equal(serviceTargetIntent(d.s,'grill').disabled,true);d.tick(120);assert.match(serviceTargetIntent(d.s,'grill').label,/Take/);d.interact('grill');d.interact('prep');const intent=serviceTargetIntent(d.s,'prep');assert.equal(intent.hold,true);assert.match(intent.label,/Hold/);assert.equal(intent.disabled,false);
 });
-check('washer physically clears a specific plate, carries it and washes before reusing the seat',()=>{
+check('washer physically clears a specific plate, carries it and returns its clean vessel',()=>{
   const d=new Driver({tier:2,menu:['fries'],customers:3,arrivalTicks:2400,tablePatienceTicks:12000,helpers:[{id:'jo',role:'washer',look:2}]});d.until(()=>d.s.customers.some(c=>c.phase==='seated'));d.serve(d.s.customers[0].id);let carried=false,travelled=false;
   for(let i=0;i<1000&&d.s.washed===0;i++){d.tick();carried ||= d.s.helpers[0].held?.kind==='dirty';travelled ||= d.s.helpers[0].path.length>0;}
   assert(carried&&travelled);assert.equal(d.s.washed,1);assert.equal(d.s.helpers[0].held,null);assert.equal(d.s.tables[0].seats[0].status,'clean');assert(sanitizeService(d.s));

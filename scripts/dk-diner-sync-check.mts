@@ -21,8 +21,14 @@ class MemoryStorage {
   setItem(key:string,value:string){if(this.failFlight&&key===TAPE&&JSON.parse(value).flight)throw new Error('quota');this.data.set(key,value);}
   removeItem(key:string){this.data.delete(key);}
 }
+/** Protocol fixtures explicitly install owned burger equipment before opening any service. */
+function preparedRecord(){
+  const record=createDinerRecord(clock,'sync-regression'),layout=record.state.truckConfig;
+  const stations=[...layout.stations.filter(station=>!['grill','prep'].includes(station.kind)),{id:'grill',kind:'grill' as const,x:1,y:0,facing:0 as const},{id:'prep',kind:'prep' as const,x:2,y:0,facing:0 as const}];
+  const result=dispatchDiner(record.state,{type:'setupLayout',stations,tables:layout.tables},{now:clock});assert.equal(result.error,undefined);record.state=result.state;return record;
+}
 class Server {
-  record=createDinerRecord(clock,'sync-regression');receipts=new Map<string,string>();requests:{path:string;body:any}[]=[];
+  record=preparedRecord();receipts=new Map<string,string>();requests:{path:string;body:any}[]=[];
   offline=false;loseNext=false;unauthorizedNext=false;holdNext=false;release:(()=>void)|null=null;
   snapshot(extra:Record<string,unknown>={}){return {ok:true,state:clone(this.record.state),revision:this.record.revision,serverTime:clock,...extra};}
   response(body:unknown,status=200){return {ok:status>=200&&status<300,status,json:async()=>clone(body)} as Response;}
@@ -59,6 +65,23 @@ async function main(){
   await check('lost reward receipt retries the identical durable UUID and grants once',async()=>{
     const h=await connected();h.server.loseNext=true;await send(h,{type:'claimCrate'});assert.equal(h.sync.blocked,true);const id=h.sync.flight!.id;assert.equal(JSON.parse(h.storage.getItem(TAPE)!).flight.id,id);assert.equal(h.server.record.state.daily.minted,2);
     clock+=1500;await h.sync.flush();assert.equal(h.sync.flight,null);assert.equal(h.sync.blocked,false);assert.equal(h.server.record.state.daily.minted,2);const commands=h.server.requests.filter(r=>r.path==='command');assert.equal(commands.length,2);assert.equal(commands[0].body.id,commands[1].body.id);assert.equal(h.server.record.revision,1);
+  });
+  await check('a lost recipe-purchase receipt charges once and never enables new customer orders',async()=>{
+    const h=await connected(),before=h.server.record.state.coins,home=clone(h.server.record.state.home.menu);h.server.loseNext=true;
+    await send(h,{type:'buyTruckRecipe',recipeId:'cheeseburger'});assert(h.sync.blocked);const id=h.sync.flight!.id;
+    assert.equal(h.server.record.state.coins,before-140);assert.equal(h.server.record.state.recipes.cheeseburger.level,0);
+    clock+=1500;await h.sync.flush();assert.equal(h.sync.flight,null);assert.equal(h.server.record.state.coins,before-140);assert.deepEqual(h.server.record.state.truckConfig.menu,['classic_burger']);assert.deepEqual(h.server.record.state.home.menu,home);
+    const requests=h.server.requests.filter(request=>request.path==='command');assert.equal(requests.length,2);assert(requests.every(request=>request.body.id===id));
+  });
+  await check('a lost capacity-upgrade response retries one receipt and charges only once',async()=>{
+    const h=make();h.server.record.state.restaurantLevel=5;h.server.record.state.coins=1000;assert(await h.sync.connect());h.server.loseNext=true;
+    await send(h,{type:'upgradeTruckEquipment',equipmentId:'plates'});const id=h.sync.flight!.id;assert.equal(h.server.record.state.equipment.plates.tier,2);assert.equal(h.server.record.state.coins,880);
+    clock+=1500;await h.sync.flush();assert.equal(h.sync.flight,null);assert.equal(h.server.record.state.equipment.plates.tier,2);assert.equal(h.server.record.state.coins,880);assert.equal(h.server.record.revision,1);assert(h.server.requests.filter(r=>r.path==='command').every(r=>r.body.id===id));
+  });
+  await check('preparation starts a fresh clock boundary and opening preserves its accepted work',async()=>{
+    const h=await connected();await send(h,{type:'startPractice'});h.server.holdNext=true;assert(h.sync.send({type:'service',action:{type:'prepare'}}));assert(h.sync.send({type:'service',action:{type:'tick',ticks:20}}));h.server.release!();await idle(h.sync);await h.sync.flush();
+    assert.equal(h.server.record.state.run!.service!.phase,'preparing');assert(h.sync.flight);const id=h.sync.flight.id;clock+=1000;await h.sync.flush();assert.equal(h.sync.flight,null);assert.equal(h.server.record.state.run!.service!.tick,20);assert.equal(h.server.record.state.run!.service!.spawned,0);assert.equal(h.server.requests.filter(r=>r.path==='command').at(-1)!.body.id,id);
+    await send(h,{type:'service',action:{type:'open'}});assert.equal(h.server.record.state.run!.service!.phase,'playing');assert.equal(h.server.record.state.run!.service!.tick,20);
   });
   await check('ordered tapes commit open before spending ticks and preserve ID through time-credit retries',async()=>{
     const h=await connected();h.server.holdNext=true;assert(h.sync.send({type:'startRun'}));assert(h.sync.busy);assert(h.sync.send({type:'chooseNode',nodeId:h.sync.predicted!.run!.available[0]}));assert(h.sync.send({type:'service',action:{type:'open'}}));assert(h.sync.send({type:'service',action:{type:'tick',ticks:20}}));h.server.release!();await idle(h.sync);await h.sync.flush();
@@ -126,8 +149,8 @@ async function main(){
   });
   await check('home work completion retries once and an older paused job does not interrupt a truck tape',async()=>{
     const h=await connected(),job=homeIncidents(h.sync.predicted!)[0];await send(h,{type:'beginHomeTask',incidentId:job.id});await send(h,{type:'homeTaskInput',action:{type:'strokeStart',point:{x:job.x-.2,y:job.y}}});
-    for(let i=0;i<19;i++){clock+=150;await send(h,{type:'homeTaskInput',action:{type:'stroke',point:{x:job.x+(i%2===0?.2:-.2),y:job.y}}});assert(h.sync.send({type:'homeTaskInput',action:{type:'tick',ticks:3}}));await h.sync.flush();}
-    clock+=150;await send(h,{type:'homeTaskInput',action:{type:'stroke',point:{x:job.x-.2,y:job.y}}});assert(h.sync.send({type:'homeTaskInput',action:{type:'tick',ticks:3}}));h.server.loseNext=true;await h.sync.flush();const id=h.sync.flight!.id;assert.equal(h.server.record.state.coins,230);
+    for(let i=0;i<13;i++){clock+=150;await send(h,{type:'homeTaskInput',action:{type:'stroke',point:{x:job.x+(i%2===0?.2:-.2),y:job.y}}});assert(h.sync.send({type:'homeTaskInput',action:{type:'tick',ticks:3}}));await h.sync.flush();}
+    clock+=50;await send(h,{type:'homeTaskInput',action:{type:'stroke',point:{x:job.x-.2,y:job.y}}});assert(h.sync.send({type:'homeTaskInput',action:{type:'tick',ticks:1}}));h.server.loseNext=true;await h.sync.flush();const id=h.sync.flight!.id;assert.equal(h.server.record.state.coins,230);
     assert(h.sync.send({type:'homeTaskInput',action:{type:'hold',active:false}}));clock+=1500;await h.sync.flush();await h.sync.flush();assert.equal(h.server.record.state.coins,230);assert.equal(h.server.record.state.daily.incidentClaims.length,1);assert(h.server.requests.filter(r=>r.path==='command').filter(r=>r.body.id===id).length===2);
     const second=homeIncidents(h.sync.predicted!)[0];clock=second.availableAt;await send(h,{type:'beginHomeTask',incidentId:second.id});await send(h,{type:'homeTaskInput',action:{type:'hold',active:false}});
     h.server.holdNext=true;assert(h.sync.send({type:'startRun'}));assert(h.sync.send({type:'chooseNode',nodeId:h.sync.predicted!.run!.available[0]}));assert(h.sync.send({type:'service',action:{type:'open'}}));h.server.release!();await idle(h.sync);await h.sync.flush();
@@ -137,11 +160,11 @@ async function main(){
     const h=await connected();
     for(const part of ['tape','leftFlap','rightFlap'] as const){
       for(const command of homeGestureCommands(h.sync.predicted!,{type:'parcel',incidentId:'home-parcel',part}))await send(h,command);
-      clock+=(part==='rightFlap'?26:27)*50;assert(h.sync.send({type:'homeTaskInput',action:{type:'tick',ticks:part==='rightFlap'?26:27}}));
+      clock+=200;assert(h.sync.send({type:'homeTaskInput',action:{type:'tick',ticks:4}}));
       if(part==='rightFlap')h.server.loseNext=true;await h.sync.flush();
     }
     assert(h.sync.blocked);const id=h.sync.flight!.id,pantry=clone(h.server.record.state.pantry);assert.equal(h.server.record.state.daily.minted,2);assert.equal(h.server.record.state.daily.crate,true);
-    clock+=1500;const restored=make(h.server,h.storage);assert(await restored.sync.connect(true));assert.equal(restored.sync.flight,null);assert.equal(restored.sync.predicted!.daily.crateProgressTicks,80);assert.equal(h.server.record.state.daily.minted,2);assert.deepEqual(h.server.record.state.pantry,pantry);
+    clock+=1500;const restored=make(h.server,h.storage);assert(await restored.sync.connect(true));assert.equal(restored.sync.flight,null);assert.equal(restored.sync.predicted!.daily.crateProgressTicks,12);assert.equal(h.server.record.state.daily.minted,2);assert.deepEqual(h.server.record.state.pantry,pantry);
     assert.equal(h.server.requests.filter(r=>r.path==='command').at(-1)!.body.id,id);assert.deepEqual(homeGestureCommands(restored.sync.predicted!,{type:'parcel',incidentId:'home-parcel',part:'tape'}),[]);
   });
   console.log(`PASS ${groups} diner sync groups`);

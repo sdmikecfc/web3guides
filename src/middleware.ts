@@ -221,6 +221,14 @@ export function middleware(request: NextRequest) {
     hostClean === "www.domainkitchen.xyz"
   ) {
     const chefUrl = request.nextUrl.clone();
+    // The standalone domain opens the new diner. Keep explicit legacy routes
+    // and the older chef.* entrance available without moving player saves.
+    const dinerDomain = hostClean === "domainkitchen.xyz" || hostClean === "www.domainkitchen.xyz";
+    const dinerEntrance = pathname === "/" || pathname === "/chef" || pathname === "/chef/";
+    if (dinerDomain && dinerEntrance && process.env.DINER_PREVIEW_ENABLED !== "false") {
+      chefUrl.pathname = "/chef/diner-preview";
+      return withRef(NextResponse.rewrite(chefUrl));
+    }
     chefUrl.pathname = pathname.startsWith("/chef")
       ? pathname
       : `/chef${pathname === "/" ? "" : pathname}`;

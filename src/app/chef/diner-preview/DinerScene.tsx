@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DinerSceneProps, SceneAnchor } from './scene-types';
 import type { DinerSceneController } from './scene3d';
+import { EQUIPMENT_BY_ID } from '@/lib/chef/diner/content';
 import { WorldCues } from './WorldCues';
 
 export default function DinerScene(props:DinerSceneProps){
@@ -16,7 +17,7 @@ export default function DinerScene(props:DinerSceneProps){
       const api=createDinerScene(host.current,latest.current.mode,latest.current.scene,{
         onTarget:(id,seat)=>latest.current.onTarget(id,seat),onTile:(x,y)=>latest.current.onTile(x,y),
         onHomeGesture:gesture=>latest.current.onHomeGesture?.(gesture),
-        onAnchors:values=>{for(const value of values)anchorHistory.current.set(value.id,value);if(anchorHistory.current.size>12)for(const id of anchorHistory.current.keys())if(!values.some(value=>value.id===id)&&id!==latest.current.worldReward?.id)anchorHistory.current.delete(id);setAnchors(values);latest.current.onAnchors?.(values);},
+        onAnchors:values=>{for(const value of values)anchorHistory.current.set(value.id,value);if(anchorHistory.current.size>40)for(const id of anchorHistory.current.keys())if(!values.some(value=>value.id===id)&&id!==latest.current.worldReward?.id)anchorHistory.current.delete(id);setAnchors(values);latest.current.onAnchors?.(values);},
         onPerformance:value=>latest.current.onPerformance?.(value),
         onError:message=>{if(!cancelled){setError(message);setStatus('error');latest.current.onError?.(message);}},
       });
@@ -47,9 +48,9 @@ export default function DinerScene(props:DinerSceneProps){
         Choose a scene target
         <select aria-label="Choose a scene target" value="" onChange={event=>{const [id,seat]=event.target.value.split('|');if(id)props.onTarget(id,seat);}}>
           <option value="">Select station or seat</option>
-          {props.scene.objects.map(object=><option key={object.id} value={object.id} data-target-id={object.id}>{object.id.startsWith('incident:')?(object.kind==='spill'?'Spill · wipe across it':'Delivery · peel tape and open flaps'):object.id==='home-parcel'?'Daily ingredient parcel':object.id==='home-binder'?'Cookbook':object.id==='home-till'?'Restaurant till':object.id==='home-collections'?'Collections':object.kind.replaceAll('_',' ')}</option>)}
+          {props.scene.objects.map(object=><option key={object.id} value={object.id} data-target-id={object.id}>{object.id.startsWith('incident:')?(object.kind==='spill'?'Spill · wipe across it':'Delivery · peel tape and open flaps'):object.id==='home-parcel'?'Daily ingredient parcel':object.id==='home-binder'?'Cookbook':object.id==='home-till'?'Restaurant till':object.id==='home-collections'?'Collections':EQUIPMENT_BY_ID[object.kind]?.name??object.kind.replaceAll('_',' ')}</option>)}
           {props.mode==='home'&&props.scene.people.filter(person=>person.role!=='customer'||person.id.startsWith('regular:')).map(person=><option key={person.id} value={person.id}>{person.id.startsWith('regular:')?'Your regular':person.role==='chef'?'Chef':'Waiter'}</option>)}
-          {props.scene.tables.flatMap(table=>table.seats.map((seat,i)=><option key={seat.id} value={`${table.id}|${seat.id}`} data-target-id={table.id} data-seat-id={seat.id}>{table.id.replaceAll('_',' ')} · seat {i+1} · {seat.status}</option>))}
+          {props.scene.tables.flatMap(table=>table.seats.map((seat,i)=><option key={seat.id} value={`${table.id}|${seat.id}`} data-target-id={table.id} data-seat-id={seat.id}>{table.id.replaceAll('_',' ')} · seat {i+1} · {seat.status}{seat.item?.kind==='dirty'&&seat.status!=='dirty'?' · clear dirty dish':''}</option>))}
         </select>
       </label>
     </>}

@@ -14,11 +14,35 @@ The follow-up presentation pass adds connected pavement edging, two planted beds
 
 Daily ingredient parcels now use the same direct tape/two-flap interaction as deliveries. Partial opening persists across refreshes and switching chores; the final flap grants the existing two ingredients once, removes the parcel, and names the ingredients received. Existing claimed/unclaimed saves migrate without changing ingredient caps. The pantry panel returns players to the parcel rather than offering another claim button. Small labels follow actual projected object positions, hide in the editor/panels, and successful work celebrates at the object. Picking now respects the nearest visible physical surface, including opaque scenery, and ignores hidden descendants, faded wall faces and visual-only progress/halo meshes.
 
-Upkeep has two bounded daily jobs and a maximum of 60 coins. Cleaning accepts measured strokes through the shrinking spill; stationary holding, off-target movement and impossible jumps earn no new work. The clock consumes at most 150 ms of residual movement credit. Delivery steps are ordered. Work pauses across release, reload, editing, trips, hidden tabs and connection gaps. Stroke samples use the existing 750 ms checkpoint; start, release and parcel actions persist immediately. Home/offline income is unchanged; this is not a claim that long-term upkeep depth or balance is finished.
+Upkeep has two bounded daily jobs and a maximum of 60 coins. Cleaning accepts measured strokes through the shrinking spill; stationary holding, off-target movement and impossible jumps earn no new work. The clock consumes at most 300 ms of residual movement credit. Delivery steps are ordered. Work pauses across release, reload, editing, trips, hidden tabs and connection gaps. Stroke samples use the existing 750 ms checkpoint; start, release and parcel actions persist immediately. Home/offline income is unchanged; this is not a claim that long-term upkeep depth or balance is finished.
 
 Guest saves and furnishings remain in the existing namespace; new gesture fields migrate paused. Browser review used a separate loopback origin for fresh-spill testing without resetting the user's diner. Physical drags completed a spill once (+30); three scene targets opened a delivery (+30); a direct fryer click selected the fryer and its editor returned through Done. Truck practice stayed manual, and Escape did not resume a paused shift. Reviewed at 390×844 portrait and 1280×720 desktop. These are viewport/input checks, not physical-phone certification or owner approval of the art direction.
 
 Follow-up browser review at 1100×850 and 390×844 confirmed a daily parcel's tape progress survived refresh, its two flaps completed through direct clicks, the claimed parcel disappeared and Beef/Bun each reached 1 in the recipe binder. A phone-viewport delivery completed through three physical clicks and showed the in-world +30 reward once. Added checks cover nine daily-parcel/adapter groups, eight real Three.js raycast groups and 11,520 sampled animation frames. The existing 340-case art and 1,200-state floor-support checks still pass; repository-wide TypeScript also passed. These checks do not certify balance, launch readiness or subjective visual approval.
+
+## Opening corrections and physical supplies (20 September 2026)
+
+Character heads use one continuous skin surface and a fitted hair shell. Actual packed models are checked for overlapping facial layers. The one-seat table has a true one-tile top and a correctly supported plate.
+
+A spill takes approximately two seconds of valid wiping; each parcel stage takes 200 ms. Existing partial upkeep progress migrates proportionally, retaining completed reward receipts.
+
+Truck setup lets players select real trailer cargo or its thumbnail, then a highlighted valid tile. Stations can be stored, rotated and rearranged before opening. Purchased tables and chairs must fit the pavement and retain reachable seats; truck growth grants no free seating. The setup shelf also contains explicit menu choices and recipe purchases. Learning a recipe does not add its orders automatically.
+
+New physical service uses separate ingredients, limited clean-plate stock and conserved plate identities. Binning plated food leaves a dirty plate to wash. Washing returns the plate to its rack; duplicate stock or plate identities invalidate a checkpoint. Existing in-progress aggregate-food services retain their original rules until the shift ends; newly required supply stations are offered in storage without overwriting existing layouts. Brand-new diners have the supply stations installed.
+
+The first-lunch coach follows actual held food, station work, bun assembly, plating, serving and washing. Browser checks cover direct trailer placement, a one-click supply pickup, keyboard movement after button focus, portrait layout and paused reload. Engine checks cover the complete four-burger first lunch with two circulating plates, three washes and no strikes. Full-route regression fixtures explicitly use cosy mode; this does not establish later normal-mode pacing or physical-phone performance.
+
+## Preparation, batches and serving capacity (20 September 2026)
+
+Players can now choose **Prep ahead** before opening. This starts the real cooking clock without admitting customers. Ingredients, held food, worktop contents and machine jobs carry into the opened service; food can still burn or become cold during preparation. Pause, refresh and interrupted online requests preserve accepted work. The server grants preparation ticks only from its elapsed-time budget, just as it does during service. Layout, menu and equipment changes remain setup actions, before preparation begins.
+
+Seated customers receive at least 45 seconds of effective patience, with a larger minimum when the recipe and floor travel require it. Queue patience has a separate minimum of 60 seconds. Sitting starts a fresh table allowance rather than inheriting an almost-expired queue timer. A new guest can sit at a place that still holds the previous guest's dirty vessel. The old dish must be picked up before serving the new order; clearing it preserves the waiting guest and their order. Washing settles the original meal's receipt and cannot clear or alter the new occupant. Sinks hold 2/4/6 dirty vessels by tier; manual washing processes them sequentially, so extra slots provide capacity rather than simultaneous free work.
+
+Fries use one potato portion cut at the prep counter, followed by an unattended fryer basket. When it is ready, the player explicitly raises the basket out of the oil. The raised batch supplies **three boxed servings**; each interaction consumes one saved portion and the third empties the basket. An unraised basket can burn. Batch state and portion counts persist through reloads and cannot be refilled by repeating the raise action.
+
+Burger plates and drink cups are separate reusable pools with tracked identities. The cup stand holds 2 cups, upgrading to 4; plate racks hold 2/4/6. Serving, discarding food and washing conserve the appropriate pool. Fries boxes are disposable, freely supplied containers, not an invented paid inventory: used cartons must be cleared from the table but do not enter the sink. Cup stands and box supplies are truck utilities. Purchasing them never places them automatically, enables extra recipes, or grants a restaurant copy. Banked-coin purchases and upgrades are available at home or during untimed setup; equipment tier two opens at restaurant level 5 and tier three at level 12. Bowls and pizza dishes are reserved vessel definitions, unavailable in the current gameplay catalog.
+
+Focused checks cover three-portion depletion, burn/discard behavior, cup conservation, old fries/sink checkpoints, seat reuse before an older plate is washed, preparation clock boundaries and lost upgrade responses. Keyboard guidance follows the same basket and vessel rules. These checks establish deterministic behavior and replay safety; **normal-mode difficulty, novice completion time and long-term balance are not certified**.
 
 ## Open the preview
 
@@ -29,7 +53,7 @@ $env:DK_PREVIEW_DIST = '.dk-preview/diner-next'
 node --preserve-symlinks --preserve-symlinks-main node_modules/next/dist/bin/next dev -p 3010
 ```
 
-The route is available in development. Outside development it returns not found unless `DINER_PREVIEW_ENABLED=true`. Its metadata prevents indexing. Enabling the page does not enable online saves: those require the separate server gate and provisioning described in the server document.
+The browser game is available by default, including at the root of `domainkitchen.xyz` and `www.domainkitchen.xyz`. `DINER_PREVIEW_ENABLED=false` is an explicit production rollback to the older homepage. Its metadata prevents indexing. Page availability does not enable online saves: those require the separate server gate and provisioning described in the server document.
 
 ## Save and ownership boundaries
 
@@ -44,11 +68,11 @@ The route is available in development. Outside development it returns not found 
 
 | Area | Current behavior |
 | --- | --- |
-| Opening trip | First two service days teach actual burger/fries preparation without patience loss. Orders alternate burger and fries. The third service supplies the scripted setback. The introductory home fryer is granted once. |
-| Manual cooking | One held item; ingredient pickup; explicit recipe steps; manual holds and unattended timed work; burn risk; cooling; targeted table/seat delivery. Cold food earns base price without tips or combo. Dirty plates retain exact meal IDs. |
-| Outdoor service | Starter interior is literally 4×3 with a connected ramp and 7×4 pavement. Singles use independent seats at a two-seat table. Families of three or four reserve a complete four-seat table. Clearing a plate leaves the seat unavailable until that same plate is washed. |
+| Opening trip | A fresh diner starts with classic burger only, one table and one chair. Untimed setup begins with portable machines in a separate trailer. The first customer teaches the full meal and washing loop before another arrives. The introductory fryer discovery is granted once; further recipes require an explicit unlock and menu choice. |
+| Manual cooking | One held item. Prep ahead runs real cooking before customer admission. Cold patties come from the fridge; buns and dry ingredients from the pantry. Supply choices identify their recipe. Burgers require assembly and a reusable plate; drinks use reusable cups; fries require cutting, frying, an explicit basket raise and one box per saved batch portion. Keyboard WASD/arrows move continuously; E interacts and holds manual work. |
+| Outdoor service | Starter interior is literally 4×3 with a connected ramp and 7×4 pavement. Singles use independent seats; families of three or four reserve a complete four-seat table. New guests can sit before the previous vessel is cleared. Pick up that old dish before serving their new order; clearing and later washing preserve the current guest and their meal receipt. |
 | Failure and practice | Three accumulated strikes end an ordinary trip; cosy mode allows five and reduces patience pressure and earnings. Closing stops arrivals and drains the remaining guests. Practice uses owned tools and grants no trip rewards or tutorial gift. |
-| Truck growth | Tiers are 4×3, 5×3, 6×3 and 7×4, supporting 1/2/3/5 outdoor tables and 0/1/1/2 helpers. Route completion plus recipe discovery opens larger trucks. Setup changes, station working sides, table rotations, menu and cosmetics persist. |
+| Truck growth | Tiers are 4×3, 5×3, 6×3 and 7×4, with larger pavements and 0/1/1/2 helpers. Purchased tables must fit with reachable chairs; growth grants no free seating. Route completion plus recipe discovery opens larger trucks. Setup changes, station working sides, table rotations, menu and cosmetics persist. Cup, plate and sink capacity upgrades retain their real stock/slot limits. |
 | Helpers | Assigned crew keep a fixed washer, runner or prep role. Tier four supports two different crew members. Helpers walk the real grid, carry existing objects and perform bounded jobs; they do not create dishes or award money. |
 | Routes | Downtown, Boardwalk and Night Market each generate twelve-row branching maps. Ordinary paths contain seven service rows and five other stops. A chosen rain detour can intentionally skip a stop without rewards. Existing preview maps retain their stored generation version. |
 | Roadside events | Festival changes the next service to busy with double tips; rain offers a detour or impatient service; inspection requires three timed cleaning holds; tyre repair uses a timing challenge or haul payment; a rival offers a harder service and recipe scrap; a film crew brings influencers; a lost tourist introduces a named recruit. |
@@ -60,7 +84,7 @@ The route is available in development. Outside development it returns not found 
 | Personal expression | Furniture arrangement, independent finishes, decorative collections, uniforms, truck wraps/horns, equipment skins, three saved home layouts, regular keepsakes and a postcard surface are present. |
 | Social implementation | Opt-in public diners, accepted friendships, blocking, bounded stickers and shared-budget friendship parcels are implemented. The approved diner rules also include consent-based one-for-one ingredient escrow trades at level eight. These server-backed flows still need live staging validation. |
 
-The content catalogue contains 22 diner recipes and 28 ingredients, plus 14 decoration definitions. The art library covers 19 equipment definitions, including reserved future content. `TRUCK_EQUIPMENT` and `HOME_EQUIPMENT` expose only equipment with implemented behavior in the relevant mode. Serving trays, queue benches, jukeboxes, neon signs and tip jars are deferred from new purchases and upgrades. A heat-lamp pass is usable in manual truck service, not sold as a working home fixture. Existing owned IDs remain preserved.
+The content catalogue contains 22 diner recipes and 28 ingredients, plus 14 decoration definitions. `TRUCK_EQUIPMENT` and `HOME_EQUIPMENT` expose only equipment with implemented behavior in the relevant mode. Serving trays, queue benches, jukeboxes, neon signs and tip jars are deferred from new purchases and upgrades. A heat-lamp pass is usable in manual truck service, not sold as a working home fixture. Cup stands and fries-box supplies are also truck-only utilities. Existing owned IDs remain preserved.
 
 Dottie's discoverable requirement is a **placed daisy pot and ice-cream sundae on the menu**, followed by actual sundae output for friendship. It does not depend on the deferred queue bench. Ordinary two-seat tables are owned from the start and additional home copies can be bought.
 
@@ -70,6 +94,7 @@ Dottie's discoverable requirement is a **placed daisy pot and ice-cream sundae o
 | --- | --- |
 | `src/lib/chef/diner/content.ts`, `types.ts`, `geometry.ts` | Versioned content, serializable contracts, rotated footprints/fronts, unified truck/pavement paths and setup validation |
 | `src/lib/chef/diner/service.ts` | Deterministic 20 Hz manual service, helpers, meals, dirty dishes, patience, cooking and checkpoint validation |
+| `src/lib/chef/diner/batch.ts` | Serializable three-portion fryer receipts and typed reusable/disposable serving containers |
 | `src/lib/chef/diner/home-simulation.ts` | Visible automatic restaurant and headless measurement of the same physical service loop |
 | `src/lib/chef/diner/progression.ts`, `collections.ts` | Fresh namespace, maps, ownership, menus, daily receipts, home progression, regulars and cosmetics |
 | `src/lib/chef/diner/events.ts`, `rally.ts` | Distinct roadside events, timed challenges and isolated weekly equal-loadout service |
@@ -81,9 +106,11 @@ Keep balance changes in the shared content/progression configuration and test bo
 
 ## Evidence and reproducible checks
 
-The focused suites cover 18 service groups, 8 home groups, 22 progression groups, 10 event/rally groups, 10 authority groups, 14 gameplay-sync groups, 9 social groups, 5 social-writer groups, 12 direct-home-work groups and 6 grounding groups. These are deterministic local checks, not a live database or device certification. The check runner transpiles TypeScript; a separate type/build check is still necessary.
+The latest service pass covers 19 service groups, 10 service-flow groups, 8 physical-cooking groups, 8 batch/progression groups, 10 control groups, 7 recipe-policy groups and 18 gameplay-sync groups. Existing coverage also includes 8 home groups, 22 progression groups, 10 event/rally groups, 10 authority groups, 9 social groups, 5 social-writer groups, 14 direct-home-work groups, 11 parcel groups and 6 grounding groups. These are deterministic local checks, not a live database or device certification. The check runner transpiles TypeScript; a separate type/build check is still necessary.
 
 Notable measured evidence:
+
+The service duration/haul figures below are earlier baseline observations, before the preparation, batch and patience changes. They are retained for comparison and must be remeasured before setting release difficulty targets.
 
 - A bot using actual cooking inputs completed the untouched eight-customer burger/fries service deterministically: eight paid meals, seven washed plates, 215 haul coins and 160.6 simulated seconds.
 - All 22 recipes execute their real ordered station chains. Rotated working sides and tables survive setup/reload. Two assigned helpers physically deliver and wash a tracked meal without duplicate work.
@@ -98,6 +125,11 @@ From the repository root, run all focused behavior checks:
 ```powershell
 $dinerChecks = @(
   'scripts/dk-diner-service-check.mts',
+  'scripts/dk-diner-service-flow-check.mts',
+  'scripts/dk-diner-physical-cooking-check.mts',
+  'scripts/dk-diner-batch-check.mts',
+  'scripts/dk-diner-controls-check.mts',
+  'scripts/dk-diner-recipe-policy-check.mts',
   'scripts/dk-diner-home-check.mts',
   'scripts/dk-diner-home-task-check.mts',
   'scripts/dk-diner-parcel-check.mts',
@@ -123,7 +155,7 @@ Repository-wide type and production-build gates are separate from those local su
 
 The local production build completed successfully on 19 September 2026 before version two. Version two passed repository-wide TypeScript and its focused runtime/geometry checks on 20 September; a new production build has not been run for this pass. Existing WalletConnect `pino-pretty` and Browserslist warnings were nonfatal; unrelated dynamic-route static-generation notices also appeared. The earlier legacy restaurant harness, save check and art check passed.
 
-Browser review covered the 390×844 portrait layout, fully framed catalog objects, actual crate → grill → prep → outdoor-table delivery, failure return, introduction-fryer placement, automatic home fries availability, editor Done, and paused service restoration. The tested burger reached a customer as cold food and correctly earned base price. This was an interaction check, not a novice-speed evaluation. The complete washing cycle is covered by the deterministic service tests; the timed browser practice ended before that wash finished. One starter desktop observation reached 60 FPS; expanded-room and physical-phone performance remain unmeasured.
+Earlier browser review covered the 390×844 portrait layout, fully framed catalog objects, actual crate → grill → prep → outdoor-table delivery, failure return, introduction-fryer placement, editor Done, and paused service restoration. The tested burger reached a customer as cold food and correctly earned base price. Subsequent recipe policy requires explicitly learning and selecting fries; placing a fryer does not unlock them. This was an interaction check, not a novice-speed evaluation. The complete washing cycle is covered by the deterministic service tests; the timed browser practice ended before that wash finished. One starter desktop observation reached 60 FPS; expanded-room and physical-phone performance remain unmeasured.
 
 ```powershell
 node --preserve-symlinks --preserve-symlinks-main node_modules/typescript/lib/tsc.js --noEmit --incremental false

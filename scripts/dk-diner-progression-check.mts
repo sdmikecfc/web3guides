@@ -9,7 +9,8 @@ const fresh = () => createDiner(now, "diner-check");
 function action(state: DinerState, command: DinerCommand, at = now) { const result = dispatchDiner(state, command, { now: at }); assert.equal(result.error, undefined, `${command.type}: ${result.error}`); return result.state; }
 function rejected(state: DinerState, command: DinerCommand, code: string, at = now) { const result = dispatchDiner(state, command, { now: at }); assert.equal(result.code, code); assert.deepEqual(result.state, state); }
 let groups = 0; function test(name: string, fn: () => void) { fn(); groups++; console.log(`ok ${name}`); }
-function started(tutorial = false) { let state = fresh(); state.tutorial.finished = !tutorial; return action(state, { type: "startRun" }); }
+function prepared(){const state=fresh();return action(state,{type:'setupLayout',stations:[...state.truckConfig.stations,{id:'grill',kind:'grill',x:1,y:0,facing:0},{id:'prep',kind:'prep',x:2,y:0,facing:0}],tables:state.truckConfig.tables});}
+function started(tutorial = false) { let state = prepared(); state.tutorial.finished = !tutorial; return action(state, { type: "startRun" }); }
 function atService(tutorial = false) { const state = started(tutorial); return action(state, { type: "chooseNode", nodeId: state.run!.available[0] }); }
 
 test("separate fresh namespace has no old wealth or owned home fryer", () => {
@@ -115,7 +116,9 @@ test("practice uses owned equipment and never grants trip rewards or consumes a 
   rejected(started(), { type: "startPractice" }, "run_active");
 });
 test("menu and complete loadout persist at home and change only before opening", () => {
-  let state = action(fresh(), { type: "setTruckMenu", recipeIds: ["fries"] }); state.tutorial.finished = true;
+  let state=prepared();state.equipment.fryer.truckOwned=true;state=action(state,{type:'buyTruckRecipe',recipeId:'fries'});state=action(state,{type:'buyTruckEquipment',equipmentId:'boxes'});
+  state=action(state,{type:'setupLayout',stations:[...state.truckConfig.stations.map(station=>station.kind==='fridge'?{...station,x:2,y:2,facing:2 as const}:station),{id:'fryer',kind:'fryer',x:3,y:0,facing:0},{id:'boxes',kind:'boxes',x:0,y:6,facing:3}],tables:state.truckConfig.tables});
+  state = action(state, { type: "setTruckMenu", recipeIds: ["fries"] }); state.tutorial.finished = true;
   state = action(state, { type: "setupLayout", stations: state.truckConfig.stations, tables: state.truckConfig.tables });
   state = action(state, { type: "startRun" }); state = action(state, { type: "chooseNode", nodeId: state.run!.available[0] }); assert.deepEqual(state.run!.service!.config.menu, ["fries"]);
   state = action(state, { type: "setTruckMenu", recipeIds: ["classic_burger", "fries"] }); assert.deepEqual(state.run!.service!.config.menu, ["classic_burger", "fries"]);
@@ -149,7 +152,7 @@ test("optional home jobs pay fixed once-only coins and skipping leaves measured 
   const before = fresh(), job = homeIncidents(before)[0], rate = dinerRates(before);
   const selected = action(before, { type: "helpIncident", incidentId: job.id }, job.availableAt); assert.equal(selected.coins,before.coins);
   let after = action(selected,{type:"homeTaskInput",action:{type:"strokeStart",point:{x:job.x-.2,y:job.y}}},job.availableAt);
-  for(let i=0;i<20;i++){after=action(after,{type:'homeTaskInput',action:{type:'stroke',point:{x:job.x+(i%2===0?.2:-.2),y:job.y}}},job.availableAt);after=action(after,{type:'homeTaskInput',action:{type:'tick',ticks:3}},job.availableAt);}
+  for(let i=0;i<20;i++){after=action(after,{type:'homeTaskInput',action:{type:'stroke',point:{x:job.x+(i%2===0?.2:-.2),y:job.y}}},job.availableAt);after=action(after,{type:'homeTaskInput',action:{type:'tick',ticks:2}},job.availableAt);}
   assert.equal(after.coins, before.coins + job.reward); assert.deepEqual(dinerRates(after), rate);
   rejected(after, { type: "helpIncident", incidentId: job.id }, "incident_unavailable", job.availableAt);
   assert.equal(homeIncidents(after).length, 1); assert.equal(action(before, { type: "settle" }, now + hour).coins, before.coins);
@@ -173,7 +176,7 @@ test("largest truck assigns two distinct fixed-role helpers and preserves primar
   rejected(state,{type:'assignHelper',slot:null,staffId:null} as any,'helper_unavailable');
   assert.equal(state.truckConfig.helperId,'chef-1');assert.equal(state.truckConfig.helperId2,'waiter-1');
   assert.equal(sanitizeDinerSave(state)!.truckConfig.helperRole2,'washer');
-  state=action(state,{type:'startPractice',recipeIds:['fries']});
+  state=action(state,{type:'startPractice',recipeIds:['classic_burger']});
   assert.deepEqual(state.run!.service!.helpers.map(h=>[h.id,h.role]),[['chef-1','runner'],['waiter-1','washer']]);
   rejected(state,{type:'assignHelper',slot:1,staffId:null},'helper_unavailable');
   state=action(state,{type:'endPractice'});state=action(state,{type:'assignHelper',slot:1,staffId:null});

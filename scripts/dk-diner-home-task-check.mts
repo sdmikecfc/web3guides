@@ -19,10 +19,10 @@ function timeRejected(fn:()=>unknown){assert.throws(fn,error=>error instanceof D
 
 test('selection and old quick-help commands never pay; physical strokes pay one receipt only',()=>{
   let state=createDiner(now,'selection');const task=homeIncidents(state)[0],coins=state.coins;
-  assert.equal(task.availableAt,now);assert.equal(task.requiredTicks,60);
+  assert.equal(task.availableAt,now);assert.equal(task.requiredTicks,40);
   for(let i=0;i<20;i++)state=act(state,{type:i%2?'helpIncident':'beginHomeTask',incidentId:task.id});
   assert.equal(state.coins,coins);assert.equal(state.homeTask!.progressTicks,0);assert.equal(state.homeTask!.phase,'ready');
-  rejected(state,tick(60),'home_task_paused');rejected(state,hold(true),'gesture_required');state=act(state,startStroke(state));state=scrub(state,59);assert.equal(state.coins,coins);
+  rejected(state,tick(40),'home_task_paused');rejected(state,hold(true),'gesture_required');state=act(state,startStroke(state));state=scrub(state,39);assert.equal(state.coins,coins);
   state=scrub(state,1);assert.equal(state.coins,coins+30);assert.equal(state.homeTask,null);assert.deepEqual(state.daily.incidentClaims,[task.id]);
   state=act(state,hold(false));state=act(state,{type:'homeTaskInput',action:{type:'pause'}});assert.equal(state.coins,coins+30);
   rejected(state,{type:'helpIncident',incidentId:task.id},'incident_unavailable');rejected(state,{type:'beginHomeTask',incidentId:task.id},'incident_unavailable');
@@ -34,7 +34,7 @@ test('release, reselect and checkpoint reload preserve partial work without auto
   state=act(state,startStroke(state));assert.equal(activeDinerMode(state),'homeTaskInput');assert(dinerClockBoundary(startStroke(state)));assert(!dinerClockBoundary(hold(false)));
   assert.deepEqual(dinerPauseCommand(state),{type:'homeTaskInput',action:{type:'pause'}});
   const loaded=sanitizeDinerSave(JSON.stringify(state))!;assert(loaded);assert.equal(loaded.homeTask!.phase,'paused');assert.equal(loaded.homeTask!.progressTicks,25);
-  rejected(loaded,tick(35),'home_task_paused');const done=scrub(act(loaded,startStroke(loaded)),35);assert.equal(done.coins,state.coins+30);
+  rejected(loaded,tick(15),'home_task_paused');const done=scrub(act(loaded,startStroke(loaded)),15);assert.equal(done.coins,state.coins+30);
   const old=createDiner(now);delete (old as Partial<DinerState>).homeTask;assert.equal(sanitizeDinerSave(old)!.homeTask,null);
 });
 test('server elapsed gates each stroke and release/restart clears idle clock credit',()=>{
@@ -44,7 +44,7 @@ test('server elapsed gates each stroke and release/restart clears idle clock cre
   record=replayDiner(record,[stroke(record.state),tick(3)],now+150).record;assert.equal(record.state.homeTask!.progressTicks,3);
   record=replayDiner(record,[hold(false)],now+250).record;assert.equal(record.clock.creditMs,0);
   record=replayDiner(record,[startStroke(record.state)],now+20000).record;assert.equal(record.clock.creditMs,0);timeRejected(()=>replayDiner(record,[stroke(record.state),tick(3)],now+20000));
-  let at=now+20000;for(let i=0;i<19;i++){at+=150;record=replayDiner(record,[stroke(record.state),tick(3)],at).record;}
+  let at=now+20000;while(record.state.homeTask){const count=Math.min(3,40-record.state.homeTask.progressTicks);at+=count*50;record=replayDiner(record,[stroke(record.state),tick(count)],at).record;}
   assert.equal(record.state.coins,DINER_RULES.starterCoins+30);assert.equal(record.state.homeTask,null);assert.equal(record.clock.creditMs,0);
   timeRejected(()=>replayDiner(record,[tick(1)],at+50));
 });
@@ -58,7 +58,7 @@ test('switching jobs resets partial work; both daily jobs keep a fixed 60-coin c
   let state=started(),jobs=homeIncidents(state);rejected(state,{type:'beginHomeTask',incidentId:jobs[1].id},'incident_unavailable');
   state=scrub(state,30);state=act(state,{type:'beginHomeTask',incidentId:jobs[1].id},jobs[1].availableAt);assert.equal(state.homeTask!.progressTicks,0);
   state=unpack(state,jobs[1].availableAt);assert.equal(state.coins,DINER_RULES.starterCoins+30);
-  state=act(state,{type:'beginHomeTask',incidentId:jobs[0].id},jobs[1].availableAt);assert.equal(state.homeTask!.progressTicks,0);state=act(state,startStroke(state),jobs[1].availableAt);state=scrub(state,60,jobs[1].availableAt);
+  state=act(state,{type:'beginHomeTask',incidentId:jobs[0].id},jobs[1].availableAt);assert.equal(state.homeTask!.progressTicks,0);state=act(state,startStroke(state),jobs[1].availableAt);state=scrub(state,40,jobs[1].availableAt);
   assert.equal(state.coins,DINER_RULES.starterCoins+60);assert.equal(homeIncidents(state).length,0);assert.equal(new Set(state.daily.incidentClaims).size,2);
 });
 test('midnight expires old work without a rejected-tick loop or a new-day reward',()=>{
@@ -68,7 +68,9 @@ test('midnight expires old work without a rejected-tick loop or a new-day reward
   const freshJob=homeIncidents(record.state)[0];assert.notEqual(freshJob.id,oldId);assert.equal(freshJob.availableAt,midnight);
   record.state=act(record.state,{type:'beginHomeTask',incidentId:freshJob.id},midnight+100);record=replayDiner(record,[startStroke(record.state)],midnight+100).record;timeRejected(()=>replayDiner(record,[tick(1)],midnight+100));
   // An old paused home job must not bypass a cooking session's absence pause.
-  let trip=createDinerRecord(start,'midnight-trip');trip.state=started(start);trip.state=act(trip.state,{type:'startRun'},start);trip.state=act(trip.state,{type:'chooseNode',nodeId:trip.state.run!.available[0]},start);trip.state=act(trip.state,{type:'service',action:{type:'open'}},start);
+  let trip=createDinerRecord(start,'midnight-trip');trip.state=started(start);
+  trip.state=act(trip.state,{type:'setupLayout',stations:[...trip.state.truckConfig.stations,{id:'grill',kind:'grill',x:1,y:0,facing:0},{id:'prep',kind:'prep',x:2,y:0,facing:0}],tables:trip.state.truckConfig.tables},start);
+  trip.state=act(trip.state,{type:'startRun'},start);trip.state=act(trip.state,{type:'chooseNode',nodeId:trip.state.run!.available[0]},start);trip.state=act(trip.state,{type:'service',action:{type:'open'}},start);
   const away=replayDiner(trip,[{type:'service',action:{type:'tick',ticks:20}}],midnight+10000);assert(away.interrupted);assert.equal(away.record.state.run!.service!.phase,'paused');assert.equal(away.record.state.homeTask,null);
 });
 test('manual modes and editing pause home work and never resume it after returning',()=>{
@@ -103,27 +105,47 @@ test('forged elapsed, reward and phase fields refuse atomically without changing
 test('stationary holds, off-spill movement and impossible jumps never clean',()=>{
   let state=started(),job=homeIncidents(state)[0];state=act(state,tick(60));assert.equal(state.homeTask!.progressTicks,0);
   const point=state.homeTask!.gesture!.point!;for(let i=0;i<10;i++){state=act(state,{type:'homeTaskInput',action:{type:'stroke',point}});state=act(state,tick(5));}assert.equal(state.homeTask!.progressTicks,0);
-  assert.equal(spillStrokeLength({x:0,y:0},{x:1,y:0},{x:0,y:0}),0);
+  assert.equal(spillStrokeLength({x:0,y:0},{x:1.2,y:0},{x:0,y:0}),0);
   assert.equal(spillStrokeLength({x:-.2,y:.8},{x:.2,y:.8},{x:0,y:0}),0);
   assert(spillStrokeLength({x:-.2,y:0},{x:.2,y:0},{x:0,y:0})>.39);
   assert(spillStrokeLength({x:-.2,y:.35},{x:.2,y:.35},{x:0,y:0},0)>0);
   assert.equal(spillStrokeLength({x:-.2,y:.35},{x:.2,y:.35},{x:0,y:0},.9),0,'the cleaned outer rim cannot keep earning progress');
   state=act(state,stroke(state));state=act(state,tick(60));assert.equal(state.homeTask!.progressTicks,HOME_GESTURE_RULES.maxCreditTicks);
-  state=act(state,tick(60));assert.equal(state.homeTask!.progressTicks,3,'no unattended work after finite stroke credit');
+  state=act(state,tick(60));assert.equal(state.homeTask!.progressTicks,HOME_GESTURE_RULES.maxCreditTicks,'no unattended work after finite stroke credit');
   const out=addHomeStroke(emptyHomeGesture(),{x:job.x+50,y:job.y},job);assert.equal(out.point,null);assert.equal(out.creditTicks,0);
 });
 test('parcel requires tape then two distinct flaps; holds and repeat taps cannot skip parts',()=>{
   let state=createDiner(now),job=homeIncidents(state)[1];state=act(state,{type:'beginHomeTask',incidentId:job.id},job.availableAt);
   rejected(state,{type:'homeTaskInput',action:{type:'parcel',part:'rightFlap'}},'parcel_part_required',job.availableAt);
   state=act(state,{type:'homeTaskInput',action:{type:'parcel',part:'tape'}},job.availableAt);rejected(state,{type:'homeTaskInput',action:{type:'parcel',part:'tape'}},'parcel_part_required',job.availableAt);
-  state=act(state,tick(80),job.availableAt);assert.equal(state.homeTask!.progressTicks,27);assert.equal(state.homeTask!.phase,'ready');assert.equal(state.coins,DINER_RULES.starterCoins);
+  state=act(state,tick(80),job.availableAt);assert.equal(state.homeTask!.progressTicks,4);assert.equal(state.homeTask!.phase,'ready');assert.equal(state.coins,DINER_RULES.starterCoins);
   rejected(state,tick(80),'home_task_paused',job.availableAt);rejected(state,{type:'homeTaskInput',action:{type:'parcel',part:'tape'}},'parcel_part_required',job.availableAt);
-  state=act(state,{type:'homeTaskInput',action:{type:'parcel',part:'leftFlap'}},job.availableAt);state=act(state,tick(80),job.availableAt);assert.equal(state.homeTask!.progressTicks,54);
+  state=act(state,{type:'homeTaskInput',action:{type:'parcel',part:'leftFlap'}},job.availableAt);state=act(state,tick(80),job.availableAt);assert.equal(state.homeTask!.progressTicks,8);
   state=act(state,{type:'homeTaskInput',action:{type:'parcel',part:'rightFlap'}},job.availableAt);state=act(state,tick(80),job.availableAt);assert.equal(state.coins,DINER_RULES.starterCoins+30);
 });
 test('gesture UI mapping preserves selection and release is harmless after completion',()=>{
   const state=createDiner(now),job=homeIncidents(state)[0],commands=homeGestureCommands(state,{type:'begin',incidentId:job.id,point:{x:job.x-.2,y:job.y}});assert.equal(commands.length,2);
   let playing=commands.reduce((s,c)=>act(s,c),state);assert.equal(playing.homeTask!.phase,'working');assert.equal(homeGestureCommands(playing,{type:'stroke',incidentId:job.id,point:{x:job.x+.2,y:job.y}}).length,1);
-  playing=scrub(playing,60);assert.equal(homeGestureCommands(playing,{type:'end',incidentId:job.id}).length,0);
+  playing=scrub(playing,40);assert.equal(homeGestureCommands(playing,{type:'end',incidentId:job.id}).length,0);
+});
+test('ordinary 20Hz back-and-forth gestures finish in two seconds with the real server clock',()=>{
+  for(const amplitude of [.20,.43]){
+    let record=createDinerRecord(now,`phone-pace-${amplitude}`),at=now;
+    const job=homeIncidents(record.state)[0];record=replayDiner(record,[{type:'beginHomeTask',incidentId:job.id},{type:'homeTaskInput',action:{type:'strokeStart',point:{x:job.x-amplitude,y:job.y}}}],at).record;
+    for(let i=0;i<40;i++){
+      at+=50;const point={x:job.x+amplitude*Math.sin((i+1)*Math.PI/6),y:job.y};
+      record=replayDiner(record,[{type:'homeTaskInput',action:{type:'stroke',point}},tick(1)],at).record;
+    }
+    assert.equal(record.state.homeTask,null,`amplitude ${amplitude} did not finish`);assert.equal(at-now,2000);assert.equal(record.state.coins,DINER_RULES.starterCoins+30);
+  }
+});
+test('legacy spill and delivery partial work migrate proportionally once without issuing rewards',()=>{
+  for(const [kind,oldProgress,total,expected] of [['spill',45,60,30],['delivery',54,80,8]] as const){
+    const state=createDiner(now),job=homeIncidents(state)[kind==='spill'?0:1];delete state.daily.workVersion;
+    state.homeTask={incidentId:job.id,progressTicks:oldProgress,phase:'paused',gesture:emptyHomeGesture()};state.updatedAt=job.availableAt;
+    const loaded=sanitizeDinerSave(state)!;assert(loaded);assert.equal(loaded.daily.workVersion,2);assert.equal(loaded.homeTask!.progressTicks,expected);assert.equal(loaded.coins,state.coins);assert.deepEqual(loaded.daily.incidentClaims,[]);
+    assert.deepEqual(sanitizeDinerSave(loaded),loaded);const canonical=act(state,{type:'settle'},job.availableAt);assert.equal(canonical.homeTask!.progressTicks,expected);assert.equal(canonical.coins,state.coins);
+    const nearDone=structuredClone(state);nearDone.homeTask!.progressTicks=total-1;const normalized=sanitizeDinerSave(nearDone)!;assert(normalized);assert(normalized.homeTask!.progressTicks<DINER_RULES.incidentWorkTicks[kind]);assert.equal(normalized.coins,state.coins);
+  }
 });
 console.log(`PASS ${groups} diner home-task groups`);

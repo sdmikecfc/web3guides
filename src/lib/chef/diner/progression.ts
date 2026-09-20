@@ -1,6 +1,6 @@
 /** Street Eats preview progression. Renderer-free, seeded, and isolated from dk saves. */
 import { CONTENT_VERSION, DIFFICULTIES, EQUIPMENT, EQUIPMENT_BY_ID, isTruckEquipmentAvailable, isHomeEquipmentAvailable, INGREDIENTS, INGREDIENT_BY_ID, RECIPES, RECIPE_BY_ID, ROUTES, SERVICE_RULES, SPICES, TRUCK_TIERS } from "./content";
-import { createService, dispatchService, sanitizeService, serviceResult } from "./service";
+import { createService, dispatchService, sanitizeService, serviceReadyError, serviceResult } from "./service";
 import { buildServiceLoadout, makeStation, makeTable, validateServiceLayout } from "./geometry";
 import { measureHomeRates, type HomeSimulationConfig } from "./home-simulation";
 import { chooseHomeInteractionTile, homeSpatial } from "./home-spatial";
@@ -17,7 +17,7 @@ export const DINER_RULES = {
   ingredientMaximum: 7, marketPrices: { common: 300, uncommon: 500, rare: 800 },
   sourceAllowances: { crate: 2, market: 1, garden: 1, kindness: 1, truck: 2 },
   starterCoins: 200, homeEquipmentMultiplier: 12, homeArrivalBase: 60, homeArrivalPerLevel: 2, rerollCost: 80,
-  staffMealSpeed: 1.1, regularDailyServings: 1, incidentCoins: 30, incidentWaitMs: 600_000, incidentWorkTicks:{spill:60,delivery:80},
+  staffMealSpeed: 1.1, regularDailyServings: 1, incidentCoins: 30, incidentWaitMs: 600_000, incidentWorkTicks:{spill:40,delivery:12},
   recipeCost: 140, ingredientNodeCoins: 70, bonusCoins: 100,
   expansionPrices: [0, 25_000, 60_000, 150_000], expansionLevels: [1, 5, 12, 20],
   floors: [8, 10, 12, 14], reputationLevels: [0, 20, 60, 140, 260, 440, 680, 980, 1350, 1800, 2320, 2920, 3600, 4400, 5300, 6300, 7500, 8900, 10500, 12400].map(value => value * 12),
@@ -28,6 +28,8 @@ export interface DinerNode { id: string; row: number; column: number; kind: Node
 export interface HomePlacement { id: string; equipmentId: string; x: number; y: number; rotation: 0 | 1 | 2 | 3; skin?: string }
 export type TruckStationPlacement = Pick<ServiceStation, "id" | "kind" | "x" | "y" | "facing">;
 export type TruckTablePlacement = Pick<ServiceTable, "id" | "x" | "y" | "capacity"> & { rotation?: ServiceTable["rotation"] };
+export type TruckTableId = 'table_1' | 'table_2' | 'table_4';
+export const TRUCK_TABLE_PRICES: Record<1|2|4,number> = {1:EQUIPMENT_BY_ID.table_1.tiers[0].price,2:EQUIPMENT_BY_ID.table_2.tiers[0].price,4:EQUIPMENT_BY_ID.table_4.tiers[0].price};
 export interface DinerOffer { id: string; kind: "recipe" | "equipment" | "upgrade" | "ingredients"; target: string; price: number; purchased: boolean }
 export interface DinerRun {
   id: string; seed: string; routeId: string; contentVersion: number; map: DinerNode[]; available: string[]; position: string | null; visited: string[];
@@ -35,7 +37,7 @@ export interface DinerRun {
   menu: string[]; specials: string[]; spices: string[]; offers: DinerOffer[]; rerolled: boolean; qualified: boolean; ingredientClaimed: boolean; tutorial: boolean; serviceDays: number; practice: boolean;
   event:DinerEvent|null;nextService:NextServiceEffect|null;serviceEffect:NextServiceEffect|null;lastEventResult:string|null;mapVersion:1|2;
 }
-export interface DinerDaily { day: number; crate: boolean; crateProgressTicks:number; market: boolean; garden: boolean; kindness: boolean; truckRuns: string[]; minted: number; marketOffers: string[]; regularServed: string[]; regularProgress: Record<string, number>; incidentClaims: string[]; staffMeal: string | null }
+export interface DinerDaily { day: number; workVersion?:1|2; crate: boolean; crateProgressTicks:number; market: boolean; garden: boolean; kindness: boolean; truckRuns: string[]; minted: number; marketOffers: string[]; regularServed: string[]; regularProgress: Record<string, number>; incidentClaims: string[]; staffMeal: string | null }
 export interface DinerHomeTask {incidentId:string;progressTicks:number;phase:"ready"|"working"|"paused";gesture?:HomeGestureWork}
 export type DinerHomeTaskAction={type:"hold";active:boolean}|{type:"tick";ticks:number}|{type:"pause"}|{type:'strokeStart';point:HomeGesturePoint}|{type:'stroke';point:HomeGesturePoint}|{type:'parcel';part:ParcelPart};
 export interface DinerState {
@@ -45,7 +47,7 @@ export interface DinerState {
   decorOwned: Record<string, number>;
   cosmetics: { wrap: string; horn: string; uniform: string; floor: string; wall: string };
   staffMembers: DinerStaff[];
-  truckConfig: { stations: TruckStationPlacement[]; tables: TruckTablePlacement[]; layoutTier: DinerTier; menu: string[]; helperId: string | null; helperRole: "washer" | "runner" | "prep"; helperId2: string | null; helperRole2: "washer" | "runner" | "prep"; spices: string[] };
+  truckConfig: { stations: TruckStationPlacement[]; tables: TruckTablePlacement[]; tableCopies:Record<TruckTableId,number>; supplyVersion?:1; menuVersion?:2; layoutTier: DinerTier; menu: string[]; helperId: string | null; helperRole: "washer" | "runner" | "prep"; helperId2: string | null; helperRole2: "washer" | "runner" | "prep"; spices: string[] };
   savedLayouts: SavedDinerLayout[];
   home: { w: number; h: number; expansion: number; layout: HomePlacement[]; menu: Record<Course, string[]>; staff: { chefs: number; waiters: number }; till: { coins: number; reputation: number; lastAt: number; capacityHours: number; filledMs: number }; garden: { plantedAt: number; ingredientId: string }; name: string };
   buzz: number[]; run: DinerRun | null;
@@ -78,6 +80,9 @@ type DinerCoreCommand =
   | { type: "setHomeMenu"; menu: Record<Course, string[]> }
   | { type: "setTruckMenu"; recipeIds: string[] }
   | { type: "setupLayout"; stations: TruckStationPlacement[]; tables: TruckTablePlacement[] }
+  | { type: "buyTruckTable"; capacity:1|2|4 }
+  | { type: "buyTruckRecipe"; recipeId:string }
+  | { type: "buyTruckEquipment" | "upgradeTruckEquipment"; equipmentId:string }
   | { type: "buyIngredient"; ingredientId: string }
   | { type: "plantGarden"; ingredientId: string }
   | { type: "hire"; role: "chef" | "waiter" }
@@ -97,16 +102,16 @@ export type DinerCommand = DinerCoreCommand | DinerCollectionCommand;
 export interface DinerContext { now: number; online?: boolean }
 export interface DinerResult { state: DinerState; error?: string; code?: string }
 export function activeDinerMode(state:DinerState):'service'|'eventInput'|'rallyService'|'homeTaskInput'|null {
-  if(state.run?.service&&['playing','closing'].includes(state.run.service.phase))return 'service';
+  if(state.run?.service&&['preparing','playing','closing'].includes(state.run.service.phase))return 'service';
   if(state.run?.event?.phase==='challenge')return 'eventInput';
-  if(state.rally?.service&&['playing','closing'].includes(state.rally.service.phase))return 'rallyService';
+  if(state.rally?.service&&['preparing','playing','closing'].includes(state.rally.service.phase))return 'rallyService';
   if(!state.run&&!state.rally?.service&&state.homeTask?.phase==='working')return 'homeTaskInput';
   return null;
 }
 export function dinerTickCommand(state:DinerState,ticks:number):DinerCommand|null {const type=activeDinerMode(state);return type?{type,action:{type:'tick',ticks}}:null;}
 export function dinerPauseCommand(state:DinerState):DinerCommand|null {const type=activeDinerMode(state);return type?{type,action:{type:'pause'}}:null;}
 export function dinerCommandTicks(command:DinerCommand):number {return ['service','rallyService','eventInput','homeTaskInput'].includes(command.type)&&'action' in command&&command.action.type==='tick'?command.action.ticks:0;}
-export function dinerClockBoundary(command:DinerCommand):boolean {return command.type==='eventChoice'||(command.type==='homeTaskInput'&&['strokeStart','parcel'].includes(command.action.type))||(['service','rallyService','eventInput','homeTaskInput'].includes(command.type)&&'action' in command&&['open','resume'].includes(command.action.type));}
+export function dinerClockBoundary(command:DinerCommand):boolean {return command.type==='eventChoice'||(command.type==='homeTaskInput'&&['strokeStart','parcel'].includes(command.action.type))||(['service','rallyService','eventInput','homeTaskInput'].includes(command.type)&&'action' in command&&['prepare','open','resume'].includes(command.action.type));}
 const COURSES: Course[] = ["starter", "main", "dessert", "drink"];
 const owns=(record:object,key:PropertyKey):boolean=>Object.prototype.hasOwnProperty.call(record,key);
 function fail(code: string, message: string): never { throw Object.assign(new Error(message), { code }); }
@@ -114,7 +119,28 @@ export function dinerDay(now: number) { return Math.floor(now / DINER_RULES.dayM
 export function dinerHash(seed: string) { let n = 2166136261; for (let i = 0; i < seed.length; i++) n = Math.imul(n ^ seed.charCodeAt(i), 16777619); return n >>> 0; }
 function random(seed: string) { let n = dinerHash(seed); return () => { n = (Math.imul(n, 1664525) + 1013904223) >>> 0; return n / 4294967296; }; }
 function ordered<T>(values: readonly T[], seed: string, key: (v: T) => string): T[] { return [...values].sort((a, b) => dinerHash(`${seed}:${key(a)}`) - dinerHash(`${seed}:${key(b)}`)); }
-function dailyState(day: number, seed: string): DinerDaily { return { day, crate: false, crateProgressTicks:0, market: false, garden: false, kindness: false, truckRuns: [], minted: 0, marketOffers: ordered(INGREDIENTS, `${seed}:${day}:market`, i => i.id).slice(0, 3).map(i => i.id), regularServed: [], regularProgress: {}, incidentClaims: [], staffMeal: null }; }
+function dailyState(day: number, seed: string): DinerDaily { return { day, workVersion:2, crate: false, crateProgressTicks:0, market: false, garden: false, kindness: false, truckRuns: [], minted: 0, marketOffers: ordered(INGREDIENTS, `${seed}:${day}:market`, i => i.id).slice(0, 3).map(i => i.id), regularServed: [], regularProgress: {}, incidentClaims: [], staffMeal: null }; }
+
+/** Preserve completion receipts and partial percentages when shortening the old 60/80-tick chores. */
+function normalizeHomeWork(state:DinerState){
+  if(state.daily.workVersion===2){state.daily.crateProgressTicks??=state.daily.crate?DINER_RULES.incidentWorkTicks.delivery:0;return;}
+  if(state.daily.workVersion!==undefined&&state.daily.workVersion!==1)fail('invalid_home_work','This restaurant job needs its matching version.');
+  const oldCrate=state.daily.crateProgressTicks??(state.daily.crate?80:0);
+  if(!Number.isSafeInteger(oldCrate)||oldCrate<0||oldCrate>80||state.daily.crate!==(oldCrate===80))fail('invalid_home_work','The parcel receipt is incomplete.');
+  const scale=(value:number,oldTotal:number,total:number)=>Math.min(total-1,Math.floor(value*total/oldTotal));
+  state.daily.crateProgressTicks=state.daily.crate?DINER_RULES.incidentWorkTicks.delivery:scale(oldCrate,80,DINER_RULES.incidentWorkTicks.delivery);
+  if(state.homeTask){
+    const task=state.homeTask,isCrate=task.incidentId===`crate:${state.daily.day}`,isSpill=task.incidentId===`incident:${state.daily.day}:0`;
+    const oldTotal=isSpill?60:80,total=isSpill?DINER_RULES.incidentWorkTicks.spill:DINER_RULES.incidentWorkTicks.delivery;
+    if(!Number.isSafeInteger(task.progressTicks)||task.progressTicks<0||task.progressTicks>=oldTotal||(isCrate&&task.progressTicks!==oldCrate))fail('invalid_home_work','The saved job progress is incomplete.');
+    task.progressTicks=scale(task.progressTicks,oldTotal,total);
+    const oldCredit=task.gesture?.creditTicks??0,credit=Math.max(0,Math.floor((Number.isFinite(oldCredit)?oldCredit:0)*total/oldTotal));
+    const limit=isSpill?HOME_GESTURE_RULES.maxCreditTicks:parcelStageEnd(parcelStage(task.progressTicks,total),total)-task.progressTicks;
+    task.gesture={point:task.gesture?.point??null,creditTicks:Math.min(limit,credit),remainder:0};
+    if(!isSpill&&task.phase==='working'&&task.gesture.creditTicks===0)task.phase='ready';
+  }
+  state.daily.workVersion=2;
+}
 
 export function generateDinerMap(seed: string,version:1|2=2): DinerNode[] {
   const roll = random(seed), rows: DinerNode[][] = [];
@@ -137,12 +163,12 @@ export function generateDinerMap(seed: string,version:1|2=2): DinerNode[] {
 
 export function createDiner(now: number, seed = "street-eats-preview"): DinerState {
   const time = Number.isSafeInteger(now) && now >= 0 ? now : 0;
-  const starter = buildServiceLoadout(1, ["classic_burger", "fries"]);
+  const starter = buildServiceLoadout(1, ["classic_burger"]);
   return { version: 1, contentVersion: CONTENT_VERSION, seed, createdAt: time, updatedAt: time, coins: DINER_RULES.starterCoins, reputation: 0, restaurantLevel: 1, truckTier: 1, runsStarted: 0,
-    recipes: { classic_burger: { level: 0 }, fries: { level: 0 } }, pantry: {},
-    equipment: Object.fromEntries(["crate", "grill", "prep", "sink", "bin", "table_2", "fryer"].map(id => [id, { tier: 1, truckOwned: true, homeCopies: id === "fryer" || id === "crate" || id === "bin" ? 0 : 1 }])),
+    recipes: { classic_burger: { level: 0 } }, pantry: {},
+    equipment: Object.fromEntries(["crate", "fridge", "plates", "grill", "prep", "sink", "bin", "table_1", "table_2", "fryer"].map(id => [id, { tier: 1, truckOwned: id!=="fryer", homeCopies: ["table_1","fryer","crate","bin","fridge","plates"].includes(id) ? 0 : 1 }])),
     decorOwned: {}, cosmetics: { wrap: "tomato", horn: "quiet", uniform: "classic", floor: "checker", wall: "cream" }, staffMembers: [{ id: "chef-1", name: "Charlie", role: "chef", named: false, outfit: "classic", look: 0 }, { id: "waiter-1", name: "Robin", role: "waiter", named: false, outfit: "classic", look: 1 }], savedLayouts: [],
-    truckConfig: { stations: starter.stations.map(({ id, kind, x, y, facing }) => ({ id, kind, x, y, facing })), tables: starter.tables.map(({ id, x, y, capacity, rotation }) => ({ id, x, y, capacity, rotation })), layoutTier: 1, menu: ["classic_burger", "fries"], helperId: null, helperRole: "washer", helperId2: null, helperRole2: "washer", spices: [] },
+    truckConfig: { stations: starter.stations.filter(s=>['crate','fridge','plates','sink','bin'].includes(s.kind)).map(({ id, kind, x, y, facing }) => ({ id, kind, x:kind==='fridge'?3:x, y:kind==='fridge'?0:y, facing:kind==='fridge'?0:facing })), tables: [{id:'table_1',x:3,y:5,capacity:1,rotation:0}], tableCopies:{table_1:1,table_2:0,table_4:0}, supplyVersion:1, menuVersion:2, layoutTier: 1, menu: ["classic_burger"], helperId: null, helperRole: "washer", helperId2: null, helperRole2: "washer", spices: [] },
     home: { w: 8, h: 8, expansion: 0, name: "My little diner", layout: [{ id: "grill-1", equipmentId: "grill", x: 1, y: 0, rotation: 0 }, { id: "prep-1", equipmentId: "prep", x: 3, y: 0, rotation: 0 }, { id: "sink-1", equipmentId: "sink", x: 5, y: 0, rotation: 0 }, { id: "table-1", equipmentId: "table_2", x: 2, y: 3, rotation: 0 }],
       menu: { main: ["classic_burger"], starter: [], drink: [], dessert: [] }, staff: { chefs: 1, waiters: 1 }, till: { coins: 0, reputation: 0, lastAt: time, capacityHours: DINER_RULES.tillHours, filledMs: 0 }, garden: { plantedAt: time, ingredientId: "tomato" } },
     buzz: [], run: null,rally:createRally(time),homeTask:null, lastRun: null, tutorial: { stage: 0, finished: false, fryerGifted: false, crateClaimed: false }, daily: dailyState(dinerDay(time), seed), collections: { regulars: { old_pete: 0 }, stamps: [], trophies: [], scraps: {}, mementos: [], routeWins: [] }, settings: { cosy: false } };
@@ -164,23 +190,26 @@ export function sanitizeDinerSave(raw: unknown): DinerState | null {
     // This only fills presentation/config fields from earlier checkpoints of
     // this new preview. It never imports or converts a legacy Domain Kitchen save.
     state.decorOwned ??= {}; state.cosmetics ??= defaults.cosmetics; state.staffMembers ??= defaults.staffMembers;
-    state.truckConfig ??= defaults.truckConfig; state.savedLayouts ??= [];
+    if(!state.truckConfig){const legacyMenu=['classic_burger','fries'].filter(id=>state.recipes?.[id]);const legacy=buildServiceLoadout(1,legacyMenu);state.truckConfig={...defaults.truckConfig,menu:legacyMenu,stations:legacy.stations.map(({id,kind,x,y,facing})=>({id,kind,x,y,facing})),tables:legacy.tables.map(({id,x,y,capacity,rotation})=>({id,x,y,capacity,rotation}))};delete (state.truckConfig as Partial<DinerState['truckConfig']>).tableCopies;delete state.truckConfig.supplyVersion;delete state.truckConfig.menuVersion;}
+    state.savedLayouts ??= [];
     if(object(state.truckConfig)){state.truckConfig.helperId2??=null;state.truckConfig.helperRole2??="washer";}
     state.rally??=createRally(state.updatedAt);state.homeTask??=null;
     if(!object(state.rally)||state.rally.version!==1||typeof state.rally.weekId!=='string'||typeof state.rally.seed!=='string'||![state.rally.bestScore,state.rally.attempts,state.rally.completed].every(n=>integer(n))||typeof state.rally.badge!=='boolean'||(state.rally.lastScore!==null&&!integer(state.rally.lastScore)))return null;
     if(state.rally.service){const restored=sanitizeService(state.rally.service);if(!restored||!restored.config.practice)return null;state.rally.service=restored;}
     if (!object(state.recipes) || !Object.entries(state.recipes).every(([id, r]) => Object.prototype.hasOwnProperty.call(RECIPE_BY_ID, id) && object(r) && integer(r.level, 10)) || !object(state.pantry) || !Object.entries(state.pantry).every(([id, count]) => Object.prototype.hasOwnProperty.call(INGREDIENT_BY_ID, id) && integer(count))) return null;
     if (!object(state.equipment) || !Object.entries(state.equipment).every(([id, e]) => owns(EQUIPMENT_BY_ID,id) && object(e) && integer(e.tier, EQUIPMENT_BY_ID[id].tiers.length) && e.tier >= 1 && typeof e.truckOwned === "boolean" && integer(e.homeCopies))) return null;
+    normalizeTruckPolicy(state);
     if (!object(state.decorOwned) || !Object.entries(state.decorOwned).every(([id, count]) => owns(DECOR_BY_ID,id) && integer(count, 1000)) || !object(state.cosmetics) || ![COSMETICS.wraps.includes(state.cosmetics.wrap as typeof COSMETICS.wraps[number]), COSMETICS.horns.includes(state.cosmetics.horn as typeof COSMETICS.horns[number]), COSMETICS.uniforms.includes(state.cosmetics.uniform as typeof COSMETICS.uniforms[number]), COSMETICS.floors.includes(state.cosmetics.floor as typeof COSMETICS.floors[number]), COSMETICS.walls.includes(state.cosmetics.wall as typeof COSMETICS.walls[number])].every(Boolean)) return null;
     if (!Array.isArray(state.staffMembers) || state.staffMembers.length > 11 || new Set(state.staffMembers.map(member => member.id)).size !== state.staffMembers.length || state.staffMembers.some(member => !member || typeof member.id !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(member.id) || typeof member.name !== "string" || member.name.length > 40 || !["chef", "waiter"].includes(member.role) || typeof member.named !== "boolean" || !integer(member.look, 7) || !(COSMETICS.uniforms as readonly string[]).includes(member.outfit))) return null;
     if (!object(state.truckConfig) || !["washer", "runner", "prep"].includes(state.truckConfig.helperRole2) || (state.truckConfig.helperId2!==null&&(!state.staffMembers.some(member=>member.id===state.truckConfig.helperId2)||state.truckConfig.helperId2===state.truckConfig.helperId)) || !validTruckMenu(state, state.truckConfig.menu) || ![1, 2, 3, 4].includes(state.truckConfig.layoutTier) || !["washer", "runner", "prep"].includes(state.truckConfig.helperRole) || (state.truckConfig.helperId !== null && !state.staffMembers.some(member => member.id === state.truckConfig.helperId)) || !strings(state.truckConfig.spices, 5) || state.truckConfig.spices.some(id => !(SPICES as readonly string[]).includes(id))) return null;
-    ownedTruckLayout({ ...state, truckTier: state.truckConfig.layoutTier }, state.truckConfig, state.truckConfig.menu);
+    normalizeTruckStorage(state);
+    ownedTruckLayout({ ...state, truckTier: state.truckConfig.layoutTier }, state.truckConfig);
     const home = state.home;
     if (!object(home) || ![8, 10, 12, 14].includes(home.w) || home.h !== home.w || !integer(home.expansion, 3) || typeof home.name !== "string" || home.name.length > 24 || !object(home.menu) || COURSES.some(course => !strings(home.menu[course], 3) || home.menu[course].some(id => !state.recipes[id] || RECIPE_BY_ID[id].course !== course)) || !object(home.staff) || ![home.staff.chefs, home.staff.waiters].every(v => integer(v, 8) && v >= 1) || !object(home.till) || ![home.till.coins, home.till.reputation].every(v => Number.isFinite(v) && v >= 0) || !integer(home.till.lastAt) || home.till.capacityHours !== DINER_RULES.tillHours || !Number.isFinite(home.till.filledMs) || home.till.filledMs < 0 || home.till.filledMs > DINER_RULES.tillHours * DINER_RULES.hourMs || !object(home.garden) || !integer(home.garden.plantedAt) || !owns(INGREDIENT_BY_ID,home.garden.ingredientId)) return null;
     if (validateDinerHome(state, home.layout)) return null;
     if (!Array.isArray(state.buzz) || state.buzz.length > 10 || !state.buzz.every(t => integer(t)) || !object(state.daily) || !integer(state.daily.day) || !integer(state.daily.minted, 7) || !strings(state.daily.truckRuns, 2) || !strings(state.daily.marketOffers, 3) || state.daily.marketOffers.some(id => !owns(INGREDIENT_BY_ID,id)) || ![state.daily.crate, state.daily.market, state.daily.garden, state.daily.kindness].every(v => typeof v === "boolean")) return null;
     state.daily.regularServed ??= []; state.daily.regularProgress ??= {}; state.daily.incidentClaims ??= []; state.daily.staffMeal ??= null;
-    state.daily.crateProgressTicks??=state.daily.crate?DINER_RULES.incidentWorkTicks.delivery:0;
+    normalizeHomeWork(state);
     if(!integer(state.daily.crateProgressTicks,DINER_RULES.incidentWorkTicks.delivery)||state.daily.crate!==(state.daily.crateProgressTicks===DINER_RULES.incidentWorkTicks.delivery))return null;
     if (!strings(state.daily.regularServed, 8) || state.daily.regularServed.some(id => !REGULARS.some(member => member.id === id)) || !object(state.daily.regularProgress) || Object.entries(state.daily.regularProgress).some(([id, count]) => !REGULARS.some(member => member.id === id) || !Number.isFinite(count) || count < 0 || count > DINER_RULES.regularDailyServings) || !strings(state.daily.incidentClaims, 2) || (state.daily.staffMeal !== null && (!owns(state.recipes,state.daily.staffMeal)||!owns(RECIPE_BY_ID,state.daily.staffMeal)))) return null;
     if (!Array.isArray(state.savedLayouts) || state.savedLayouts.length > 3 || state.savedLayouts.some(saved => !saved || typeof saved.id !== "string" || typeof saved.name !== "string" || saved.name.length > 24 || validateDinerHome(state, saved.layout) || !saved.menu || COURSES.some(course => !strings(saved.menu[course], 3) || saved.menu[course].some(id => !state.recipes[id] || RECIPE_BY_ID[id]?.course !== course)))) return null;
@@ -298,8 +327,8 @@ function finishRun(state: DinerState, reason: "home" | "failed" | "won") {
   const run = state.run!; if (run.practice) { state.run = null; return; }
   if(run.qualified&&!run.ingredientClaimed&&state.daily.truckRuns.length<DINER_RULES.sourceAllowances.truck)grantTruckIngredient(state);
   const banked = Math.floor(run.haul * (reason === "failed" ? .5 : 1)); state.coins += banked;
+  if (run.tutorial) { state.tutorial.finished = true; state.tutorial.stage = 6; if (!state.tutorial.fryerGifted) { state.equipment.fryer??={tier:1,truckOwned:false,homeCopies:0};state.equipment.fryer.truckOwned=true;state.equipment.fryer.homeCopies++; state.tutorial.fryerGifted = true; } }
   state.lastRun = { id: run.id, reason, banked, lost: run.haul - banked, serviceDays: run.serviceDays, recipes: Object.keys(state.recipes), equipment: Object.keys(state.equipment).filter(id => state.equipment[id].truckOwned) };
-  if (run.tutorial) { state.tutorial.finished = true; state.tutorial.stage = 6; if (!state.tutorial.fryerGifted) { state.equipment.fryer.homeCopies++; state.tutorial.fryerGifted = true; } }
   state.run = null; routeTier(state);
 }
 function currentNode(state: DinerState) { return state.run?.map.find(node => node.id === state.run!.position); }
@@ -315,34 +344,101 @@ export function shopOffers(state: DinerState, salt = "0"): DinerOffer[] {
 function validTruckMenu(state: DinerState, menu: string[]) {
   return Array.isArray(menu) && menu.length > 0 && menu.length <= 4 && new Set(menu).size === menu.length && menu.every(id => owns(state.recipes,id) && owns(RECIPE_BY_ID,id) && RECIPE_BY_ID[id].steps.every(step => state.equipment[step.station]?.truckOwned));
 }
-function ownedTruckLayout(state: DinerState, input: { stations: TruckStationPlacement[]; tables: TruckTablePlacement[] }, menu: string[]) {
-  if (!Array.isArray(input.stations) || !Array.isArray(input.tables) || input.stations.length > 40 || input.tables.length > TRUCK_TIERS[state.truckTier].tables) fail("invalid_layout", "Choose a layout that fits your truck.");
+/** Old possessions stay where they were. New mandatory supplies arrive in storage,
+ * and only an unopened first tutorial receives the simpler opening menu. */
+function normalizeTruckPolicy(state:DinerState){
+  if(state.truckConfig.supplyVersion===undefined){
+    for(const id of ['fridge','plates']){state.equipment[id]??={tier:1,truckOwned:true,homeCopies:0};state.equipment[id].truckOwned=true;}
+    state.truckConfig.supplyVersion=1;
+  }else if(state.truckConfig.supplyVersion!==1)fail('invalid_storage','This truck supply version is unavailable.');
+  if(state.truckConfig.menuVersion===undefined){
+    const run=state.run,service=run?.service;
+    const unopened=!service||(service.phase==='setup'&&service.tick===0&&service.customers.length===0&&!service.chef.held&&service.stations.every(station=>station.slots.every(slot=>!slot.item)));
+    if(run?.tutorial&&run.serviceDays===0&&unopened&&owns(state.recipes,'classic_burger')){run.menu=['classic_burger'];if(service)service.config.menu=['classic_burger'];}
+    state.truckConfig.menuVersion=2;
+  }else if(state.truckConfig.menuVersion!==2)fail('invalid_menu','This truck menu version is unavailable.');
+}
+export interface TruckRecipeOffer {recipeId:string;price:number;available:boolean;reason:string|null}
+/** Buying a recipe adds it to the book. Only an explicit menu selection creates new orders. */
+export function truckRecipeShop(state:DinerState):TruckRecipeOffer[]{
+  return RECIPES.filter(recipe=>!recipe.secret&&!owns(state.recipes,recipe.id)).map(recipe=>{
+    const route=ROUTES.find(route=>route.id===recipe.route),machine=recipe.steps.find(step=>!state.equipment[step.station]?.truckOwned);
+    const reason=state.rally.service||(state.run&&state.run.service?.phase!=='setup')?'Choose recipes at home or before opening service.':route&&route.tier>state.truckTier?`Discover ${route.name} first.`:machine?`Discover the ${EQUIPMENT_BY_ID[machine.station].name.toLowerCase()} first.`:state.coins<DINER_RULES.recipeCost?'Save a few more coins first.':null;
+    return {recipeId:recipe.id,price:DINER_RULES.recipeCost,available:reason===null,reason};
+  });
+}
+export interface TruckEquipmentOffer {equipmentId:string;name:string;action:'buy'|'upgrade';tier:number;capacity:number;price:number;available:boolean;reason:string|null;homeCapable:boolean}
+/** Utility purchases and capacity upgrades use banked coins before a service.
+ * Buying never installs a station or grants a restaurant copy. */
+export function truckEquipmentShop(state:DinerState):TruckEquipmentOffer[]{
+  const busy=Boolean(state.rally.service||(state.run&&state.run.service?.phase!=='setup'));
+  return EQUIPMENT.flatMap(def=>{
+    if(!isTruckEquipmentAvailable(def.id)||def.id.startsWith('table_'))return [];
+    const owned=state.equipment[def.id],action=owned?.truckOwned?'upgrade':'buy';
+    if(action==='buy'&&!['cups','boxes'].includes(def.id))return [];
+    const tier=action==='buy'?1:owned.tier+1,spec=def.tiers.find(spec=>spec.tier===tier);if(!spec)return [];
+    const dependency=def.id==='boxes'&&!state.equipment.fryer?.truckOwned?'Discover the fryer first.':def.id==='cups'&&!['drinks','coffee','blender'].some(id=>state.equipment[id]?.truckOwned)?'Discover a drinks machine first.':null;
+    const reason=busy?'Choose equipment at home or before preparing food.':dependency??(tier>equipmentTierCap(state)?`Restaurant level ${tier===2?5:12} unlocks this upgrade.`:state.coins<spec.price?'Save a few more coins first.':null);
+    return [{equipmentId:def.id,name:def.name,action,tier,capacity:spec.capacity,price:spec.price,available:reason===null,reason,homeCapable:isHomeEquipmentAvailable(def.id)} as TruckEquipmentOffer];
+  });
+}
+/** Add quantities once to older saves. Previously placed tables are possessions,
+ * including an active service that was saved after a truck-size change. */
+function normalizeTruckStorage(state:DinerState){
+  const ids:TruckTableId[]=['table_1','table_2','table_4'];
+  if(state.truckConfig.tableCopies===undefined){
+    state.truckConfig.tableCopies=Object.fromEntries(ids.map(id=>{
+      const capacity=Number(id.slice(6));
+      const saved=state.truckConfig.tables.filter(table=>table.capacity===capacity).length;
+      const active=state.run?.service?.tables.filter(table=>table.capacity===capacity).length??0;
+      return [id,Math.max(state.equipment[id]?.truckOwned?1:0,saved,active)];
+    })) as Record<TruckTableId,number>;
+  }
+  const copies=state.truckConfig.tableCopies;
+  if(!copies||typeof copies!=='object'||Array.isArray(copies)||Object.keys(copies).some(id=>!ids.includes(id as TruckTableId))||ids.some(id=>!Number.isSafeInteger(copies[id])||copies[id]<0||copies[id]>100||(copies[id]>0&&!state.equipment[id]?.truckOwned)))fail('invalid_storage','The truck seating inventory is incomplete.');
+}
+function ownedTruckLayout(state: DinerState, input: { stations: TruckStationPlacement[]; tables: TruckTablePlacement[] }) {
+  if (!Array.isArray(input.stations) || !Array.isArray(input.tables) || input.stations.length > 40 || input.tables.length > SERVICE_RULES.maxTables) fail("invalid_layout", "Choose a layout that fits your truck.");
   const seen = new Set<string>();
   const stations = input.stations.map(p => {
     if (!p || Object.keys(p).some(k => !["id", "kind", "x", "y", "facing"].includes(k)) || ![p.x, p.y].every(Number.isInteger) || ![0, 1, 2, 3].includes(p.facing) || typeof p.id !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(p.id)) fail("invalid_layout", "Choose valid station positions and facing.");
     const owned = state.equipment[p.kind]; if (!owned?.truckOwned || seen.has(p.kind)) fail("equipment_unavailable", "Use one copy of each owned truck station.");
     seen.add(p.kind); return makeStation(p.id, p.kind, p.x, p.y, Math.min(3, owned.tier) as 1 | 2 | 3, p.facing);
   });
+  const tableCounts:Partial<Record<TruckTableId,number>>={};
   const tables = input.tables.map(p => {
-    if (!p || Object.keys(p).some(k => !["id", "x", "y", "capacity", "rotation"].includes(k)) || ![p.x, p.y].every(Number.isInteger) || ![0, 1, 2, 3].includes(p.rotation ?? 0) || ![2, 4].includes(p.capacity) || typeof p.id !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(p.id)) fail("invalid_layout", "Choose valid table positions and rotations.");
-    const owned = state.equipment[p.capacity === 4 ? "table_4" : "table_2"]; if (!owned?.truckOwned) fail("equipment_unavailable", "Own this table before placing it.");
+    if (!p || Object.keys(p).some(k => !["id", "x", "y", "capacity", "rotation"].includes(k)) || ![p.x, p.y].every(Number.isInteger) || ![0, 1, 2, 3].includes(p.rotation ?? 0) || ![1, 2, 4].includes(p.capacity) || typeof p.id !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(p.id)) fail("invalid_layout", "Choose valid table positions and rotations.");
+    const key=`table_${p.capacity}` as TruckTableId,owned = state.equipment[key];tableCounts[key]=(tableCounts[key]??0)+1;
+    if (!owned?.truckOwned||(tableCounts[key]??0)>state.truckConfig.tableCopies[key]) fail("equipment_unavailable", "Buy another table and chairs before placing this copy.");
     return makeTable(p.id, p.x, p.y, p.capacity, Math.min(2, owned.tier) as 1 | 2, p.rotation ?? 0);
   });
-  const error = validateServiceLayout(state.truckTier, stations, tables); if (error) fail("invalid_layout", error);
-  if (menu.some(id => RECIPE_BY_ID[id].steps.some(step => !stations.some(station => station.kind === step.station)))) fail("missing_station", "Keep every station needed by today's menu.");
+  const error = validateServiceLayout(state.truckTier, stations, tables,{allowIncomplete:true}); if (error) fail("invalid_layout", error);
   return { stations, tables };
 }
 function rememberTruckLayout(state: DinerState, loadout: { stations: ServiceStation[]; tables: ServiceTable[] }) {
   state.truckConfig.stations = loadout.stations.map(({ id, kind, x, y, facing }) => ({ id, kind, x, y, facing }));
   state.truckConfig.tables = loadout.tables.map(({ id, x, y, capacity, rotation }) => ({ id, x, y, capacity, rotation })); state.truckConfig.layoutTier = state.truckTier;
 }
-function truckLoadout(state: DinerState, menu: string[], rebuild = false) {
-  if (!rebuild && state.truckConfig.layoutTier === state.truckTier) {
-    try { return ownedTruckLayout(state, state.truckConfig, menu); } catch { /* A new menu or truck size needs a newly fitted loadout. */ }
-  }
-  const loadout = buildServiceLoadout(state.truckTier, menu, Object.fromEntries(Object.entries(state.equipment).filter(([, e]) => e.truckOwned).map(([id, e]) => [id, e.tier])));
-  if (loadout.error) fail("loadout_invalid", loadout.error);
+function truckLoadout(state: DinerState) {
+  const dy=TRUCK_TIERS[state.truckTier].h-TRUCK_TIERS[state.truckConfig.layoutTier].h;
+  const previousPavement=TRUCK_TIERS[state.truckConfig.layoutTier].h+1;
+  const input={stations:state.truckConfig.stations.map(station=>['plates','cups','boxes'].includes(station.kind)&&station.y>=previousPavement?{...station,y:station.y+dy}:station),tables:state.truckConfig.tables.map(table=>({...table,y:table.y+dy}))};
+  const loadout=ownedTruckLayout(state,input);
   rememberTruckLayout(state, loadout); return loadout;
+}
+/** Pieces not on the saved board remain owned in the equipment trailer. */
+export function truckStorage(state:DinerState){
+  const placedStations=new Set(state.truckConfig.stations.map(station=>station.kind));
+  return EQUIPMENT.filter(def=>isTruckEquipmentAvailable(def.id)&&state.equipment[def.id]?.truckOwned).map(def=>{
+    const capacity=def.id.startsWith('table_')?Number(def.id.slice(6)) as 1|2|4:null;
+    const owned=capacity===null?1:state.truckConfig.tableCopies?.[def.id as TruckTableId]??Math.max(1,state.truckConfig.tables.filter(table=>table.capacity===capacity).length);
+    const placed=capacity===null?Number(placedStations.has(def.id as ServiceStation['kind'])):state.truckConfig.tables.filter(table=>table.capacity===capacity).length;
+    return {equipmentId:def.id,name:def.name,capacity,owned,placed,available:Math.max(0,owned-placed),tier:state.equipment[def.id].tier};
+  }).filter(item=>item.owned>0);
+}
+export function truckSetupError(state:DinerState):string|null {
+  try {const copy=structuredClone(state);normalizeTruckStorage(copy);const layout=truckLoadout(copy);return serviceReadyError(createService({tier:copy.truckTier,menu:copy.run?.menu??copy.truckConfig.menu,...layout}));}
+  catch(error){return error instanceof Error?error.message:'Check your truck layout.';}
 }
 function truckHelpers(state: DinerState) {
   const slots=[{id:state.truckConfig.helperId,role:state.truckConfig.helperRole},{id:state.truckConfig.helperId2??null,role:state.truckConfig.helperRole2??"washer" as const}];
@@ -378,7 +474,7 @@ function homeTaskTarget(state:DinerState,id:string){
 function validateCommand(command: DinerCommand) {
   if (!command || typeof command !== "object" || Array.isArray(command)) fail("invalid_command", "Choose a diner action.");
   const fields: Record<string, string[]> = { startRun: ["routeId", "tutorial", "headStart"], startPractice: ["recipeIds"], endPractice: [], chooseNode: ["nodeId"], service: ["action"], finishService: [], goHome: [], leaveNode: [], rerollShop: [], claimCrate: [], collectTill: [], harvestGarden: [], greetRegular: [], expandHome: [], settle: [], chooseGift: ["choice"], buyOffer: ["offerId"], upgradeRecipe: ["recipeId"], buyHomeEquipment: ["equipmentId"], homeLayout: ["layout"], setHomeMenu: ["menu"], setTruckMenu: ["recipeIds"], setupLayout: ["stations", "tables"], buyIngredient: ["ingredientId"], plantGarden: ["ingredientId"], hire: ["role"], settings: ["cosy", "name"], setSpices: ["spiceIds"], assignHelper: ["staffId", "role", "slot"], staffMeal: ["recipeId"], serveRegular: ["regularId"], helpIncident: ["incidentId"], buyDecor: ["decorId"], setCosmetic: ["slot", "id"], skinEquipment: ["placementId", "skinId"], saveLayout: ["name"], loadLayout: ["layoutId"] };
-  Object.assign(fields,{beginHomeTask:['incidentId'],homeTaskInput:['action'],eventChoice:['choiceId'],eventInput:['action'],startRally:[],rallyService:['action'],finishRally:[],endRally:[]});
+  Object.assign(fields,{buyTruckTable:['capacity'],buyTruckRecipe:['recipeId'],buyTruckEquipment:['equipmentId'],upgradeTruckEquipment:['equipmentId'],beginHomeTask:['incidentId'],homeTaskInput:['action'],eventChoice:['choiceId'],eventInput:['action'],startRally:[],rallyService:['action'],finishRally:[],endRally:[]});
   if (!Object.prototype.hasOwnProperty.call(fields, command.type) || Object.keys(command).some(key => key !== "type" && !fields[command.type].includes(key))) fail("invalid_command", "Only action inputs may be submitted.");
   if(command.type==='homeTaskInput'){
     const action=command.action,allowed:Record<string,string[]>={tick:['ticks'],hold:['active'],pause:[],strokeStart:['point'],stroke:['point'],parcel:['part']};
@@ -386,11 +482,12 @@ function validateCommand(command: DinerCommand) {
   }
   if(command.type==='eventInput'){const action=command.action,allowed:Record<string,string[]>={tick:['ticks'],clean:['targetId','active'],tap:[],pause:[],resume:[]};if(!action||!Object.hasOwn(allowed,action.type)||Object.keys(action).some(key=>key!=='type'&&!allowed[action.type].includes(key)))fail('invalid_event_input','Send only roadside timing and cleaning inputs.');}
   if (command.type === "service"||command.type==='rallyService') {
-    const action = command.action, allowed: Record<string, string[]> = { open: [], pause: [], resume: [], discard: [], tick: ["ticks"], move: ["x", "y"], interact: ["targetId", "recipeId", "seatId"], hold: ["active"] };
+    const action = command.action, allowed: Record<string, string[]> = { prepare: [], open: [], pause: [], resume: [], discard: [], tick: ["ticks"], move: ["x", "y"], interact: ["targetId", "recipeId", "ingredientId", "seatId"], hold: ["active"] };
     if (!action || typeof action !== "object" || !Object.prototype.hasOwnProperty.call(allowed, action.type) || Object.keys(action).some(key => key !== "type" && !allowed[action.type].includes(key))) fail("invalid_service_action", "Send cooking inputs, never service state or rewards.");
     if (action.type === "tick" && (!Number.isInteger(action.ticks) || action.ticks < 0 || action.ticks > SERVICE_RULES.maxTicksPerAction)) fail("invalid_ticks", "Use a bounded number of service ticks.");
     if (action.type === "move" && (![action.x, action.y].every(Number.isInteger) || Math.abs(action.x) > 100 || Math.abs(action.y) > 100)) fail("invalid_move", "Choose a kitchen tile.");
     if (action.type === "hold" && typeof action.active !== "boolean") fail("invalid_hold", "Choose whether to hold the interaction.");
+    if (action.type==='interact'&&action.ingredientId!==undefined&&(typeof action.ingredientId!=='string'||!owns(INGREDIENT_BY_ID,action.ingredientId)))fail('invalid_service_action','Choose a known kitchen ingredient.');
   }
 }
 export function dispatchDiner(current: DinerState, command: DinerCommand, context: DinerContext): DinerResult {
@@ -398,7 +495,9 @@ export function dispatchDiner(current: DinerState, command: DinerCommand, contex
   try {
     validateCommand(command);
     state.truckConfig.helperId2??=null;state.truckConfig.helperRole2??="washer";state.homeTask??=null;
-    state.daily.crateProgressTicks??=state.daily.crate?DINER_RULES.incidentWorkTicks.delivery:0;
+    normalizeTruckPolicy(state);
+    normalizeTruckStorage(state);
+    normalizeHomeWork(state);
     if (state.version !== 1 || state.contentVersion !== CONTENT_VERSION) fail("version_mismatch", "This preview save needs its matching game version.");
     if (!Number.isSafeInteger(context.now) || context.now < 0) fail("invalid_time", "The diner clock is unavailable.");
     const now = Math.max(context.now, state.updatedAt), day = dinerDay(now);
@@ -418,14 +517,14 @@ export function dispatchDiner(current: DinerState, command: DinerCommand, contex
         if ((command.headStart !== undefined && typeof command.headStart !== "boolean") || (command.tutorial !== undefined && typeof command.tutorial !== "boolean")) fail("invalid_command", "Choose a valid trip option.");
         const seed = `${state.seed}:run:${++state.runsStarted}`, map = generateDinerMap(seed);
         if (tutorial) map.forEach(node => { if (node.row < 2) node.kind = "slow"; else if (node.row === 2) node.kind = "bonus"; else if (node.row === 3) node.kind = "busy"; });
-        state.run = { id: `run-${state.runsStarted}-${dinerHash(seed)}`, seed, routeId, contentVersion: CONTENT_VERSION, map, available: map.filter(n => n.row === (command.headStart ? 3 : 0)).map(n => n.id), position: null, visited: [], strikes: 0, haul: 0, service: null, serviceAccounted: { coins: 0, strikes: 0, reputation: 0 }, menu: [...state.truckConfig.menu], specials: [], spices: tutorial ? [] : [...state.truckConfig.spices], offers: [], rerolled: false, qualified: false, ingredientClaimed: false, tutorial, serviceDays: 0, practice: false,event:null,nextService:null,serviceEffect:null,lastEventResult:null,mapVersion:2 };
+        state.run = { id: `run-${state.runsStarted}-${dinerHash(seed)}`, seed, routeId, contentVersion: CONTENT_VERSION, map, available: map.filter(n => n.row === (command.headStart ? 3 : 0)).map(n => n.id), position: null, visited: [], strikes: 0, haul: 0, service: null, serviceAccounted: { coins: 0, strikes: 0, reputation: 0 }, menu: tutorial?['classic_burger']:[...state.truckConfig.menu], specials: [], spices: tutorial ? [] : [...state.truckConfig.spices], offers: [], rerolled: false, qualified: false, ingredientClaimed: false, tutorial, serviceDays: 0, practice: false,event:null,nextService:null,serviceEffect:null,lastEventResult:null,mapVersion:2 };
         break;
       }
       case "startPractice": {
         if(state.homeTask?.phase==="working"){state.homeTask.phase="paused";state.homeTask.gesture=emptyHomeGesture();}
         if (state.run||state.rally.service) fail("run_active", "Return from the current trip before practising.");
         const menu = command.recipeIds ?? state.truckConfig.menu; if (!validTruckMenu(state, menu)) fail("invalid_menu", "Practise with owned recipes and their equipment.");
-        const seed = `${state.seed}:practice`, map = generateDinerMap(seed), loadout = truckLoadout(state, menu);
+        const seed = `${state.seed}:practice`, map = generateDinerMap(seed), loadout = truckLoadout(state);
         state.run = { id: `practice-${dinerHash(seed)}`, seed, routeId: "downtown", contentVersion: CONTENT_VERSION, map, available: [], position: map[0].id, visited: [], strikes: 0, haul: 0, service: createService({ ...DIFFICULTIES.slow, seed, tier: state.truckTier, menu, recipeLevels: Object.fromEntries(Object.entries(state.recipes).map(([id, r]) => [id, r.level])), practice: true, helpers: truckHelpers(state), ...loadout }), serviceAccounted: { coins: 0, strikes: 0, reputation: 0 }, menu: [...menu], specials: [], spices: [], offers: [], rerolled: false, qualified: false, ingredientClaimed: false, tutorial: false, serviceDays: 0, practice: true,event:null,nextService:null,serviceEffect:null,lastEventResult:null,mapVersion:2 }; break;
       }
       case "endPractice": if (!state.run?.practice) fail("not_practice", "There is no practice session to close."); else { state.run = null; break; }
@@ -435,7 +534,7 @@ export function dispatchDiner(current: DinerState, command: DinerCommand, contex
         if (["slow", "medium", "busy", "special", "finale"].includes(node.kind)) {
           const forced = run.tutorial && run.serviceDays >= 2;
           const customers = forced ? 6 : run.tutorial && run.serviceDays === 0 ? 4 : node.kind === "slow" ? 8 : node.kind === "medium" ? 14 : node.kind === "finale" ? 30 : 20;
-          const loadout = truckLoadout(state, run.menu);
+          const loadout = truckLoadout(state);
           const difficulty = node.kind === "finale" ? DIFFICULTIES.finale : node.kind === "busy" || node.kind === "special" ? DIFFICULTIES.busy : node.kind === "medium" ? DIFFICULTIES.medium : DIFFICULTIES.slow;
           const twist=dinerHash(`${run.seed}:${node.id}:special`)%3;
           const special:Partial<import('./types').CreateServiceOptions>=node.kind==='special'?(twist===0?{menu:[run.menu[dinerHash(node.id)%run.menu.length]],customers:16}:twist===1?{customerTypes:loadout.tables.some(t=>t.capacity===4)?['family']:['office'],customers:16}:{customerTypes:['critic'],customers:14}):{};
@@ -494,26 +593,52 @@ export function dispatchDiner(current: DinerState, command: DinerCommand, contex
         if((offer.kind==="equipment"||offer.kind==="upgrade")&&!isTruckEquipmentAvailable(offer.target))fail("offer_unavailable","This equipment is not available in the current kitchen.");
         run.haul -= offer.price; offer.purchased = true;
         if (offer.kind === "recipe") state.recipes[offer.target] ??= { level: 0 };
-        else if (offer.kind === "equipment") { const owned = state.equipment[offer.target]; state.equipment[offer.target] = { tier: owned?.tier ?? 1, truckOwned: true, homeCopies: owned?.homeCopies ?? 0 }; }
+        else if (offer.kind === "equipment") { const owned = state.equipment[offer.target]; state.equipment[offer.target] = { tier: owned?.tier ?? 1, truckOwned: true, homeCopies: owned?.homeCopies ?? 0 }; if(['table_1','table_2','table_4'].includes(offer.target))state.truckConfig.tableCopies[offer.target as TruckTableId]++; }
         else if (offer.kind === "upgrade") state.equipment[offer.target].tier++;
         else grantTruckIngredient(state);
         routeTier(state); break;
       }
       case "setTruckMenu": {
         const run = state.run;
-        if ((run?.position && run.service?.phase !== "setup") || !validTruckMenu(state, command.recipeIds)) fail("invalid_menu", "Choose up to four owned recipes during setup or between stops.");
+        if (state.rally.service || (run?.position && run.service?.phase !== "setup") || !validTruckMenu(state, command.recipeIds)) fail("invalid_menu", "Choose up to four owned recipes during setup or between stops.");
         if (run?.spices.includes("full_menu") && command.recipeIds.length < 3) fail("invalid_menu", "The full-menu spice needs at least three recipes.");
-        const loadout = truckLoadout(state, command.recipeIds);
+        const loadout = truckLoadout(state);
         state.truckConfig.menu = [...command.recipeIds];
-        if (run) { run.menu = [...command.recipeIds]; if (run.service) run.service = createService({ ...run.service.config, menu: run.menu, ...loadout }); }
+        if (run) { run.menu = [...command.recipeIds]; if (run.service) run.service = createService({ ...run.service.config, plateCount:undefined, cupCount:undefined, menu: run.menu, ...loadout }); }
         break;
       }
       case "setupLayout": {
         const run = state.run, service = run?.service;
         if (run && (!service || service.phase !== "setup")) fail("setup_only", "Arrange the truck at home or before opening this service.");
-        const loadout = ownedTruckLayout(state, command, run?.menu ?? state.truckConfig.menu);
+        if(state.rally.service)fail('setup_only','Finish the rally before changing your own truck.');
+        const loadout = ownedTruckLayout(state, command);
         rememberTruckLayout(state, loadout);
-        if (run && service) run.service = createService({ ...service.config, ...loadout }); break;
+        if (run && service) run.service = createService({ ...service.config, plateCount:undefined, cupCount:undefined, ...loadout }); break;
+      }
+      case 'buyTruckTable': {
+        if(state.rally.service||(state.run&&state.run.service?.phase!=='setup'))fail('setup_only','Buy seating at home or before opening service.');
+        if(![1,2,4].includes(command.capacity))fail('invalid_table','Choose a table with one, two, or four chairs.');
+        const id=`table_${command.capacity}` as TruckTableId;
+        if(state.truckConfig.tableCopies[id]>=100)fail('storage_full','Your trailer already has enough of this table.');
+        spend(TRUCK_TABLE_PRICES[command.capacity]);
+        state.truckConfig.tableCopies[id]++;
+        state.equipment[id]??={tier:1,truckOwned:true,homeCopies:0};state.equipment[id].truckOwned=true;
+        break;
+      }
+      case 'buyTruckRecipe': {
+        const offer=truckRecipeShop(state).find(offer=>offer.recipeId===command.recipeId);
+        if(!offer||!offer.available)fail('recipe_unavailable',offer?.reason??'Choose an available recipe you do not already own.');
+        spend(offer.price);state.recipes[offer.recipeId]={level:0};routeTier(state);break;
+      }
+      case 'buyTruckEquipment':
+      case 'upgradeTruckEquipment': {
+        const desired=command.type==='buyTruckEquipment'?'buy':'upgrade';
+        const offer=truckEquipmentShop(state).find(offer=>offer.equipmentId===command.equipmentId&&offer.action===desired);
+        if(!offer||!offer.available)fail('equipment_unavailable',offer?.reason??'Choose an available truck utility or upgrade.');
+        spend(offer.price);
+        const owned=state.equipment[offer.equipmentId];state.equipment[offer.equipmentId]={tier:offer.tier,truckOwned:true,homeCopies:owned?.homeCopies??0};
+        if(state.run?.service){const service=state.run.service;state.run.service=createService({...service.config,plateCount:undefined,cupCount:undefined,...truckLoadout(state)});}
+        break;
       }
       case "collectTill": { const till = state.home.till, coins = Math.floor(till.coins), rep = Math.floor(till.reputation); state.coins += coins; state.reputation += rep; till.coins -= coins; till.reputation -= rep; till.filledMs = 0; updateLevel(state); break; }
       case "claimCrate": claimDailyIngredientParcel(state);break;

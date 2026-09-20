@@ -8,7 +8,7 @@ export type HomeSceneGesture=
   | {type:'end';incidentId:string}
   | {type:'parcel';incidentId:string;part:ParcelPart};
 export interface HomeGestureWork {point:HomeGesturePoint|null;creditTicks:number;remainder:number}
-export const HOME_GESTURE_RULES={version:1,spillRadius:.43,clothRadius:.10,shrinkFactor:.86,startRadius:.55,maxPointRadius:1.1,maxSegment:.65,minSegment:.018,ticksPerTile:18,maxCreditTicks:3,sampleMs:50} as const;
+export const HOME_GESTURE_RULES={version:2,spillRadius:.43,clothRadius:.13,shrinkFactor:.72,startRadius:.55,maxPointRadius:1.1,maxSegment:1.05,minSegment:.009,ticksPerTile:36,maxCreditTicks:6,sampleMs:50} as const;
 export const PARCEL_PARTS:readonly ParcelPart[]=['tape','leftFlap','rightFlap'];
 export function emptyHomeGesture():HomeGestureWork{return {point:null,creditTicks:0,remainder:0};}
 export function validHomePoint(point:unknown):point is HomeGesturePoint {

@@ -1,0 +1,12 @@
+.layer{position:absolute;inset:0;z-index:9;pointer-events:none;overflow:hidden}
+.tether{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.tether path{stroke:#456d58;stroke-width:2;stroke-linecap:round;stroke-dasharray:3 5;opacity:.65}
+.tether circle{fill:#fff9ed;stroke:#456d58;stroke-width:2}
+.card{position:absolute;box-sizing:border-box;width:172px;max-width:calc(100% - 24px);padding:7px;background:#fffaf0;border:2px solid #fffdf6;border-radius:20px;box-shadow:0 4px 0 #80988155,0 8px 24px #293e3926;pointer-events:auto;user-select:none;-webkit-user-select:none;touch-action:none}
+.card button{display:block;width:100%;min-height:48px;margin:0;padding:10px 8px;border:0;border-radius:13px;background:#456d58;color:#fffaf0;font-family:var(--font-dk),ui-rounded,system-ui,sans-serif;font-size:16px;font-weight:800;line-height:1.1;text-align:center;white-space:normal;overflow-wrap:normal;touch-action:none;cursor:pointer;box-shadow:inset 0 -3px 0 #234d3d55}
+.card button:focus-visible{outline:3px solid #edb651;outline-offset:3px}
+.card button:disabled{background:#809387;color:#f6f1e4;cursor:default;box-shadow:none}
+.active{border-color:#edb651;box-shadow:0 4px 0 #bf9d4455,0 8px 24px #293e3926}
+.progress{height:5px;background:#dde7d9;border-radius:4px;overflow:hidden;margin:6px 4px 0}
+.progress i{display:block;height:100%;background:#dbad50;border-radius:inherit;transition:width 60ms linear}
+@media(prefers-reduced-motion:reduce){.progress i{transition:none}}

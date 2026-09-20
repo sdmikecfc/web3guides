@@ -2,7 +2,7 @@ import type { DinerTier, EquipmentDef, IngredientDef, RecipeDef, RecipeStep, Sta
 
 /** Content revisions are stored with every service for deterministic replay. */
 export const CONTENT_VERSION = 1;
-export const SERVICE_RULES = { version: 1, tickMs: 50, ticksPerSecond: 20, chefSpeed: 3.2, customerSpeed: 2.8, coldTicks: 400, eatTicks: 100, washTicks: 40, comboMax: 10, comboTipPerStep: .05, baseTipRate: .12, menuMultipliers: [1, 1.15, 1.3, 1.5], maxTicksPerAction: 100, maxEvents: 60 } as const;
+export const SERVICE_RULES = { version: 1, tickMs: 50, ticksPerSecond: 20, chefSpeed: 3.2, customerSpeed: 2.8, coldTicks: 400, eatTicks: 100, washTicks: 40, comboMax: 10, comboTipPerStep: .05, baseTipRate: .12, menuMultipliers: [1, 1.15, 1.3, 1.5], maxTicksPerAction: 100, maxEvents: 60, maxTables:12 } as const;
 export const INGREDIENTS: IngredientDef[] = [
   ...['beef','bun','potato','cheese','lettuce','tomato','onion','egg','milk','flour','sugar','cooking_oil'].map(id => ({ id, name: title(id), rarity: 'common' as const })),
   ...['bacon','chicken','pickles','bread','butter','ice_cream','coffee_beans','lemon','sausage','corn'].map(id => ({ id, name: title(id), rarity: 'uncommon' as const })),
@@ -17,8 +17,8 @@ const oven = () => step('oven', 'timed', 7, 'Bake', 'baked');
 const blend = () => step('blender', 'hold', 3, 'Blend', 'blended');
 function dish(id: string, name: string, course: RecipeDef['course'], ingredients: string[], stations: RecipeStep[], basePrice: number, route: RecipeDef['route']): RecipeDef { return { id, name, course, ingredients, steps: stations, basePrice, reputation: 1 + Math.floor(basePrice / 20), route, ...(route === 'secret' ? { secret: true } : {}) }; }
 export const RECIPES: RecipeDef[] = [
-  dish('classic_burger','Classic burger','main',['beef','bun'],[grill('cooked_patty'),prep('Add bun and plate')],25,'starter'),
-  dish('fries','Fries','starter',['potato','cooking_oil'],[fry()],12,'starter'),
+  dish('classic_burger','Classic burger','main',['beef','bun'],[grill('cooked_patty'),prep('Combine patty and bun')],25,'starter'),
+  dish('fries','Fries','starter',['potato','cooking_oil'],[prep('Cut potatoes','cut_potatoes'),fry()],12,'starter'),
   dish('lemonade','Lemonade','drink',['lemon','sugar'],[step('drinks','hold',2,'Pour lemonade','poured')],8,'downtown'),
   dish('cheeseburger','Cheeseburger','main',['beef','bun','cheese'],[grill('cooked_patty'),prep('Add cheese and bun')],30,'downtown'),
   dish('side_salad','Side salad','starter',['lettuce','tomato'],[prep('Chop and toss')],12,'downtown'),
@@ -41,14 +41,19 @@ export const RECIPES: RecipeDef[] = [
   dish('avocado_burger','Avocado burger','main',['beef','bun','avocado','tomato'],[grill('cooked_patty'),prep('Add avocado and bun')],42,'secret'),
 ];
 export const RECIPE_BY_ID: Record<string, RecipeDef> = Object.fromEntries(RECIPES.map(d => [d.id, d]));
+for(const id of ['classic_burger','cheeseburger','bacon_deluxe_burger','avocado_burger','hot_dog'])RECIPE_BY_ID[id].assemblyIngredients=['bun'];
 export const INGREDIENT_BY_ID: Record<string, IngredientDef> = Object.fromEntries(INGREDIENTS.map(d => [d.id, d]));
+/** Only loose ingredients used by the physical service loop appear at supplies. */
+export function ingredientSupply(id:string):'crate'|'fridge' {
+  return ['beef','cheese','lettuce','tomato','egg','milk','bacon','chicken','butter','ice_cream','sausage','strawberry','avocado'].includes(id)?'fridge':'crate';
+}
 function machine(id: string, name: string, family: string, prices: number[], capacities = [1,2,2], footprint: [number,number] = [1,1]): EquipmentDef { return { id, name, family, footprint, tiers: prices.map((price,i) => ({ tier: i + 1, price, capacity: capacities[i] ?? 1, speed: i === 0 ? 1 : i === 1 ? 1.15 : 1.35, ...(i === 2 && ['grill','fryer','waffle'].includes(id) ? { noBurn: true } : {}), ...(id === 'pass' || (id === 'oven' && i === 2) ? { warm: true } : {}), ...(i === 2 && ['sink','drinks'].includes(id) ? { automatic: true } : {}) })) }; }
 export const EQUIPMENT: EquipmentDef[] = [
-  machine('crate','Ingredient crate','storage',[0],[1]), machine('grill','Grill','cooking',[180,450,900]), machine('fryer','Fryer','cooking',[160,400,850]),
+  machine('crate','Pantry','storage',[0],[1]), machine('fridge','Fridge','storage',[0],[1]), machine('plates','Clean plate rack','storage',[0,120,300],[2,4,6]), machine('cups','Cup stand','storage',[80,180],[2,4]), machine('boxes','Fries boxes','storage',[0],[1]), machine('grill','Grill','cooking',[180,450,900]), machine('fryer','Fryer','cooking',[160,400,850]),
   machine('oven','Oven','cooking',[240,550,1100]), machine('blender','Blender','cooking',[180,420,850],[1,1,2]), machine('coffee','Coffee machine','cooking',[140,360,750],[1,2,5]),
   machine('waffle','Waffle iron','cooking',[200,480,950]), machine('drinks','Drinks station','cooking',[100,280,600],[1,1,1]), machine('prep','Prep counter','prep',[80,220,500],[1,1,2]),
-  machine('pass','Pass with heat lamp','prep',[180,400,800],[2,4,6],[2,1]), machine('sink','Sink','cleaning',[80,240,600],[1,2,2]), machine('bin','Bin','cleaning',[20],[1]),
-  machine('table_2','Table for two','service',[80,220],[2,2],[1,2]), machine('table_4','Table for four','service',[180,420],[4,4],[2,2]),
+  machine('pass','Pass with heat lamp','prep',[180,400,800],[2,4,6],[2,1]), machine('sink','Sink','cleaning',[80,240,600],[2,4,6]), machine('bin','Bin','cleaning',[20],[1]),
+  machine('table_1','Table and one chair','service',[60,160],[1,1]), machine('table_2','Table for two','service',[80,220],[2,2],[1,2]), machine('table_4','Table for four','service',[180,420],[4,4],[2,2]),
   machine('tray','Serving tray','service',[100,300],[2,3]), machine('queue_bench','Queue bench','comfort',[120,280],[1,1],[2,1]),
   machine('jukebox','Jukebox','comfort',[200,500],[1,1]), machine('neon_sign','Neon sign','attraction',[180,450],[1,1]), machine('tip_jar','Tip jar','attraction',[80,220],[1,1]),
 ];
@@ -56,7 +61,9 @@ export const EQUIPMENT_BY_ID: Record<string, EquipmentDef> = Object.fromEntries(
 /** Keep reserved content IDs for checkpoints, but sell only implemented equipment. */
 export const DEFERRED_EQUIPMENT_IDS = ['tray','queue_bench','jukebox','neon_sign','tip_jar'] as const;
 export const TRUCK_EQUIPMENT = EQUIPMENT.filter(item=>!(DEFERRED_EQUIPMENT_IDS as readonly string[]).includes(item.id));
-export const HOME_EQUIPMENT = TRUCK_EQUIPMENT.filter(item=>!['crate','bin','pass'].includes(item.id));
+/** Utilities do not imply a corresponding restaurant machine or free home copy. */
+export const TRUCK_ONLY_EQUIPMENT_IDS = ['crate','fridge','plates','cups','boxes','bin','pass','table_1'] as const;
+export const HOME_EQUIPMENT = TRUCK_EQUIPMENT.filter(item=>!(TRUCK_ONLY_EQUIPMENT_IDS as readonly string[]).includes(item.id));
 export const isTruckEquipmentAvailable = (id:string):boolean => TRUCK_EQUIPMENT.some(item=>item.id===id);
 export const isHomeEquipmentAvailable = (id:string):boolean => HOME_EQUIPMENT.some(item=>item.id===id);
 export const TRUCK_TIERS: Record<DinerTier, { tier: DinerTier; w: number; h: number; tables: number; helpers: number; pavementW: number; pavementH: number; route: string | null }> = {
