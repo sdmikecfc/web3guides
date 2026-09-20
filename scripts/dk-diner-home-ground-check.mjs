@@ -62,6 +62,23 @@ check('incident markers retain IDs, avoid furniture/seats and expose real work p
   scene=homeScene(state,createHomeWorld(homeSimulationConfig(state)),null,'#bd6a50');assertSupported(scene);
   for(const incident of after)for(const seat of scene.tables.flatMap(table=>table.seats))assert.ok(incident.x!==seat.x||incident.y!==seat.y,'chore occupies a rendered chair');
 });
+check('single-seat home tables render one chair from the simulation in every rotation',()=>{
+  for(const rotation of [0,1,2,3]){
+    const state=createDiner(20*86400000+1000,`solo-table-${rotation}`);
+    const placement=state.home.layout.find(item=>item.equipmentId==='table_2');
+    placement.equipmentId='table_1';placement.rotation=rotation;
+    state.equipment.table_1.homeCopies=1;
+    const world=createHomeWorld(homeSimulationConfig(state));
+    const scene=homeScene(state,world,null,'#bd6a50'),table=scene.tables.find(item=>item.id===placement.id);
+    assert.equal(table.capacity,1);assert.equal(table.seats.length,1);
+    assert.deepEqual(table.seats.map(({id,x,y})=>({id,x,y})),world.tables[0].seats.map(({id,x,y})=>({id,x,y})));
+    assert.equal(homeScene(state,null,null,'#bd6a50').tables[0].capacity,1,'loading room must retain its single-seat model');
+    const model=models.createModel(`table_${table.capacity}`);model.rotation.y=-rotation*Math.PI/2;model.updateMatrixWorld(true);
+    const bounds=new THREE.Box3().setFromObject(model);
+    assert(bounds.max.x-bounds.min.x<1&&bounds.max.z-bounds.min.z<1,'single-seat table must fit its one-tile footprint');
+    models.disposeObject(model);assertSupported(scene);
+  }
+});
 check('free-tile selector respects reachability, reserves and a blocked entrance',()=>{
   const input={width:8,height:8,blocked:[],reserved:[],preferred:{x:2,y:2}};assert.deepEqual(spatial.chooseHomeInteractionTile(input),{x:2,y:2});
   input.reserved.push({x:2,y:2});assert.notDeepEqual(spatial.chooseHomeInteractionTile(input),{x:2,y:2});

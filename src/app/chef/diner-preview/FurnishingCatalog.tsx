@@ -13,7 +13,7 @@ const effects:Record<string,string>={
   fryer:'Crisp golden fries and fried favourites.',sink:'Your waiter washes used plates here.',
   oven:'Bake pies and warm desserts.',blender:'Blend thick, creamy milkshakes.',coffee:'A fresh coffee for your regulars.',
   drinks:'Pour a refreshing lemonade.',waffle:'Make golden strawberry waffles.',
-  table_2:'Seats two. Keep both sides clear for guests.',table_4:'A place for four to eat together.',
+  table_1:'One table, one chair. A little spot for a solo guest.',table_2:'Seats two. Keep both sides clear for guests.',table_4:'A place for four to eat together.',
 };
 const money=(value:number)=>Math.floor(value).toLocaleString('en-US');
 const colors:Record<string,string>={cream:'#f4ebd7',mint:'#a7c8af',rose:'#deb5a7',terracotta:'#c98162',checker:'#88ae98'};

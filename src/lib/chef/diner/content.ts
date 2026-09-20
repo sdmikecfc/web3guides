@@ -62,7 +62,7 @@ export const EQUIPMENT_BY_ID: Record<string, EquipmentDef> = Object.fromEntries(
 export const DEFERRED_EQUIPMENT_IDS = ['tray','queue_bench','jukebox','neon_sign','tip_jar'] as const;
 export const TRUCK_EQUIPMENT = EQUIPMENT.filter(item=>!(DEFERRED_EQUIPMENT_IDS as readonly string[]).includes(item.id));
 /** Utilities do not imply a corresponding restaurant machine or free home copy. */
-export const TRUCK_ONLY_EQUIPMENT_IDS = ['crate','fridge','plates','cups','boxes','bin','pass','table_1'] as const;
+export const TRUCK_ONLY_EQUIPMENT_IDS = ['crate','fridge','plates','cups','boxes','bin','pass'] as const;
 export const HOME_EQUIPMENT = TRUCK_EQUIPMENT.filter(item=>!(TRUCK_ONLY_EQUIPMENT_IDS as readonly string[]).includes(item.id));
 export const isTruckEquipmentAvailable = (id:string):boolean => TRUCK_EQUIPMENT.some(item=>item.id===id);
 export const isHomeEquipmentAvailable = (id:string):boolean => HOME_EQUIPMENT.some(item=>item.id===id);

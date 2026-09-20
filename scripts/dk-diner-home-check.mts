@@ -26,8 +26,12 @@ check('stored, removed, blocked or missing equipment cannot sell unsupported dis
 });
 check('staff shortages and actual walking distance constrain throughput',()=>{
   for(const role of ['chefs','waiters'] as const){const config=starter();config[role]=0;assert.equal(measureHomeRates(config).plates,0);}
-  const close=starter();close.arrivalRate=1200;close.layout.find(p=>p.equipmentId==='table_2')!.y=2;const far=starter();far.arrivalRate=1200;far.layout.find(p=>p.equipmentId==='table_2')!.y=5;
-  const nearRate=measureHomeRates(close),farRate=measureHomeRates(far);assert(nearRate.plates>farRate.plates,`${nearRate.plates} vs ${farRate.plates}`);console.log(`  close layout ${nearRate.plates}/hour; distant layout ${farRate.plates}/hour`);
+  const close=starter();close.arrivalRate=1200;const far=starter();far.arrivalRate=1200;far.layout.find(p=>p.equipmentId==='table_2')!.y=5;
+  const nearRate=measureHomeRates(close),farRate=measureHomeRates(far);assert(nearRate.plates>farRate.plates,`${nearRate.plates} vs ${farRate.plates}`);
+  // Moving the table another row closer puts a chair in the kitchen aisle:
+  // short distance must not let a waiter walk through that chair or its diner.
+  const cramped=structuredClone(close);cramped.layout.find(p=>p.equipmentId==='table_2')!.y=2;assert(measureHomeRates(cramped).plates<nearRate.plates);
+  console.log(`  clear-aisle close layout ${nearRate.plates}/hour; distant layout ${farRate.plates}/hour`);
 });
 check('equipment upgrades and recipe mastery improve their real capacity or plate value',()=>{
   const config=starter();config.arrivalRate=1200;config.waiters=3;config.layout.push({id:'table-2',equipmentId:'table_2',x:5,y:3,rotation:0},{id:'table-3',equipmentId:'table_2',x:2,y:6,rotation:0});

@@ -11,7 +11,7 @@ export function homeScene(state:DinerState,world:HomeWorld|null,selectedId:strin
   for(const p of state.home.layout){
     if(p.equipmentId.startsWith('table_')){
       const table=world?.tables.find(t=>t.id===p.id);
-      tables.push({id:p.id,x:p.x,y:p.y,capacity:p.equipmentId==='table_4'?4:2,rotation:p.rotation,seats:table?.seats.map(s=>({...s,item:plated(s.item)}))??[]});
+      tables.push({id:p.id,x:p.x,y:p.y,capacity:p.equipmentId==='table_1'?1:p.equipmentId==='table_4'?4:2,rotation:p.rotation,seats:table?.seats.map(s=>({...s,item:plated(s.item)}))??[]});
     }else{
       const station=world?.stations.find(s=>s.id===p.id),slot=station?.slots.find(s=>s.item);
       const finish:Record<string,string>={cherry:'#b66751',mint:'#91b29a',cream:'#ede1bc'};

@@ -24,6 +24,10 @@ Follow-up browser review at 1100×850 and 390×844 confirmed a daily parcel's ta
 
 Character heads use one continuous skin surface and a fitted hair shell. Actual packed models are checked for overlapping facial layers. The one-seat table has a true one-tile top and a correctly supported plate.
 
+Single-seat tables are available in both furnishing catalogs. A restaurant copy costs 720 coins and a truck copy costs 60; each includes one chair, rotates with it and uses separate ownership. Existing two-seat tables and saved restaurant layouts are preserved.
+
+Home staff use separate cooking, pickup and table-serving positions. Waiters approach a free table edge instead of occupying the customer's chair. Idle staff step clear of working positions and yield to approaching traffic; the visible restaurant and offline measurement share these routes.
+
 A spill takes approximately two seconds of valid wiping; each parcel stage takes 200 ms. Existing partial upkeep progress migrates proportionally, retaining completed reward receipts.
 
 Truck setup lets players select real trailer cargo or its thumbnail, then a highlighted valid tile. Stations can be stored, rotated and rearranged before opening. Purchased tables and chairs must fit the pavement and retain reachable seats; truck growth grants no free seating. The setup shelf also contains explicit menu choices and recipe purchases. Learning a recipe does not add its orders automatically.
