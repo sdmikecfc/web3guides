@@ -5,17 +5,18 @@ import { homeSpatial, homeSupportAt, HOME_TERRACE_ELEVATION } from '../../../lib
 import { createHomeBoard } from './home-board';
 import { createCafeWallLight,createHomeAmbience,type HomeAmbience } from './home-ambience';
 import { HOME_GESTURE_RULES,homeSpillScale } from '../../../lib/chef/diner/home-gesture';
-import { firstVisibleSceneSurface } from './scene-picking';
+import { firstVisibleSceneSurface,setActorPicking } from './scene-picking';
 import { createCookingEffects,type CookingEffects } from './cooking-effects';
 import { createHomeCameraBounds,fitHomeCamera,type HomeCameraBounds } from './home-camera';
 import { createEquipmentTrailer } from './trailer';
+import { createPlacementGhost,projectPlacementTile } from './placement-ghost';
 
 type ScenePick={id:string;seatId?:string};
 type PersonView={root:THREE.Group;body:THREE.Group;previous:THREE.Vector3;destination:THREE.Vector3;changed:number;angle:number;foodKey:string;person:ScenePerson;order:THREE.Group|null;orderKey:string;uniform:string};
 type StationView={root:THREE.Group;model:THREE.Group;food:THREE.Group;foodKey:string;progress:THREE.Mesh;halo:THREE.Mesh;steam:THREE.Group;cooking:CookingEffects|null;kind:string};
 type TableView={root:THREE.Group;key:string;food:THREE.Group;foodKey:string;halo:THREE.Mesh};
 export interface DinerSceneController {setScene:(scene:DinerSceneData)=>void;setRotation:(rotation:number)=>void;setEditing:(editing:boolean)=>void;zoomBy:(factor:number)=>void;resetCamera:()=>void;dispose:()=>void}
-type SceneCallbacks=Pick<DinerSceneProps,'onTarget'|'onTile'|'onHomeGesture'|'onPerformance'|'onError'|'onAnchors'>;
+type SceneCallbacks=Pick<DinerSceneProps,'onTarget'|'onTile'|'onHoverTile'|'onHomeGesture'|'onPerformance'|'onError'|'onAnchors'>;
 const ELEVATION=35*Math.PI/180;
 const point3=(x:number,y:number,height=0)=>new THREE.Vector3(x,height,y);
 const foodKey=(food?:SceneFood|null)=>food?`${food.recipeId}:${food.kind}:${food.stage??''}:${food.ingredientId??''}:${food.vesselKind??''}:${food.cold??false}:${food.mastery??0}`:'';
@@ -121,6 +122,7 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
   const workArrowShape=new THREE.Shape();workArrowShape.moveTo(0,.22);workArrowShape.lineTo(.20,-.04);workArrowShape.lineTo(.07,-.04);workArrowShape.lineTo(.07,-.20);workArrowShape.lineTo(-.07,-.20);workArrowShape.lineTo(-.07,-.04);workArrowShape.lineTo(-.20,-.04);workArrowShape.closePath();
   const workArrow=new THREE.Mesh(new THREE.ShapeGeometry(workArrowShape),new THREE.MeshBasicMaterial({color:PALETTE.sage,side:THREE.DoubleSide,depthWrite:false}));workArrow.rotation.x=-Math.PI/2;overlayRoot.add(workArrow);workArrow.visible=false;
   const placementTiles=new THREE.Group();overlayRoot.add(placementTiles);let placementKey='';
+  const placementRoot=new THREE.Group();placementRoot.userData.inputPassthrough=true;overlayRoot.add(placementRoot);let ghostKey='';
   const stationViews=new Map<string,StationView>(),tableViews=new Map<string,TableView>(),personViews=new Map<string,PersonView>();
   let homeAmbience:HomeAmbience|null=null;
   const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -254,12 +256,15 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
       const needsClear=!!person.tableId&&data.tables.find(table=>table.id===person.tableId)?.seats.find(seat=>seat.id===person.seatId)?.item?.kind==='dirty';
       const orderKey=person.order?`${person.order.recipeId}:${needsClear}`:'';if(orderKey!==view.orderKey){if(view.order){disposeObject(view.order);view.root.remove(view.order);}view.order=person.order?makeOrder(person.order.recipeId,needsClear):null;if(view.order){view.order.position.y=person.pose==='sit'||person.pose==='eat'?1.72:2.07;view.root.add(view.order);}view.orderKey=orderKey;}
       if(view.order){view.order.position.y=person.pose==='sit'||person.pose==='eat'?1.72:2.07;const bar=view.order.userData.bar as THREE.Mesh,patience=Math.max(0,Math.min(1,person.order?.patience??1));bar.scale.x=Math.max(.01,patience);bar.position.x=-.275+.275*patience;(bar.material as THREE.MeshToonMaterial).color.set(patience<.25?PALETTE.tomato:PALETTE.leaf);}
-      view.root.userData.pick=person.tableId?{id:person.tableId,seatId:person.seatId??undefined}:mode==='home'?{id:person.id}:undefined;view.person=person;
+      setActorPicking(view.root,mode,person);view.person=person;
     }
   }
   function syncEdit(){
     const key=JSON.stringify(data.tileHighlights??[]);if(key!==placementKey){placementKey=key;disposeObject(placementTiles);placementTiles.clear();for(const tile of data.tileHighlights??[]){const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.84,.84),new THREE.MeshBasicMaterial({color:'#f7cf6e',transparent:true,opacity:.48,depthWrite:false}));mesh.rotation.x=-Math.PI/2;mesh.position.set(tile.x,floorHeight(tile.x,tile.y)+.012,tile.y);placementTiles.add(mesh);}}
     placementTiles.visible=editing;
+    const nextGhostKey=editing&&data.placement?JSON.stringify(data.placement):'';
+    if(nextGhostKey!==ghostKey){ghostKey=nextGhostKey;disposeObject(placementRoot);placementRoot.clear();if(editing&&data.placement)placementRoot.add(createPlacementGhost(data.placement,floorHeight,mode));}
+    placementRoot.visible=editing;
     staticRoot.traverse(object=>{if(object.userData.editorGrid)object.visible=editing;});
     const object=data.objects.find(o=>o.id===data.selectedId);workArrow.visible=editing&&!!object&&['crate','fridge','plates','cups','boxes','grill','prep','fryer','sink','bin','oven','blender','coffee','drinks','waffle','pass'].includes(object.kind);
     if(!object||!workArrow.visible)return;const facing=object.rotation??0,footprint=object.footprint??(object.kind==='pass'?[2,1]:[1,1]),w=facing%2?footprint[1]:footprint[0],h=facing%2?footprint[0]:footprint[1];
@@ -274,18 +279,29 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
     buildStatic();syncObjects();syncTables();syncPeople();syncEdit();
   }
   function ndc(clientX:number,clientY:number){const rect=canvas.getBoundingClientRect();pointer.set((clientX-rect.left)/rect.width*2-1,-(clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);}
-  // Only the nearest visible physical surface can receive a click. Floor-plane
-  // coordinates alone would let a wipe pass through a chef or a table.
+  // Truck crew pass station selection through their whole rig. Furniture and
+  // customers still occlude, and home staff retain their own selection targets.
   function visibleSurfaceAt(clientX:number,clientY:number){
     ndc(clientX,clientY);
     return firstVisibleSceneSurface(raycaster.intersectObjects([stationRoot,tableRoot,actorRoot,staticRoot],true));
   }
-  function pickTarget(clientX:number,clientY:number){const hit=visibleSurfaceAt(clientX,clientY);
+  function placementTileAt(clientX:number,clientY:number){ndc(clientX,clientY);return projectPlacementTile(raycaster.ray,mode,data.width,data.height);}
+  function pickTarget(clientX:number,clientY:number){
+    // A chosen furnishing stays chosen until Confirm or Cancel. Occupied cells
+    // pin an invalid preview rather than silently replacing it with their owner.
+    if(editing&&data.placement){const tile=placementTileAt(clientX,clientY);if(tile){canvas.dataset.lastTile=`${tile.x},${tile.y}`;callbacks.onTile(tile.x,tile.y);}return;}
+    const hit=visibleSurfaceAt(clientX,clientY);
     if(hit?.target){canvas.dataset.lastTarget=hit.target.id;canvas.dataset.lastSeat=hit.target.seatId??'';callbacks.onTarget(hit.target.id,hit.target.seatId);}
     else if(hit?.tile){canvas.dataset.lastTile=`${hit.tile.x},${hit.tile.y}`;callbacks.onTile(hit.tile.x,hit.tile.y);}
   }
   function panBetween(previous:{x:number;y:number},next:{x:number;y:number}){const a=new THREE.Vector3(),b=new THREE.Vector3();ndc(previous.x,previous.y);if(!raycaster.ray.intersectPlane(groundPlane,a))return;ndc(next.x,next.y);if(!raycaster.ray.intersectPlane(groundPlane,b))return;focus.add(a.sub(b));focus.x=THREE.MathUtils.clamp(focus.x,baseFocus.x-6,baseFocus.x+6);focus.z=THREE.MathUtils.clamp(focus.z,baseFocus.z-6,baseFocus.z+6);fitCamera();}
   function homeFloorPoint(clientX:number,clientY:number){ndc(clientX,clientY);const point=new THREE.Vector3();return raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),-.095),point)?{x:Math.round(point.x*10000)/10000,y:Math.round(point.z*10000)/10000}:null;}
+  let hoverKey='';
+  function clearHover(){if(!hoverKey)return;hoverKey='';callbacks.onHoverTile?.(null,null);}
+  function hoverTileAt(clientX:number,clientY:number){
+    const tile=placementTileAt(clientX,clientY);if(!tile){clearHover();return;}
+    const {x,y}=tile,key=`${x},${y}`;if(key!==hoverKey){hoverKey=key;callbacks.onHoverTile?.(x,y);}
+  }
   function endHomeGesture(){const previous=homePointer;homePointer=null;scrubPointerId=null;if(previous){pointerMoved=true;callbacks.onHomeGesture?.({type:'end',incidentId:previous.incidentId});}}
   function parcelAt(clientX:number,clientY:number){
     const hit=visibleSurfaceAt(clientX,clientY),parcel=hit?.target&&data.objects.find(item=>item.id===hit.target!.id&&item.kind==='parcel'&&(item.id.startsWith('incident:')||item.id==='home-parcel'));return parcel&&hit?{parcel,point:hit.point}:null;
@@ -298,6 +314,7 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
     }
   };
   const onMove=(event:PointerEvent)=>{
+    if(editing&&event.pointerType==='mouse'&&pointers.size===0&&event.buttons===0&&!canvas.hasPointerCapture(event.pointerId)){hoverTileAt(event.clientX,event.clientY);return;}
     const before=pointers.get(event.pointerId);if(!before)return;const after={x:event.clientX,y:event.clientY};pointers.set(event.pointerId,after);
     if(scrubPointerId===event.pointerId&&homePointer){const point=homeFloorPoint(event.clientX,event.clientY);if(point){homePointer={incidentId:homePointer.incidentId,...point};const now=performance.now();if(now-lastHomeSample>=HOME_GESTURE_RULES.sampleMs){lastHomeSample=now;callbacks.onHomeGesture?.({type:'stroke',incidentId:homePointer.incidentId,point});}}pointerMoved=true;return;}
     if(pointers.size===2){const [a,b]=[...pointers.values()],distance=Math.hypot(a.x-b.x,a.y-b.y);if(pinchDistance>1)zoom=THREE.MathUtils.clamp(zoom*distance/pinchDistance,.65,2.4);pinchDistance=distance;pointerMoved=true;fitCamera();}else if(Math.hypot(after.x-gestureStart.x,after.y-gestureStart.y)>6||pointerMoved){panBetween(before,after);pointerMoved=true;}
@@ -328,7 +345,7 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
   const onWheel=(event:WheelEvent)=>{event.preventDefault();zoom=THREE.MathUtils.clamp(zoom*Math.exp(-event.deltaY*.001),.65,2.4);fitCamera();};
   const onContextLost=(event:Event)=>{if(disposed)return;event.preventDefault();cancelAnimationFrame(frame);callbacks.onError?.('The browser lost its WebGL graphics context. Reload the scene to continue.');};
   canvas.addEventListener('webglcontextlost',onContextLost);
-  canvas.addEventListener('pointerdown',onDown);canvas.addEventListener('pointermove',onMove);canvas.addEventListener('pointerup',onUp);canvas.addEventListener('pointercancel',onUp);canvas.addEventListener('lostpointercapture',onUp);canvas.addEventListener('wheel',onWheel,{passive:false});document.addEventListener('visibilitychange',onHidden);window.addEventListener('blur',endHomeGesture);
+  canvas.addEventListener('pointerdown',onDown);canvas.addEventListener('pointermove',onMove);canvas.addEventListener('pointerleave',clearHover);canvas.addEventListener('pointerup',onUp);canvas.addEventListener('pointercancel',onUp);canvas.addEventListener('lostpointercapture',onUp);canvas.addEventListener('wheel',onWheel,{passive:false});document.addEventListener('visibilitychange',onHidden);window.addEventListener('blur',endHomeGesture);
   canvas.addEventListener('keydown',onKeyDown);canvas.addEventListener('keyup',onKeyUp);
   function animate(now:number){if(disposed)return;frame=requestAnimationFrame(animate);const delta=Math.min(.05,(now-lastFrame)/1000),time=now/1000;lastFrame=now;rotation+=(targetRotation-rotation)*Math.min(1,delta*10);fitCamera();
     homeAmbience?.update(time,!reducedMotion&&!data.paused);
@@ -354,11 +371,12 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
   function dispose(){
     if(disposed)return;endHomeGesture();disposed=true;cancelAnimationFrame(frame);observer.disconnect();
     canvas.removeEventListener('pointerdown',onDown);canvas.removeEventListener('pointermove',onMove);canvas.removeEventListener('pointerup',onUp);canvas.removeEventListener('pointercancel',onUp);canvas.removeEventListener('wheel',onWheel);canvas.removeEventListener('webglcontextlost',onContextLost);
+    canvas.removeEventListener('pointerleave',clearHover);
     canvas.removeEventListener('lostpointercapture',onUp);document.removeEventListener('visibilitychange',onHidden);window.removeEventListener('blur',endHomeGesture);
     canvas.removeEventListener('keydown',onKeyDown);canvas.removeEventListener('keyup',onKeyUp);
     for(const view of stationViews.values())view.cooking?.dispose();
     disposeObject(scene);sun.shadow.dispose();renderer.dispose();renderer.forceContextLoss();canvas.remove();
   }
   try{syncScene();resize();frame=requestAnimationFrame(animate);}catch(error){dispose();throw error;}
-  return {setScene(next){data=next;if(homePointer&&!data.objects.some(item=>item.id===homePointer!.incidentId))endHomeGesture();syncScene();},setRotation(value){const desired=Math.round(value)*Math.PI/2;targetRotation=rotation+Math.atan2(Math.sin(desired-rotation),Math.cos(desired-rotation));},setEditing(value){editing=value;if(value)endHomeGesture();syncEdit();},zoomBy(factor){zoom=THREE.MathUtils.clamp(zoom*factor,.65,2.4);fitCamera();},resetCamera(){focus.copy(baseFocus);zoom=1;fitCamera();},dispose};
+  return {setScene(next){data=next;if(homePointer&&!data.objects.some(item=>item.id===homePointer!.incidentId))endHomeGesture();syncScene();},setRotation(value){const desired=Math.round(value)*Math.PI/2;targetRotation=rotation+Math.atan2(Math.sin(desired-rotation),Math.cos(desired-rotation));},setEditing(value){editing=value;if(value)endHomeGesture();else clearHover();syncEdit();},zoomBy(factor){zoom=THREE.MathUtils.clamp(zoom*factor,.65,2.4);fitCamera();},resetCamera(){focus.copy(baseFocus);zoom=1;fitCamera();},dispose};
 }

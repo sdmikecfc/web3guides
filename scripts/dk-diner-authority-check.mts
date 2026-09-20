@@ -70,6 +70,6 @@ test("online preview is explicitly gated and cannot import a guest balance", () 
   assert.ok(server.includes('process.env.DINER_PREVIEW_SERVER_ENABLED === "true"')); assert.ok(server.includes(".auth.getUser(token)"));
   assert.ok(server.includes("createDinerRecord(now,")); assert.ok(!server.includes("domain_kitchen_players"));
   assert.ok(route.includes("validateDinerEnvelope(parsed)")); assert.ok(route.includes("p_commands: result.accepted"));
-  assert.ok(session.includes("signInAnonymously")); assert.ok(!session.includes("wallet" + "For"));
+  assert.ok(!session.includes("signInAnonymously")); assert.ok(session.includes("requireDinerWalletSession")); assert.ok(server.includes("requireDinerWalletSession(dinerDb(), token, data.user.id)"));
 });
 console.log(`Diner authority: ${groups} groups passed.`);

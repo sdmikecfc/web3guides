@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { ModelIcon } from '../ModelIcon';
+import { RouteMapBench } from './RouteMapBench';
 
 export const metadata={title:'Domain Kitchen · Art bench',robots:{index:false,follow:false}};
 
@@ -21,6 +22,7 @@ export default function DinerArtBench(){
       <section aria-label="Mastered dishes" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(175px,1fr))',gap:16,margin:'24px 0'}}>
         {['fries','pancakes','strawberry_waffle','coffee','strawberry_shake'].map(id=><article key={id} style={card}><ModelIcon kind="food" recipeId={id} mastery={10} label={id.replaceAll('_',' ')} size={175}/><strong>{id.replaceAll('_',' ')}</strong></article>)}
       </section>
+      <RouteMapBench/>
       <a href="/chef/diner-preview" style={{color:'#3c6151'}}>Back to the restaurant</a>
     </div>
   </main>;

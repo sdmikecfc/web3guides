@@ -10,12 +10,12 @@ const js=ts.transpileModule(node.getText(parsed),{compilerOptions:{module:ts.Mod
 const {stationActionPosition}=await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
 let cases=0;
 for(const [width,height] of [[320,568],[390,844],[503,920],[700,920],[794,920],[1280,720],[1920,1080],[844,390]]){
-  for(const cardHeight of [64,76,94])for(const fx of [0,.05,.25,.5,.75,.95,1])for(const fy of [0,.1,.35,.5,.8,.95,1]){
-    const anchor={x:width*fx,y:height*fy},card={width:172,height:cardHeight},p=stationActionPosition(anchor,{width,height},card);
+  for(const cardHeight of [48,56,70])for(const fx of [0,.05,.25,.5,.75,.95,1])for(const fy of [0,.1,.35,.5,.8,.95,1]){
+    const anchor={x:width*fx,y:height*fy},card={width:124,height:cardHeight},p=stationActionPosition(anchor,{width,height},card);
     assert(Object.values(p).every(Number.isFinite),'nonfinite anchor calculation');
-    assert(p.x>=12&&p.x+172<=width-12,'touch target is clipped horizontally');
+    assert(p.x>=12&&p.x+124<=width-12,'touch target is clipped horizontally');
     assert(p.y>=Math.min(124,height*.22)&&p.y+cardHeight<=height-Math.min(width<=700?248:180,height*.32),'control overlaps protected HUD areas');
-    assert(p.edgeX>=p.x&&p.edgeX<=p.x+172&&p.edgeY>=p.y&&p.edgeY<=p.y+cardHeight,'connector misses the control');
+    assert(p.edgeX>=p.x&&p.edgeX<=p.x+124&&p.edgeY>=p.y&&p.edgeY<=p.y+cardHeight,'connector misses the control');
     cases++;
   }
   // With room on all sides, the actual nearest edge stays 44px from the target.

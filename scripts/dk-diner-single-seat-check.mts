@@ -17,6 +17,19 @@ check('a paid home copy preserves the restaurant layout and all truck seating',(
   assert.equal(state.coins,2000-EQUIPMENT_BY_ID.table_1.tiers[0].price*DINER_RULES.homeEquipmentMultiplier);assert.equal(state.equipment.table_1.homeCopies,1);assert.deepEqual(state.home.layout,before.home.layout);assert.deepEqual(state.truckConfig,before.truckConfig);assert.deepEqual(state.equipment.table_2,before.equipment.table_2);
   const poor=fresh(),failed=dispatchDiner(poor,{type:'buyHomeEquipment',equipmentId:'table_1'},{now});assert(failed.error);assert.deepEqual(failed.state,poor);
 });
+check('older diners discover the single-seat design without receiving free home or truck copies',()=>{
+  const legacy=fresh();delete legacy.equipment.table_1;legacy.coins=1440;
+  legacy.truckConfig.tables=[{id:'legacy-two',x:3,y:5,capacity:2,rotation:0}];legacy.truckConfig.tableCopies={table_1:0,table_2:1,table_4:0};
+  const original=structuredClone(legacy),restored=sanitizeDinerSave(legacy)!;assert(restored);assert.deepEqual(legacy,original);
+  assert.deepEqual(restored.equipment.table_1,{tier:1,truckOwned:true,homeCopies:0});assert.deepEqual(restored.home,original.home);assert.deepEqual(restored.truckConfig,original.truckConfig);assert.equal(restored.coins,1440);
+  const paid=act(restored,{type:'buyHomeEquipment',equipmentId:'table_1'});assert.equal(paid.coins,720);assert.equal(paid.equipment.table_1.homeCopies,1);assert.equal(paid.truckConfig.tableCopies.table_1,0);
+  let reloaded=paid;for(let n=0;n<3;n++)reloaded=sanitizeDinerSave(JSON.stringify(reloaded))!;
+  assert.deepEqual(reloaded.equipment.table_1,paid.equipment.table_1);assert.equal(reloaded.coins,720);assert.deepEqual(reloaded.truckConfig,original.truckConfig);
+  const serverPaid=act(legacy,{type:'buyHomeEquipment',equipmentId:'table_1'});assert.equal(serverPaid.coins,720);assert.equal(serverPaid.equipment.table_1.homeCopies,1,'command replay normalizes old canonical records too');
+  const second=act(reloaded,{type:'buyHomeEquipment',equipmentId:'table_1'});assert.equal(second.coins,0);assert.equal(second.equipment.table_1.homeCopies,2,'each new physical copy still costs720');
+  const existing=structuredClone(paid);existing.equipment.table_1={tier:2,truckOwned:true,homeCopies:3};assert.deepEqual(sanitizeDinerSave(existing)!.equipment.table_1,existing.equipment.table_1);
+  const preCounts:any=structuredClone(legacy);delete preCounts.truckConfig.tableCopies;const inferred=sanitizeDinerSave(preCounts)!;assert(inferred);assert.deepEqual(inferred.truckConfig.tableCopies,{table_1:0,table_2:1,table_4:0});
+});
 check('placing, storing and reloading one home copy never duplicates it',()=>{
   let state=purchased();const old=structuredClone(state.home.layout),single={id:'solo-table',equipmentId:'table_1',x:5,y:4,rotation:0 as const};state=act(state,{type:'homeLayout',layout:[...old,single]});assert.equal(validateDinerHome(state,state.home.layout),null);
   const excessive=dispatchDiner(state,{type:'homeLayout',layout:[...state.home.layout,{...single,id:'not-owned',x:6,y:6}]},{now});assert.equal(excessive.code,'invalid_layout');assert.deepEqual(excessive.state,state);

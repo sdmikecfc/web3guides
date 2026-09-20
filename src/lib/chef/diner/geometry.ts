@@ -21,6 +21,8 @@ export function stationWorkingCell(station: Pick<ServiceStation,'kind'|'x'|'y'|'
   const cells=stationFootprint(station),maxX=Math.max(...cells.map(c=>c.x)),maxY=Math.max(...cells.map(c=>c.y));
   return station.facing===0?{x:station.x,y:maxY+1}:station.facing===1?{x:station.x-1,y:station.y}:station.facing===2?{x:station.x,y:station.y-1}:{x:maxX+1,y:station.y};
 }
+/** Cold storage, serving supplies and portable counters can work on the pavement. */
+export const OUTDOOR_STATION_KINDS:readonly StationKind[]=['bin','crate','fridge','plates','cups','boxes','prep','pass','coffee','drinks','blender'];
 export function tableFootprint(table: Pick<ServiceTable,'x'|'y'|'capacity'> & Partial<Pick<ServiceTable,'rotation'>>): Point[] {
   const originalW=table.capacity===4?2:1,originalH=table.capacity===1?1:2,[w,h]=(table.rotation??0)%2?[originalH,originalW]:[originalW,originalH];
   return Array.from({length:w*h},(_,i) => ({x:table.x+i%w,y:table.y+Math.floor(i/w)}));
@@ -54,6 +56,22 @@ export function adjacentCells(points: Point[]):Point[] {
   const own=new Set(points.map(pointKey)), seen=new Set<string>();
   return points.flatMap(neighbors).filter(p => !own.has(pointKey(p)) && !seen.has(pointKey(p)) && !!seen.add(pointKey(p)));
 }
+/** Usable edge/corner contacts, with the illustrated front first for equal routes. */
+export function stationAccessCells(tier:DinerTier,stations:ServiceStation[],tables:ServiceTable[],station:ServiceStation):Point[]{
+  const footprint=stationFootprint(station),blocked=blockedCells(stations,tables),front=stationWorkingCell(station),seen=new Set<string>();
+  const clear=(p:Point)=>inServiceFloor(tier,p)&&!blocked.has(pointKey(p));
+  const corners=footprint.flatMap(p=>[-1,1].flatMap(dx=>[-1,1].map(dy=>({x:p.x+dx,y:p.y+dy}))));
+  return [front,...adjacentCells(footprint),...corners].filter(p=>{
+    const key=pointKey(p);if(seen.has(key)||!clear(p))return false;seen.add(key);
+    return footprint.some(cell=>{const dx=Math.abs(p.x-cell.x),dy=Math.abs(p.y-cell.y);return dx+dy===1||(dx===1&&dy===1&&(clear({x:p.x,y:cell.y})||clear({x:cell.x,y:p.y})));});
+  });
+}
+export function stationAccessPath(tier:DinerTier,stations:ServiceStation[],tables:ServiceTable[],from:Point,station:ServiceStation):Point[]|null{
+  let best:Point[]|null=null,bestDistance=Infinity;
+  for(const point of stationAccessCells(tier,stations,tables,station)){const path=servicePath(tier,stations,tables,from,point);if(!path)continue;const distance=path.reduce((sum,p,i)=>{const last=path[i-1]??from;return sum+Math.hypot(p.x-last.x,p.y-last.y);},0);if(distance<bestDistance-.00001){best=path;bestDistance=distance;}}
+  return best;
+}
+export function isAtStationAccess(tier:DinerTier,stations:ServiceStation[],tables:ServiceTable[],point:Point,station:ServiceStation):boolean{return stationAccessCells(tier,stations,tables,station).some(p=>Math.hypot(p.x-point.x,p.y-point.y)<.001);}
 export function targetPath(tier:DinerTier,stations:ServiceStation[],tables:ServiceTable[],from:Point,footprint:Point[]):Point[] | null {
   let best:Point[]|null=null;
   for(const point of adjacentCells(footprint)) { const path=servicePath(tier,stations,tables,from,point); if(path && (best===null || path.length<best.length)) best=path; }
@@ -110,8 +128,8 @@ export function validateServiceLayout(tier:DinerTier,stations:ServiceStation[],t
     if(!/^[a-zA-Z0-9_-]{1,64}$/.test(station.id) || ids.has(station.id) || !['crate','fridge','plates','cups','boxes','grill','prep','fryer','sink','bin','oven','blender','coffee','drinks','waffle','pass'].includes(station.kind) || !EQUIPMENT_BY_ID[station.kind]?.tiers[station.tier-1] || !Number.isInteger(station.facing) || station.facing<0 || station.facing>3 || ![1,2,3].includes(station.tier)) return 'Invalid station.';
     ids.add(station.id);
     for(const p of stationFootprint(station)) {
-      const outsideRack=['plates','cups','boxes'].includes(station.kind)&&p.x>=0&&p.x<g.pavement.x+g.pavement.w&&p.y>=g.pavement.y&&p.y<g.pavement.y+g.pavement.h;
-      if(!Number.isInteger(p.x)||!Number.isInteger(p.y)||(!outsideRack&&(p.x<0||p.y<0||p.x>=g.truck.w||p.y>=g.truck.h))||used.has(pointKey(p))||(p.x===g.door.x&&p.y===g.door.y)) return 'Keep stations inside the truck and leave the door clear. Plate racks may stand on the pavement.';
+      const outside=OUTDOOR_STATION_KINDS.includes(station.kind)&&p.x>=0&&p.x<g.pavement.x+g.pavement.w&&p.y>=g.pavement.y&&p.y<g.pavement.y+g.pavement.h;
+      if(!Number.isInteger(p.x)||!Number.isInteger(p.y)||(!outside&&(p.x<0||p.y<0||p.x>=g.truck.w||p.y>=g.truck.h))||used.has(pointKey(p))||(p.x===g.door.x&&p.y===g.door.y)) return 'Keep hot appliances inside the truck. Bins, storage and serving counters may stand on the pavement; leave the door and queue clear.';
       used.add(pointKey(p));
     }
   }
@@ -129,7 +147,7 @@ export function validateServiceLayout(tier:DinerTier,stations:ServiceStation[],t
     if(!tables.length)return 'Place a table and chair on the pavement before opening.';
     for(const required of ['crate','sink','bin']) if(!stations.some(s=>s.kind===required)) return `Add a ${required}.`;
   }
-  for(const station of stations) if(!servicePath(tier,stations,tables,g.door,stationWorkingCell(station))) return `Leave a clear path to the front of the ${EQUIPMENT_BY_ID[station.kind].name.toLowerCase()}.`;
+  for(const station of stations) if(!stationAccessPath(tier,stations,tables,g.door,station)) return `Leave a reachable side or corner beside the ${EQUIPMENT_BY_ID[station.kind].name.toLowerCase()}.`;
   const seats=new Set<string>();
   for(const table of tables) for(const seat of table.seats){
     if(seats.has(pointKey(seat)))return 'Give each chair its own space.';

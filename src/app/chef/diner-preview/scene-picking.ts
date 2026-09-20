@@ -4,7 +4,14 @@ export interface ScenePickTarget {id:string;seatId?:string}
 export interface VisibleSceneSurface {target?:ScenePickTarget;tile?:{x:number;y:number};point:Vector3}
 type SurfaceObject=Object3D&{material?:Material|Material[]};
 
-/** Raycaster results are distance-sorted. Keep the nearest rendered surface,
+/** Truck crew are visual work feedback, not selection surfaces. Mark their root
+ * so hats, animated limbs, tools and carried dishes all follow the same rule. */
+export function setActorPicking(root:Object3D,mode:'truck'|'home',person:{id:string;role:'chef'|'waiter'|'customer';tableId?:string|null;seatId?:string|null}){
+  root.userData.inputPassthrough=mode==='truck'&&person.role!=='customer';
+  root.userData.pick=person.tableId?{id:person.tableId,seatId:person.seatId??undefined}:mode==='home'?{id:person.id}:undefined;
+}
+
+/** Raycaster results are distance-sorted. Keep the nearest participating surface,
  * including opaque scenery without an action, so input cannot pass through it.
  * Three raycasts hidden descendants too; visibility must be checked up to root.
  */

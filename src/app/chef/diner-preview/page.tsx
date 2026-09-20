@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import DinerClient from "./DinerClient";
+import WalletEntry from "./WalletEntry";
 
 export const metadata: Metadata = {
   title: "Domain Kitchen · The diner preview",
@@ -10,5 +10,5 @@ export const metadata: Metadata = {
 
 export default function DinerPreviewPage() {
   if (process.env.NODE_ENV !== "development" && process.env.DINER_PREVIEW_ENABLED === "false") notFound();
-  return <DinerClient />;
+  return <WalletEntry allowLocalGuest={process.env.NODE_ENV === "development"} />;
 }

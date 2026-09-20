@@ -5,14 +5,16 @@ import path from "node:path";
 import { webcrypto } from "node:crypto";
 import { createDinerRecord } from "../src/lib/chef/diner/authority";
 import { createSocialProfile, replayDinerSocial } from "../src/lib/chef/diner/social";
+const wallet=`0x${'33'.repeat(20)}`;
 const loader = Module as unknown as { _load: (request: string, parent: unknown, main: boolean) => unknown }, originalLoad = loader._load;
 loader._load = function(request, parent, main) {
+  if (request === "./DinerAccess") return { useDinerAccess:()=>({mode:'wallet',wallet}) };
   if (request === "react") return { useState: (value: unknown) => [value, () => {}], useRef: (value: unknown) => ({ current: value }), useCallback: (value: unknown) => value, useEffect: () => {} };
   return originalLoad.call(this, request.startsWith("@/") ? path.resolve("src", request.slice(2)) : request, parent, main);
 };
 const { useDiner } = require("../src/app/chef/diner-preview/useDiner") as typeof import("../src/app/chef/diner-preview/useDiner");
 loader._load = originalLoad;
-const player = "11111111-1111-4111-8111-111111111111", now = Date.UTC(2026, 8, 20, 8), pendingKey = "diner_preview_social_pending_v1";
+const player = "11111111-1111-4111-8111-111111111111", now = Date.UTC(2026, 8, 20, 8), pendingKey = `diner_preview_social_pending_v1:${wallet}`;
 class StorageMock { data = new Map<string, string>(); failPending = false; getItem(key: string) { return this.data.get(key) ?? null; } setItem(key: string, value: string) { if (key === pendingKey && this.failPending) throw new Error("Storage full"); this.data.set(key, value); } removeItem(key: string) { this.data.delete(key); } }
 class ServerMock {
   record = createDinerRecord(now, "social-sync"); profile = createSocialProfile(player, now); receipts = new Map<string, string>(); requests: { path: string; body: any }[] = [];
@@ -21,7 +23,7 @@ class ServerMock {
   snapshot(extra: Record<string, unknown> = {}) { return { ok: true, state: structuredClone(this.record.state), revision: this.record.revision, serverTime: now, ...extra }; }
   fetch: typeof fetch = async (input, options) => {
     const route = String(input).split("/").pop()!, body = options?.body ? JSON.parse(String(options.body)) : null; this.requests.push({ path: route, body });
-    if (route === "session") return this.response({ accessToken: "access", refreshToken: "refresh", expiresAt: now / 1000 + 3600, playerId: player });
+    if (route === "session") return this.response({ accessToken: "access", refreshToken: "refresh", expiresAt: now / 1000 + 3600, playerId: player, wallet });
     if (route === "state") return this.response(this.snapshot());
     if (route !== "social") throw new Error(`Unexpected path ${route}`);
     if (this.statusNext) { const status = this.statusNext; this.statusNext = 0; return this.response({ ok: false, error: "Retry later" }, status); }
@@ -36,7 +38,7 @@ class ServerMock {
 }
 const globals = { fetch: globalThis.fetch, localStorage: globalThis.localStorage, document: globalThis.document, crypto: globalThis.crypto, now: Date.now };
 let groups = 0;
-async function fixture() { const storage = new StorageMock(), server = new ServerMock(); Object.assign(globalThis, { localStorage: storage, document: { visibilityState: "visible" }, fetch: server.fetch }); const hook = useDiner(); assert.equal(await hook.connect(), true); return { hook, storage, server }; }
+async function fixture() { const storage = new StorageMock(), server = new ServerMock();storage.setItem(`diner_preview_wallet_session_v1:${wallet}`,JSON.stringify({accessToken:'old',refreshToken:'refresh',expiresAt:1,playerId:player,wallet})); Object.assign(globalThis, { localStorage: storage, document: { visibilityState: "visible" }, fetch: server.fetch }); const hook = useDiner(); assert.equal(await hook.connect(), true); return { hook, storage, server }; }
 async function test(name: string, fn: () => Promise<void>) { await fn(); groups++; console.log(`ok ${name}`); }
 async function main() {
   Date.now = () => now; if (!globalThis.crypto) Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });

@@ -77,6 +77,9 @@ test("pair SQL locks both canonical revisions before any escrow/reward update", 
   assert.ok(sql.includes("revoke all on public.diner_preview_profiles, public.diner_preview_friendships, public.diner_preview_trades from public, anon, authenticated, service_role"));
   assert.ok(sql.includes("p_target_revision+1")); assert.ok(!sql.includes("domain_kitchen")); assert.ok(sql.trim().endsWith("commit;"));
   assert.ok(sql.includes("drop constraint if exists diner_preview_run_inputs_player_id_command_id_key"));
-  const account = readFileSync("src/app/api/chef/diner/account/route.ts", "utf8"); assert.ok(account.includes("email_confirmed_at")); assert.ok(account.includes('type: "email_change"')); assert.ok(account.includes("verificationPending: true")); assert.ok(!account.includes("admin.updateUserById"));
+  const account = readFileSync("src/app/api/chef/diner/account/route.ts", "utf8"), recovery = readFileSync("src/app/api/chef/diner/account/recover/route.ts", "utf8"), session = readFileSync("src/app/api/chef/diner/session/route.ts", "utf8");
+  assert.ok(account.includes("dinerPlayer(req)")); assert.ok(account.includes("requireDinerWalletSession")); assert.ok(!account.includes("admin.updateUserById"));
+  assert.ok(recovery.includes("wallet_required") && recovery.includes("410")); assert.ok(!recovery.includes("signInWithOtp"));
+  assert.ok(session.includes("requireDinerWalletSession")); assert.ok(!session.includes("signInAnonymously"));
 });
 console.log(`Diner social: ${groups} groups passed.`);

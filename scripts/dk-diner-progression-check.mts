@@ -21,10 +21,10 @@ test("separate fresh namespace has no old wealth or owned home fryer", () => {
 test("seeded twelve-row branches only reach the next row and terminate at one finale", () => {
   const map = generateDinerMap("branch-seed"); assert.deepEqual(map, generateDinerMap("branch-seed")); assert.notDeepEqual(map, generateDinerMap("other-seed"));
   assert.equal(map.filter(n => n.kind === "finale").length, 1);
-  for (const node of map) { if (node.row < 11) assert.ok(node.next.length >= 1 && node.next.length <= 3); for (const id of node.next) assert.equal(map.find(n => n.id === id)!.row, node.row + 1); }
+  for (const node of map) { if (node.row < 11) assert.ok(node.next.length >= 1 && node.next.length <= 2); for (const id of node.next) assert.equal(map.find(n => n.id === id)!.row, node.row + 1); }
   const services = new Set([0, 1, 3, 5, 7, 9, 11]);
   for (const node of map) assert.equal(["slow", "medium", "busy", "special", "finale"].includes(node.kind), services.has(node.row));
-  assert.ok(map.filter(n => n.row === 4).every(n => n.kind === "shop"));
+  assert.deepEqual(map.filter(n => n.row === 4).map(n => n.kind).sort(),["ingredients","shop"]);
 });
 test("opening crate is exact burger set and cannot be repeated or rewound", () => {
   let state = action(fresh(), { type: "claimCrate" }); assert.deepEqual(state.pantry, { beef: 1, bun: 1 }); assert.equal(state.daily.minted, 2);

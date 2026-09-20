@@ -9,6 +9,10 @@ export const DECOR: DecorDef[] = [
   { id: "checkered_shelf", name: "Checkered keepsake shelf", footprint: [1, 1], price: 300, setId: "fifties" },
   { id: "daisy_pot", name: "Daisy pot", footprint: [1, 1], price: 150, setId: "garden" },
   { id: "garden_poster", name: "Kitchen garden print", footprint: [1, 1], price: 150, setId: "garden", wall: true },
+  { id: "coffee_print", name: "Morning coffee print", footprint: [1, 1], price: 250, setId: "extras", wall: true },
+  { id: "burger_print", name: "House burger print", footprint: [1, 1], price: 250, setId: "extras", wall: true },
+  { id: "leafy_plant", name: "Tall rubber plant", footprint: [1, 1], price: 450, setId: "extras" },
+  { id: "herb_planter", name: "Kitchen herb planter", footprint: [1, 1], price: 300, setId: "extras" },
   { id: "pete_postcard", name: "Pete's first postcard", footprint: [1, 1], price: 0, setId: "mementos", wall: true, memento: true },
   { id: "marge_badge", name: "Marge's thank-you badge", footprint: [1, 1], price: 0, setId: "mementos", wall: true, memento: true },
   { id: "dottie_portrait", name: "Dottie and her poodle", footprint: [1, 1], price: 0, setId: "mementos", wall: true, memento: true },
@@ -31,7 +35,13 @@ export const REGULARS = [
 ] as const;
 export const FRIENDSHIP_LEVELS = [3, 8, 15, 25, 40] as const;
 export function regularLevel(servings: number) { return FRIENDSHIP_LEVELS.filter(n => servings >= n).length; }
-export function regularFavourite(state: DinerState, id: string) { const regular = REGULARS.find(r => r.id === id); return regular?.favourite === "mastered" ? Object.keys(state.recipes).find(key => state.recipes[key].level === 10) ?? null : regular?.favourite ?? null; }
+export function regularFavourite(state: DinerState, id: string) {
+  const regular = REGULARS.find(r => r.id === id);
+  if (regular?.favourite !== "mastered") return regular?.favourite ?? null;
+  const mastered = Object.keys(state.recipes).filter(key => state.recipes[key].level === 10);
+  const menu = new Set(Object.values(state.home.menu).flat());
+  return mastered.find(key => menu.has(key)) ?? mastered[0] ?? null;
+}
 export function regularAvailable(state: DinerState, id: string) {
   const favourite = regularFavourite(state, id), menu = Object.values(state.home.menu).flat();
   if (!favourite || !menu.includes(favourite)) return false;
@@ -50,6 +60,18 @@ export function charmOf(state: DinerState) {
 export const COSMETICS = {
   wraps: ["tomato", "buttercream", "sage", "sky"], horns: ["quiet", "friendly", "jazzy"], uniforms: ["classic", "cherry", "mint"], floors: ["checker", "cream", "terracotta"], walls: ["cream", "mint", "rose"], skins: ["original", "cherry", "mint", "cream"],
 } as const;
+export type FinishSlot = "floor" | "wall";
+/** One purchase owns the whole-room finish permanently. Changing it has no service effect. */
+export const FINISH_RULES = {
+  version: 1,
+  defaults: { floor: "checker", wall: "cream" },
+  prices: { floor: { checker: 0, cream: 150, terracotta: 150 }, wall: { cream: 0, mint: 100, rose: 100 } },
+} as const;
+export function finishPrice(slot: FinishSlot, id: string): number | null {
+  if (typeof id !== "string") return null;
+  const prices = slot === "floor" ? FINISH_RULES.prices.floor : slot === "wall" ? FINISH_RULES.prices.wall : null;
+  return prices && Object.prototype.hasOwnProperty.call(prices, id) ? (prices as Record<string, number>)[id] : null;
+}
 export interface DinerStaff { id: string; name: string; role: "chef" | "waiter"; named: boolean; outfit: string; look: number }
 export const RECRUITS = [{ id: "jo", name: "Jo", role: "waiter" }, { id: "bea", name: "Bea", role: "chef" }, { id: "gus", name: "Gus", role: "waiter" }] as const;
 export interface SavedDinerLayout { id: string; name: string; layout: DinerState["home"]["layout"]; menu: Record<Course, string[]> }

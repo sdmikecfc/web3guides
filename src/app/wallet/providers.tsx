@@ -40,7 +40,7 @@ const wcProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 const baseWallets = [injectedWallet, metaMaskWallet, rabbyWallet, coinbaseWallet];
 const wcWallets = wcProjectId ? [rainbowWallet, walletConnectWallet] : [];
 
-const connectors = connectorsForWallets(
+const connectorsForApp = (appName: string) => connectorsForWallets(
   [
     {
       groupName: "Wallets",
@@ -48,7 +48,7 @@ const connectors = connectorsForWallets(
     },
   ],
   {
-    appName: "Doma Reporter — wallet linking",
+    appName,
     projectId: wcProjectId || "00000000000000000000000000000000",
   }
 );
@@ -74,12 +74,14 @@ const doma = defineChain({
   blockExplorers: { default: { name: "Doma Explorer", url: "https://explorer.doma.xyz" } },
 });
 
-const wagmiConfig = createConfig({
+const walletConfigFor = (appName: string) => createConfig({
   chains:     [mainnet, doma],
-  connectors,
+  connectors: connectorsForApp(appName),
   transports: { [mainnet.id]: http(), [doma.id]: http("https://rpc.doma.xyz") },
   ssr:        true,
 });
+const defaultAppName = "Doma Reporter — wallet linking";
+const wagmiConfig = walletConfigFor(defaultAppName);
 
 /**
  * `accent` lets one surface restyle the connect button without touching the
@@ -92,15 +94,18 @@ export function WalletProviders({
   children,
   accent = "#7c6aff",
   accentForeground = "#f8fafc",
+  appName = defaultAppName,
 }: {
   children: ReactNode;
   accent?: string;
   accentForeground?: string;
+  appName?: string;
 }) {
   const [queryClient] = useState(() => new QueryClient());
+  const [walletConfig] = useState(() => appName === defaultAppName ? wagmiConfig : walletConfigFor(appName));
 
   return (
-    <WagmiProvider config={wagmiConfig}>
+    <WagmiProvider config={walletConfig}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider theme={darkTheme({
           accentColor:           accent,

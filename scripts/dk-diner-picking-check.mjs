@@ -14,8 +14,8 @@ async function sourceModule(relative){
   const result=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext},fileName:relative});
   return import(`data:text/javascript;base64,${Buffer.from(result.outputText).toString('base64')}`);
 }
-const {createModel}=await sourceModule('src/app/chef/diner-preview/models.ts');
-const {firstVisibleSceneSurface}=await sourceModule('src/app/chef/diner-preview/scene-picking.ts');
+const {createModel,createFoodModel,animateCharacter}=await sourceModule('src/app/chef/diner-preview/models.ts');
+const {firstVisibleSceneSurface,setActorPicking}=await sourceModule('src/app/chef/diner-preview/scene-picking.ts');
 const raycaster=new THREE.Raycaster();let groups=0;
 function test(name,run){run();groups++;console.log(`PASS ${name}`);}
 function cast(root,origin=[0,5,0],direction=[0,-1,0]){root.updateMatrixWorld(true);raycaster.set(new THREE.Vector3(...origin),new THREE.Vector3(...direction).normalize());return raycaster.intersectObject(root,true);}
@@ -47,6 +47,47 @@ test('a foreground chef physically blocks a spill and hidden actor parents do no
   const spill=target('spill','incident:spill'),chef=target('chef','chef_1'),actors=rootOf(chef),root=rootOf(spill,actors);
   assert.equal(closest(root).target.id,'chef_1');actors.visible=false;
   assert(cast(root).some(hit=>hit.object.parent),'real ray list exists');assert.equal(closest(root).target.id,'incident:spill');
+});
+
+test('truck chef and helpers pass actual head, tool and carried-food hits to the station behind them',()=>{
+  let blockedRays=0,carriedRays=0;
+  for(const kind of ['grill','prep'])for(const role of ['chef','waiter'])for(const pose of ['idle','cook','carry']){
+    const station=target(kind,kind),actor=createModel(role);actor.position.z=1;actor.name='truck-crew';
+    animateCharacter(actor,.24,pose,pose==='carry',false,{stationKind:kind,recipeId:'classic_burger'});
+    if(pose==='carry'){const held=createFoodModel({recipeId:'classic_burger',kind:'dish'});held.name='crew-carried-food';held.userData.pick={id:'not-an-independent-station'};actor.userData.rig.held.add(held);}
+    const root=rootOf(station,actor),camera=new THREE.OrthographicCamera(-1.3,1.3,1.3,-1.3,.01,100);
+    for(const angle of [-Math.PI/4,0,Math.PI/4]){
+      camera.position.set(Math.sin(angle)*6,4.3,Math.cos(angle)*6);camera.lookAt(0,.7,.4);camera.updateMatrixWorld(true);camera.updateProjectionMatrix();root.updateMatrixWorld(true);
+      setActorPicking(actor,'truck',{id:role==='chef'?'player':'helper:washer',role});
+      for(let x=0;x<29;x++)for(let y=0;y<29;y++){
+        raycaster.setFromCamera(new THREE.Vector2((x/28-.5)*2,(y/28-.5)*2),camera);const hits=raycaster.intersectObject(root,true);
+        if(!hits.length||!ancestry(hits[0].object,'truck-crew')||!hits.some(hit=>targetAt(hit)?.id===kind))continue;
+        const picked=firstVisibleSceneSurface(hits);assert.equal(picked.target?.id,kind,`${role}/${pose} blocked ${kind}`);blockedRays++;
+        if(hits.some(hit=>ancestry(hit.object,'crew-carried-food')))carriedRays++;
+      }
+    }
+  }
+  assert(blockedRays>100,'fixture did not exercise genuinely occluded stations');assert(carriedRays>0,'carried dishes were never hit');
+  console.log(`  ${blockedRays} previously crew-blocked station rays; ${carriedRays} include actual carried dishes`);
+});
+
+test('truck crew passthrough preserves foreground chair occlusion and customer seat selection',()=>{
+  const station=target('grill','grill'),chair=target('chair','table-1','seat-1'),chef=createModel('chef');chair.position.z=1;chef.position.z=2;chef.name='truck-crew';
+  setActorPicking(chef,'truck',{id:'player',role:'chef'});
+  const root=rootOf(station,chair,chef),origin=[0,2.5,4],direction=[0,-.55,-1],hits=cast(root,origin,direction);
+  assert(hits.some(hit=>ancestry(hit.object,'truck-crew'))&&hits.some(hit=>targetAt(hit)?.id==='grill'),'ray must cross crew and station');
+  assert.deepEqual(firstVisibleSceneSurface(hits).target,{id:'table-1',seatId:'seat-1'},'crew policy allowed picking through real furniture');
+  const customer=createModel('customer');customer.position.z=1;setActorPicking(customer,'truck',{id:'guest',role:'customer',tableId:'table-1',seatId:'seat-1'});
+  const guestHits=cast(rootOf(station,customer),[0,2.3,3],[0,-.48,-1]);
+  assert.deepEqual(firstVisibleSceneSurface(guestHits).target,{id:'table-1',seatId:'seat-1'},'guest no longer selects their own seat');
+});
+
+test('home staff remain selectable and changing actor mode clears a previous passthrough flag',()=>{
+  const station=target('prep','prep'),chef=createModel('chef');chef.position.z=1;
+  const root=rootOf(station,chef),origin=[0,2.3,3],direction=[0,-.48,-1];
+  setActorPicking(chef,'truck',{id:'chef_1',role:'chef'});assert.equal(closest(root,origin,direction).target.id,'prep');
+  setActorPicking(chef,'home',{id:'chef_1',role:'chef'});assert.equal(closest(root,origin,direction).target.id,'chef_1');
+  setActorPicking(chef,'truck',{id:'guest',role:'customer',tableId:'table-2',seatId:'seat-2'});assert.deepEqual(closest(root,origin,direction).target,{id:'table-2',seatId:'seat-2'});
 });
 test('removed parcel tape is ignored even when Three still reports intersections with it',()=>{
   const parcel=target('parcel','home-parcel'),root=rootOf(parcel),tape=parcel.getObjectByName('parcel-tape');assert(tape,'real parcel has removable tape');

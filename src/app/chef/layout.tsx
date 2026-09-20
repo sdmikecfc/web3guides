@@ -41,7 +41,7 @@ export default function ChefLayout({
   // the kitchen's amber, so the connect button stops being the one
   // off-palette element on an otherwise warm screen (ADR-0112 house look)
   return (
-    <WalletProviders accent="#e8a13d" accentForeground="#1b1310">
+    <WalletProviders appName="Domain Kitchen" accent="#e8a13d" accentForeground="#1b1310">
       <div className={dkFont.variable}>{children}</div>
     </WalletProviders>
   );

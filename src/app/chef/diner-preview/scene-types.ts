@@ -6,6 +6,7 @@ export interface SceneSlot { food?:SceneFood|null; state?:'idle'|'working'|'read
 export interface SceneObject extends ScenePoint { id:string; kind:string; rotation?:0|1|2|3; tier?:number; stock?:number; basketRaised?:boolean; portions?:number; state?:'idle'|'working'|'ready'|'burning'; progress?:number; food?:SceneFood|null; slots?:SceneSlot[]; footprint?:[number,number]; color?:string }
 export interface SceneSeat extends ScenePoint { id:string; status:string; item?:SceneFood|null; customerId?:string|null }
 export interface SceneTable extends ScenePoint { id:string; capacity:1|2|4; rotation?:0|1|2|3; seats:SceneSeat[] }
+export interface ScenePlacement { object?:SceneObject;table?:SceneTable;valid:boolean }
 export interface ScenePerson extends ScenePoint {
   id:string; role:'chef'|'waiter'|'customer'; look?:number; facing?:0|1|2|3;
   pose?:'idle'|'walk'|'carry'|'cook'|'wash'|'sit'|'eat'|'cheer'|'leave';
@@ -22,12 +23,14 @@ export interface DinerSceneData {
   objects:SceneObject[];tables:SceneTable[];people:ScenePerson[];queue?:ScenePoint[];
   selectedId?:string|null;tick?:number;paused?:boolean;
   tileHighlights?:Array<ScenePoint&{valid:boolean}>;
+  placement?:ScenePlacement|null;
 }
 export interface DinerPerformance { fps:number;drawCalls:number;triangles:number;width:number;height:number }
 export interface SceneAnchor { id:string;x:number;y:number;visible:boolean }
 export interface DinerSceneProps {
   mode:'truck'|'home';scene:DinerSceneData;rotation:number;editing?:boolean;
   onTarget:(id:string,seatId?:string)=>void;onTile:(x:number,y:number)=>void;
+  onHoverTile?:(x:number|null,y:number|null)=>void;
   onHomeGesture?:(gesture:HomeSceneGesture)=>void;
   showWorldHints?:boolean;onAnchors?:(anchors:SceneAnchor[])=>void;
   worldReward?:{id:string;label:string;receipt:string}|null;

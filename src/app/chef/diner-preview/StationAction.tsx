@@ -17,7 +17,7 @@ export interface StationActionProps {
 
 /** Find the nearest clear edge of the station, then keep the whole touch target
  * inside the play area. Coordinates use the same full-size parent as the canvas. */
-export function stationActionPosition(anchor:{x:number;y:number},viewport:Size,card:Size={width:172,height:76}){
+export function stationActionPosition(anchor:{x:number;y:number},viewport:Size,card:Size={width:124,height:48}){
   const mobile=viewport.width<=700,gap=44,left=12,right=mobile?12:68;
   const top=Math.min(124,viewport.height*.22),bottom=Math.min(mobile?248:180,viewport.height*.32);
   const maxX=Math.max(left,viewport.width-right-card.width),maxY=Math.max(top,viewport.height-bottom-card.height);
@@ -40,7 +40,7 @@ export function stationActionPosition(anchor:{x:number;y:number},viewport:Size,c
 /** Mounted only for a manual station job. Merely showing the control never works. */
 export function StationAction({anchor,label,active,onHold,progress,disabled=false}:StationActionProps){
   const layer=useRef<HTMLDivElement>(null),card=useRef<HTMLElement>(null);
-  const [viewport,setViewport]=useState<Size>({width:0,height:0}),[cardSize,setCardSize]=useState<Size>({width:172,height:76});
+  const [viewport,setViewport]=useState<Size>({width:0,height:0}),[cardSize,setCardSize]=useState<Size>({width:124,height:48});
   const heldPosition=useRef<ReturnType<typeof stationActionPosition>|null>(null);
   const shown=!!anchor?.visible&&Number.isFinite(anchor.x)&&Number.isFinite(anchor.y);
   useEffect(()=>{

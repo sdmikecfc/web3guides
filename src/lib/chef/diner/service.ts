@@ -1,5 +1,5 @@
 import { CONTENT_VERSION, DAILY_SPECIALS, DIFFICULTIES, EQUIPMENT_BY_ID, INGREDIENT_BY_ID, ingredientSupply, RECIPE_BY_ID, SERVICE_RULES, SPICES, TRUCK_TIERS, recipePrice } from './content';
-import { blockedCells, inServiceFloor, isAdjacent, makeStation, makeTable, pointKey, serviceGeometry, servicePath, starterStations, starterTables, stationFootprint, stationWorkingCell, tableFootprint, targetPath, validateServiceLayout } from './geometry';
+import { blockedCells, inServiceFloor, isAtStationAccess, makeStation, makeTable, pointKey, serviceGeometry, servicePath, starterStations, starterTables, stationAccessPath, stationFootprint, tableFootprint, targetPath, validateServiceLayout } from './geometry';
 import type { CreateServiceOptions, CustomerType, Point, RecipeStep, ServiceAction, ServiceCustomer, ServiceEvent, ServiceHelper, ServiceItem, ServiceResult, ServiceSeat, ServiceState, ServiceStation, ServiceTable, StationSlot } from './types';
 export type * from './types';
 import {createFryBatch,markFryBatchReady,raiseFryBatch,burnFryBatch,takeFryPortion,validateFryBatch,recipeVessel,vesselReusable,SERVING_VESSELS,type VesselKind} from './batch';
@@ -159,14 +159,14 @@ function routeInteraction(s:ServiceState,targetId:string,recipeId:string|null,se
   if(!station&&!table){notice(s,'That target no longer exists.');return;}
   if(seatId&&(!table||!table.seats.some(seat=>seat.id===seatId))){notice(s,'That seat does not belong to this table.');return;}
   const footprint=station?stationFootprint(station):tableFootprint(table!);
-  const path=station?servicePath(s.config.tier,s.stations,s.tables,s.chef,stationWorkingCell(station)):targetPath(s.config.tier,s.stations,s.tables,s.chef,footprint);
+  const path=station?stationAccessPath(s.config.tier,s.stations,s.tables,s.chef,station):targetPath(s.config.tier,s.stations,s.tables,s.chef,footprint);
   if(!path){notice(s,'There is no clear route.');return;}
   s.chef.path=path;s.chef.targetId=targetId;s.chef.targetRecipeId=recipeId;s.chef.targetSeatId=seatId;s.chef.targetIngredientId=ingredientId;s.chef.holding=false;
   if(!path.length)performInteraction(s);
 }
 function performInteraction(s:ServiceState):void {
   const station=s.stations.find(st=>st.id===s.chef.targetId),table=s.tables.find(t=>t.id===s.chef.targetId);
-  if(station)interactStation(s,station);else if(table)interactTable(s,table);else clearTarget(s);
+  if(station){if(isAtStationAccess(s.config.tier,s.stations,s.tables,s.chef,station))interactStation(s,station);else clearTarget(s);}else if(table)interactTable(s,table);else clearTarget(s);
 }
 function stationStep(s:ServiceState,station:ServiceStation,item:ServiceItem):RecipeStep|null {
   if(item.kind==='plate'||(item.physical&&item.kind==='ingredient'&&item.ingredientId!==RECIPE_BY_ID[item.recipeId]?.ingredients[0]))return null;
@@ -313,7 +313,7 @@ function finishWash(s:ServiceState,station:ServiceStation,slot:StationSlot):void
 }
 function asHelper(s:ServiceState,helper:ServiceHelper,fn:()=>void):void {const chef=s.chef,message=s.notice;s.chef=helper;try{fn();}finally{s.chef=chef;s.notice=message;}}
 function helperRoute(s:ServiceState,helper:ServiceHelper,targetId:string,seatId:string|null=null):void {asHelper(s,helper,()=>routeInteraction(s,targetId,null,seatId));}
-function helperWorkRoute(s:ServiceState,helper:ServiceHelper,station:ServiceStation):void {const path=servicePath(s.config.tier,s.stations,s.tables,helper,stationWorkingCell(station));if(!path){releaseHelper(s,helper);return;}helper.path=path;helper.targetId=station.id;helper.targetSeatId=null;helper.targetRecipeId=null;helper.holding=true;}
+function helperWorkRoute(s:ServiceState,helper:ServiceHelper,station:ServiceStation):void {const path=stationAccessPath(s.config.tier,s.stations,s.tables,helper,station);if(!path){releaseHelper(s,helper);return;}helper.path=path;helper.targetId=station.id;helper.targetSeatId=null;helper.targetRecipeId=null;helper.holding=true;}
 function releaseHelper(s:ServiceState,helper:ServiceHelper):void {helper.task=null;asHelper(s,helper,()=>clearTarget(s));}
 function claimedByOther(s:ServiceState,helper:ServiceHelper,field:'seatId'|'itemId',value:string):boolean {return s.helpers.some(other=>other!==helper&&other.task?.[field]===value);}
 /** Helpers move and handle the same actual items as the player; no abstract work rewards. */
@@ -436,7 +436,7 @@ export function stepService(s:ServiceState,ticks=1):void {
       const job=slot.job,item=slot.item;if(!item)continue;
       if(job&&!job.ready) {
         const manual=job.action==='hold'||job.action==='wash';
-        const working=!manual||[s.chef,...s.helpers].some(actor=>actor.targetId===station.id&&actor.holding&&!actor.path.length&&isAdjacent(actor,stationFootprint(station)));
+        const working=!manual||[s.chef,...s.helpers].some(actor=>actor.targetId===station.id&&actor.holding&&!actor.path.length&&isAtStationAccess(s.config.tier,s.stations,s.tables,actor,station));
         if(working&&(!manual||station.kind!=='sink'||(!washedStations.has(station.id)&&!!washedStations.add(station.id)))&&--job.remaining<=0)finishCooking(s,station,slot);
       }else if(job?.ready&&job.burnRemaining!==null&&--job.burnRemaining<=0&&item.kind!=='burnt') {
         item.kind='burnt';item.stage='burnt';if(slot.batch)slot.batch=burnFryBatch(slot.batch);job.burnRemaining=null;s.burnt++;emit(s,'burn',station.id);
@@ -449,7 +449,12 @@ export function stepService(s:ServiceState,ticks=1):void {
     if((s.chef.held?.kind==='dish'||preparedFood(s.chef.held))&&s.chef.held.finishedTick!==undefined&&s.tick-s.chef.held.finishedTick>=SERVICE_RULES.coldTicks)s.chef.held.cold=true;
     // The opening lesson waits for a real serve/eat/collect/wash cycle. Time
     // alone cannot bring another order while the first guest is being learned.
-    if(s.phase!=='preparing'&&s.spawned<s.config.customers&&(!s.config.tutorialLearning||s.spawned!==1||s.washed>0||(s.config.batchVersion&&s.customers[0]?.recipeId==='fries'&&s.customers[0].servedTick!==null&&!s.tables.some(table=>table.seats.some(seat=>seat.mealId===s.customers[0].mealId))))&&--s.nextArrival<=0)spawnCustomer(s);
+    const firstLesson=s.config.tutorialLearning&&s.spawned===1,lessonDone=s.washed>0||(s.config.batchVersion&&s.customers[0]?.recipeId==='fries'&&s.customers[0].servedTick!==null&&!s.tables.some(table=>table.seats.some(seat=>seat.mealId===s.customers[0].mealId)));
+    // Count the inter-arrival gap during the lesson, but never admit order two
+    // before the real wash/clear. Once that is done, the wait is at most 1 second.
+    if(firstLesson&&!lessonDone)s.nextArrival=Math.max(20,s.nextArrival-1);
+    if(firstLesson&&lessonDone)s.nextArrival=Math.min(20,s.nextArrival);
+    if(s.phase!=='preparing'&&s.spawned<s.config.customers&&(!firstLesson||lessonDone)&&--s.nextArrival<=0)spawnCustomer(s);
     if(s.phase!=='preparing')seatQueue(s);
     const drain=(s.config.cosy?2/3:1)*(s.config.spices.includes('rush_hour')?1.25:1);
     for(const customer of s.customers) {

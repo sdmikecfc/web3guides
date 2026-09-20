@@ -1,0 +1,77 @@
+/** Real layout validation and persistence behind the local editor preview. */
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createDiner, dispatchDiner, homeSimulationConfig, sanitizeDinerSave, type DinerCommand, type DinerState } from '../src/lib/chef/diner/progression';
+import { createHomeWorld } from '../src/lib/chef/diner/home-simulation';
+import { makeTable } from '../src/lib/chef/diner/geometry';
+import { createPlacementDraft, movePlacementDraft, previewPlacement, rotatePlacementDraft } from '../src/app/chef/diner-preview/placement-preview';
+const now=Date.UTC(2026,8,20,8);
+const fresh=()=>createDiner(now,'placement-check');
+function act(state:DinerState,command:DinerCommand){const result=dispatchDiner(state,command,{now});assert.equal(result.error,undefined,`${command.type}: ${result.error}`);return result.state;}
+let groups=0;function test(name:string,run:()=>void){run();groups++;console.log(`ok ${name}`);}
+test('stored furniture can rotate before placement without spending or mutating the live layout',()=>{
+  const state=fresh();state.equipment.fryer.homeCopies=1;const before=structuredClone(state);
+  let draft=createPlacementDraft(state,'home','fryer','home-fryer');assert.equal(previewPlacement(state,draft).error,null);
+  draft=movePlacementDraft(draft,1,0,true);assert.ok(previewPlacement(state,draft).error,'occupied grill tile is invalid');
+  for(let n=0;n<4;n++){draft=rotatePlacementDraft(draft);assert.equal(draft.rotation,(n+1)%4);assert.ok(previewPlacement(state,draft).error);}
+  assert.deepEqual(state,before,'preview, invalid rotation and cancellation have no saved mutation');
+  draft=movePlacementDraft(rotatePlacementDraft(draft),5,3,true);const preview=previewPlacement(state,draft);assert.equal(preview.error,null);
+  const saved=act(state,preview.command);assert.equal(saved.home.layout.find(p=>p.id===draft.id)!.rotation,1);assert.equal(saved.equipment.fryer.homeCopies,1);
+  assert.equal(sanitizeDinerSave(JSON.stringify(saved))!.home.layout.find(p=>p.id===draft.id)!.rotation,1);
+});
+test('moving an existing home furnishing replaces its ID and preserves its finish',()=>{
+  const state=fresh();state.home.layout[0].skin='mint';const before=structuredClone(state);
+  let draft=createPlacementDraft(state,'home','grill',state.home.layout[0].id,true);
+  draft=movePlacementDraft(rotatePlacementDraft(draft),2,2,true);const preview=previewPlacement(state,draft);
+  assert.equal(preview.error,null);assert.equal(preview.object!.color,'#91b29a');assert.deepEqual(state,before);
+  const moved=act(state,preview.command);assert.equal(moved.home.layout.length,before.home.layout.length);assert.equal(moved.home.layout[0].skin,'mint');
+  assert.equal(moved.home.layout.filter(p=>p.id===draft.id).length,1);assert.equal(sanitizeDinerSave(moved)!.home.layout[0].rotation,1);
+});
+test('home table ghost chairs use the same real coordinates as the committed room',()=>{
+  const state=fresh();state.equipment.table_1.homeCopies=1;
+  let draft=movePlacementDraft(createPlacementDraft(state,'home','table_1','home-single'),5,4,true);
+  for(let r=0;r<4;r++){
+    const preview=previewPlacement(state,draft);assert.equal(preview.error,null);const committed=act(state,preview.command);
+    const actual=createHomeWorld(homeSimulationConfig(committed)).tables.find(t=>t.id===draft.id)!;
+    assert.deepEqual(preview.table!.seats,actual.seats);assert.equal(preview.table!.rotation,r);draft=rotatePlacementDraft(draft);
+  }
+});
+test('truck storage preview does not consume the station and Confirm installs only one owned copy',()=>{
+  let state=act(fresh(),{type:'startPractice'});const before=structuredClone(state);
+  let draft=createPlacementDraft(state,'truck','grill','truck-grill');assert.equal(previewPlacement(state,draft).error,null);
+  draft=movePlacementDraft(draft,7,0,true);for(let n=0;n<4;n++){draft=rotatePlacementDraft(draft);assert.ok(previewPlacement(state,draft).error);}
+  assert.deepEqual(state,before);draft=movePlacementDraft(draft,1,0,true);const preview=previewPlacement(state,draft);assert.equal(preview.error,null);
+  state=act(state,preview.command);assert.equal(state.truckConfig.stations.filter(s=>s.kind==='grill').length,1);assert.equal(state.equipment.grill.truckOwned,true);
+  assert.ok(previewPlacement(state,createPlacementDraft(state,'truck','grill','second-grill')).error);
+  assert.equal(sanitizeDinerSave(JSON.stringify(state))!.truckConfig.stations.find(s=>s.id==='truck-grill')!.facing,0);
+});
+test('a blocked home single chair remains visible at its exact rotated anchor',()=>{
+  const state=fresh();state.equipment.table_1.homeCopies=1;
+  let draft=movePlacementDraft(createPlacementDraft(state,'home','table_1','blocked-single'),1,0,true);
+  for(let r=0;r<4;r++){
+    const preview=previewPlacement(state,draft);assert.ok(preview.error,'the grill already occupies this tile');
+    assert.equal(preview.table!.seats.length,1);assert.deepEqual(preview.table!.seats.map(({x,y})=>({x,y})),makeTable(draft.id,1,0,1,1,r as 0|1|2|3).seats.map(({x,y})=>({x,y})));
+    draft=rotatePlacementDraft(draft);
+  }
+});
+test('truck table rotation preview has exact seats and survives a single explicit layout commit',()=>{
+  const state=act(fresh(),{type:'startPractice'}),source=state.run!.service!.tables[0],before=structuredClone(state);
+  let draft=movePlacementDraft(createPlacementDraft(state,'truck','table_1',source.id,true),4,5,true);
+  for(let r=0;r<4;r++){
+    const preview=previewPlacement(state,draft);assert.equal(preview.error,null);assert.deepEqual(preview.table,makeTable(source.id,4,5,1,1,r as 0|1|2|3));
+    const saved=act(state,preview.command);assert.equal(saved.run!.service!.tables.length,1);assert.equal(sanitizeDinerSave(saved)!.truckConfig.tables[0].rotation,r);
+    draft=rotatePlacementDraft(draft);
+  }assert.deepEqual(state,before);
+});
+test('canonical state is revalidated before committing a draft that no longer owns a stored item',()=>{
+  const state=fresh();state.decorOwned.daisy_pot=1;const draft=createPlacementDraft(state,'home','daisy_pot','home-pot');
+  assert.equal(previewPlacement(state,draft).error,null);state.decorOwned.daisy_pot=0;assert.ok(previewPlacement(state,draft).error);
+});
+test('input handlers keep hover, taps and rotation local and expose an explicit guarded confirmation',()=>{
+  const source=readFileSync('src/app/chef/diner-preview/DinerClient.tsx','utf8');
+  const rotate=source.slice(source.indexOf('const rotateItem='),source.indexOf('const cancelPlacement='));assert.ok(!rotate.includes('send('));
+  const tile=source.slice(source.indexOf('const onTile='),source.indexOf('const onHoverTile='));assert.match(tile,/if\(editing\)\{setPlacement/);assert.ok(!tile.includes("type:'homeLayout'"));assert.ok(!tile.includes("type:'setupLayout'"));
+  assert.match(source,/const confirmPlacement=.*previewPlacement\(current,placement\)/);assert.match(source,/if\(preview.error\)/);assert.match(source,/send\(preview.command\)/);
+  assert.match(source,/disabled=\{!placementPreview\|\|!!placementPreview.error\}/);assert.ok(source.includes('onHoverTile={onHoverTile}'));
+});
+console.log(`Diner placement: ${groups} groups passed.`);

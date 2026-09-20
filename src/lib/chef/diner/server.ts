@@ -3,17 +3,19 @@ import { createHash } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { CONTENT_VERSION } from "./content";
 import { createDinerRecord, DinerAuthorityError, type DinerRecord } from "./authority";
+import { requireDinerWalletSession } from "./wallet-auth-server";
 
-export function dinerServerEnabled() { return process.env.DINER_PREVIEW_SERVER_ENABLED === "true" && !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && !!process.env.SUPABASE_SERVICE_ROLE_KEY; }
-export function dinerServerStatus() { const enabled = dinerServerEnabled(); return { enabled, authAvailable: enabled, namespace: "street_eats_preview_v1", contentVersion: CONTENT_VERSION, tokenRewards: false }; }
+export function dinerServerEnabled() { return process.env.DINER_PREVIEW_SERVER_ENABLED === "true" && !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && !!process.env.SUPABASE_SERVICE_ROLE_KEY && !!process.env.DINER_PREVIEW_APP_URL; }
+export function dinerServerStatus() { const enabled = dinerServerEnabled(); return { enabled, authAvailable: enabled, account: "wallet", signatureOnly: true, namespace: "street_eats_preview_v1", contentVersion: CONTENT_VERSION, tokenRewards: false }; }
 function client(key: string) { return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }) } }); }
-export function dinerAuthClient() { if (!dinerServerEnabled()) throw new DinerAuthorityError("preview_offline", "Online preview saves are not configured. Your browser preview remains available.", 503); return client(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!); }
+export function dinerAuthClient() { if (!dinerServerEnabled()) throw new DinerAuthorityError("preview_offline", "Wallet accounts are not configured yet. Please try again when the account service opens.", 503); return client(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!); }
 export function dinerDb() { if (!dinerServerEnabled()) throw new DinerAuthorityError("preview_offline", "Online preview saves are not configured.", 503); return client(process.env.SUPABASE_SERVICE_ROLE_KEY!); }
 export async function dinerPlayer(req: Request): Promise<string> {
   const authorization = req.headers.get("authorization"), token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : "";
-  if (!token || token.length > 4096) throw new DinerAuthorityError("session_required", "Open your preview account to continue.", 401);
+  if (!token || token.length > 4096) throw new DinerAuthorityError("session_required", "Sign in with your wallet to continue.", 401);
   const { data, error } = await dinerAuthClient().auth.getUser(token);
   if (error || !data.user?.id) throw new DinerAuthorityError("session_expired", "Your preview session expired. Reconnect to continue.", 401);
+  await requireDinerWalletSession(dinerDb(), token, data.user.id);
   return data.user.id;
 }
 export async function loadDinerRecord(db: ReturnType<typeof dinerDb>, player: string, now: number): Promise<DinerRecord> {

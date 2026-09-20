@@ -16,7 +16,7 @@ async function sourceModule(relative){
 }
 const kit=await sourceModule('src/app/chef/diner-preview/models.ts');
 const {RECIPES,EQUIPMENT,INGREDIENTS}=await sourceModule('src/lib/chef/diner/content.ts');
-const {DECOR}=await sourceModule('src/lib/chef/diner/collections.ts');
+const {DECOR,charmOf}=await sourceModule('src/lib/chef/diner/collections.ts');
 let models=0,triangles=0;
 function inspect(model,label,{minY=-.04,maxY=2.1,maxWidth=2.1,maxDepth=2.1}={}){
   assert.equal(model.userData.unsupportedModel,undefined,`${label}: generic model fallback`);
@@ -113,6 +113,16 @@ for(const item of EQUIPMENT)for(const tier of item.tiers){
   const after=new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());assert.ok(Math.abs(before.x-after.z)<1e-5&&Math.abs(before.z-after.x)<1e-5,`${item.id}: rotation changes footprint size`);
 }
 for(const decor of DECOR)inspect(kit.createModel(decor.id),decor.id,{maxWidth:1.12,maxDepth:1.12});
+const extraDecor={coffee_print:250,burger_print:250,leafy_plant:450,herb_planter:300};
+const extraPrints=new Set(['coffee_print','burger_print']),extraHashes=new Set();
+for(const [id,price]of Object.entries(extraDecor)){
+  const definition=DECOR.find(item=>item.id===id);assert(definition);assert.equal(definition.price,price);assert.equal(definition.setId,'extras');assert.deepEqual(definition.footprint,[1,1]);assert.equal(!!definition.wall,extraPrints.has(id));
+  const model=kit.createModel(id),hash=fingerprint(model);assert(!extraHashes.has(hash),'new furnishings share a generic model');extraHashes.add(hash);
+  if(!extraPrints.has(id)){const bounds=new THREE.Box3().setFromObject(model);assert(bounds.min.y>=-.001&&bounds.min.y<.02,`${id}: plant does not meet the floor`);assert(bounds.max.x<=.5&&bounds.min.x>=-.5&&bounds.max.z<=.5&&bounds.min.z>=-.5,`${id}: plant escapes one tile`);assert(id==='leafy_plant'?bounds.max.y>1.5:bounds.max.y<.8,`${id}: distinct plant silhouette lost`);}
+}
+const legacyDecor=DECOR.filter(item=>['fifties','garden'].includes(item.setId)).map(item=>({equipmentId:item.id}));assert.equal(legacyDecor.length,6,'new decor silently changed legacy collection requirements');
+assert.deepEqual(charmOf({home:{layout:legacyDecor}}),{score:32,sets:['fifties','garden']});
+assert.deepEqual(charmOf({home:{layout:[...legacyDecor,...Object.keys(extraDecor).map(equipmentId=>({equipmentId}))]}}),{score:40,sets:['fifties','garden']},'extras altered set bonuses instead of just unique-item charm');
 for(const id of ['chair','plant','parcel','delivery','book','till','trophy','spill','jam'])inspect(kit.createModel(id),id);
 for(const role of ['chef','waiter','customer'])for(let look=0;look<8;look++){
   const actor=kit.createModel(role,{look}),rig=actor.userData.rig;

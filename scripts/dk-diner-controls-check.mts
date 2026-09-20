@@ -32,21 +32,22 @@ check('text entry is protected while focused buttons still allow cooking shortcu
   assert(isTypingTarget({tagName:'SPAN',isContentEditable:true}));
   for(const target of [null,{}, {tagName:'BUTTON'}, {tagName:'SVG'}, {tagName:'DIV',isContentEditable:false}])assert.equal(isTypingTarget(target),false);
 });
-check('nearest interaction follows working sides, real recipe steps and explicit preferences',()=>{
+check('nearest interaction follows reachable sides, real recipe steps and explicit preferences',()=>{
   const lunch=new Lunch();assert.equal(nearestTruckInteraction(lunch.state),null);lunch.act({type:'open'});
   assert.deepEqual(nearestTruckInteraction(lunch.state),{targetId:'crate',recipeId:'classic_burger'});
   lunch.interact('crate');assert.equal(nearestTruckInteraction(lunch.state)?.targetId,'grill');
   assert.equal(nearestTruckInteraction(lunch.state,'missing')?.targetId,'grill');
   assert.equal(nearestTruckInteraction(lunch.state,'bin')?.targetId,'bin','explicit discard remains possible');
   assert.equal(nearestTruckInteraction(lunch.state,'prep')?.targetId,'prep','explicit safe put-down remains possible');
-  const grill=lunch.state.stations.find(s=>s.kind==='grill')!;grill.facing=2;assert.equal(nearestTruckInteraction(lunch.state),null,'unreachable working side cannot be selected');
+  const grill=lunch.state.stations.find(s=>s.kind==='grill')!;grill.facing=2;assert.equal(nearestTruckInteraction(lunch.state)?.targetId,'grill','another reachable side remains usable');
+  lunch.state.stations.push(makeStation('sealed-front','bin',1,1));const chefPosition={x:lunch.state.chef.x,y:lunch.state.chef.y};Object.assign(lunch.state.chef,{x:1,y:2});assert.equal(nearestTruckInteraction(lunch.state),null,'a fully enclosed grill cannot be selected through its corners');lunch.state.stations.pop();Object.assign(lunch.state.chef,chefPosition);
   grill.facing=0;lunch.state.config.tier=2;lunch.state.stations.push(makeStation('second-grill','grill',4,0,1,0));
   lunch.state.chef={...lunch.state.chef,...stationWorkingCell(lunch.state.stations.at(-1)!)};assert.equal(nearestTruckInteraction(lunch.state)?.targetId,'second-grill');
 });
 check('first lunch coaching follows an actual burger from crate through washing',()=>{
   const lunch=new Lunch();lunch.coach('Get ready to cook');lunch.act({type:'open'});lunch.coach('Take fresh ingredients','crate');
   lunch.until(()=>lunch.state.customers.some(c=>c.phase==='seated'));lunch.interact('crate');lunch.coach('Put the patty on the grill','grill');lunch.interact('grill');lunch.coach('Let it cook','grill');
-  lunch.until(()=>!!lunch.state.stations.find(s=>s.kind==='grill')!.slots[0].job?.ready);lunch.coach('Take the cooked food','grill');lunch.interact('grill');lunch.coach('Add the bun','prep');lunch.interact('prep');lunch.coach('Hold to finish the dish','prep');
+  lunch.until(()=>!!lunch.state.stations.find(s=>s.kind==='grill')!.slots[0].job?.ready);lunch.coach('Take the cooked food','grill');assert.equal(nearestTruckInteraction(lunch.state)?.targetId,'grill','a ready patty wins over nearby raw ingredients');lunch.interact('grill');lunch.coach('Add the bun','prep');lunch.interact('prep');lunch.coach('Hold to finish the dish','prep');
   const intent=nearestTruckInteraction(lunch.state)!;assert.equal(intent.targetId,'prep');assert(serviceTargetIntent(lunch.state,intent.targetId,intent.seatId,intent.recipeId).hold);
   lunch.act({type:'hold',active:true});lunch.until(()=>!!lunch.state.stations.find(s=>s.kind==='prep')!.slots[0].job?.ready);lunch.act({type:'hold',active:false});lunch.coach('Pick up the finished dish','prep');lunch.interact('prep');
   const guest=lunch.state.customers.find(c=>c.phase==='seated')!,serve=nearestTruckInteraction(lunch.state)!;assert.deepEqual(serve,{targetId:guest.tableId!,seatId:guest.seatId!});lunch.coach('Serve your guest',guest.tableId!);lunch.interact(serve.targetId,serve.seatId);lunch.coach('Let your guest enjoy it',guest.tableId!);

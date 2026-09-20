@@ -54,7 +54,7 @@ test('every new path has seven service rows and five nonservice rows; old maps r
     for(const next of node.next)assert.equal(Number(next.match(/^r(\d+)/)![1]),node.row+1);
   }
   const legacy=generateDinerMap('legacy',1);assert(legacy.filter(n=>n.row===3).every(n=>n.kind==='shop'));
-  let s=act(createDiner(now),{type:'startRun'});assert.equal(s.run!.mapVersion,2);assert(sanitizeDinerSave(s));
+  let s=act(createDiner(now),{type:'startRun'});assert.equal(s.run!.mapVersion,3);assert(sanitizeDinerSave(s));
 });
 test('all seven roadside events have distinct valid outcomes and cannot replay their resolution',()=>{
   assert.equal(EVENT_DEFINITIONS.length,7);

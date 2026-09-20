@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { CONTENT_VERSION, EQUIPMENT_BY_ID, INGREDIENTS, RECIPES, RECIPE_BY_ID, ROUTES, SERVICE_RULES, TRUCK_TIERS, recipePrice } from '../src/lib/chef/diner/content';
-import { buildServiceLoadout, makeStation, makeTable, serviceGeometry, servicePath, starterStations, starterTables, stationFootprint, stationWorkingCell, tableFootprint, validateServiceLayout } from '../src/lib/chef/diner/geometry';
+import { buildServiceLoadout, isAtStationAccess, makeStation, makeTable, serviceGeometry, servicePath, starterStations, starterTables, stationFootprint, stationWorkingCell, tableFootprint, validateServiceLayout } from '../src/lib/chef/diner/geometry';
 import { createService, dispatchService, sanitizeService, serviceReadyError, serviceResult, serviceRecipeSteps, serviceTargetIntent, stepService } from '../src/lib/chef/diner/service';
 import type { CreateServiceOptions, ServiceAction, ServiceState } from '../src/lib/chef/diner/types';
 
@@ -115,11 +115,11 @@ check('checkpoint validation preserves live meals and work, pauses reload, and r
   const invalid=JSON.parse(JSON.stringify(d.s));invalid.chef.held.meal.mealId='wrong_meal';assert.equal(sanitizeService(invalid),null);invalid.chef.held=null;invalid.chef.path=[{x:999,y:999}];assert.equal(sanitizeService(invalid),null);
   assert.equal(sanitizeService({version:1}),null);
 });
-check('all four station facings use the rotated working side; blocked fronts reject setup',()=>{
+check('all four station facings keep their art orientation and use a reachable contact',()=>{
   for(const facing of [0,1,2,3] as const){const stations=starterStations(4),grill=stations.find(st=>st.kind==='grill')!;grill.x=4;grill.y=2;grill.facing=facing;const tables=starterTables(4);assert.equal(validateServiceLayout(4,stations,tables),null);
-    const d=new Driver({tier:4,stations,tables,menu:['classic_burger'],customers:1,tablePatienceTicks:12000});d.interact('crate','classic_burger');d.interact('grill');assert.deepEqual({x:d.s.chef.x,y:d.s.chef.y},stationWorkingCell(grill));assert(d.s.stations.find(st=>st.kind==='grill')!.slots[0].job);const loaded=sanitizeService(d.s);assert(loaded);assert.equal(loaded.stations.find(st=>st.kind==='grill')?.facing,facing);
+    const d=new Driver({tier:4,stations,tables,menu:['classic_burger'],customers:1,tablePatienceTicks:12000});d.interact('crate','classic_burger');d.interact('grill');assert(isAtStationAccess(4,d.s.stations,d.s.tables,d.s.chef,grill));assert(d.s.stations.find(st=>st.kind==='grill')!.slots[0].job);const loaded=sanitizeService(d.s);assert(loaded);assert.equal(loaded.stations.find(st=>st.kind==='grill')?.facing,facing);
   }
-  const wrong=starterStations();wrong.find(st=>st.kind==='grill')!.facing=2;assert.match(validateServiceLayout(1,wrong,starterTables())!,/front/);
+  const turned=starterStations();turned.find(st=>st.kind==='grill')!.facing=2;assert.equal(validateServiceLayout(1,turned,starterTables()),null,'turning the artwork does not disable other reachable sides');
   const a=makeStation('pass','pass',3,1,1,0),b=makeStation('pass','pass',3,1,1,1);assert.deepEqual(stationFootprint(a),[{x:3,y:1},{x:4,y:1}]);assert.deepEqual(stationFootprint(b),[{x:3,y:1},{x:3,y:2}]);assert.deepEqual(stationWorkingCell(a),{x:3,y:2});assert.deepEqual(stationWorkingCell(b),{x:2,y:1});
 });
 check('rotated table footprints and seats survive setup, full service and reload',()=>{
@@ -138,7 +138,7 @@ check('washer physically clears a specific plate, carries it and returns its cle
 });
 check('runner delivers an existing dish and prep helper performs only an existing hold step',()=>{
   const runner=new Driver({tier:2,menu:['fries'],customers:3,arrivalTicks:2400,tablePatienceTicks:12000,helpers:[{id:'gus',role:'runner'}]});runner.until(()=>runner.s.customers.some(c=>c.phase==='seated'));runner.interact('crate','fries');runner.interact('fryer');runner.act({type:'move',x:1,y:1});runner.until(()=>runner.s.served===1,2000);assert.equal(runner.s.chef.held,null);assert.equal(runner.s.helpers[0].held,null);assert.equal(runner.s.customers[0].phase,'eating');
-  const prep=new Driver({tier:2,menu:['classic_burger'],customers:3,arrivalTicks:2400,tablePatienceTicks:12000,helpers:[{id:'bea',role:'prep'}]});prep.interact('crate','classic_burger');prep.interact('grill');prep.tick(120);prep.interact('grill');prep.interact('prep');prep.act({type:'move',x:1,y:1});prep.until(()=>prep.s.stations.find(st=>st.kind==='prep')!.slots[0].item?.kind==='dish',1500);assert.equal(prep.s.served,0);assert.equal(prep.s.coins,0);assert.deepEqual({x:prep.s.helpers[0].x,y:prep.s.helpers[0].y},stationWorkingCell(prep.s.stations.find(st=>st.kind==='prep')!));assert(sanitizeService(prep.s));
+  const prep=new Driver({tier:2,menu:['classic_burger'],customers:3,arrivalTicks:2400,tablePatienceTicks:12000,helpers:[{id:'bea',role:'prep'}]});prep.interact('crate','classic_burger');prep.interact('grill');prep.tick(120);prep.interact('grill');prep.interact('prep');prep.act({type:'move',x:1,y:1});prep.until(()=>prep.s.stations.find(st=>st.kind==='prep')!.slots[0].item?.kind==='dish',1500);assert.equal(prep.s.served,0);assert.equal(prep.s.coins,0);assert(isAtStationAccess(2,prep.s.stations,prep.s.tables,prep.s.helpers[0],prep.s.stations.find(st=>st.kind==='prep')!));assert(sanitizeService(prep.s));
 });
 check('helper limits and short-staffed rule hold; pause and reload preserve in-flight work',()=>{
   assert.equal(createService({helpers:[{id:'jo',role:'washer'}]}).helpers.length,0);assert.equal(createService({tier:2,helpers:[{id:'jo',role:'washer'},{id:'bea',role:'prep'}]}).helpers.length,1);assert.equal(createService({tier:4,spices:['short_staffed'],helpers:[{id:'jo',role:'washer'}]}).helpers.length,0);

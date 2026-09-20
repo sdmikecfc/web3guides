@@ -16,6 +16,7 @@ export default function DinerScene(props:DinerSceneProps){
       if(cancelled||!host.current)return;
       const api=createDinerScene(host.current,latest.current.mode,latest.current.scene,{
         onTarget:(id,seat)=>latest.current.onTarget(id,seat),onTile:(x,y)=>latest.current.onTile(x,y),
+        onHoverTile:(x,y)=>latest.current.onHoverTile?.(x,y),
         onHomeGesture:gesture=>latest.current.onHomeGesture?.(gesture),
         onAnchors:values=>{for(const value of values)anchorHistory.current.set(value.id,value);if(anchorHistory.current.size>40)for(const id of anchorHistory.current.keys())if(!values.some(value=>value.id===id)&&id!==latest.current.worldReward?.id)anchorHistory.current.delete(id);setAnchors(values);latest.current.onAnchors?.(values);},
         onPerformance:value=>latest.current.onPerformance?.(value),

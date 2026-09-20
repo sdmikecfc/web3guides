@@ -1,5 +1,5 @@
 import { EQUIPMENT_BY_ID, INGREDIENT_BY_ID, RECIPE_BY_ID, SERVICE_RULES } from '../../../lib/chef/diner/content';
-import { servicePath, stationWorkingCell, tableFootprint, targetPath } from '../../../lib/chef/diner/geometry';
+import { stationAccessPath, tableFootprint, targetPath } from '../../../lib/chef/diner/geometry';
 import { serviceReadyError, serviceSupplyChoices, serviceTargetIntent, serviceMissingIngredients, serviceRecipeSteps } from '../../../lib/chef/diner/service';
 import { recipeVessel, SERVING_VESSELS, vesselSupplyStation, type VesselKind } from '../../../lib/chef/diner/batch';
 import type { Point, ServiceItem, ServiceState } from '../../../lib/chef/diner/types';
@@ -49,7 +49,7 @@ export function nearestTruckInteraction(service:ServiceState,preferredId?:string
     if(reachable&&!serviceTargetIntent(service,action.targetId,action.seatId,action.recipeId).disabled)candidates.push({action,distance:distance(service.chef,point),contextual,priority});
   };
   for(const station of service.stations){
-    const point=stationWorkingCell(station),isSupply=service.config.physicalSupplies&&['crate','fridge'].includes(station.kind);
+    const path=stationAccessPath(service.config.tier,service.stations,service.tables,service.chef,station),point=path?.at(-1)??service.chef,isSupply=service.config.physicalSupplies&&['crate','fridge'].includes(station.kind);
     const choice=isSupply?serviceSupplyChoices(service,station.id).find(choice=>choice.recipeId===supply?.recipeId&&choice.ingredientId===supply?.ingredientId):undefined;
     const recipeId=choice?.recipeId??(station.kind==='crate'&&!service.config.physicalSupplies?requestedRecipe(service):undefined);
     const expected=held&&serviceRecipeSteps(service,held.recipeId)[held.step]?.station;
@@ -65,7 +65,10 @@ export function nearestTruckInteraction(service:ServiceState,preferredId?:string
       else if(station.slots.some(slot=>!slot.job&&(component(slot.item)||missingIngredients(slot.item).length>0)))contextual=false;
       else if(station.slots.some(slot=>prepared(service,slot.item)))contextual=false;
     }
-    add({targetId:station.id,...(recipeId?{recipeId}:{}),...(choice?{ingredientId:choice.ingredientId}:{})},point,servicePath(service.config.tier,service.stations,service.tables,service.chef,point)!==null,contextual);
+    // A shared corner can reach several appliances. Continue real food/washing
+    // already in progress before taking another raw portion from the pantry.
+    const existingWork=!held&&station.slots.some(slot=>slot.item&&slot.job&&(slot.job.ready||slot.job.action==='hold'||slot.job.action==='wash'));
+    add({targetId:station.id,...(recipeId?{recipeId}:{}),...(choice?{ingredientId:choice.ingredientId}:{})},point,path!==null,contextual,existingWork?0:1);
   }
   for(const table of service.tables){
     const reachable=targetPath(service.config.tier,service.stations,service.tables,service.chef,tableFootprint(table))!==null;

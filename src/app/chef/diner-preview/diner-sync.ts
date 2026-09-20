@@ -2,7 +2,7 @@ import { activeDinerMode, dinerClockBoundary, dinerCommandTicks, dinerPauseComma
 import type { DinerEnvelope } from '@/lib/chef/diner/authority';
 
 export type SyncStatus='guest'|'connecting'|'saved'|'saving'|'offline';
-export type DinerSession={accessToken:string;refreshToken:string;expiresAt:number;playerId:string};
+export type DinerSession={accessToken:string;refreshToken:string;expiresAt:number;playerId:string;wallet?:string};
 type Session=DinerSession;
 export type DinerSnapshot={ok:boolean;state:DinerState;revision:number;serverTime:number;interrupted?:boolean;code?:string;error?:string;retryAfterMs?:number};
 type Snapshot=DinerSnapshot;
@@ -24,11 +24,15 @@ export class DinerSync {
   busy=false;
   stopped=false;
   blocked=false;
+  needsSignature=false;
   serverOffset=0;
   retryAt=0;
-  constructor(private readonly callbacks:{state:(state:DinerState)=>void;status:(status:SyncStatus)=>void;message:(message:string)=>void},private readonly storage:Pick<Storage,'getItem'|'setItem'|'removeItem'>,private readonly request:typeof fetch=fetch){ }
+  constructor(private readonly callbacks:{state:(state:DinerState)=>void;status:(status:SyncStatus)=>void;message:(message:string)=>void},private readonly storage:Pick<Storage,'getItem'|'setItem'|'removeItem'>,private readonly request:typeof fetch=fetch,private readonly requiredWallet?:string){ }
+  private get sessionKey(){return DinerSync.sessionKey(this.requiredWallet);}
+  private get tapeKey(){return this.requiredWallet?`diner_preview_wallet_pending_v1:${this.requiredWallet.toLowerCase()}`:TAPE_KEY;}
+  private checkWallet(session:Session|null){if(this.requiredWallet&&session?.wallet?.toLowerCase()!==this.requiredWallet.toLowerCase())throw Object.assign(new Error('Sign in with this wallet before opening its diner.'),{status:401});}
   private persist():boolean{
-    try{if(this.session)this.storage.setItem(SESSION_KEY,JSON.stringify(this.session));if(this.session)this.storage.setItem(TAPE_KEY,JSON.stringify({playerId:this.session.playerId,flight:this.flight,queue:this.queue,canonical:this.canonical,revision:this.revision}));return true;}
+    try{if(this.session)this.storage.setItem(this.sessionKey,JSON.stringify(this.session));if(this.session)this.storage.setItem(this.tapeKey,JSON.stringify({playerId:this.session.playerId,flight:this.flight,queue:this.queue,canonical:this.canonical,revision:this.revision}));return true;}
     catch{this.blocked=true;this.callbacks.status('offline');this.callbacks.message('Your browser cannot save pending actions. Free some storage before continuing.');return false;}
   }
   private async json(path:string,body?:unknown):Promise<Snapshot&Partial<Session>>{
@@ -38,9 +42,22 @@ export class DinerSync {
   }
   /** Authenticated companion APIs use the same current preview session. */
   async read(path:string,body?:unknown){return this.json(path,body);}
+  /** Retain unresolved receipts, but revoke this device before clearing tokens. */
+  async signOut():Promise<boolean>{
+    if(!this.session)return false;
+    this.blocked=true;this.callbacks.status('offline');const pauseCommand=this.predicted?dinerPauseCommand(this.predicted):null;if(pauseCommand)this.send(pauseCommand);
+    if(this.busy)throw new Error('Your last request is still finishing. Try signing out again in a moment.');
+    if(!this.persist())return false;this.busy=true;
+    try{
+      if(this.session.expiresAt*1000<Date.now()+30000){const result=await this.json('session',{refreshToken:this.session.refreshToken});this.checkWallet(result as Session);this.session=result as Session;if(!this.persist())return false;}
+      await this.json('wallet/logout',{});
+      this.stopped=true;this.session=null;try{this.storage.removeItem(this.sessionKey);}catch{this.callbacks.message('The server session is revoked. Your browser could not remove its expired local credentials.');}this.callbacks.status('guest');return true;
+    }finally{this.busy=false;}
+  }
   async adoptSession(credentials:DinerSession):Promise<boolean>{
     if(this.busy||this.flight||this.queue.length)throw new Error('Finish saving your current diner before changing accounts.');
     if(!credentials||![credentials.accessToken,credentials.refreshToken,credentials.playerId].every(value=>typeof value==='string'&&value.length>0&&value.length<=16000)||!Number.isSafeInteger(credentials.expiresAt)||credentials.expiresAt<=0)throw new Error('The account session is incomplete.');
+    this.checkWallet(credentials);
     if(this.session?.playerId!==credentials.playerId){this.canonical=null;this.predicted=null;this.revision=0;}
     this.session={...credentials};if(!this.persist())return false;return this.connect();
   }
@@ -52,16 +69,17 @@ export class DinerSync {
     this.callbacks.status('connecting');
     let fallback:DinerState|null=null,pendingPlayer:string|null=null;
     try{
-      if(restore){const raw=this.storage.getItem(SESSION_KEY);if(!raw){this.callbacks.status('guest');return false;}this.session=JSON.parse(raw);}
-      const saved=this.storage.getItem(TAPE_KEY);if(restore&&saved){const pending=JSON.parse(saved);if(pending.playerId===this.session?.playerId){pendingPlayer=pending.playerId;this.flight=pending.flight??null;this.queue=Array.isArray(pending.queue)?pending.queue:[];fallback=sanitizeDinerSave(pending.canonical);}}
-      if(!this.session||this.session.expiresAt*1000<Date.now()+60000){const result=await this.json('session',this.session?{refreshToken:this.session.refreshToken}:{});if(this.stopped)return false;this.session=result as unknown as Session;}
+      if(restore){const raw=this.storage.getItem(this.sessionKey);if(!raw){this.needsSignature=!!this.requiredWallet;this.blocked=!!this.requiredWallet;this.callbacks.status('guest');return false;}this.session=JSON.parse(raw);}
+      this.checkWallet(this.session);
+      const saved=this.storage.getItem(this.tapeKey);if(restore&&saved){const pending=JSON.parse(saved);if(pending.playerId===this.session?.playerId){pendingPlayer=pending.playerId;this.flight=pending.flight??null;this.queue=Array.isArray(pending.queue)?pending.queue:[];fallback=sanitizeDinerSave(pending.canonical);}}
+      if(!this.session||this.session.expiresAt*1000<Date.now()+60000){const result=await this.json('session',this.session?{refreshToken:this.session.refreshToken}:{});if(this.stopped)return false;this.checkWallet(result as Session);this.session=result as unknown as Session;}
       if(pendingPlayer&&pendingPlayer!==this.session.playerId){this.flight=null;this.queue=[];fallback=null;}
       const snapshot=await this.json('state');if(this.stopped)return false;this.canonical=snapshot.state;this.revision=snapshot.revision;this.serverOffset=snapshot.serverTime-Date.now();
-      this.blocked=false;this.reconcile(snapshot.state);if(!this.persist())return true;this.callbacks.status(this.flight||this.queue.length?'saving':'saved');
+      this.blocked=false;this.needsSignature=false;this.reconcile(snapshot.state);if(!this.persist())return true;this.callbacks.status(this.flight||this.queue.length?'saving':'saved');
       if(this.flight||this.queue.length)await this.flush();
       if(this.predicted){const command=dinerPauseCommand(this.predicted);if(command)this.send(command);}
       return true;
-    }catch(error){if(this.stopped)return false;this.blocked=true;if(fallback){this.canonical=fallback;this.predicted=fallback;this.callbacks.state(fallback);}this.callbacks.status(this.session?'offline':'guest');this.callbacks.message(error instanceof Error?error.message:'The preview account service is unavailable.');return false;}
+    }catch(error){if(this.stopped)return false;this.needsSignature=(error as {status?:number}).status===401;this.blocked=true;if(fallback){this.canonical=fallback;this.predicted=fallback;this.callbacks.state(fallback);}this.callbacks.status(this.session?'offline':'guest');this.callbacks.message(error instanceof Error?error.message:'The preview account service is unavailable.');return false;}
   }
   send(command:DinerCommand):boolean{
     if(!this.predicted||this.stopped||this.blocked&&!release(command))return false;
@@ -102,7 +120,7 @@ export class DinerSync {
     // Never send an action ID that cannot survive a tab close or lost receipt.
     if(!this.persist()){this.busy=false;return;}
     try{
-      if(this.session.expiresAt*1000<Date.now()+30000){const renewed=await this.json('session',{refreshToken:this.session.refreshToken});if(this.stopped)return;this.session=renewed as unknown as Session;if(!this.persist())return;}
+      if(this.session.expiresAt*1000<Date.now()+30000){const renewed=await this.json('session',{refreshToken:this.session.refreshToken});if(this.stopped)return;this.checkWallet(renewed as Session);this.session=renewed as unknown as Session;if(!this.persist())return;}
       const submitted=this.flight!;
       const snapshot=await this.json('command',submitted);
       if(this.stopped)return;
@@ -127,5 +145,6 @@ export class DinerSync {
   }
   checkpoint(){if(this.persist())void this.flush();}
   dispose(){this.stopped=true;this.persist();}
-  static hasSession(storage:Pick<Storage,'getItem'>){return !!storage.getItem(SESSION_KEY);}
+  static sessionKey(wallet?:string){return wallet?`diner_preview_wallet_session_v1:${wallet.toLowerCase()}`:SESSION_KEY;}
+  static hasSession(storage:Pick<Storage,'getItem'>,wallet?:string){return !!storage.getItem(DinerSync.sessionKey(wallet));}
 }

@@ -33,7 +33,7 @@ check('untimed empty setup reloads, cannot open, and restores owned items withou
 check('each required station and reachable work side is checked again before opening',()=>{
   const complete=install(fresh());
   for(const kind of ['crate','sink','bin','fridge','plates','grill','prep']){let s=act(complete,{type:'startPractice'});s=act(s,{type:'setupLayout',stations:s.truckConfig.stations.filter(p=>p.kind!==kind),tables:s.truckConfig.tables});assert(sanitizeDinerSave(s));s=act(s,{type:'service',action:{type:'open'}});assert.equal(s.run!.service!.phase,'setup');assert(serviceReadyError(s.run!.service!),kind);}
-  reject(complete,{type:'setupLayout',stations:complete.truckConfig.stations.map(p=>p.kind==='grill'?{...p,facing:2}:p),tables:complete.truckConfig.tables},'invalid_layout');
+  const turned=act(complete,{type:'setupLayout',stations:complete.truckConfig.stations.map(p=>p.kind==='grill'?{...p,facing:2}:p),tables:complete.truckConfig.tables});assert.equal(truckSetupError(turned),null,'a reachable side remains usable when the front faces the wall');
   const bare=act(complete,{type:'setupLayout',stations:[],tables:[]});assert.equal(validateServiceLayout(1,[],[],{allowIncomplete:true}),null);assert.equal(bare.truckConfig.tables.length,0);assert(truckSetupError(bare));
 });
 check('seating requires a real purchase, tracks stored quantities, and cannot be forged',()=>{
@@ -57,7 +57,7 @@ check('a bought second table fits the starter pavement without replacing the fir
 });
 check('truck growth preserves equipment and shifts only the pavement; it never grants seating',()=>{
   let s=install(fresh());const counts=structuredClone(s.truckConfig.tableCopies);const stations=structuredClone(s.truckConfig.stations);
-  for(const tier of [2,3,4] as const){s.truckTier=tier;s=act(s,{type:'startPractice'});assert.deepEqual(s.truckConfig.tableCopies,counts);assert.equal(s.run!.service!.tables.length,1);assert.equal(s.run!.service!.tables[0].capacity,1);assert.equal(s.run!.service!.tables[0].y,serviceGeometry(tier).pavement.y+1);assert.deepEqual(s.truckConfig.stations,stations.map(p=>p.kind==='plates'?{...p,y:p.y+serviceGeometry(tier).truck.h-3}:p));assert.equal(serviceReadyError(s.run!.service!),null);s=act(s,{type:'endPractice'});}
+  for(const tier of [2,3,4] as const){s.truckTier=tier;s=act(s,{type:'startPractice'});assert.deepEqual(s.truckConfig.tableCopies,counts);assert.equal(s.run!.service!.tables.length,1);assert.equal(s.run!.service!.tables[0].capacity,1);assert.equal(s.run!.service!.tables[0].y,serviceGeometry(tier).pavement.y+1);assert.deepEqual(s.truckConfig.stations,stations.map(p=>p.y>=4?{...p,y:p.y+serviceGeometry(tier).truck.h-3}:p));assert.equal(serviceReadyError(s.run!.service!),null);s=act(s,{type:'endPractice'});}
 });
 check('legacy purchased/multiple tables and active checkpoint survive additive migration',()=>{
   let s=fresh();s.equipment.boxes={tier:1,truckOwned:true,homeCopies:0};s.recipes.fries={level:0};s.equipment.fryer.truckOwned=true;s.truckTier=3;const layout=buildServiceLoadout(3,['classic_burger','fries']);
@@ -75,7 +75,7 @@ check('opening lesson requires actual cooking and its exact plate wash before se
   use('fridge','classic_burger');use('grill');until(()=>!!s.stations.find(p=>p.kind==='grill')!.slots[0].job?.ready);use('grill');use('prep');use('crate','classic_burger');use('prep');input({type:'hold',active:true});until(()=>!!s.stations.find(p=>p.kind==='prep')!.slots[0].job?.ready);input({type:'hold',active:false});use('plates');use('prep');assert.equal(s.chef.held?.kind,'dish');
   const customer=s.customers[0];use(customer.tableId!,undefined,customer.seatId!);until(()=>s.tables[0].seats[0].status==='dirty');assert.equal(s.served,1);stepService(s,2000);assert.equal(s.spawned,1);
   use(customer.tableId!,undefined,customer.seatId!);assert.equal(s.chef.held?.kind,'dirty');use('sink');stepService(s,1000);assert.equal(s.spawned,1);assert.equal(s.washed,0);
-  input({type:'hold',active:true});until(()=>s.washed===1);input({type:'hold',active:false});until(()=>s.spawned===2);assert.equal(s.tables[0].seats[0].status==='clean'||s.tables[0].seats[0].status==='reserved',true);assert.equal(s.strikes,0);
+  input({type:'hold',active:true});until(()=>s.washed===1);const washedAt=s.tick;input({type:'hold',active:false});until(()=>s.spawned===2);assert(s.tick-washedAt<=20,'the next lesson guest arrives within one second of washing');assert.equal(s.tables[0].seats[0].status==='clean'||s.tables[0].seats[0].status==='reserved',true);assert.equal(s.strikes,0);
 });
 check('authority replays preparation and purchase; absence cannot run an unopened truck',()=>{
   let record=createDinerRecord(now,'trailer-authority');record=replayDiner(record,[{type:'startPractice'}],now).record;
