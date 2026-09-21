@@ -84,6 +84,26 @@ async function main(){
     const secondDevice=make(h.server);assert(await secondDevice.sync.connect());assert.equal(secondDevice.sync.send({type:'goHome'}),false);
     assert.equal(h.server.record.state.coins,bank+388);assert.equal(h.server.record.state.equipment.fryer.homeCopies,1);
   });
+  await check('cancelling unopened prep retries after reload once and reuses its uncounted reservation',async()=>{
+    for(const veteran of [false,true]){
+      const h=make();
+      if(veteran){h.server.record.state.runsStarted=3;h.server.record.state.tutorial.finished=true;h.server.record.state.tutorial.fryerGifted=true;h.server.record.state.equipment.fryer={tier:1,truckOwned:true,homeCopies:1};h.server.record.state.lastRun={id:'previous-counted-trip',reason:'home',banked:100,lost:0,serviceDays:2,recipes:['classic_burger'],equipment:['grill','prep']};}
+      const unchanged=(state:DinerState)=>({coins:state.coins,pantry:state.pantry,equipment:state.equipment,tutorial:state.tutorial,lastRun:state.lastRun,career:state.career,collections:state.collections,minted:state.daily.minted,truckRuns:state.daily.truckRuns});
+      const before=clone(unchanged(h.server.record.state)),count=h.server.record.state.runsStarted;
+      assert(await h.sync.connect());await send(h,{type:'startRun'});const reservation=clone(h.server.record.state.run!);
+      await send(h,{type:'chooseNode',nodeId:reservation.available[0]});await send(h,{type:'service',action:{type:'prepare'}});
+      clock+=1000;assert(h.sync.send({type:'service',action:{type:'tick',ticks:20}}));await h.sync.flush();await send(h,{type:'service',action:{type:'pause'}});
+      assert.equal(h.server.record.state.run!.service!.pausedPhase,'preparing');assert.equal(h.server.record.state.runsStarted,count+1);
+      const revision=h.server.record.revision;h.server.loseNext=true;await send(h,{type:'goHome'});assert(h.sync.blocked);const id=h.sync.flight!.id;
+      assert.equal(h.server.record.state.run,null);assert.equal(h.server.record.state.runsStarted,count);assert.deepEqual(unchanged(h.server.record.state),before);
+      clock+=1500;const restored=make(h.server,h.storage);assert(await restored.sync.connect(true));assert.equal(restored.sync.flight,null);assert.equal(restored.sync.blocked,false);
+      assert.equal(h.server.record.revision,revision+1);assert.equal(restored.sync.predicted!.runsStarted,count);assert.deepEqual(unchanged(h.server.record.state),before);
+      const cancellations=h.server.requests.filter(request=>request.path==='command'&&request.body.commands.some((command:DinerCommand)=>command.type==='goHome'));assert.equal(cancellations.length,2);assert(cancellations.every(request=>request.body.id===id));
+      await send(restored,{type:'startRun'});const restarted=h.server.record.state.run!;assert.equal(restarted.id,reservation.id);assert.equal(restarted.seed,reservation.seed);assert.deepEqual(restarted.map,reservation.map);assert.equal(h.server.record.state.runsStarted,count+1);
+      await send(restored,{type:'chooseNode',nodeId:restarted.available[0]});await send(restored,{type:'service',action:{type:'open'}});
+      assert.equal(h.server.record.state.run!.service!.phase,'playing');assert.equal(restored.sync.send({type:'goHome'}),false);assert.equal(h.server.record.state.runsStarted,count+1);assert.deepEqual(h.server.record.state.lastRun,before.lastRun);
+    }
+  });
   await check('a lost recipe-purchase receipt charges once and never enables new customer orders',async()=>{
     const h=await connected(),before=h.server.record.state.coins,home=clone(h.server.record.state.home.menu);h.server.loseNext=true;
     await send(h,{type:'buyTruckRecipe',recipeId:'cheeseburger'});assert(h.sync.blocked);const id=h.sync.flight!.id;

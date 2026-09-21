@@ -492,6 +492,14 @@ function routeTier(state: DinerState) {
   for (const route of ROUTES) if (state.collections.routeWins.includes(route.id) && route.recipeIds.every(id => !!state.recipes[id])) tier = Math.max(tier, route.tier + 1) as DinerTier;
   state.truckTier = Math.min(4, tier) as DinerTier;
 }
+/** Choosing a route or preparing food reserves a trip; opening service commits it. */
+export function canCancelDinerRun(state: DinerState): boolean {
+  const run = state.run;
+  if (!run || run.practice || run.visited.length || run.serviceDays || run.qualified || run.ingredientClaimed || run.haul || run.strikes || run.event || run.specials.length || run.offers.some(offer => offer.purchased)) return false;
+  if (!run.position) return !run.service;
+  const service = run.service;
+  return !!service && !service.spawned && !service.coins && !service.strikes && (service.phase === 'setup' || service.phase === 'preparing' || (service.phase === 'paused' && service.pausedPhase === 'preparing'));
+}
 function finishRun(state: DinerState, reason: "home" | "failed" | "won") {
   const run = state.run!; if (run.practice) { state.run = null; return; }
   if(run.qualified&&!run.ingredientClaimed&&state.daily.truckRuns.length<DINER_RULES.sourceAllowances.truck)grantTruckIngredient(state);
@@ -773,11 +781,15 @@ export function dispatchDiner(current: DinerState, command: DinerCommand, contex
           run.serviceAccounted = { coins: 0, strikes: 0, reputation: 0 };
         } else if (node.kind === "shop") run.offers = shopOffers(state);
         else if(node.kind==='event')run.event=createDinerEvent(`${run.id}:${node.id}`,`${run.seed}:${node.id}:event`);
-        state.collections.stamps = [...new Set([...state.collections.stamps, `${run.routeId}:${node.row}:${node.kind}`])]; break;
+        if (!run.service) state.collections.stamps = [...new Set([...state.collections.stamps, `${run.routeId}:${node.row}:${node.kind}`])]; break;
       }
       case "service": {
         const run = state.run; if (!run?.service) fail("no_service", "Open a service day first.");
         run.service = dispatchService(run.service, command.action);
+        if (!run.practice && command.action.type === 'open' && run.service.phase === 'playing') {
+          const node = currentNode(state)!;
+          state.collections.stamps = [...new Set([...state.collections.stamps, `${run.routeId}:${node.row}:${node.kind}`])];
+        }
         const result = serviceResult(run.service);
         if (!run.practice) { run.haul += Math.max(0, result.coins - run.serviceAccounted.coins); run.strikes += Math.max(0, result.strikes - run.serviceAccounted.strikes); }
         run.serviceAccounted = { coins: result.coins, strikes: result.strikes, reputation: result.reputation };
@@ -795,7 +807,15 @@ export function dispatchDiner(current: DinerState, command: DinerCommand, contex
         if (node.kind === "finale") { state.collections.routeWins = [...new Set([...state.collections.routeWins, run.routeId])]; state.collections.trophies = [...new Set([...state.collections.trophies, `${run.routeId}:finale`, ...(run.spices.length ? [`${run.routeId}:spices:${run.spices.length}`] : [])])]; const missing = ROUTES.find(r => r.id === run.routeId)!.recipeIds.find(id => !state.recipes[id]); if (missing) state.recipes[missing] = { level: 0 }; finishRun(state, "won"); }
         else advanceNode(state); break;
       }
-      case "goHome": if (!state.run || state.run.position) fail("between_stops", "Go home from the map between stops. Pause a service to take a break."); else { finishRun(state, "home"); break; }
+      case "goHome": {
+        if (canCancelDinerRun(state)) {
+          // Reuse the reservation so cancelling cannot reroll maps or consume a run.
+          state.runsStarted = Math.max(0, state.runsStarted - 1);
+          state.run = null;
+        } else if (!state.run || state.run.position) fail("between_stops", "Go home from the map between stops. Pause a service to take a break.");
+        else finishRun(state, "home");
+        break;
+      }
       case "chooseGift": {
         const run = state.run, node = currentNode(state); if (!run || !node || !["bonus", "ingredients"].includes(node.kind) || !["coins", "ingredients", "special"].includes(command.choice)) fail("no_gift", "Choose a gift at a bonus stop or ingredient stall.");
         if (command.choice === "ingredients") grantTruckIngredient(state);

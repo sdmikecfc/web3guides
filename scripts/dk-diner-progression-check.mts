@@ -67,7 +67,7 @@ test("day cumulative service coins enter haul once; banking is never doubled", (
   rejected(state, { type: "goHome" }, "between_stops");
 });
 test("tutorial failure grants exactly one home fryer and does not repeat on later runs", () => {
-  let state = atService(true); rejected(state, { type: "goHome" }, "between_stops");
+  let state = action(atService(true), { type: 'service', action: { type: 'open' } }); rejected(state, { type: "goHome" }, "between_stops");
   // The third tutorial service is the intentional learning setback. The first two never drain patience.
   state.run!.serviceDays = 2; state.run!.service = null; state.run!.position = null;
   const scripted = state.run!.map.find(n => n.row === 3)!; state.run!.available = [scripted.id];
