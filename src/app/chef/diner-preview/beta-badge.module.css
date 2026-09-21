@@ -1,0 +1,16 @@
+.badge {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  top: calc(3px + env(safe-area-inset-top));
+  z-index: 1001;
+  padding: 2px 7px;
+  border: 1px solid #c9bca2;
+  border-radius: 6px;
+  background: #fff8e9ed;
+  color: #5b6553;
+  font: 700 10px/1.2 var(--font-dk), ui-rounded, system-ui, sans-serif;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+}
