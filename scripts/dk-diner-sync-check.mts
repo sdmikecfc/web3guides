@@ -66,6 +66,24 @@ async function main(){
     const h=await connected();h.server.loseNext=true;await send(h,{type:'claimCrate'});assert.equal(h.sync.blocked,true);const id=h.sync.flight!.id;assert.equal(JSON.parse(h.storage.getItem(TAPE)!).flight.id,id);assert.equal(h.server.record.state.daily.minted,2);
     clock+=1500;await h.sync.flush();assert.equal(h.sync.flight,null);assert.equal(h.sync.blocked,false);assert.equal(h.server.record.state.daily.minted,2);const commands=h.server.requests.filter(r=>r.path==='command');assert.equal(commands.length,2);assert.equal(commands[0].body.id,commands[1].body.id);assert.equal(h.server.record.revision,1);
   });
+  await check('opening-trip return survives a lost receipt and reload without duplicate coins or fryer',async()=>{
+    const h=make();h.server.external([{type:'startRun'}]);
+    // Canonical between-stop checkpoint after the two introductory lunches.
+    const run=h.server.record.state.run!,first=run.map.find(node=>node.id===run.available[0])!,second=run.map.find(node=>node.id===first.next[0])!;
+    run.visited=[first.id,second.id];run.available=[...second.next];run.serviceDays=2;run.qualified=true;run.haul=388;
+    const bank=h.server.record.state.coins,revision=h.server.record.revision,runId=run.id;
+    assert(await h.sync.connect());h.server.loseNext=true;await send(h,{type:'goHome'});
+    assert(h.sync.blocked);const id=h.sync.flight!.id;assert.equal(JSON.parse(h.storage.getItem(TAPE)!).flight.id,id);
+    const banked=h.server.record.state;assert.equal(banked.run,null);assert.equal(banked.coins,bank+388);assert.equal(banked.lastRun!.id,runId);assert.equal(banked.lastRun!.banked,388);
+    assert.equal(banked.tutorial.finished,true);assert.equal(banked.tutorial.fryerGifted,true);assert.equal(banked.equipment.fryer.homeCopies,1);assert.equal(banked.equipment.fryer.truckOwned,true);assert.equal(banked.recipes.fries,undefined);
+    const pantry=clone(banked.pantry);assert.equal(banked.daily.truckRuns.length,1);assert.equal(banked.daily.truckRuns[0],runId);
+    clock+=1500;const restored=make(h.server,h.storage);assert(await restored.sync.connect(true));
+    assert.equal(restored.sync.flight,null);assert.equal(restored.sync.blocked,false);assert.equal(restored.sync.predicted!.run,null);assert.equal(restored.sync.predicted!.coins,bank+388);assert.equal(restored.sync.predicted!.equipment.fryer.homeCopies,1);
+    assert.equal(h.server.record.revision,revision+1);assert.deepEqual(h.server.record.state.pantry,pantry);assert.deepEqual(h.server.record.state.daily.truckRuns,[runId]);
+    const requests=h.server.requests.filter(request=>request.path==='command');assert.equal(requests.length,2);assert(requests.every(request=>request.body.id===id));
+    const secondDevice=make(h.server);assert(await secondDevice.sync.connect());assert.equal(secondDevice.sync.send({type:'goHome'}),false);
+    assert.equal(h.server.record.state.coins,bank+388);assert.equal(h.server.record.state.equipment.fryer.homeCopies,1);
+  });
   await check('a lost recipe-purchase receipt charges once and never enables new customer orders',async()=>{
     const h=await connected(),before=h.server.record.state.coins,home=clone(h.server.record.state.home.menu);h.server.loseNext=true;
     await send(h,{type:'buyTruckRecipe',recipeId:'cheeseburger'});assert(h.sync.blocked);const id=h.sync.flight!.id;

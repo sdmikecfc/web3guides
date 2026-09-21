@@ -496,7 +496,9 @@ function finishRun(state: DinerState, reason: "home" | "failed" | "won") {
   const run = state.run!; if (run.practice) { state.run = null; return; }
   if(run.qualified&&!run.ingredientClaimed&&state.daily.truckRuns.length<DINER_RULES.sourceAllowances.truck)grantTruckIngredient(state);
   const banked = Math.floor(run.haul * (reason === "failed" ? .5 : 1)); state.coins += banked;
-  if (run.tutorial) { state.tutorial.finished = true; state.tutorial.stage = 6; if (!state.tutorial.fryerGifted) { state.equipment.fryer??={tier:1,truckOwned:false,homeCopies:0};state.equipment.fryer.truckOwned=true;state.equipment.fryer.homeCopies++; state.tutorial.fryerGifted = true; } }
+  // A completed lunch is enough to bring the opening gift home voluntarily.
+  // Opening and immediately leaving an untouched route does not earn it.
+  if (run.tutorial && (reason !== 'home' || run.serviceDays > 0)) { state.tutorial.finished = true; state.tutorial.stage = 6; if (!state.tutorial.fryerGifted) { state.equipment.fryer??={tier:1,truckOwned:false,homeCopies:0};state.equipment.fryer.truckOwned=true;state.equipment.fryer.homeCopies++; state.tutorial.fryerGifted = true; } }
   state.lastRun = { id: run.id, reason, banked, lost: run.haul - banked, serviceDays: run.serviceDays, recipes: Object.keys(state.recipes), equipment: Object.keys(state.equipment).filter(id => state.equipment[id].truckOwned) };
   state.run = null; routeTier(state);
 }
@@ -793,7 +795,7 @@ export function dispatchDiner(current: DinerState, command: DinerCommand, contex
         if (node.kind === "finale") { state.collections.routeWins = [...new Set([...state.collections.routeWins, run.routeId])]; state.collections.trophies = [...new Set([...state.collections.trophies, `${run.routeId}:finale`, ...(run.spices.length ? [`${run.routeId}:spices:${run.spices.length}`] : [])])]; const missing = ROUTES.find(r => r.id === run.routeId)!.recipeIds.find(id => !state.recipes[id]); if (missing) state.recipes[missing] = { level: 0 }; finishRun(state, "won"); }
         else advanceNode(state); break;
       }
-      case "goHome": if (!state.run || state.run.position || state.run.tutorial) fail("between_stops", state.run?.tutorial ? "Finish your opening trip first, or pause to take a break." : "Go home from the map between stops. Pause a service to take a break."); else { finishRun(state, "home"); break; }
+      case "goHome": if (!state.run || state.run.position) fail("between_stops", "Go home from the map between stops. Pause a service to take a break."); else { finishRun(state, "home"); break; }
       case "chooseGift": {
         const run = state.run, node = currentNode(state); if (!run || !node || !["bonus", "ingredients"].includes(node.kind) || !["coins", "ingredients", "special"].includes(command.choice)) fail("no_gift", "Choose a gift at a bonus stop or ingredient stall.");
         if (command.choice === "ingredients") grantTruckIngredient(state);
