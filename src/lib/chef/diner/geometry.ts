@@ -1,4 +1,4 @@
-import { EQUIPMENT_BY_ID, RECIPE_BY_ID, SERVICE_RULES, TRUCK_TIERS } from './content';
+import { EQUIPMENT_BY_ID, RECIPE_BY_ID, SERVICE_RULES, TRUCK_TIERS, ingredientSupply } from './content';
 import {recipeVessel,vesselSupplyStation} from './batch';
 import type { DinerTier, Point, ServiceStation, ServiceTable, StationKind } from './types';
 
@@ -22,7 +22,7 @@ export function stationWorkingCell(station: Pick<ServiceStation,'kind'|'x'|'y'|'
   return station.facing===0?{x:station.x,y:maxY+1}:station.facing===1?{x:station.x-1,y:station.y}:station.facing===2?{x:station.x,y:station.y-1}:{x:maxX+1,y:station.y};
 }
 /** Cold storage, serving supplies and portable counters can work on the pavement. */
-export const OUTDOOR_STATION_KINDS:readonly StationKind[]=['bin','crate','fridge','plates','cups','boxes','prep','pass','coffee','drinks','blender'];
+export const OUTDOOR_STATION_KINDS:readonly StationKind[]=['bin','crate','fridge','plates','cups','boxes','bowls','prep','pass','coffee','drinks','blender'];
 export function tableFootprint(table: Pick<ServiceTable,'x'|'y'|'capacity'> & Partial<Pick<ServiceTable,'rotation'>>): Point[] {
   const originalW=table.capacity===4?2:1,originalH=table.capacity===1?1:2,[w,h]=(table.rotation??0)%2?[originalH,originalW]:[originalW,originalH];
   return Array.from({length:w*h},(_,i) => ({x:table.x+i%w,y:table.y+Math.floor(i/w)}));
@@ -90,10 +90,10 @@ export function makeTable(id:string,x:number,y:number,capacity:1|2|4=2,tier:1|2=
 }
 export function starterStations(tier:DinerTier=1):ServiceStation[] {
   const t=TRUCK_TIERS[tier];
-  return [makeStation('crate','crate',0,0),makeStation('grill','grill',1,0),makeStation('prep','prep',2,0),makeStation('fryer','fryer',3,0),makeStation('sink','sink',0,t.h-1,1,2),makeStation('bin','bin',t.w-1,t.h-1,1,2),...defaultSupplyStations(tier),makeStation('boxes','boxes',2,t.h+1,1,0)];
+  return [makeStation('crate','crate',0,0),makeStation('grill','grill',1,0),makeStation('prep','prep',2,0),makeStation('fryer','fryer',3,0),makeStation('sink','sink',0,t.h-1,1,2),makeStation('bin','bin',t.w-1,t.h-1,1,2),...defaultSupplyStations(tier),makeStation('boxes','boxes',4,t.h-1,1,2)];
 }
-/** The rack is outside beside the entrance, leaving the interior aisle clear. */
-export function defaultSupplyStations(tier:DinerTier=1):ServiceStation[]{const h=TRUCK_TIERS[tier].h;return [makeStation('fridge','fridge',2,h-1,1,2),makeStation('plates','plates',0,h+1,1,3)];}
+/** Two long worktops face a continuous aisle; serving supplies fit aboard. */
+export function defaultSupplyStations(tier:DinerTier=1):ServiceStation[]{const {w,h}=TRUCK_TIERS[tier];return [makeStation('fridge','fridge',w-1,0),makeStation('plates','plates',3,h-1,1,2)];}
 export function starterTables(tier:DinerTier=1):ServiceTable[] {
   const y=TRUCK_TIERS[tier].h+2;
   const positions = tier===1 ? [{x:3,y}] : tier===2 ? [{x:3,y},{x:5,y:y+2}] : tier===3 ? [{x:3,y},{x:6,y},{x:3,y:y+3}] : [{x:3,y},{x:6,y},{x:3,y:y+3},{x:6,y:y+3},{x:0,y:y+3}];
@@ -107,16 +107,26 @@ export function buildServiceLoadout(tier:DinerTier,menu:string[],equipmentTiers:
     const recipe=RECIPE_BY_ID[recipeId];if(!recipe)return {stations:[],tables:[],error:'Unknown recipe.'};
     for(const step of recipe.steps)if(!kinds.includes(step.station))kinds.push(step.station);
   }
+  const needsFridge=menu.some(id=>[RECIPE_BY_ID[id].ingredients[0],...(RECIPE_BY_ID[id].assemblyIngredients??[])].some(id=>ingredientSupply(id)==='fridge'));
+  const needsPlates=menu.some(id=>recipeVessel(id)==='plate');
   const positions:Point[]=[];
-  for(let x=1;x<t.w;x++)positions.push({x,y:0});
-  for(let x=3;x<t.w-1;x++)positions.push({x,y:t.h-1});
+  for(let x=1;x<t.w-(needsFridge?1:0);x++)positions.push({x,y:0});
+  for(let x=5;x<t.w-1;x++)positions.push({x,y:t.h-1});
   if(t.h>=4)for(let y=1;y<t.h-1;y++)positions.push({x:0,y},{x:t.w-1,y});
   if(kinds.length>positions.length)return {stations:[],tables:starterTables(tier),error:'This menu needs more stations than your truck can fit. Choose fewer recipes or grow the truck.'};
   const tierFor=(kind:StationKind):1|2|3=>Math.max(1,Math.min(EQUIPMENT_BY_ID[kind].tiers.length,Number.isFinite(equipmentTiers[kind])?Math.floor(equipmentTiers[kind]):1)) as 1|2|3;
-  const stations=[makeStation('crate','crate',0,0),...kinds.map((kind,i)=>{const p=positions[i],facing=p.y===0?0:p.y===t.h-1?2:p.x===0?3:1;return makeStation(kind,kind,p.x,p.y,tierFor(kind),facing);}),makeStation('sink','sink',0,t.h-1,tierFor('sink'),2),makeStation('bin','bin',t.w-1,t.h-1,1,2),...defaultSupplyStations(tier)];
-  const supplyKinds=[...new Set(menu.map(id=>vesselSupplyStation(recipeVessel(id))))].filter(kind=>kind==='cups'||kind==='boxes');
+  const stations=[makeStation('crate','crate',0,0),...kinds.map((kind,i)=>{const p=positions[i],facing=p.y===0?0:p.y===t.h-1?2:p.x===0?3:1;return makeStation(kind,kind,p.x,p.y,tierFor(kind),facing);}),makeStation('sink','sink',0,t.h-1,tierFor('sink'),2),makeStation('bin','bin',t.w-1,t.h-1,1,2),...defaultSupplyStations(tier).filter(st=>st.kind==='fridge'?needsFridge:needsPlates).map(st=>makeStation(st.id,st.kind,st.x,st.y,tierFor(st.kind),st.facing))];
+  const supplyKinds=[...new Set(menu.map(id=>vesselSupplyStation(recipeVessel(id))))].filter((kind):kind is 'cups'|'boxes'|'bowls'=>kind==='cups'||kind==='boxes'||kind==='bowls');
   const tables=starterTables(tier);
-  for(const kind of supplyKinds){let placed=false;for(let y=t.h+1;y<t.h+t.pavementH+1&&!placed;y++)for(let x=2;x<t.pavementW-1&&!placed;x++)for(const facing of [0,3,1,2] as const){const station=makeStation(kind!,kind!,x,y,tierFor(kind!),facing);if(!validateServiceLayout(tier,[...stations,station],tables)){stations.push(station);placed=true;break;}}if(!placed)return {stations,tables,error:'The serving supplies need a clear spot on the pavement.'};}
+  for(const kind of supplyKinds){
+    let placed=false;
+    const candidates:Point[]=[];
+    for(let x=2;x<t.w;x++)candidates.push({x,y:t.h-1});
+    for(let x=0;x<t.w;x++)candidates.push({x,y:0});
+    for(let y=t.h+1;y<t.h+t.pavementH+1;y++)for(let x=2;x<t.pavementW-1;x++)candidates.push({x,y});
+    for(const point of candidates){if(placed)break;for(const facing of [2,0,3,1] as const){const station=makeStation(kind,kind,point.x,point.y,tierFor(kind),facing);if(!validateServiceLayout(tier,[...stations,station],tables)){stations.push(station);placed=true;break;}}}
+    if(!placed)return {stations,tables,error:'The serving supplies need a clear spot inside or beside the truck.'};
+  }
   return {stations,tables,error:validateServiceLayout(tier,stations,tables)};
 }
 /** Layout editing and replay validation use the exact same navigation grid. */
@@ -125,7 +135,7 @@ export function validateServiceLayout(tier:DinerTier,stations:ServiceStation[],t
   if(stations.length>40 || tables.length>SERVICE_RULES.maxTables) return 'This truck cannot hold that many fixtures.';
   const g=serviceGeometry(tier), used=new Set<string>(),ids=new Set<string>();
   for(const station of stations) {
-    if(!/^[a-zA-Z0-9_-]{1,64}$/.test(station.id) || ids.has(station.id) || !['crate','fridge','plates','cups','boxes','grill','prep','fryer','sink','bin','oven','blender','coffee','drinks','waffle','pass'].includes(station.kind) || !EQUIPMENT_BY_ID[station.kind]?.tiers[station.tier-1] || !Number.isInteger(station.facing) || station.facing<0 || station.facing>3 || ![1,2,3].includes(station.tier)) return 'Invalid station.';
+    if(!/^[a-zA-Z0-9_-]{1,64}$/.test(station.id) || ids.has(station.id) || !['crate','fridge','plates','cups','boxes','bowls','grill','prep','fryer','boiler','sink','bin','oven','blender','coffee','drinks','waffle','pass'].includes(station.kind) || !EQUIPMENT_BY_ID[station.kind]?.tiers[station.tier-1] || !Number.isInteger(station.facing) || station.facing<0 || station.facing>3 || ![1,2,3].includes(station.tier)) return 'Invalid station.';
     ids.add(station.id);
     for(const p of stationFootprint(station)) {
       const outside=OUTDOOR_STATION_KINDS.includes(station.kind)&&p.x>=0&&p.x<g.pavement.x+g.pavement.w&&p.y>=g.pavement.y&&p.y<g.pavement.y+g.pavement.h;

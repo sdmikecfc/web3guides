@@ -17,7 +17,7 @@ export class Cook {
       for(const ingredientId of missing){this.touch(ingredientSupply(ingredientId),recipeId,undefined,ingredientId);this.touch(station.id);}
       this.send({type:'hold',active:true});
       this.until(()=>this.get().stations.find(s=>s.id===station.id)!.slots.some(slot=>slot.job?.ready));
-      this.send({type:'hold',active:false});if(physical&&index===serviceRecipeSteps(this.get(),recipeId).length-1){if(recipeId==='fries'&&this.get().config.batchVersion)this.touch(station.id);this.touch(this.get().config.batchVersion?vesselSupplyStation(recipeVessel(recipeId))!:'plates');}this.touch(station.id);assert.equal(this.get().chef.held?.step,index+1);
+      this.send({type:'hold',active:false});if(step.station==='boiler')this.touch(station.id);if(physical&&index===serviceRecipeSteps(this.get(),recipeId).length-1){if(recipeId==='fries'&&this.get().config.batchVersion)this.touch(station.id);this.touch(this.get().config.batchVersion?vesselSupplyStation(recipeVessel(recipeId))!:'plates');}this.touch(station.id);assert.equal(this.get().chef.held?.step,index+1);
     }
   }
   wash(tableId:string,seatId:string){this.touch(tableId,undefined,seatId);if(!this.get().chef.held)return;assert.equal(this.get().chef.held?.kind,'dirty');this.touch('sink');this.send({type:'hold',active:true});this.until(()=>this.get().stations.find(s=>s.kind==='sink')!.slots.every(slot=>!slot.item));this.send({type:'hold',active:false});}
@@ -25,7 +25,7 @@ export class Cook {
     while(['playing','closing'].includes(this.get().phase)&&guard++<1000){
       const s=this.get();if(s.served+s.missed>=s.config.customers){this.tick(20);continue;}
       const guest=s.customers.filter(c=>c.phase==='seated').sort((a,b)=>a.patience-b.patience)[0];
-      if(guest&&s.tables.some(table=>table.seats.some(seat=>seat.customerId===guest.id&&seat.item?.kind==='dirty'))){this.wash(guest.tableId!,guest.seatId!);continue;}if(guest&&(!s.config.physicalSupplies||recipeVessel(guest.recipeId)==='fry_box'||(recipeVessel(guest.recipeId)==='cup'?s.cleanCups:s.cleanPlates)>0)){this.dish(guest.recipeId);this.touch(guest.tableId!,undefined,guest.seatId!);assert.equal(this.get().customers.find(c=>c.id===guest.id)?.phase,'eating',this.get().notice);continue;}
+      if(guest&&s.tables.some(table=>table.seats.some(seat=>seat.customerId===guest.id&&seat.item?.kind==='dirty'))){this.wash(guest.tableId!,guest.seatId!);continue;}if(guest&&(!s.config.physicalSupplies||recipeVessel(guest.recipeId)==='fry_box'||(recipeVessel(guest.recipeId)==='cup'?s.cleanCups:recipeVessel(guest.recipeId)==='bowl'?s.cleanBowls:s.cleanPlates)>0)){this.dish(guest.recipeId);this.touch(guest.tableId!,undefined,guest.seatId!);assert.equal(this.get().customers.find(c=>c.id===guest.id)?.phase,'eating',this.get().notice);continue;}
       const dirty=s.tables.flatMap(table=>table.seats.filter(seat=>seat.item?.kind==='dirty').map(seat=>({tableId:table.id,seatId:seat.id})))[0];
       if(dirty){this.wash(dirty.tableId,dirty.seatId);continue;}this.tick(10);
     }

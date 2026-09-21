@@ -2,6 +2,11 @@ import type { ReactNode } from 'react';
 
 const cream='#fff4db',gold='#f4bd5f',green='#83b978',leaf='#4e805c',red='#e87959',ink='#78503c';
 const art:Record<string,ReactNode>={
+  pasta:<><path d="M15 9h34l3 45H12Z" fill="#d5b887"/><path d="M21 17h22v29H21Z" fill="#fff0c1"/>{[25,31,37].map(x=><path key={x} d={`M${x} 20v24`} stroke="#d59f45" strokeWidth="3"/>)}<path d="M14 12h36M12 52h40"/></>,
+  ramen_noodles:<><path d="M10 16h44v34H10Z" fill="#efd493"/>{[23,30,37,44].map(y=><path key={y} d={`M15 ${y}q4-7 8 0t8 0t8 0t8 0`} stroke="#c9974b" strokeWidth="2.4"/>)}<path d="M13 12h38M13 54h38" stroke={red} strokeWidth="4"/></>,
+  tomato_sauce:<><path d="M18 15h28v8l4 7v23H14V30l4-7Z" fill="#d26b48"/><path d="M18 9h28v8H18Z" fill={leaf}/><path d="M17 30h30v15H17Z" fill={cream}/><circle cx="32" cy="38" r="6" fill={red}/><path d="m28 32 4 2 4-2" stroke={leaf}/></>,
+  vegetable_broth:<><path d="m17 18 7-9h22l3 9v36H17Z" fill="#cbb477"/><path d="M26 18h23v36H26Z" fill="#e6cf94"/><path d="M21 26h24v17H21Z" fill={cream}/><path d="M26 32q7 12 14 0Z" fill={green}/><path d="M30 14h14" stroke={leaf} strokeWidth="4"/></>,
+  mixed_vegetables:<><path d="M10 31h44l-5 23H15Z" fill="#b1c1a6"/>{[[20,27],[32,20],[43,27],[28,32]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r="8" fill={i%2?green:leaf}/>)}<path d="m19 34 8 7m12-11-4 10" stroke="#e49b50" strokeWidth="6"/><path d="M9 38q23 12 46 0" stroke={cream} strokeWidth="3"/></>,
   beef:<>
     <path d="M12 24c4-9 15-14 23-10 6 2 7 8 14 12 10 7 7 20-3 24-8 4-13-3-21-1-13 3-22-13-13-25Z" fill="#bf645e"/>
     <path d="M13 25c4-8 14-12 21-9 6 2 7 8 13 12 8 5 5 15-2 18-7 3-13-3-21-1-10 2-17-11-11-20Z" fill="#f4c1a7"/>

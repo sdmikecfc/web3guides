@@ -4,7 +4,7 @@ import type { DinerTier, EquipmentDef, IngredientDef, RecipeDef, RecipeStep, Sta
 export const CONTENT_VERSION = 1;
 export const SERVICE_RULES = { version: 1, tickMs: 50, ticksPerSecond: 20, chefSpeed: 3.2, customerSpeed: 2.8, coldTicks: 400, eatTicks: 100, washTicks: 40, comboMax: 10, comboTipPerStep: .05, baseTipRate: .12, menuMultipliers: [1, 1.15, 1.3, 1.5], maxTicksPerAction: 100, maxEvents: 60, maxTables:12 } as const;
 export const INGREDIENTS: IngredientDef[] = [
-  ...['beef','bun','potato','cheese','lettuce','tomato','onion','egg','milk','flour','sugar','cooking_oil'].map(id => ({ id, name: title(id), rarity: 'common' as const })),
+  ...['beef','bun','potato','cheese','lettuce','tomato','onion','egg','milk','flour','sugar','cooking_oil','pasta','tomato_sauce','ramen_noodles','vegetable_broth','mixed_vegetables'].map(id => ({ id, name: title(id), rarity: 'common' as const })),
   ...['bacon','chicken','pickles','bread','butter','ice_cream','coffee_beans','lemon','sausage','corn'].map(id => ({ id, name: title(id), rarity: 'uncommon' as const })),
   ...['chocolate','strawberry','maple_syrup','avocado','apple','chili'].map(id => ({ id, name: title(id), rarity: 'rare' as const })),
 ];
@@ -39,20 +39,25 @@ export const RECIPES: RecipeDef[] = [
   dish('loaded_nachos','Loaded nachos','starter',['corn','cheese','tomato'],[oven(),prep('Top nachos')],18,'night_market'),
   dish('chili_cheese_fries','Chili cheese fries','starter',['potato','cheese','chili'],[fry(),prep('Add chili and cheese')],22,'secret'),
   dish('avocado_burger','Avocado burger','main',['beef','bun','avocado','tomato'],[grill('cooked_patty'),prep('Add avocado and bun')],42,'secret'),
+  dish('tomato_pasta','Tomato pasta','main',['pasta','tomato_sauce'],[step('boiler','timed',5,'Boil pasta','boiled_pasta'),prep('Fold in tomato sauce','sauced_pasta')],34,'downtown'),
+  dish('vegetable_ramen','Vegetable ramen','main',['ramen_noodles','vegetable_broth','mixed_vegetables'],[step('boiler','timed',5,'Boil noodles','boiled_noodles'),prep('Add broth and vegetables','ramen')],42,'boardwalk'),
 ];
 export const RECIPE_BY_ID: Record<string, RecipeDef> = Object.fromEntries(RECIPES.map(d => [d.id, d]));
 for(const id of ['classic_burger','cheeseburger','bacon_deluxe_burger','avocado_burger','hot_dog'])RECIPE_BY_ID[id].assemblyIngredients=['bun'];
+RECIPE_BY_ID.tomato_pasta.assemblyIngredients=['tomato_sauce'];
+RECIPE_BY_ID.vegetable_ramen.assemblyIngredients=['vegetable_broth','mixed_vegetables'];
 export const INGREDIENT_BY_ID: Record<string, IngredientDef> = Object.fromEntries(INGREDIENTS.map(d => [d.id, d]));
 /** Only loose ingredients used by the physical service loop appear at supplies. */
 export function ingredientSupply(id:string):'crate'|'fridge' {
-  return ['beef','cheese','lettuce','tomato','egg','milk','bacon','chicken','butter','ice_cream','sausage','strawberry','avocado'].includes(id)?'fridge':'crate';
+  return ['beef','cheese','lettuce','tomato','egg','milk','bacon','chicken','butter','ice_cream','sausage','strawberry','avocado','mixed_vegetables'].includes(id)?'fridge':'crate';
 }
-function machine(id: string, name: string, family: string, prices: number[], capacities = [1,2,2], footprint: [number,number] = [1,1]): EquipmentDef { return { id, name, family, footprint, tiers: prices.map((price,i) => ({ tier: i + 1, price, capacity: capacities[i] ?? 1, speed: i === 0 ? 1 : i === 1 ? 1.15 : 1.35, ...(i === 2 && ['grill','fryer','waffle'].includes(id) ? { noBurn: true } : {}), ...(id === 'pass' || (id === 'oven' && i === 2) ? { warm: true } : {}), ...(i === 2 && ['sink','drinks'].includes(id) ? { automatic: true } : {}) })) }; }
+function machine(id: string, name: string, family: string, prices: number[], capacities = [1,2,2], footprint: [number,number] = [1,1]): EquipmentDef { return { id, name, family, footprint, tiers: prices.map((price,i) => ({ tier: i + 1, price, capacity: capacities[i] ?? 1, speed: i === 0 ? 1 : i === 1 ? 1.15 : 1.35, ...(i === 2 && ['grill','fryer','waffle'].includes(id) ? { noBurn: true } : {}), ...((id === 'pass' && i >= 1) || (id === 'oven' && i === 2) ? { warm: true } : {}), ...(i === 2 && ['sink','drinks'].includes(id) ? { automatic: true } : {}) })) }; }
 export const EQUIPMENT: EquipmentDef[] = [
+  machine('boiler','Noodle boiler','cooking',[240,550,1100]), machine('bowls','Clean bowl rack','storage',[100,240,480],[2,4,6]),
   machine('crate','Pantry','storage',[0],[1]), machine('fridge','Fridge','storage',[0],[1]), machine('plates','Clean plate rack','storage',[0,120,300],[2,4,6]), machine('cups','Cup stand','storage',[80,180],[2,4]), machine('boxes','Fries boxes','storage',[0],[1]), machine('grill','Grill','cooking',[180,450,900]), machine('fryer','Fryer','cooking',[160,400,850]),
   machine('oven','Oven','cooking',[240,550,1100]), machine('blender','Blender','cooking',[180,420,850],[1,1,2]), machine('coffee','Coffee machine','cooking',[140,360,750],[1,2,5]),
   machine('waffle','Waffle iron','cooking',[200,480,950]), machine('drinks','Drinks station','cooking',[100,280,600],[1,1,1]), machine('prep','Prep counter','prep',[80,220,500],[1,1,2]),
-  machine('pass','Pass with heat lamp','prep',[180,400,800],[2,4,6],[2,1]), machine('sink','Sink','cleaning',[80,240,600],[2,4,6]), machine('bin','Bin','cleaning',[20],[1]),
+  machine('pass','Holding counter','prep',[180,400,800],[2,4,6],[2,1]), machine('sink','Sink','cleaning',[80,240,600],[2,4,6]), machine('bin','Bin','cleaning',[20],[1]),
   machine('table_1','Table and one chair','service',[60,160],[1,1]), machine('table_2','Table for two','service',[80,220],[2,2],[1,2]), machine('table_4','Table for four','service',[180,420],[4,4],[2,2]),
   machine('booth_2','Upholstered booth for two','service',[180],[2],[1,2]),
   machine('tray','Serving tray','service',[100,300],[2,3]), machine('queue_bench','Queue bench','comfort',[120,280],[1,1],[2,1]),
@@ -64,15 +69,17 @@ export const DEFERRED_EQUIPMENT_IDS = ['tray','queue_bench','jukebox','neon_sign
 export const HOME_ONLY_EQUIPMENT_IDS = ['booth_2'] as const;
 export const TRUCK_EQUIPMENT = EQUIPMENT.filter(item=>!(DEFERRED_EQUIPMENT_IDS as readonly string[]).includes(item.id)&&!(HOME_ONLY_EQUIPMENT_IDS as readonly string[]).includes(item.id));
 /** Utilities do not imply a corresponding restaurant machine or free home copy. */
-export const TRUCK_ONLY_EQUIPMENT_IDS = ['crate','fridge','plates','cups','boxes','bin','pass'] as const;
+export const TRUCK_ONLY_EQUIPMENT_IDS = ['crate','fridge','plates','cups','boxes','bowls','bin','pass'] as const;
 export const HOME_EQUIPMENT = EQUIPMENT.filter(item=>!(DEFERRED_EQUIPMENT_IDS as readonly string[]).includes(item.id)&&!(TRUCK_ONLY_EQUIPMENT_IDS as readonly string[]).includes(item.id));
 export const isTruckEquipmentAvailable = (id:string):boolean => TRUCK_EQUIPMENT.some(item=>item.id===id);
 export const isHomeEquipmentAvailable = (id:string):boolean => HOME_EQUIPMENT.some(item=>item.id===id);
-export const TRUCK_TIERS: Record<DinerTier, { tier: DinerTier; w: number; h: number; tables: number; helpers: number; pavementW: number; pavementH: number; route: string | null }> = {
-  1: { tier:1,w:4,h:3,tables:1,helpers:0,pavementW:7,pavementH:4,route:null },
-  2: { tier:2,w:5,h:3,tables:2,helpers:1,pavementW:8,pavementH:5,route:'downtown' },
-  3: { tier:3,w:6,h:3,tables:3,helpers:1,pavementW:9,pavementH:6,route:'boardwalk' },
-  4: { tier:4,w:7,h:4,tables:5,helpers:2,pavementW:10,pavementH:7,route:'night_market' },
+/** Width-only growth keeps every earlier saved coordinate on the board. */
+export const TRUCK_LAYOUT_VERSION=2 as const;
+export const TRUCK_TIERS: Record<DinerTier, { tier: DinerTier; w: number; h: number; tables: number; helpers: number; menuCapacity:2|3|4; pavementW: number; pavementH: number; route: string | null }> = {
+  1: { tier:1,w:7,h:3,tables:1,helpers:0,menuCapacity:2,pavementW:10,pavementH:4,route:null },
+  2: { tier:2,w:8,h:3,tables:2,helpers:1,menuCapacity:3,pavementW:11,pavementH:5,route:'downtown' },
+  3: { tier:3,w:9,h:3,tables:3,helpers:1,menuCapacity:4,pavementW:12,pavementH:6,route:'boardwalk' },
+  4: { tier:4,w:10,h:4,tables:5,helpers:2,menuCapacity:4,pavementW:13,pavementH:7,route:'night_market' },
 };
 export const ROUTES = [
   { id:'downtown',name:'Downtown',rows:12,tier:1,recipeIds:['lemonade','cheeseburger','side_salad','hot_dog','coffee'] },

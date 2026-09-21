@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { keyboardDirection, isTypingTarget, nearestTruckInteraction, firstLunchCoach } from '../src/app/chef/diner-preview/truck-controls';
-import { createService, dispatchService, serviceTargetIntent, stepService } from '../src/lib/chef/diner/service';
+import { createService, dispatchService, sanitizeService, serviceTargetIntent, stepService } from '../src/lib/chef/diner/service';
 import { buildServiceLoadout, makeStation, makeTable, stationWorkingCell } from '../src/lib/chef/diner/geometry';
 import type { ServiceAction, ServiceState } from '../src/lib/chef/diner/types';
 
@@ -93,6 +93,24 @@ check('ready drinks lead to cups, and an empty cup pool never redirects to burge
   const take=(targetId:string)=>{const target=nearestTruckInteraction(lunch.state)!;assert.equal(target?.targetId,targetId,lunch.state.notice);lunch.act({type:'interact',...target});lunch.until(()=>!lunch.state.chef.path.length);};
   take('crate');take('coffee');lunch.until(()=>!!lunch.state.stations.find(s=>s.kind==='coffee')!.slots[0].job?.ready);lunch.coach('Fetch a cup','cups');take('cups');lunch.coach('Pour into the cup','coffee');take('coffee');assert.equal(lunch.state.chef.held?.vesselKind,'cup');lunch.interact('bin');take('sink');lunch.act({type:'hold',active:true});lunch.until(()=>lunch.state.cleanCups===2);lunch.act({type:'hold',active:false});assert.equal(lunch.state.washed,0,'discarding a drink is not a completed customer meal');
   take('crate');take('coffee');lunch.until(()=>!!lunch.state.stations.find(s=>s.kind==='coffee')!.slots[0].job?.ready);lunch.state.cleanCups=0;lunch.state.cupStock=[];assert.equal(nearestTruckInteraction(lunch.state),null);assert.notEqual(firstLunchCoach(lunch.state).targetId,'plates');
+});
+check('noodle coaching follows real boiling, drain, sauce, bowl serving and washing across reload',()=>{
+  const lunch=new Lunch();lunch.state=createService({seed:'noodle-coach',menu:['tomato_pasta'],...buildServiceLoadout(1,['tomato_pasta']),customers:2,tutorialLearning:true});lunch.act({type:'prepare'});
+  const take=(targetId:string)=>{const target=nearestTruckInteraction(lunch.state)!;assert.equal(target?.targetId,targetId,lunch.state.notice);assert.equal(serviceTargetIntent(lunch.state,target.targetId,target.seatId,target.recipeId).disabled,false);lunch.act({type:'interact',...target});lunch.until(()=>!lunch.state.chef.path.length);};
+  lunch.coach('Take the pasta','crate');take('crate');take('boiler');lunch.coach('Let the noodles boil','boiler');lunch.until(()=>lunch.state.stations.find(s=>s.kind==='boiler')!.slots[0].boil?.phase==='ready');
+  lunch.coach('Lift & drain the noodles','boiler');take('boiler');assert.equal(lunch.state.chef.held,null);lunch.coach('Collect the drained noodles','boiler');
+  lunch.state=sanitizeService(lunch.state)!;assert(lunch.state);lunch.coach('Lunch is paused');lunch.act({type:'resume'});lunch.coach('Collect the drained noodles','boiler');take('boiler');lunch.coach('Set it on the prep counter','prep');take('prep');
+  lunch.coach('Take the tomato sauce','crate');assert.equal(nearestTruckInteraction(lunch.state)?.ingredientId,'tomato_sauce');take('crate');lunch.coach('Add the tomato sauce','prep');take('prep');lunch.coach('Hold to finish the dish','prep');
+  lunch.act({type:'hold',active:true});lunch.until(()=>!!lunch.state.stations.find(s=>s.kind==='prep')!.slots[0].job?.ready);lunch.act({type:'hold',active:false});lunch.coach('Fetch a clean bowl','bowls');take('bowls');lunch.coach('Fill the bowl','prep');take('prep');assert.equal(lunch.state.chef.held?.vesselKind,'bowl');
+  lunch.act({type:'open'});lunch.until(()=>lunch.state.customers.some(c=>c.phase==='seated'));const guest=lunch.state.customers.find(c=>c.phase==='seated')!;lunch.coach('Serve your guest',guest.tableId!);take(guest.tableId!);assert.match(lunch.coach('Let your guest enjoy it',guest.tableId!).detail,/dirty bowl/);
+  lunch.until(()=>lunch.state.tables.some(t=>t.seats.some(s=>s.item?.kind==='dirty')));lunch.coach('Clear the used bowl',guest.tableId!);take(guest.tableId!);lunch.coach('Bring the bowl to the sink','sink');take('sink');lunch.coach('Hold to wash the bowl','sink');lunch.act({type:'hold',active:true});lunch.until(()=>lunch.state.cleanBowls===2);assert.equal(lunch.state.cleanPlates,0);assert(sanitizeService(lunch.state));
+});
+check('ramen coaching requests pantry broth then cold vegetables instead of prematurely plating noodles',()=>{
+  const lunch=new Lunch();lunch.state=createService({seed:'ramen-coach',menu:['vegetable_ramen'],...buildServiceLoadout(1,['vegetable_ramen'])});lunch.act({type:'prepare'});
+  const take=(targetId:string)=>{const target=nearestTruckInteraction(lunch.state)!;assert.equal(target?.targetId,targetId,lunch.state.notice);lunch.act({type:'interact',...target});lunch.until(()=>!lunch.state.chef.path.length);};
+  take('crate');take('boiler');lunch.until(()=>lunch.state.stations.find(s=>s.kind==='boiler')!.slots[0].boil?.phase==='ready');take('boiler');take('boiler');take('prep');
+  lunch.coach('Take the vegetable broth','crate');take('crate');take('prep');assert.equal(lunch.state.stations.find(s=>s.kind==='prep')!.slots[0].job,null);lunch.coach('Take the mixed vegetables','fridge');assert.equal(nearestTruckInteraction(lunch.state)?.ingredientId,'mixed_vegetables');take('fridge');lunch.coach('Add the mixed vegetables','prep');take('prep');lunch.coach('Hold to finish the dish','prep');
+  lunch.act({type:'hold',active:true});lunch.until(()=>!!lunch.state.stations.find(s=>s.kind==='prep')!.slots[0].job?.ready);lunch.act({type:'hold',active:false});lunch.state.cleanBowls=0;lunch.state.bowlStock=[];assert.equal(nearestTruckInteraction(lunch.state),null);lunch.coach('Wait for a clean bowl');assert.notEqual(firstLunchCoach(lunch.state).targetId,'plates');
 });
 check('a new guest at a dirty place is cleared first without confusing the old and current meal',()=>{
   const lunch=new Lunch();lunch.state=createService({seed:'dirty-place-coach',menu:['classic_burger'],customers:2,arrivalTicks:40,queuePatienceTicks:12000,tablePatienceTicks:12000,physicalSupplies:false,tables:[makeTable('one-table',3,5,1)]});lunch.act({type:'open'});

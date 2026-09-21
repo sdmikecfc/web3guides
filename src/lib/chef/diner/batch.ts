@@ -29,15 +29,26 @@ export function takeFryPortion(batch: FryBatch): { batch: FryBatch | null; porti
   return { batch: remaining ? { ...batch, remaining } : null, portion: batch.total - remaining };
 }
 
+/** Boiling finishes independently; draining remains a deliberate player action. */
+export type BoilBasket = { version:1; recipeId:'tomato_pasta'|'vegetable_ramen'; phase:'cooking'|'ready'|'drained'; createdTick:number };
+export function createBoilBasket(recipeId:string,tick:number):BoilBasket|null {
+  return recipeId==='tomato_pasta'||recipeId==='vegetable_ramen'?{version:1,recipeId,phase:'cooking',createdTick:tick}:null;
+}
+export function validateBoilBasket(raw:unknown):BoilBasket|null {
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+  const basket=raw as BoilBasket,keys=['version','recipeId','phase','createdTick'];
+  if(keys.some(key=>!Object.hasOwn(basket,key))||Object.keys(basket).some(key=>!keys.includes(key))||basket.version!==1||!['tomato_pasta','vegetable_ramen'].includes(basket.recipeId)||!['cooking','ready','drained'].includes(basket.phase)||!Number.isSafeInteger(basket.createdTick)||basket.createdTick<0)return null;
+  return {...basket};
+}
 export type VesselKind = 'plate' | 'cup' | 'fry_box' | 'bowl' | 'pizza_dish';
-export const SERVING_VESSELS: Record<VesselKind, { name: string; reusable: boolean; supply: 'plates' | 'cups' | 'boxes' | null; available: boolean }> = {
+export const SERVING_VESSELS: Record<VesselKind, { name: string; reusable: boolean; supply: 'plates' | 'cups' | 'boxes' | 'bowls' | null; available: boolean }> = {
   plate: { name: 'plate', reusable: true, supply: 'plates', available: true },
   cup: { name: 'cup', reusable: true, supply: 'cups', available: true },
   fry_box: { name: 'fries box', reusable: false, supply: 'boxes', available: true },
-  bowl: { name: 'bowl', reusable: true, supply: null, available: false },
+  bowl: { name: 'bowl', reusable: true, supply: 'bowls', available: true },
   pizza_dish: { name: 'pizza dish', reusable: true, supply: null, available: false },
 };
 const CUP_RECIPES = new Set(['lemonade', 'coffee', 'vanilla_shake', 'strawberry_shake']);
-export function recipeVessel(recipeId: string): VesselKind { return recipeId === 'fries' ? 'fry_box' : CUP_RECIPES.has(recipeId) ? 'cup' : 'plate'; }
+export function recipeVessel(recipeId: string): VesselKind { return recipeId === 'fries' ? 'fry_box' : ['tomato_pasta','vegetable_ramen'].includes(recipeId)?'bowl':CUP_RECIPES.has(recipeId) ? 'cup' : 'plate'; }
 export function vesselReusable(kind: VesselKind): boolean { return SERVING_VESSELS[kind]?.reusable === true; }
-export function vesselSupplyStation(kind: VesselKind): 'plates' | 'cups' | 'boxes' | null { return SERVING_VESSELS[kind]?.supply ?? null; }
+export function vesselSupplyStation(kind: VesselKind): 'plates' | 'cups' | 'boxes' | 'bowls' | null { return SERVING_VESSELS[kind]?.supply ?? null; }

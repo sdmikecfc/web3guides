@@ -72,20 +72,39 @@ for(const stock of [0,1,2,3,4]){
   const stand=kit.createModel('cups',{stock});inspect(stand,`cups/stock${stock}`,{maxWidth:.81,maxDepth:.81});
   assert.equal(stand.userData.stock,stock);assert.equal(stand.children.filter(child=>/^clean-cup-\d+$/.test(child.name)).length,stock,'cup stand stock does not match visible vessels');
 }
-for(const vesselKind of ['cup','fry_box']){
-  const clean=kit.createFoodModel({recipeId:vesselKind==='cup'?'coffee':'fries',kind:'plate',vesselKind});
-  const dirty=kit.createFoodModel({recipeId:vesselKind==='cup'?'coffee':'fries',kind:'dirty',vesselKind});
+for(const stock of [0,1,2,4,6]){
+  const rack=kit.createModel('bowls',{stock});inspect(rack,`bowls/stock${stock}`,{maxWidth:.81,maxDepth:.81});
+  assert.equal(rack.userData.stock,stock);assert.equal(rack.children.filter(child=>/^clean-bowl-\d+$/.test(child.name)).length,stock,'bowl rack invents or hides clean inventory');
+  assert(new THREE.Box3().setFromObject(rack).min.y<.02,'bowl rack does not meet its floor');
+}
+for(const vesselKind of ['cup','fry_box','bowl']){
+  const recipeId=vesselKind==='cup'?'coffee':vesselKind==='bowl'?'tomato_pasta':'fries';
+  const clean=kit.createFoodModel({recipeId,kind:'plate',vesselKind});
+  const dirty=kit.createFoodModel({recipeId,kind:'dirty',vesselKind});
   inspect(clean,`clean/${vesselKind}`,{maxY:.7,maxWidth:.75,maxDepth:.75});inspect(dirty,`dirty/${vesselKind}`,{maxY:.7,maxWidth:.75,maxDepth:.75});
   assert.notEqual(fingerprint(clean),fingerprint(dirty),`${vesselKind}: dirty vessel indistinguishable`);
   assert.notEqual(fingerprint(clean),fingerprint(emptyPlate),`${vesselKind}: generic plate substituted`);
   assert(!clean.getObjectByName('food-plate'),'non-plate vessel incorrectly includes a plate');
-  for(const mastery of [0,3,10]){const served=kit.createFoodModel({recipeId:vesselKind==='cup'?'coffee':'fries',kind:'dish',vesselKind,mastery});inspect(served,`served/${vesselKind}/mastery${mastery}`,{maxY:.7,maxWidth:.75,maxDepth:.75});assert(!served.getObjectByName('food-plate'),'serving or mastery conjures a plate');}
+  for(const mastery of [0,3,10]){const served=kit.createFoodModel({recipeId,kind:'dish',vesselKind,mastery});inspect(served,`served/${vesselKind}/mastery${mastery}`,{maxY:.7,maxWidth:.75,maxDepth:.75});assert(!served.getObjectByName('food-plate'),'serving or mastery conjures a plate');}
+}
+const cleanBowl=kit.createBowl();cleanBowl.updateMatrixWorld(true);
+const bowlFloor=new THREE.Raycaster(new THREE.Vector3(0,1,0),new THREE.Vector3(0,-1,0)).intersectObject(cleanBowl,true)[0];
+const bowlRim=new THREE.Raycaster(new THREE.Vector3(.291,1,0),new THREE.Vector3(0,-1,0)).intersectObject(cleanBowl,true)[0];
+assert(bowlFloor&&bowlRim&&bowlFloor.point.y<.08&&bowlRim.point.y>.20,'clean bowl is a filled solid rather than a hollow vessel');
+for(const id of ['tomato_pasta','vegetable_ramen']){
+  const dish=kit.createFoodModel({recipeId:id,kind:'dish'});assert.equal(dish.getObjectByName('food-vessel')?.userData.vesselKind,'bowl');
+  const loose=kit.createFoodModel({recipeId:id,kind:'processed',stage:`prepared_${id}`});assert(!loose.getObjectByName('food-vessel'),'noodles acquired a bowl before plating');
 }
 const fryer=kit.createModel('fryer'),basket=fryer.getObjectByName('fryer-basket');
 assert(basket,'fryer has no physical movable basket');const restingBasket=new THREE.Box3().setFromObject(basket),warmBasketKit=kit.modelKitStats();
 basket.position.y=basket.userData.raisedY;const raisedBasket=new THREE.Box3().setFromObject(basket);
 assert(Math.abs(raisedBasket.min.y-restingBasket.min.y-.22)<1e-5&&raisedBasket.min.y>1.1,'raised basket does not clear the oil');
 assert.deepEqual(kit.modelKitStats(),warmBasketKit,'raising the real basket allocates replacement geometry');
+const boiler=kit.createModel('boiler'),noodleBasket=boiler.getObjectByName('boiler-basket');
+assert(noodleBasket,'boiler lost its independently lifting basket');assert.notEqual(fingerprint(boiler),fingerprint(kit.createModel('fryer')),'boiler reused fryer geometry');
+const loweredNoodles=new THREE.Box3().setFromObject(noodleBasket),boilerKit=kit.modelKitStats();noodleBasket.position.y=noodleBasket.userData.raisedY;
+const drainedNoodles=new THREE.Box3().setFromObject(noodleBasket);assert(Math.abs(drainedNoodles.min.y-loweredNoodles.min.y-.22)<1e-5&&drainedNoodles.min.y>1.16,'drained basket does not clear the water pot');
+assert.deepEqual(kit.modelKitStats(),boilerKit,'draining noodles allocates new model geometry');
 const fridge=kit.createModel('fridge');fridge.updateMatrixWorld(true);
 assert.equal(fridge.userData.coldCompartment,true,'fridge lacks its explicit open-cold-storage model');
 // The visible cold compartment contains physical patty surfaces before the back wall.
@@ -123,6 +142,18 @@ for(const item of EQUIPMENT)for(const tier of item.tiers){
   }
   const before=new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());model.rotation.y=Math.PI/2;
   const after=new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());assert.ok(Math.abs(before.x-after.z)<1e-5&&Math.abs(before.z-after.x)<1e-5,`${item.id}: rotation changes footprint size`);
+}
+const counterHashes=new Set();
+for(const tier of [1,2,3]){
+  const model=kit.createModel('pass',{tier}),spots=kit.holdingCounterSlotPositions(tier*2),bounds=inspect(model,`holding-counter/${tier}`,{maxY:1.63,maxWidth:2,maxDepth:1});
+  assert.equal(model.userData.warming,tier>=2);assert.equal(!!model.getObjectByName('holding-counter-heat-lamps'),tier>=2,'counter heat-lamp art contradicts its tier');
+  assert.equal(model.userData.holdingSpots.length,tier*2);assert(model.getObjectByName('holding-counter-worktop'));if(tier===1)assert(bounds.max.y<.90,'plain holding counter still has an overhead appliance');
+  const hash=fingerprint(model);assert(!counterHashes.has(hash),'counter capacities share indistinguishable worktops');counterHashes.add(hash);
+  for(const spot of spots){
+    const hits=new THREE.Raycaster(new THREE.Vector3(spot.x,1.10,spot.z),new THREE.Vector3(0,-1,0)).intersectObject(model,true);assert(hits[0]&&Math.abs(hits[0].point.y-model.userData.surfaceHeight)<.008,'staged objects float away from the countertop');
+    const vessel=kit.createFoodModel({recipeId:'tomato_pasta',kind:'dirty',vesselKind:'bowl'});vessel.scale.setScalar(spot.scale);vessel.position.set(spot.x,model.userData.surfaceHeight+.015,spot.z);const vb=new THREE.Box3().setFromObject(vessel);assert(vb.min.x>-.94&&vb.max.x<.94&&vb.min.z>-.44&&vb.max.z<.44,'stored vessel hangs off the worktop');
+    if(tier>=2)assert(vb.max.y<1.25,'lamp clips a stored bowl');
+  }
 }
 for(const decor of DECOR)inspect(kit.createModel(decor.id),decor.id,{maxWidth:1.12,maxDepth:1.12,...(decor.id==='chandelier'?{minY:1.93,maxY:2.71}:{})});
 const stageDecor=['diner_clock','bear_statue','deer_trophy','pie_display','coffee_sign','jukebox','wine_rack','deco_mirror','brass_planter','chandelier','brass_sconce','velvet_rope','runner_menu'],stageHashes=new Set();

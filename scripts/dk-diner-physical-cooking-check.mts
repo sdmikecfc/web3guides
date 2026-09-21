@@ -20,6 +20,7 @@ class Cook{
       const station=this.s.stations.find(st=>st.kind===step.station)!,missing=serviceMissingIngredients(this.s.chef.held!);this.touch(station.id);
       for(const ingredientId of missing){this.supply(recipeId,ingredientId);this.touch(station.id);}
       this.send({type:'hold',active:true});this.until(()=>this.s.stations.find(st=>st.id===station.id)!.slots.some(slot=>slot.job?.ready));this.send({type:'hold',active:false});
+      if(step.station==='boiler')this.touch(station.id);
       if(i===serviceRecipeSteps(this.s,recipeId).length-1){if(recipeId==='fries'&&this.s.config.batchVersion)this.touch(station.id);this.touch(this.s.config.batchVersion?vesselSupplyStation(recipeVessel(recipeId))!:'plates');assert.equal(this.s.chef.held?.kind,'plate');this.touch(station.id);}else this.touch(station.id);
       assert.equal(this.s.chef.held?.step,i+1,`${recipeId} step${i}`);
     }
@@ -70,8 +71,8 @@ test('the whole first slow lunch is playable with one chair and two circulating 
   }
   assert.equal(d.s.phase,'complete');assert.equal(d.s.served,4);assert.equal(d.s.paid,4);assert.equal(d.s.strikes,0);assert.equal(d.s.washed,3);assert.equal(d.s.config.plateCount,2);assert(sanitizeService(d.s));console.log(`  first lunch: ${d.s.tick/20}s, four physical burgers, three washed plates`);
 });
-test('all22 recipes use a physical primary ingredient and the correct serving vessel, with cold food remaining cold',()=>{
-  for(const recipe of RECIPES){const d=new Cook({menu:[recipe.id],customers:1,tutorialLearning:true});d.dish(recipe.id);assert.equal(d.s.cleanPlates,recipeVessel(recipe.id)==='plate'?1:2);assert.equal(d.s.chef.held!.vesselKind,recipeVessel(recipe.id));assert.equal(d.s.chef.held!.ingredientId,recipe.ingredients[0]);assert.equal(d.s.chef.held!.stage,`plated_${recipe.id}`);}
+test('every recipe uses a physical primary ingredient and the correct serving vessel, with cold food remaining cold',()=>{
+  for(const recipe of RECIPES){const d=new Cook({menu:[recipe.id],customers:1,tutorialLearning:true});d.dish(recipe.id);assert.equal(d.s.cleanPlates,d.s.config.plateCount-(recipeVessel(recipe.id)==='plate'?1:0));assert.equal(d.s.chef.held!.vesselKind,recipeVessel(recipe.id));assert.equal(d.s.chef.held!.ingredientId,recipe.ingredients[0]);assert.equal(d.s.chef.held!.stage,`plated_${recipe.id}`);}
   const d=new Cook({menu:['fries'],...buildServiceLoadout(1,['classic_burger','fries'])});d.supply('fries');d.touch('prep');d.send({type:'hold',active:true});d.until(()=>!!d.s.stations.find(st=>st.kind==='prep')!.slots[0].job?.ready);d.touch('prep');d.touch('fryer');d.until(()=>!!d.s.stations.find(st=>st.kind==='fryer')!.slots[0].job?.ready);d.touch('fryer');stepService(d.s,SERVICE_RULES.coldTicks);d.touch('boxes');d.touch('fryer');assert.equal(d.s.chef.held?.kind,'dish');assert.equal(d.s.chef.held?.cold,true);
 });
 test('legacy recipe portions resume with their original meaning and do not conjure a physical plate pool',()=>{

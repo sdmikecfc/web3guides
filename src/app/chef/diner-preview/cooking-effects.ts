@@ -11,7 +11,7 @@ export interface CookingEffects {
 }
 
 const STEAM=1,BUBBLES=2,READY=4,SMOKE=8,PUFFS=3,BUBBLE_COUNT=3;
-const HOT=new Set(['grill','fryer','oven','coffee','waffle']);
+const HOT=new Set(['grill','fryer','boiler','oven','coffee','waffle']);
 const frac=(value:number)=>value-Math.floor(value);
 
 /** A bounded, allocation-free frame loop. All geometry/materials belong to this instance. */
@@ -62,20 +62,20 @@ export function createCookingEffects(maxSlots=6):CookingEffects {
     surface=Number.isFinite(surfaceHeight)?surfaceHeight:.93;group.rotation.y=Math.PI-(object.rotation??0)*Math.PI/2;
     let hash=0;for(let i=0;i<object.id.length;i++)hash=(hash*31+object.id.charCodeAt(i))>>>0;seed=(hash%997)/997;
     const slots=object.slots?.length?object.slots:null;count=Math.min(capacity,slots?.length??1);
-    const columns=count>4?3:Math.min(2,count),rows=Math.ceil(count/columns),span=object.kind==='pass'?.50:.28;
+    const columns=count>4?3:Math.min(2,count),rows=Math.ceil(count/columns),span=object.kind==='pass'?(columns===3?.56:.86):.28;
     for(let i=0;i<capacity;i++){
       if(i>=count){modes[i]=0;foods[i]='';progress[i]=-1;activity[i]=0;continue;}
       const slot=slots?.[i],food=slots?slot?.food:object.food,state=(slots?slot?.state:object.state)??'idle',nextProgress=(slots?slot?.progress:object.progress)??0;
       const identity=food?`${food.recipeId}:${food.stage??''}:${food.kind}`:'';
       if(identity!==foods[i]){activity[i]=0;progress[i]=-1;foods[i]=identity;}
-      xs[i]=(i%columns-(columns-1)/2)*span;zs[i]=(Math.floor(i/columns)-(rows-1)/2)*.31;
+      xs[i]=(i%columns-(columns-1)/2)*span;zs[i]=(Math.floor(i/columns)-(rows-1)/2)*(object.kind==='pass'?.37:.31);
       let mode=0;
       if(food?.kind==='burnt')mode=SMOKE;
       else if(food&&!food.cold&&food.kind!=='dirty'){
         if(state==='ready'&&food.kind!=='raw')mode=READY;
         else if(state==='working'){
           if(HOT.has(object.kind))mode|=STEAM;
-          if(object.kind==='fryer'){mode|=BUBBLES;activity[i]=-1;}
+          if(object.kind==='fryer'||object.kind==='boiler'){mode|=BUBBLES;activity[i]=-1;}
           // Hand-operated bowls must actually advance, rather than fizz forever
           // merely because unfinished food was left at the station.
           if(object.kind==='blender'){

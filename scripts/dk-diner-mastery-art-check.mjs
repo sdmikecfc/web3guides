@@ -43,8 +43,8 @@ function item(recipeId,id='dish',mastery=999){return {id,recipeId,kind:'dish',st
 function allFood(scene){return [...scene.objects.flatMap(o=>[o.food,...(o.slots??[]).map(s=>s.food)]),...scene.people.map(p=>p.held),...scene.tables.flatMap(t=>t.seats.map(s=>s.item))].filter(Boolean);}
 function freeze(value){if(value&&typeof value==='object'&&!Object.isFrozen(value)){Object.freeze(value);for(const child of Object.values(value))freeze(child);}return value;}
 
-test('all 22 plated recipes have distinct basic, signature and mastered geometry within serving bounds',()=>{
-  assert.equal(RECIPES.length,22);
+test('all 24 plated recipes have distinct basic, signature and mastered geometry within serving bounds',()=>{
+  assert.equal(RECIPES.length,24);
   for(const recipe of RECIPES){
     const stages=[0,3,10].map(level=>model(recipe.id,'dish',level)),hashes=stages.map(fingerprint);
     assert.equal(new Set(hashes).size,3,`${recipe.id}: mastery has no visible geometry/material change`);
@@ -90,4 +90,4 @@ test('real home service sends owned mastery to all food locations while preservi
 test('rebuilding mastery variants does not grow retained kit resources after warmup',()=>{
   const before=kit.modelKitStats();for(let cycle=0;cycle<3;cycle++)for(const recipe of RECIPES)for(const level of [0,3,10])kit.disposeObject(model(recipe.id,'dish',level));assert.deepEqual(kit.modelKitStats(),before);
 });
-console.log(`${groups} mastery-art groups passed; ${geometryCases} real geometry cases, 22 dishes. No raster/visual approval claimed.`);
+console.log(`${groups} mastery-art groups passed; ${geometryCases} real geometry cases, ${RECIPES.length} dishes. No raster/visual approval claimed.`);

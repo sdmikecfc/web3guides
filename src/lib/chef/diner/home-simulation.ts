@@ -20,7 +20,7 @@ export type HomeRates = {coins:number;reputation:number;plates:number;platesByRe
 const clone=<T>(value:T):T=>JSON.parse(JSON.stringify(value));
 const bounded=(v:number,fallback:number,lo:number,hi:number):number=>Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):fallback;
 const key=(p:Point)=>`${p.x},${p.y}`;
-const kinds:StationKind[]=['crate','grill','prep','fryer','sink','bin','oven','blender','coffee','drinks','waffle','pass'];
+const kinds:StationKind[]=['crate','grill','prep','fryer','boiler','sink','bin','oven','blender','coffee','drinks','waffle','pass'];
 function footprint(p:HomePlacement):Point[]{if(p.mount)return [];const size=(EQUIPMENT_BY_ID[p.equipmentId]??DECOR_BY_ID[p.equipmentId])?.footprint??[1,1];const [w,h]=p.rotation%2?[size[1],size[0]]:size;return Array.from({length:w*h},(_,i)=>({x:p.x+i%w,y:p.y+Math.floor(i/w)}));}
 function frontOf(p:HomePlacement):Point {const cells=footprint(p);return p.rotation===0?{x:p.x,y:Math.max(...cells.map(c=>c.y))+1}:p.rotation===1?{x:p.x-1,y:p.y}:p.rotation===2?{x:p.x,y:p.y-1}:{x:Math.max(...cells.map(c=>c.x))+1,y:p.y};}
 function id(w:HomeWorld,prefix:string):string{return `${prefix}_${w.nextId++}`;}

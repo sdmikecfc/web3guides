@@ -60,7 +60,7 @@ export function nearestTruckInteraction(service:ServiceState,preferredId?:string
     else if(component(held))contextual=station.kind==='prep';
     else if(!held&&service.config.physicalSupplies){
       if(isSupply)contextual=!!choice;
-      else if(['plates','cups','boxes'].includes(station.kind))contextual=service.stations.some(s=>s.slots.some(slot=>slot.item&&prepared(service,slot.item)&&(!slot.batch||slot.batch.phase==='raised')&&vesselSupplyStation(requiredVessel(service,slot.item))===station.kind));
+      else if(['plates','cups','boxes','bowls'].includes(station.kind))contextual=service.stations.some(s=>s.slots.some(slot=>slot.item&&prepared(service,slot.item)&&(!slot.batch||slot.batch.phase==='raised')&&vesselSupplyStation(requiredVessel(service,slot.item))===station.kind));
       else if(station.slots.some(slot=>slot.batch?.phase==='ready'))contextual=true;
       else if(station.slots.some(slot=>!slot.job&&(component(slot.item)||missingIngredients(slot.item).length>0)))contextual=false;
       else if(station.slots.some(slot=>prepared(service,slot.item)))contextual=false;
@@ -113,13 +113,14 @@ export function firstLunchCoach(service:ServiceState):LunchCoach {
     const seconds=Math.ceil(job.remaining/SERVICE_RULES.ticksPerSecond),name=EQUIPMENT_BY_ID[working.kind].name.toLowerCase();
     if(manual)return hint(job.action==='wash'?`Hold to wash the ${SERVING_VESSELS[slot.item?.vesselKind??'plate'].name}`:'Hold to finish the dish',`At the ${name}, hold the work control or E. Release to stop.`,working.id);
     if(slot.item?.kind==='dirty')return hint('The dish is washing',`${seconds}s remaining. Washing returns it to the clean supply.`,working.id);
+    if(slot.boil)return hint('Let the noodles boil',`${seconds}s remaining. When ready, lift and drain the basket before collecting the noodles.`,working.id);
     return hint('Let it cook',`${seconds}s remaining. ${job.burnRemaining!==null?'Collect it when ready, before it burns.':'Collect the food when it is ready.'}`,working.id);
   }
   const dirty=service.tables.flatMap(table=>table.seats.map(seat=>({table,seat}))).find(({seat})=>seat.item?.kind==='dirty');
   if(dirty)return hint(`Clear the used ${SERVING_VESSELS[dirty.seat.item?.vesselKind??'plate'].name}`,'Pick it up, then take it to the sink.',dirty.table.id);
   const eating=service.customers.find(c=>c.phase==='eating');
-  if(eating&&service.served===1&&service.washed===0)return hint('Let your guest enjoy it','When they finish, pick up the dirty plate.',eating.tableId);
-  if(service.tables.some(table=>table.seats.some(seat=>seat.status==='awaitingWash')))return hint('The plate is being cleared','A clean plate makes this seat ready for another guest.');
+  if(eating&&service.served===1&&service.washed===0){const meal=service.tables.find(table=>table.id===eating.tableId)?.seats.find(seat=>seat.id===eating.seatId)?.item,name=SERVING_VESSELS[meal?.vesselKind??'plate'].name;return hint('Let your guest enjoy it',`When they finish, pick up the dirty ${name}.`,eating.tableId);}
+  if(service.tables.some(table=>table.seats.some(seat=>seat.status==='awaitingWash')))return hint('The dish is being cleared','Clearing the used dish makes room for another guest.');
   if(service.spawned===service.config.customers&&service.customers.every(c=>['eating','leaving','gone'].includes(c.phase)))return hint('A good lunch','Your guests are finishing up.');
   if(service.config.physicalSupplies){const needed=neededSupply(service);if(needed)return supplyCoach(service,needed);}
   const recipeId=requestedRecipe(service),crate=service.stations.find(s=>s.kind==='crate'),recipe=recipeId?RECIPE_BY_ID[recipeId]:undefined;
@@ -136,9 +137,15 @@ function physicalLunchCoach(service:ServiceState):LunchCoach|null{
   const held=service.chef.held,hint=(heading:string,detail:string,targetId:string|null=null):LunchCoach=>({heading,detail,targetId});
   const counter=service.stations.find(station=>station.kind==='prep'&&!serviceTargetIntent(service,station.id).disabled);
   if(!held){const readyBasket=service.stations.find(station=>station.slots.some(slot=>slot.batch?.phase==='ready'));if(readyBasket)return hint('Raise the fryer basket','Lift it out of the oil before portioning three servings.',readyBasket.id);}
+  if(!held){
+    const readyBoiler=service.stations.find(station=>station.slots.some(slot=>slot.item&&slot.boil?.phase==='ready'));
+    if(readyBoiler)return hint('Lift & drain the noodles','Select the boiler to lift its basket out of the water. Then collect the drained noodles.',readyBoiler.id);
+    const drainedBoiler=service.stations.find(station=>station.slots.some(slot=>slot.item&&slot.boil?.phase==='drained'));
+    if(drainedBoiler)return hint('Collect the drained noodles','Take them from the boiler to the prep counter, then add the remaining ingredients.',drainedBoiler.id);
+  }
   if(held?.kind==='plate'){
     const food=service.stations.find(station=>station.slots.some(slot=>prepared(service,slot.item)&&matchingVessel(service,slot.item,held))),name=SERVING_VESSELS[held.vesselKind??'plate'].name;
-    return food?hint(held.vesselKind==='fry_box'?'Box one serving of fries':held.vesselKind==='cup'?'Pour into the cup':'Plate your finished food',`Bring this ${name} to the prepared food.`,food.id):hint(`Put the ${name} down`,'Leave it on the prep counter until the food is ready.',counter?.id??null);
+    return food?hint(held.vesselKind==='fry_box'?'Box one serving of fries':held.vesselKind==='cup'?'Pour into the cup':held.vesselKind==='bowl'?'Fill the bowl':'Plate your finished food',`Bring this ${name} to the prepared food.`,food.id):hint(`Put the ${name} down`,'Leave it on the prep counter until the food is ready.',counter?.id??null);
   }
   if(prepared(service,held)){
     const plate=service.stations.find(station=>station.slots.some(slot=>matchingVessel(service,held,slot.item))),name=SERVING_VESSELS[requiredVessel(service,held!)].name;
@@ -153,7 +160,7 @@ function physicalLunchCoach(service:ServiceState):LunchCoach|null{
     const counterPlate=service.stations.find(station=>station.slots.some(slot=>matchingVessel(service,food,slot.item)));
     if(counterPlate)return hint(`Pick up the ${name}`,'Bring it to the prepared food.',counterPlate.id);
     const rack=service.stations.find(station=>station.kind===vesselSupplyStation(kind)&&!serviceTargetIntent(service,station.id).disabled);
-    if(rack)return hint(kind==='plate'?'Fetch a clean plate':`Fetch a ${name}`,`The food is ready. Take a ${name} from its supply, then bring it back.`,rack.id);
+    if(rack)return hint(kind==='plate'||kind==='bowl'?`Fetch a clean ${name}`:`Fetch a ${name}`,`The food is ready. Take a ${name} from its supply, then bring it back.`,rack.id);
     if(!service.stations.some(station=>station.kind===vesselSupplyStation(kind)))return hint(`Pack a ${name} supply`,'This menu needs its matching serving containers. Add the supply before the next service.');
     const dirty=service.tables.find(table=>table.seats.some(seat=>seat.item?.kind==='dirty'&&(seat.item.vesselKind??'plate')===kind));
     if(dirty)return hint(`Wash a ${name} for this dish`,`Clear a dirty ${name} and wash it before serving.`,dirty.id);

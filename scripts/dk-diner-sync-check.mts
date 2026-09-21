@@ -4,7 +4,7 @@ import Module from 'node:module';
 import path from 'node:path';
 import { createDinerRecord, DinerAuthorityError, replayDiner, validateDinerEnvelope } from '../src/lib/chef/diner/authority';
 import type { DinerEnvelope } from '../src/lib/chef/diner/authority';
-import { dispatchDiner, homeIncidents, type DinerCommand, type DinerState } from '../src/lib/chef/diner/progression';
+import { dispatchDiner, homeIncidents, shopOffers, type DinerCommand, type DinerState } from '../src/lib/chef/diner/progression';
 import { createDinerEvent } from '../src/lib/chef/diner/events';
 import { homeGestureCommands } from '../src/lib/chef/diner/home-gesture';
 const loader=Module as unknown as {_load:(request:string,parent:unknown,isMain:boolean)=>unknown};
@@ -70,7 +70,7 @@ async function main(){
     const h=make();h.server.external([{type:'startRun'}]);
     // Canonical between-stop checkpoint after the two introductory lunches.
     const run=h.server.record.state.run!,first=run.map.find(node=>node.id===run.available[0])!,second=run.map.find(node=>node.id===first.next[0])!;
-    run.visited=[first.id,second.id];run.available=[...second.next];run.serviceDays=2;run.qualified=true;run.haul=388;
+    delete run.discoveryVersion;run.visited=[first.id,second.id];run.available=[...second.next];run.serviceDays=2;run.qualified=true;run.haul=388;
     const bank=h.server.record.state.coins,revision=h.server.record.revision,runId=run.id;
     assert(await h.sync.connect());h.server.loseNext=true;await send(h,{type:'goHome'});
     assert(h.sync.blocked);const id=h.sync.flight!.id;assert.equal(JSON.parse(h.storage.getItem(TAPE)!).flight.id,id);
@@ -105,10 +105,13 @@ async function main(){
     }
   });
   await check('a lost recipe-purchase receipt charges once and never enables new customer orders',async()=>{
-    const h=await connected(),before=h.server.record.state.coins,home=clone(h.server.record.state.home.menu);h.server.loseNext=true;
-    await send(h,{type:'buyTruckRecipe',recipeId:'cheeseburger'});assert(h.sync.blocked);const id=h.sync.flight!.id;
-    assert.equal(h.server.record.state.coins,before-140);assert.equal(h.server.record.state.recipes.cheeseburger.level,0);
-    clock+=1500;await h.sync.flush();assert.equal(h.sync.flight,null);assert.equal(h.server.record.state.coins,before-140);assert.deepEqual(h.server.record.state.truckConfig.menu,['classic_burger']);assert.deepEqual(h.server.record.state.home.menu,home);
+    const h=make();h.server.external([{type:'startRun'}]);const run=h.server.record.state.run!,markets=run.map.filter(node=>node.kind==='shop');
+    // Canonical fixture at a second visited market; offers use the real seeded stock.
+    run.visited=[markets[0].id];run.position=markets[1].id;run.available=[];run.haul=1000;run.offers=shopOffers(h.server.record.state);
+    const offer=run.offers.find(item=>item.kind==='recipe')!;assert(offer);const before=run.haul,bank=h.server.record.state.coins,home=clone(h.server.record.state.home.menu);
+    assert(await h.sync.connect());h.server.loseNext=true;await send(h,{type:'buyOffer',offerId:offer.id});assert(h.sync.blocked);const id=h.sync.flight!.id;
+    assert.equal(h.server.record.state.run!.haul,before-offer.price);assert.equal(h.server.record.state.recipes[offer.target].level,0);
+    clock+=1500;await h.sync.flush();assert.equal(h.sync.flight,null);assert.equal(h.server.record.state.run!.haul,before-offer.price);assert.equal(h.server.record.state.coins,bank);assert.deepEqual(h.server.record.state.truckConfig.menu,['classic_burger']);assert.deepEqual(h.server.record.state.home.menu,home);
     const requests=h.server.requests.filter(request=>request.path==='command');assert.equal(requests.length,2);assert(requests.every(request=>request.body.id===id));
   });
   await check('a lost capacity-upgrade response retries one receipt and charges only once',async()=>{

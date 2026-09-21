@@ -49,7 +49,7 @@ test("buzz expiry is integrated without retroactively changing the full till", (
   assert.deepEqual(whole.buzz, []); assert.ok(whole.home.till.coins > action(fresh(), { type: "settle" }, now + 8 * hour).home.till.coins);
 });
 test("road spending uses haul only and purchases survive failure with half the remainder", () => {
-  let state = started(); const shop = state.run!.map.find(n => n.kind === "shop")!;
+  let state = started(); const shops = state.run!.map.filter(n => n.kind === "shop"), shop=shops[1]; state.run!.visited=[shops[0].id];
   state.run!.available = [shop.id]; state = action(state, { type: "chooseNode", nodeId: shop.id }); state.coins = 100_000;
   const offer = state.run!.offers.find(o => o.kind === "recipe")!; rejected(state, { type: "buyOffer", offerId: offer.id }, "not_enough_haul");
   state.run!.haul = 401 + offer.price; state = action(state, { type: "buyOffer", offerId: offer.id }); assert.equal(state.recipes[offer.target].level, 0); assert.equal(state.coins, 100_000);
@@ -66,8 +66,8 @@ test("day cumulative service coins enter haul once; banking is never doubled", (
   const haul = state.run!.haul; state = action(state, { type: "goHome" }); assert.equal(state.coins, bank + haul);
   rejected(state, { type: "goHome" }, "between_stops");
 });
-test("tutorial failure grants exactly one home fryer and does not repeat on later runs", () => {
-  let state = action(atService(true), { type: 'service', action: { type: 'open' } }); rejected(state, { type: "goHome" }, "between_stops");
+test("legacy active tutorial failure retains its promised home fryer exactly once", () => {
+  let state = action(atService(true), { type: 'service', action: { type: 'open' } }); delete state.run!.discoveryVersion; rejected(state, { type: "goHome" }, "between_stops");
   // The third tutorial service is the intentional learning setback. The first two never drain patience.
   state.run!.serviceDays = 2; state.run!.service = null; state.run!.position = null;
   const scripted = state.run!.map.find(n => n.row === 3)!; state.run!.available = [scripted.id];
@@ -90,7 +90,7 @@ test("home layout conserves ownership, course selection needs its machines", () 
   rejected(state, { type: "homeLayout", layout: state.home.layout.map(p => p.id === "home-grill" ? { ...p, x: 5, y: 7 } : p) }, "invalid_layout");
   assert.deepEqual(action(state, { type: "homeLayout", layout: state.home.layout }).home.layout, state.home.layout);
 });
-test("route growth requires recipes plus finale; forged rewards and unknown fields refuse atomically", () => {
+test("route growth requires the previous finale; forged rewards and unknown fields refuse atomically", () => {
   const state = started(); rejected(state, { type: "service", action: { type: "tick", ticks: 0, coins: 99999 } } as any, "invalid_service_action");
   rejected(state, { type: "settle", coins: 99999 } as any, "invalid_command");
   const home = fresh(); rejected(home, { type: "startRun", routeId: ROUTES[1].id }, "route_locked");
@@ -116,7 +116,7 @@ test("practice uses owned equipment and never grants trip rewards or consumes a 
   rejected(started(), { type: "startPractice" }, "run_active");
 });
 test("menu and complete loadout persist at home and change only before opening", () => {
-  let state=prepared();state.equipment.fryer.truckOwned=true;state=action(state,{type:'buyTruckRecipe',recipeId:'fries'});state=action(state,{type:'buyTruckEquipment',equipmentId:'boxes'});
+  let state=prepared();state.equipment.fryer.truckOwned=true;state.recipes.fries={level:0};state=action(state,{type:'buyTruckEquipment',equipmentId:'boxes'});
   state=action(state,{type:'setupLayout',stations:[...state.truckConfig.stations.map(station=>station.kind==='fridge'?{...station,x:2,y:2,facing:2 as const}:station),{id:'fryer',kind:'fryer',x:3,y:0,facing:0},{id:'boxes',kind:'boxes',x:0,y:6,facing:3}],tables:state.truckConfig.tables});
   state = action(state, { type: "setTruckMenu", recipeIds: ["fries"] }); state.tutorial.finished = true;
   state = action(state, { type: "setupLayout", stations: state.truckConfig.stations, tables: state.truckConfig.tables });

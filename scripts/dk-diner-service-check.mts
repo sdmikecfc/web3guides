@@ -20,7 +20,7 @@ class Driver {
       assert(station,definition.station);this.interact(station.id);
       const itemId=station.id;this.act({type:'hold',active:true});
       this.until(()=>!!this.s.stations.find(st=>st.id===itemId)?.slots.some(slot=>slot.job?.ready),1000);
-      this.act({type:'hold',active:false});this.interact(station.id);
+      this.act({type:'hold',active:false});if(definition.station==='boiler')this.interact(station.id);this.interact(station.id);
       assert.equal(this.s.chef.held?.step,i+1,`${recipeId} step ${i}`);
       assert.notEqual(this.s.chef.held?.kind,'burnt');
     }
@@ -42,13 +42,13 @@ class Driver {
 }
 
 check('complete versioned diner catalog and reachable geometry at four truck sizes',()=>{
-  assert.equal(CONTENT_VERSION,1);assert.equal(INGREDIENTS.length,28);assert.equal(RECIPES.length,22);assert.equal(ROUTES.length,3);
-  assert.equal(new Set(RECIPES.map(r=>r.id)).size,22);
+  assert.equal(CONTENT_VERSION,1);assert.equal(INGREDIENTS.length,33);assert.equal(RECIPES.length,24);assert.equal(ROUTES.length,3);
+  assert.equal(new Set(RECIPES.map(r=>r.id)).size,24);
   for(const recipe of RECIPES){assert(recipe.ingredients.every(id=>INGREDIENTS.some(i=>i.id===id)));assert(recipe.steps.every(step=>EQUIPMENT_BY_ID[step.station]&&step.ticks>=0));assert(recipePrice(recipe.id,10)>recipe.basePrice);}
   for(const tier of [1,2,3,4] as const){const stations=starterStations(tier),tables=starterTables(tier),g=serviceGeometry(tier);assert.equal(validateServiceLayout(tier,stations,tables),null);assert(servicePath(tier,stations,tables,g.door,g.queue));assert.equal(tables.length,TRUCK_TIERS[tier].tables);}
   const same=starterStations();same.find(s=>s.kind==='grill')!.x=0;assert(validateServiceLayout(1,same,starterTables()));
   const doorBlocked=starterStations();doorBlocked.push(makeStation('extra','coffee',1,2));assert(validateServiceLayout(1,doorBlocked,starterTables()));
-  assert(buildServiceLoadout(1,['classic_burger','fries','lemonade','coffee']).error,'five-station menu cannot silently overflow starter');
+  assert.equal(buildServiceLoadout(1,['classic_burger','fries','lemonade','coffee']).error,null,'the wider shell accommodates saved larger menus; progression limits new menu selections');
 });
 check('actual input bot retains legacy eight-customer burger/fries service deterministically',()=>{
   const a=new Driver({seed:'full-service'});a.run();const b=new Driver({seed:'full-service'});b.run();
@@ -56,7 +56,7 @@ check('actual input bot retains legacy eight-customer burger/fries service deter
   console.log(`  eight customers, ${a.s.coins} haul coins, ${(a.s.tick/20).toFixed(1)} seconds, ${a.s.washed} washed plates`);
 });
 check('keyboard interruption preserves physical movement, avoids backtracking, and centers before turns',()=>{
-  const d=new Driver({seed:'keyboard',customers:1});d.act({type:'move',x:1,y:5});d.tick(3);
+  const d=new Driver({seed:'keyboard',customers:1});Object.assign(d.s.stations.find(st=>st.kind==='bin')!,{x:3,y:2});d.act({type:'move',x:1,y:5});d.tick(3);
   assert(Math.abs(d.s.chef.y-2.48)<1e-9);const first={x:d.s.chef.x,y:d.s.chef.y};
   d.act({type:'move',x:1,y:3});assert.equal(d.s.chef.y,first.y,'input alone must not teleport');d.tick();assert(d.s.chef.y>first.y,'same-direction key must not briefly walk backwards');
   const beforeReverse=d.s.chef.y;d.act({type:'move',x:1,y:2});assert.equal(d.s.chef.y,beforeReverse);d.tick();assert(d.s.chef.y<beforeReverse,'opposite key reverses within the current clear corridor');
@@ -68,7 +68,7 @@ check('keyboard interruption preserves physical movement, avoids backtracking, a
   d.act({type:'interact',targetId:'crate',recipeId:'classic_burger'});d.tick();const rounded={x:Math.round(d.s.chef.x),y:Math.round(d.s.chef.y)};d.act({type:'move',...rounded});d.act({type:'move',x:3,y:2});
   assert.equal(d.s.chef.targetId,null);d.until(()=>d.s.chef.path.length===0);assert.deepEqual({x:d.s.chef.x,y:d.s.chef.y},rounded);assert.equal(d.s.chef.held,null);
 });
-check('all 22 recipes execute their real ordered station chains and yield one matching plated item',()=>{
+check('all 24 recipes execute their real ordered station chains and yield one matching plated item',()=>{
   for(const recipe of RECIPES){const layout=buildServiceLoadout(1,[recipe.id]);assert.equal(layout.error,null,recipe.id);const d=new Driver({seed:recipe.id,menu:[recipe.id],customers:1,arrivalTicks:2000,queuePatienceTicks:12000,tablePatienceTicks:12000,...layout});d.cook(recipe.id);assert.equal(d.s.chef.held?.stage,`plated_${recipe.id}`);}
 });
 check('hold work stops on release, timed jobs keep cooking, pause/reload preserves exact state',()=>{

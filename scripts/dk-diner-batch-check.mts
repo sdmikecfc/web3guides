@@ -23,7 +23,8 @@ check('burnt, forged and incomplete batch records cannot mint servings',()=>{
 check('serving containers have distinct typed uses and later vessels remain unavailable',()=>{
   assert.equal(recipeVessel('classic_burger'),'plate');assert.equal(recipeVessel('fries'),'fry_box');for(const recipe of ['lemonade','coffee','vanilla_shake','strawberry_shake'])assert.equal(recipeVessel(recipe),'cup');
   assert.equal(vesselReusable('plate'),true);assert.equal(vesselReusable('cup'),true);assert.equal(vesselReusable('fry_box'),false);
-  for(const id of ['bowl','pizza_dish'] as const){assert.equal(SERVING_VESSELS[id].available,false);assert.equal(SERVING_VESSELS[id].supply,null);}
+  assert.equal(SERVING_VESSELS.bowl.available,true);assert.equal(SERVING_VESSELS.bowl.supply,'bowls');assert.equal(recipeVessel('tomato_pasta'),'bowl');assert.equal(recipeVessel('vegetable_ramen'),'bowl');
+  assert.equal(SERVING_VESSELS.pizza_dish.available,false);assert.equal(SERVING_VESSELS.pizza_dish.supply,null);
   assert.deepEqual(EQUIPMENT_BY_ID.cups.tiers.map(t=>t.capacity),[2,4]);assert(!HOME_EQUIPMENT.some(e=>['cups','boxes'].includes(e.id)));
 });
 check('utility purchases require their machine and never change a menu or grant a home copy',()=>{

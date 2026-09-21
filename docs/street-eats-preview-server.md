@@ -36,6 +36,12 @@ The account surface identifies the signed wallet. “Sign out this device” rev
 
 ## Required before enabling online saves
 
+### Why this preview asks for a Web3 provider
+
+This is a choice of the current diner implementation, not a requirement for connecting or verifying an Ethereum wallet. Launch Wars issues its own expiring session after signature verification; Doma Reporter verifies a signature to link an address to a Discord account. The earlier Domain Kitchen also used custom sessions. This diner instead exchanges its verified wallet proof through `auth.signInWithWeb3`, validates the resulting Supabase session on private requests, and keys player records to `auth.users`. That is why the provider must be enabled for the current code.
+
+A custom signed-session design could remove the provider dependency while preserving the same signature-only player experience. It requires a deliberate replacement of identity/session issuance, refresh, revocation and foreign-key ownership while retaining existing player IDs and saves. Removing the provider check or merely accepting a connected address would not implement that replacement. The closed-account banner below checks environment configuration only; it does not diagnose database migrations or provider settings.
+
 If the wallet address is visible but the page says **“Wallet accounts are being prepared”**, connection succeeded but game sign-in has not started. Check `/api/chef/diner/status`: `enabled=false` means the deployment's account-service flag or required environment values are missing. Applying SQL alone does not enable that flag. The three migrations below are required; older `domain_kitchen_*` migrations do not create these diner tables. Production is released only by the owner running `vercel --prod`; a Git push does not update the live site.
 
 Follow this order against a separate staging Supabase project, then repeat the reviewed configuration for the selected production project. Keep the public server flag off until the staged wallet and save checks pass. No command below has been applied by this implementation.

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { animateCharacter,box,cylinder,createModel,createFoodModel,disposeObject,material,PALETTE,configureRoomMount,type CharacterRig } from './models';
+import { animateCharacter,box,cylinder,createModel,createFoodModel,disposeObject,material,PALETTE,configureRoomMount,holdingCounterSlotPositions,type CharacterRig } from './models';
 import type { DinerSceneData,DinerSceneProps,SceneFood,ScenePerson,SceneObject,SceneTable } from './scene-types';
 import { homeSpatial, homeSupportAt, HOME_TERRACE_ELEVATION } from '../../../lib/chef/diner/home-spatial';
 import { createHomeBoard } from './home-board';
@@ -203,14 +203,14 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
     for(const object of data.objects){let view=stationViews.get(object.id);if(view&&view.kind!==`${object.kind}:${object.tier}:${object.color}:${object.stock}:${object.footprint?.join(',')}:${JSON.stringify(data.roomFinishes)}`){view.cooking?.dispose();disposeObject(view.root);stationRoot.remove(view.root);stationViews.delete(object.id);view=undefined;}view??=makeStation(object);
       const footprint=object.footprint??(object.kind==='pass'||object.kind==='queue_bench'?[2,1]:[1,1]),facing=object.rotation??0;
       const fw=facing%2?footprint[1]:footprint[0],fh=facing%2?footprint[0]:footprint[1];
-      const basket=view.model.getObjectByName('fryer-basket');if(basket)basket.position.y=object.basketRaised?.22:0;view.food.position.y=object.basketRaised?.22:0;
+      const basket=view.model.getObjectByName('fryer-basket')??view.model.getObjectByName('boiler-basket');if(basket)basket.position.y=object.basketRaised?.22:0;view.food.position.y=object.basketRaised?.22:0;
       view.root.position.set(object.x+(fw-1)/2,object.elevation??floorHeight(object.x,object.y),object.y+(fh-1)/2);view.model.rotation.y=rotationAngle(facing);view.food.rotation.y=rotationAngle(facing);
       configureRoomMount(view.model,object);
       const gate=view.model.getObjectByName('lift-gate-leaf');if(gate)gate.userData.openAngle=object.gateOpen?1.48:0;
       const staffDoor=view.model.getObjectByName('staff-door-leaf');if(staffDoor)staffDoor.userData.openYaw=object.gateOpen?-1.45:0;
       const window=view.model.getObjectByName('hatch-window');if(window)window.userData.slideTarget=object.slots?.some(slot=>slot.food)?.34:0;
       const slots=object.slots?.length?object.slots:[{food:object.food}],key=slots.map(slot=>foodKey(slot.food)).join('|');
-      if(view.foodKey!==key){view.food.clear();slots.forEach((slot,index)=>{if(!slot.food)return;const food=createFoodModel(slot.food),columns=slots.length>4?3:Math.min(2,slots.length),rows=Math.ceil(slots.length/columns),span=object.kind==='pass'?.50:.28;food.position.set((index%columns-(columns-1)/2)*span,(view.model.userData.surfaceHeight??.93)+.015,(Math.floor(index/columns)-(rows-1)/2)*.31);food.scale.setScalar(slots.length>2?.60:slots.length>1?.73:1);view.food.add(food);});view.foodKey=key;}
+      if(view.foodKey!==key){view.food.clear();const counter=object.kind==='pass'?holdingCounterSlotPositions(slots.length):null;slots.forEach((slot,index)=>{if(!slot.food)return;const food=createFoodModel(slot.food),columns=slots.length>4?3:Math.min(2,slots.length),rows=Math.ceil(slots.length/columns),spot=counter?.[index];food.position.set(spot?.x??(index%columns-(columns-1)/2)*.28,(view.model.userData.surfaceHeight??.93)+.015,spot?.z??(Math.floor(index/columns)-(rows-1)/2)*.31);food.scale.setScalar(spot?.scale??(slots.length>2?.60:slots.length>1?.73:1));view.food.add(food);});view.foodKey=key;}
       const states=object.slots?.map(slot=>slot.state)??[object.state],burning=states.includes('burning'),ready=states.includes('ready'),working=states.includes('working'),progress=object.slots?.find(slot=>slot.state==='working')?.progress??object.progress;
       if(object.kind==='spill'){const remaining=homeSpillScale(object.progress??0);view.model.children.forEach((child,i)=>{if(child instanceof THREE.Mesh&&child.geometry.type==='SphereGeometry'){child.scale.set(remaining,.08,remaining*.7);child.position.x=Math.sin(i*1.8)*.18*remaining;child.position.z=Math.cos(i*1.8)*.15*remaining;}});}
       if(object.kind==='parcel'&&(object.id.startsWith('incident:')||object.id==='home-parcel')){
@@ -272,7 +272,7 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
     if(nextGhostKey!==ghostKey){ghostKey=nextGhostKey;disposeObject(placementRoot);placementRoot.clear();if(editing&&data.placement)placementRoot.add(createPlacementGhost(data.placement,floorHeight,mode));}
     placementRoot.visible=editing;
     staticRoot.traverse(object=>{if(object.userData.editorGrid)object.visible=editing;});
-    const object=data.objects.find(o=>o.id===data.selectedId);workArrow.visible=editing&&!!object&&['crate','fridge','plates','cups','boxes','grill','prep','fryer','sink','bin','oven','blender','coffee','drinks','waffle','pass'].includes(object.kind);
+    const object=data.objects.find(o=>o.id===data.selectedId);workArrow.visible=editing&&!!object&&['crate','fridge','plates','cups','boxes','bowls','boiler','grill','prep','fryer','sink','bin','oven','blender','coffee','drinks','waffle','pass'].includes(object.kind);
     if(!object||!workArrow.visible)return;const facing=object.rotation??0,footprint=object.footprint??(object.kind==='pass'?[2,1]:[1,1]),w=facing%2?footprint[1]:footprint[0],h=facing%2?footprint[0]:footprint[1];
     const target=facing===0?{x:object.x,y:object.y+h}:facing===1?{x:object.x-1,y:object.y}:facing===2?{x:object.x,y:object.y-1}:{x:object.x+w,y:object.y};
     workArrow.position.set(target.x,floorHeight(target.x,target.y)+.018,target.y);workArrow.rotation.z=-facing*Math.PI/2;

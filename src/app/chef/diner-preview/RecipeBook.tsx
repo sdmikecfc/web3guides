@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { EQUIPMENT_BY_ID, INGREDIENT_BY_ID, RECIPES, RECIPE_BY_ID, ROUTES, recipePrice } from "@/lib/chef/diner/content";
-import { DINER_RULES, menuSlots, type DinerCommand, type DinerState } from "@/lib/chef/diner/progression";
+import { DINER_RULES, menuSlots, autoHomeRecipeIds, type DinerCommand, type DinerState } from "@/lib/chef/diner/progression";
 import type { Course, RecipeDef } from "@/lib/chef/diner/types";
 import { DinerIcon } from "./DinerIcon";
+import { isKitRecipe } from '@/lib/chef/diner/recipe-progression';
+import { RecipeLearning, recipeEquipmentHint } from './RecipeLearning';
 import { IngredientArt } from "./IngredientArt";
 import { ModelIcon } from "./ModelIcon";
 import css from "./recipe-book.module.css";
@@ -17,7 +19,8 @@ export interface RecipeBookProps {
 
 const COURSE_NAMES: Record<Course, string> = { starter: "Starter", main: "Main course", dessert: "Dessert", drink: "Drink" };
 const DISCOVERIES = [
-  ...ROUTES.map(route => ({ id: route.id, name: route.name, hint: `Find recipes at ${route.name} shops, or earn one by finishing the route.` })),
+  { id: "starter", name: "Burger favourites", hint: "Start with classic burger. Look for a fries recipe and a fryer as separate roadside finds." },
+  ...ROUTES.map(route => ({ id: route.id, name: route.name, hint: `${route.name} favourites. Roadside markets offer a small random selection; recipes begin at your second market. Equipment is a separate purchase.` })),
   { id: "secret", name: "Secret recipes", hint: "Collect three matching recipe scraps to learn a secret dish." },
 ];
 
@@ -28,7 +31,8 @@ export function RecipeBook({ state, send, openPantry }: RecipeBookProps) {
   const [discoveryId, setDiscoveryId] = useState("downtown");
   // Account changes can replace the collection while this panel remains open.
   const selected = owned.find(recipe => recipe.id === selectedId) ?? owned[0];
-  const learned = owned.length;
+  const learned = owned.length, automatic=autoHomeRecipeIds(state);
+  const equipmentDriven=isKitRecipe;
   const mastered = owned.filter(recipe => state.recipes[recipe.id].level >= DINER_RULES.maxDishLevel).length;
   const discovery = DISCOVERIES.find(route => route.id === discoveryId) ?? DISCOVERIES[0];
   const discoverable = RECIPES.filter(recipe => recipe.route === discovery.id);
@@ -49,7 +53,7 @@ export function RecipeBook({ state, send, openPantry }: RecipeBookProps) {
 
     <div className={css.recipeRail} aria-label="Choose one of your recipes">
       {owned.map(recipe => {
-        const level = state.recipes[recipe.id].level, active = state.home.menu[recipe.course].includes(recipe.id);
+        const level = state.recipes[recipe.id].level, active = automatic.includes(recipe.id)||state.home.menu[recipe.course].includes(recipe.id);
         return <button key={recipe.id} type="button" className={`${css.recipeTab} ${selected?.id === recipe.id ? css.selectedTab : ""}`} aria-pressed={selected?.id === recipe.id} onClick={() => setSelectedId(recipe.id)}>
           <span className={css.tabArt}><ModelIcon kind="food" recipeId={recipe.id} mastery={level} label="" size={76} />{active && <span className={css.onMenuDot} title="On your home menu"><DinerIcon name="check" size={12} /></span>}</span>
           <strong>{recipe.name}</strong><small>{level >= DINER_RULES.maxDishLevel ? "Mastered" : `Level ${level}`}{active ? " · On menu" : ""}</small>
@@ -61,8 +65,9 @@ export function RecipeBook({ state, send, openPantry }: RecipeBookProps) {
       const level = state.recipes[selected.id].level, isMastered = level >= DINER_RULES.maxDishLevel;
       const currentPrice = recipePrice(selected.id, level), nextPrice = recipePrice(selected.id, level + 1);
       const ingredientsReady = selected.ingredients.every(id => (state.pantry[id] ?? 0) >= 1);
-      const active = state.home.menu[selected.course].includes(selected.id);
+      const active = automatic.includes(selected.id)||state.home.menu[selected.course].includes(selected.id);
       const missingStations = [...new Set(selected.steps.map(step => step.station))].filter(station => !state.home.layout.some(piece => piece.equipmentId === station));
+      const truckChosen=(state.run?.menu??state.truckConfig.menu).includes(selected.id);
       const currentCourse = state.home.menu[selected.course];
       const replacement = !active && currentCourse.length >= menuSlots(state) ? RECIPE_BY_ID[currentCourse[0]] : undefined;
       const menuLabel = active ? "Remove from home menu" : replacement ? `Serve instead of ${replacement.name}` : "Add to home menu";
@@ -100,14 +105,17 @@ export function RecipeBook({ state, send, openPantry }: RecipeBookProps) {
           </> : <div className={css.masteredNote}><DinerIcon name="star" size={30} /><div><strong>A recipe to be proud of.</strong><p>All ten upgrades complete. This dish earns {currentPrice} kitchen coins per serving.</p></div></div>}
 
           <div className={css.menuSection}>
-            <div className={css.menuStatus}><DinerIcon name="home" size={18} /><strong>{active ? "On your home menu" : "Your home menu"}</strong><span>{currentCourse.length} / {menuSlots(state)} {selected.course === "main" ? "main" : selected.course} slots</span></div>
-            <button type="button" className={`${css.menuButton} ${active ? css.activeMenuButton : ""}`} disabled={!active && missingStations.length > 0} onClick={() => setHomeRecipe(selected)}>{active ? <DinerIcon name="check" size={18} /> : <DinerIcon name="plate" size={18} />}{menuLabel}</button>
+            <div className={css.menuStatus}><DinerIcon name="truck" size={18}/><strong>{truckChosen?'On your truck menu':'Your truck kitchen'}</strong></div>
+            <p className={css.menuNote}>{recipeEquipmentHint(state,selected.id)} {!truckChosen&&'Use Choose menu in truck preparation when you want to serve this dish.'}</p>
+            <div className={css.menuStatus}><DinerIcon name="home" size={18} /><strong>{active ? "On your home menu" : "Your home menu"}</strong><span>{equipmentDriven(selected.id)?'Equipment-driven':`${currentCourse.length} / ${menuSlots(state)} ${selected.course} slots`}</span></div>
+            {equipmentDriven(selected.id)?<p className={css.menuNote}>Your crew serves this dish automatically when its machines are placed, working and reachable. Store the boiler to stop new noodle orders.</p>:<button type="button" className={`${css.menuButton} ${active ? css.activeMenuButton : ""}`} disabled={!active && missingStations.length > 0} onClick={() => setHomeRecipe(selected)}>{active ? <DinerIcon name="check" size={18} /> : <DinerIcon name="plate" size={18} />}{menuLabel}</button>}
             {missingStations.length > 0 && <p className={css.menuNote}>Place {missingStations.map(id => EQUIPMENT_BY_ID[id]?.name ?? id).join(" and ")} at home to serve this dish.</p>}
           </div>
         </div>
       </article>;
     })() : <p className={css.empty}>Your first recipes will appear here.</p>}
 
+    <RecipeLearning state={state}/>
     <section className={css.discovery} aria-label="Recipes to discover">
       <div className={css.discoveryHeading}><div><span className={css.eyebrow}>Room for more favorites</span><h3>Out there, waiting for you</h3></div><DinerIcon name="book" size={28} /></div>
       <div className={css.routeRail} aria-label="Browse recipes by route">{DISCOVERIES.map(route => {
@@ -120,7 +128,7 @@ export function RecipeBook({ state, send, openPantry }: RecipeBookProps) {
           const known = Object.hasOwn(state.recipes, recipe.id);
           return <li key={recipe.id} className={known ? css.discovered : undefined}>
             <div className={css.discoveryArt}><ModelIcon kind="food" recipeId={recipe.id} mastery={state.recipes[recipe.id]?.level??0} label="" size={80} />{known && <span><DinerIcon name="check" size={13} /></span>}</div>
-            <strong>{recipe.name}</strong><small>{known ? "In your cookbook" : recipe.secret ? `${state.collections.scraps[recipe.id] ?? 0} / 3 scraps` : "To discover"}</small>
+            <strong>{recipe.name}</strong><small>{known ? "In your cookbook" : recipe.secret ? `${state.collections.scraps[recipe.id] ?? 0} / 3 scraps` : "Find at roadside markets"}</small>
           </li>;
         })}
       </ul>
