@@ -17,6 +17,14 @@ The starter stools now face the opposite wall from the bathroom. The server spaw
 
 The development-only `/chef/room-review` shows all three rooms and live service without loading or writing any account.
 
+## Pavement and dining furniture polish
+
+- All three staged rooms have a supported three-row concrete apron. Ingredient parcels and neighbour deliveries use separate exterior positions clear of the entrance. Planters frame the frontage; the starter daisy pot is a larger floor planter, with a smaller version when mounted on a counter. The restaurant's actual name appears on the back wall above the bathroom wing.
+- The diner has a fluted oak counter, cream worktop, chrome foot rail and upholstered stools. Renovation includes a two-seat booth and oak/teal finishes. Previously purchased finish choices are preserved. Existing diners receive their once-only booth in storage, leaving their layouts intact; more booths are available in the diner and restaurant furniture shop.
+- Booth benches are fixed parts of the furnishing, with explicit rotated seat cells and serving access. They cannot silently move to another side to accommodate an obstruction. Invalid placement previews retain their bench outlines. Booths never enter truck shops or loadouts.
+- Restaurant tables have linen cloths, placemats, folded napkins, cutlery and small flower arrangements. Plate positions and place settings follow the actual seats after rotation. Staff doors keep a full-height opening at every camera angle; kitchen partitions now match the doorway height instead of leaving a short wall beside a tall frame.
+- Verification covers booth grants/purchases/save migration, seating and service, rotated placement, terrace grounding and gestures, camera projections and geometry. Art checks pass 431 kit cases and 75 room/table cases; 140 placement-model previews pass. Desktop and 390px viewport reviews check all three stages; these are visual checks, not new device-performance measurements.
+
 ## Growth and music
 
 The measured initial calibration is 100 qualifying services per renovation, with only twelve introductory lunches contributing, plus the approved recipe, route, difficulty and coin requirements. This is a calibration, not a completed-player timing claim. See `domain-kitchen-restaurant-career.md` for the measured 2.98-minute slow and 3.85-minute medium samples, finite ingredient bundles and save/authority details.

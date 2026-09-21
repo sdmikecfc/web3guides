@@ -6,7 +6,7 @@ export interface SceneFood { recipeId:string; kind:'raw'|'processed'|'dish'|'bur
 export interface SceneSlot { food?:SceneFood|null; state?:'idle'|'working'|'ready'|'burning'; progress?:number }
 export interface SceneObject extends ScenePoint { id:string; kind:string; rotation?:0|1|2|3; tier?:number; stock?:number; basketRaised?:boolean; portions?:number; state?:'idle'|'working'|'ready'|'burning'; progress?:number; food?:SceneFood|null; slots?:SceneSlot[]; footprint?:[number,number]; color?:string; elevation?:number; gateOpen?:boolean; condition?:number; mount?:{kind:'wall'|'counter';targetId:string;surfaceHeight:number} }
 export interface SceneSeat extends ScenePoint { id:string; status:string; item?:SceneFood|null; customerId?:string|null; surface?:ScenePoint }
-export interface SceneTable extends ScenePoint { id:string; capacity:1|2|3|4|6; rotation?:0|1|2|3; seats:SceneSeat[]; kind?:'console'|'chef_bar';footprint?:[number,number];seatHeight?:number;surfaceHeight?:number }
+export interface SceneTable extends ScenePoint { id:string; capacity:1|2|3|4|6; rotation?:0|1|2|3; seats:SceneSeat[]; kind?:'console'|'chef_bar'|'booth';footprint?:[number,number];seatHeight?:number;surfaceHeight?:number;tableStyle?:'cafe'|'restaurant' }
 export interface ScenePlacement { object?:SceneObject;table?:SceneTable;valid:boolean }
 export interface ScenePerson extends ScenePoint {
   id:string; role:'chef'|'waiter'|'cashier'|'customer'; look?:number; facing?:0|1|2|3;

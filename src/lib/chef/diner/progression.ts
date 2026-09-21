@@ -1,5 +1,5 @@
 /** Street Eats preview progression. Renderer-free, seeded, and isolated from dk saves. */
-import { CONTENT_VERSION, DIFFICULTIES, EQUIPMENT, EQUIPMENT_BY_ID, isTruckEquipmentAvailable, isHomeEquipmentAvailable, INGREDIENTS, INGREDIENT_BY_ID, RECIPES, RECIPE_BY_ID, ROUTES, SERVICE_RULES, SPICES, TRUCK_TIERS } from "./content";
+import { CONTENT_VERSION, DIFFICULTIES, EQUIPMENT, EQUIPMENT_BY_ID, HOME_ONLY_EQUIPMENT_IDS, isTruckEquipmentAvailable, isHomeEquipmentAvailable, INGREDIENTS, INGREDIENT_BY_ID, RECIPES, RECIPE_BY_ID, ROUTES, SERVICE_RULES, SPICES, TRUCK_TIERS } from "./content";
 import { createService, dispatchService, sanitizeService, serviceReadyError, serviceResult } from "./service";
 import { buildServiceLoadout, makeStation, makeTable, validateServiceLayout } from "./geometry";
 import { createHomeWorld, measureHomeRates, type HomeSimulationConfig } from "./home-simulation";
@@ -10,7 +10,7 @@ import { createDinerEvent, dispatchDinerEvent, eventServiceOptions, sanitizeDine
 import { createRally, dispatchRally, finishRally, startRally, type DinerRally } from "./rally";
 import type { Course, DinerTier, ServiceAction, ServiceState, ServiceStation, ServiceTable } from "./types";
 import { createDinerCareer, sanitizeDinerCareer, recordCareerService, careerIngredientBundle, type DinerCareer } from './career';
-import { createRenovationState, fixtureInventoryFor, getRenovationPreview, starterTrinketLayout, RENOVATION_RULES, type RenovationState, type FixtureInventory } from './renovation';
+import { createRenovationState, fixtureInventoryFor, getRenovationPreview, starterTrinketLayout, dinerFinishKit, RENOVATION_RULES, type RenovationState, type FixtureInventory } from './renovation';
 import { createRestaurantBlueprint, validateRoomPlan, alignRoomMounts, RESTAURANT_STAGES, ROOM_FIXTURES, ROOM_RULES, roomModuleGeometry, bathroomBays, type RoomPlan, type RestaurantStage, type RoomModuleKind } from './room-plan';
 import { ROOM_PALETTES, ROOM_FINISH_DEFAULTS, roomFinishPrice, type RoomFinishSlot } from './collections';
 export { getRenovationPreview, renovationRequirements, RENOVATION_RULES } from './renovation';
@@ -188,6 +188,14 @@ function normalizeRestaurant(state:DinerState){
   state.career??=createDinerCareer(state.updatedAt);if(!sanitizeDinerCareer(state.career))fail('invalid_career','This career needs valid service receipts.');
   state.renovation??=createRenovationState();
   const renovation=state.renovation;
+  if(renovation.dinerPaletteGranted!==undefined&&renovation.dinerPaletteGranted!==true)fail('invalid_palette_receipt','Keep the diner palette gift receipt.');
+  if(renovation.boothGrant!==undefined){const receipt=renovation.boothGrant;if(!receipt||receipt.version!==1||receipt.granted!==true||Object.keys(receipt).some(k=>k!=='version'&&k!=='granted'))fail('invalid_booth_receipt','Keep the diner booth gift receipt.');}
+  // Established diners keep their chosen layout. Their new welcome booth waits
+  // in storage, with the same once-only receipt used by new renovations.
+  if(!renovation.boothGrant&&(state.home.roomPlan?.stage==='diner'||state.home.roomPlan?.stage==='restaurant'||renovation.completed?.includes('diner'))){
+    state.equipment.booth_2??={tier:1,truckOwned:false,homeCopies:0};state.equipment.booth_2.homeCopies++;
+    renovation.boothGrant={version:1,granted:true};
+  }
   if(renovation.version!==1||!Array.isArray(renovation.completed)||new Set(renovation.completed).size!==renovation.completed.length||renovation.completed.some(s=>!Object.hasOwn(RESTAURANT_STAGES,s))||!Array.isArray(renovation.backups)||renovation.backups.length>3||!renovation.baseline||!Number.isSafeInteger(renovation.baseline.services)||renovation.baseline.services<0||renovation.baseline.services>state.career.services||!renovation.baseline.byDifficulty||!renovation.baseline.multiRecipe||Object.values(renovation.baseline.byDifficulty).some(v=>!Number.isSafeInteger(v)||v<0)||!['two','three'].every(k=>Number.isSafeInteger(renovation.baseline.multiRecipe[k as 'two'|'three'])&&renovation.baseline.multiRecipe[k as 'two'|'three']>=0))fail('invalid_renovation','This renovation needs a valid room snapshot.');
   if(!Number.isSafeInteger(renovation.baseline.introductory)||renovation.baseline.introductory<0||renovation.baseline.introductory>state.career.introductory||new Set(renovation.backups.map(b=>b?.id)).size!==renovation.backups.length)fail('invalid_renovation','Keep consistent career and room snapshots.');
   for(const backup of renovation.backups){if(!backup||typeof backup.id!=='string'||backup.id.length>100||!Number.isSafeInteger(backup.at)||backup.at<0||!Number.isInteger(backup.expansion)||backup.expansion<0||backup.expansion>3||!backup.staff||![backup.staff.chefs,backup.staff.waiters].every(n=>Number.isInteger(n)&&n>=1&&n<=8)||!Number.isInteger(backup.staff.cashiers??0)||(backup.staff.cashiers??0)<0||(backup.staff.cashiers??0)>8||(backup.roomPlan?backup.w!==backup.roomPlan.w||backup.h!==backup.roomPlan.h||backup.stage!==backup.roomPlan.stage:backup.stage!==null||![8,10,12,14].includes(backup.w)||backup.h!==backup.w)||validateDinerHome({...state,home:{...state.home,w:backup.w,h:backup.h,roomPlan:backup.roomPlan}},backup.layout))fail('invalid_snapshot','A preserved room needs valid owned furnishings and dimensions.');}
@@ -196,6 +204,12 @@ function normalizeRestaurant(state:DinerState){
   for(const saved of state.savedLayouts){if(!saved||typeof saved!=='object')fail('invalid_layouts','Keep valid saved room arrangements.');saved.room??={w:state.home.w,h:state.home.h,roomPlan:state.home.roomPlan?structuredClone(state.home.roomPlan):undefined};}
   state.home.finishes??={...ROOM_FINISH_DEFAULTS};state.paletteOwned??=Object.fromEntries(Object.entries(ROOM_FINISH_DEFAULTS).map(([slot,id])=>[slot,[id]])) as Record<RoomFinishSlot,string[]>;
   for(const slot of Object.keys(ROOM_PALETTES) as RoomFinishSlot[]){const ids=state.paletteOwned[slot];if(!Array.isArray(ids)||ids.length>ROOM_PALETTES[slot].length||new Set(ids).size!==ids.length||ids.some(id=>roomFinishPrice(slot,id)===null)||!ids.includes(ROOM_FINISH_DEFAULTS[slot])||!ids.includes(state.home.finishes[slot]))fail('invalid_palette','Keep purchased room colours in your collection.');}
+  if(!renovation.dinerPaletteGranted&&(state.home.roomPlan?.stage==='diner'||state.home.roomPlan?.stage==='restaurant'||renovation.completed.includes('diner'))){
+    const kit=dinerFinishKit(state);for(const slot of Object.keys(kit.includedPalette) as RoomFinishSlot[])state.paletteOwned[slot].push(...kit.includedPalette[slot]!);
+    if(state.home.roomPlan?.stage==='diner')state.home.finishes=kit.finishes;
+    renovation.dinerPaletteGranted=true;
+  }
+  for(const backup of renovation.backups)if(backup.finishes&&(Object.keys(backup.finishes).length!==Object.keys(ROOM_PALETTES).length||Object.entries(backup.finishes).some(([slot,id])=>!Object.hasOwn(ROOM_PALETTES,slot)||!state.paletteOwned![slot as RoomFinishSlot].includes(id))))fail('invalid_snapshot','Keep owned room finishes in the renovation snapshot.');
   if(state.home.roomPlan){
     if(state.home.w!==state.home.roomPlan.w||state.home.h!==state.home.roomPlan.h||validateRoomPlan(state.home.roomPlan,state.home.layout))fail('invalid_room_plan','Keep a valid restaurant floor plan.');
     state.home.fixtureInventory??=fixtureInventoryFor(state.home.roomPlan);
@@ -433,6 +447,12 @@ export function validateDinerHomePlacement(state: DinerState, layout: HomePlacem
 export function menuSlots(state: DinerState) { return state.restaurantLevel >= 12 ? 3 : state.restaurantLevel >= 5 ? 2 : 1; }
 export function staffSlots(state: DinerState) { const levelSlots=state.restaurantLevel >= 20 ? 8 : state.restaurantLevel >= 12 ? 6 : state.restaurantLevel >= 8 ? 5 : state.restaurantLevel >= 5 ? 4 : state.restaurantLevel >= 3 ? 3 : 2; return Math.max(state.home.roomPlan?3:2,levelSlots); }
 export function equipmentTierCap(state: DinerState) { return state.restaurantLevel >= 12 ? 3 : state.restaurantLevel >= 5 ? 2 : 1; }
+/** Home furniture has a stage unlock, without pretending it was a truck find. */
+export function homeEquipmentPurchaseError(state:DinerState,id:string):string|null {
+  if(!isHomeEquipmentAvailable(id))return 'Choose a furnishing available for your restaurant.';
+  if((HOME_ONLY_EQUIPMENT_IDS as readonly string[]).includes(id))return ['diner','restaurant'].includes(state.home.roomPlan?.stage??'')?null:'Open your first diner to buy upholstered booths.';
+  return state.equipment[id]?.truckOwned?null:'Discover this equipment on your truck first.';
+}
 export function homeMenu(state: DinerState): string[] {
   const machines = new Set(state.home.layout.map(p => p.equipmentId));
   return COURSES.flatMap(course => state.home.menu[course]).filter(id => state.recipes[id] && RECIPE_BY_ID[id]?.steps.every(step => machines.has(step.station)));
@@ -635,16 +655,15 @@ export function homeIncidents(state: DinerState) {
   const blocked=state.home.layout.filter(p=>!DECOR_BY_ID[p.equipmentId]?.passable).flatMap(footprint);
   // All adjacent table cells cover the simulator's actual chair candidates.
   // They remain walkable, but a spill or delivery must not sit underneath a chair.
-  const reserved=state.home.layout.filter(p=>['table_1','table_2','table_4'].includes(p.equipmentId)).flatMap(footprint).flatMap(p=>[{x:p.x-1,y:p.y},{x:p.x+1,y:p.y},{x:p.x,y:p.y-1},{x:p.x,y:p.y+1}]);
+  const reserved=state.home.layout.filter(p=>['table_1','table_2','table_4','booth_2'].includes(p.equipmentId)).flatMap(footprint).flatMap(p=>[{x:p.x-1,y:p.y},{x:p.x+1,y:p.y},{x:p.x,y:p.y-1},{x:p.x,y:p.y+1}]);
   return [0,1].flatMap(index=>{
-    const position=chooseHomeInteractionTile({width:state.home.w,height:state.home.h,blocked,reserved,preferred:{x:Math.floor(state.home.w/2)+(index===0?1:-1),y:state.home.h-3+index}});
+    const position=index===1?homeSpatial(state.home.w,state.home.h).delivery:chooseHomeInteractionTile({width:state.home.w,height:state.home.h,blocked,reserved,preferred:{x:Math.floor(state.home.w/2)+1,y:state.home.h-3}});
     if(!position)return [];reserved.push(position);
     return [{id:`incident:${day}:${index}`,kind:index===0?'spill' as const:'delivery' as const,name:index===0?'Wipe a little spill':"Unpack a neighbour's delivery",reward:DINER_RULES.incidentCoins,requiredTicks:index===0?DINER_RULES.incidentWorkTicks.spill:DINER_RULES.incidentWorkTicks.delivery,availableAt:availableAt+index*DINER_RULES.incidentWaitMs,...position}];
   }).filter(incident=>!state.daily.incidentClaims.includes(incident.id));
 }
 export function dailyIngredientParcel(state:DinerState){
-  const preferred={x:Math.floor(state.home.w/2)-1,y:state.home.h-1},room=state.home.roomPlan;
-  const position=room?chooseHomeInteractionTile({width:state.home.w,height:state.home.h,blocked:[...state.home.layout.filter(p=>!DECOR_BY_ID[p.equipmentId]?.passable).flatMap(footprint),...room.modules.flatMap(m=>[...roomModuleGeometry(m).cells,...roomModuleGeometry(m).seats])],preferred})??preferred:homeSpatial(state.home.w,state.home.h).context.parcel;
+  const position=homeSpatial(state.home.w,state.home.h).context.parcel;
   return {id:`crate:${state.daily.day}`,sceneId:'home-parcel',kind:'crate' as const,name:"Today's ingredient parcel",reward:0,requiredTicks:DINER_RULES.incidentWorkTicks.delivery,progressTicks:state.daily.crateProgressTicks??(state.daily.crate?DINER_RULES.incidentWorkTicks.delivery:0),claimed:state.daily.crate,availableAt:Math.max(state.createdAt,state.daily.day*DINER_RULES.dayMs),...position};
 }
 function homeTaskTarget(state:DinerState,id:string){
@@ -703,9 +722,12 @@ export function dispatchDiner(current: DinerState, command: DinerCommand, contex
         if(command.previewToken!==preview.token)fail('renovation_changed','Your room changed. Preview the renovation again before confirming.');
         spend(preview.cost);
         let index=0;while(state.renovation.backups.some(b=>b.id===`before-${command.stage}-${index}`))index++;
-        const backup={id:`before-${command.stage}-${index}`,at:now,stage:state.home.roomPlan?.stage??null,w:state.home.w,h:state.home.h,expansion:state.home.expansion,layout:structuredClone(state.home.layout),roomPlan:state.home.roomPlan?structuredClone(state.home.roomPlan):undefined,staff:{...state.home.staff}};
+        const backup={id:`before-${command.stage}-${index}`,at:now,stage:state.home.roomPlan?.stage??null,w:state.home.w,h:state.home.h,expansion:state.home.expansion,layout:structuredClone(state.home.layout),roomPlan:state.home.roomPlan?structuredClone(state.home.roomPlan):undefined,staff:{...state.home.staff},finishes:{...state.home.finishes!}};
         state.renovation.backups=[...state.renovation.backups,backup].slice(-3);
         for(const [id,count] of Object.entries(preview.includedFurniture)){state.equipment[id]??={tier:1,truckOwned:false,homeCopies:0};state.equipment[id].homeCopies+=count;}
+        if(preview.includedFurniture.booth_2)state.renovation.boothGrant={version:1,granted:true};
+        for(const slot of Object.keys(preview.includedPalette) as RoomFinishSlot[])state.paletteOwned![slot].push(...preview.includedPalette[slot]!);
+        state.home.finishes=preview.finishes;if(command.stage==='diner')state.renovation.dinerPaletteGranted=true;
         for(const [id,count] of Object.entries(preview.includedDecor))state.decorOwned[id]=(state.decorOwned[id]??0)+count;
         if(Object.keys(preview.includedDecor).length)state.starterTrinkets={version:1,granted:true};
         state.home.fixtureInventory??={};for(const module of preview.roomPlan.modules)state.home.fixtureInventory[module.id]??={kind:module.kind,condition:module.condition??100};
@@ -718,6 +740,7 @@ export function dispatchDiner(current: DinerState, command: DinerCommand, contex
         if(state.run||state.rally.service)fail('run_active','Return home before restoring your room.');
         const backup=state.renovation.backups.find(b=>b.id===command.backupId);if(!backup)fail('snapshot_unavailable','Choose a preserved room snapshot.');
         state.home.w=backup.w;state.home.h=backup.h;state.home.expansion=backup.expansion;state.home.layout=structuredClone(backup.layout);state.home.roomPlan=backup.roomPlan?structuredClone(backup.roomPlan):undefined;state.home.staff={...backup.staff};
+        if(backup.finishes)state.home.finishes={...backup.finishes};
         const cashier=state.staffMembers.find(member=>member.id==='cashier-1');if(cashier)cashier.role=backup.staff.cashiers?'cashier':'waiter';
         if(state.home.roomPlan)for(const m of state.home.roomPlan.modules){const owned=state.home.fixtureInventory?.[m.id];if(!owned||owned.kind!==m.kind)fail('fixture_not_owned','This snapshot needs its preserved room fixtures.');if(['toilet','handwash_sink'].includes(m.kind))m.condition=owned.condition;else delete m.condition;}
         const error=validateDinerHome(state,state.home.layout);if(error)fail('invalid_layout',error);state.homeTask=null;break;
@@ -898,7 +921,7 @@ export function dispatchDiner(current: DinerState, command: DinerCommand, contex
       case "harvestGarden": if (state.restaurantLevel < 3 || state.daily.garden || now - state.home.garden.plantedAt < 8 * DINER_RULES.hourMs) fail("garden_not_ready", "Your daily harvest needs a level-3 garden and eight growing hours."); else { addIngredient(state, state.home.garden.ingredientId); state.daily.garden = true; state.home.garden.plantedAt = now; break; }
       case "greetRegular": if (state.daily.kindness) fail("already_claimed", "Today's small kindness is already collected."); else { addIngredient(state, ingredientFor(state, "kindness")); state.daily.kindness = true; break; }
       case "upgradeRecipe": { const recipe = RECIPE_BY_ID[command.recipeId], owned = state.recipes[command.recipeId]; if (!owns(RECIPE_BY_ID,command.recipeId) || !owns(state.recipes,command.recipeId) || owned.level >= DINER_RULES.maxDishLevel) fail("recipe_unavailable", "Choose an owned recipe below level 10."); if (recipe.ingredients.some(id => (state.pantry[id] ?? 0) < 1)) fail("ingredients_needed", "Collect one full set of this dish's ingredients."); recipe.ingredients.forEach(id => state.pantry[id]--); owned.level++; if (owned.level === 10) { state.collections.trophies.push(`mastered:${recipe.id}`); state.collections.regulars[`fan:${recipe.id}`] ??= 0; } break; }
-      case "buyHomeEquipment": { const def = EQUIPMENT_BY_ID[command.equipmentId], owned = state.equipment[command.equipmentId]; if (!isHomeEquipmentAvailable(command.equipmentId) || !owns(state.equipment,command.equipmentId) || !owned?.truckOwned) fail("discover_first", "Discover this equipment on your truck first."); spend(def.tiers.find(t => t.tier === owned.tier)!.price * DINER_RULES.homeEquipmentMultiplier); owned.homeCopies++; break; }
+      case "buyHomeEquipment": { const id=command.equipmentId,error=homeEquipmentPurchaseError(state,id);if(error)fail('discover_first',error);const def=EQUIPMENT_BY_ID[id];state.equipment[id]??={tier:1,truckOwned:false,homeCopies:0};const owned=state.equipment[id];spend(def.tiers.find(t => t.tier === owned.tier)!.price * DINER_RULES.homeEquipmentMultiplier);owned.homeCopies++;break; }
       case "homeLayout": { const error = validateDinerHomePlacement(state, command.layout); if (error) fail("invalid_layout", error); state.home.layout = structuredClone(command.layout);if(state.homeTask){if(!homeTaskTarget(state,state.homeTask.incidentId))state.homeTask=null;else {state.homeTask.phase="paused";state.homeTask.gesture=emptyHomeGesture();}} break; }
       case "setHomeMenu": { const menu = command.menu; if (!menu || COURSES.some(course => !Array.isArray(menu[course]) || menu[course].length > menuSlots(state) || new Set(menu[course]).size !== menu[course].length || menu[course].some(id => !state.recipes[id] || RECIPE_BY_ID[id]?.course !== course || RECIPE_BY_ID[id].steps.some(s => !state.home.layout.some(p => p.equipmentId === s.station))))) fail("invalid_menu", "Use owned dishes, their installed stations, and your course slots."); state.home.menu = structuredClone(menu); break; }
       case "hire": { if (!["chef", "waiter"].includes(command.role) || state.home.staff.chefs + state.home.staff.waiters + (state.home.staff.cashiers??0) >= staffSlots(state)) fail("staff_full", "Your next restaurant level will make room for more staff."); spend(500); state.home.staff[command.role === "chef" ? "chefs" : "waiters"]++; const count = state.staffMembers.length; state.staffMembers.push({ id: `hired-${count}`, name: `${command.role === "chef" ? "Chef" : "Waiter"} ${count + 1}`, role: command.role, named: false, outfit: state.cosmetics.uniform, look: count % 8 }); break; }

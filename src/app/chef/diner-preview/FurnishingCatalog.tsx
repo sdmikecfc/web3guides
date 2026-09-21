@@ -5,8 +5,8 @@ import { ROOM_PALETTES, ROOM_FINISH_DEFAULTS, type RoomFinishSlot } from '@/lib/
 import type { RoomFinishChoice } from './RoomFinishPreview';
 import { renovationRequirements } from '@/lib/chef/diner/renovation';
 import { STAGE_COPY } from './RenovationPreview';
-import { HOME_EQUIPMENT } from '@/lib/chef/diner/content';
-import { DINER_RULES, staffSlots, type DinerCommand, type DinerState } from '@/lib/chef/diner/progression';
+import { HOME_EQUIPMENT, HOME_ONLY_EQUIPMENT_IDS } from '@/lib/chef/diner/content';
+import { DINER_RULES, staffSlots, homeEquipmentPurchaseError, type DinerCommand, type DinerState } from '@/lib/chef/diner/progression';
 import { ModelIcon } from './ModelIcon';
 import { DinerIcon } from './DinerIcon';
 import css from './furnishing-catalog.module.css';
@@ -22,6 +22,7 @@ const effects:Record<string,string>={
   oven:'Bake pies and warm desserts.',blender:'Blend thick, creamy milkshakes.',coffee:'A fresh coffee for your regulars.',
   drinks:'Pour a refreshing lemonade.',waffle:'Make golden strawberry waffles.',
   table_1:'One table, one chair. A little spot for a solo guest.',table_2:'Seats two. Keep both sides clear for guests.',table_4:'A place for four to eat together.',
+  booth_2:'A cosy upholstered booth for two. Keep both benches and a serving side clear.',
 };
 const money=(value:number)=>Math.floor(value).toLocaleString('en-US');
 const colors:Record<string,string>={cream:'#f4ebd7',mint:'#a7c8af',rose:'#deb5a7',terracotta:'#c98162',checker:'#88ae98'};
@@ -32,7 +33,7 @@ export function FurnishingCatalog({state,send,place,moreStyle,onGrow,onCook,onSt
     const owned=state.equipment[item.id],placed=state.home.layout.filter(p=>p.equipmentId===item.id).length;
     return {id:item.id,name:item.name,footprint:item.footprint,placed,stored:Math.max(0,(owned?.homeCopies??0)-placed),tier:owned?.tier??1,
       price:(item.tiers.find(t=>t.tier===owned?.tier)?.price??item.tiers[0].price)*DINER_RULES.homeEquipmentMultiplier,
-      locked:!owned?.truckOwned,kind:'equipment' as const,detail:effects[item.id]??'A useful addition to your restaurant.',wall:false};
+      locked:!!homeEquipmentPurchaseError(state,item.id),kind:'equipment' as const,detail:effects[item.id]??'A useful addition to your restaurant.',wall:false};
   });
   const decor=DECOR.filter(item=>!item.memento||state.decorOwned[item.id]>0).map(item=>{
     const placed=state.home.layout.filter(p=>p.equipmentId===item.id).length;
@@ -42,7 +43,7 @@ export function FurnishingCatalog({state,send,place,moreStyle,onGrow,onCook,onSt
   const all=[...equipment,...decor],storedCount=all.reduce((sum,item)=>sum+item.stored,0),available=all.filter(item=>view==='storage'?item.stored>0:!item.locked||item.stored>0);
   const renovation=renovationRequirements(state);
   const crew=state.home.staff.chefs+state.home.staff.waiters+(state.home.staff.cashiers??0),crewSlots=staffSlots(state);
-  const discoveries=equipment.filter(item=>item.locked&&!item.stored);
+  const discoveries=equipment.filter(item=>item.locked&&!item.stored&&!(HOME_ONLY_EQUIPMENT_IDS as readonly string[]).includes(item.id));
   return <div className={css.catalog}>
     <div className={css.tools} role="group" aria-label="Decoration collection">
       <button aria-pressed={view==='furnish'} onClick={()=>setView('furnish')}><DinerIcon name="store" size={19}/>Furnish</button>
@@ -70,7 +71,7 @@ export function FurnishingCatalog({state,send,place,moreStyle,onGrow,onCook,onSt
       {view==='storage'&&<p className={css.note}>Move a decoration here with Store. Place it again whenever you like, or sell a spare.</p>}
       {notice&&<p className={css.note} role="status">{notice}</p>}
       {available.length?<div className={css.grid}>{available.map(item=><article className={css.item} key={item.id}>
-        <div className={css.preview}><div className={css.platform}/><ModelIcon kind={item.id} tier={item.tier} label={item.name} size={180}/>{item.stored>0&&<span className={css.stored}>Yours · {item.stored}</span>}</div>
+        <div className={css.preview}><div className={css.platform}/><ModelIcon kind={item.id} tier={item.tier} label={item.name} size={180} tableStyle={item.id.startsWith('table_')&&state.home.roomPlan?.stage==='restaurant'?'restaurant':'cafe'}/>{item.stored>0&&<span className={css.stored}>Yours · {item.stored}</span>}</div>
         <div className={css.body}><span className={css.category}>{item.wall?'Wall decoration':item.kind==='decor'?'For the joy of it':`${item.footprint.join(' × ')} tiles`}</span><h3>{item.name}</h3><p>{item.detail}</p><span className={css.ownership}>{item.placed?`${item.placed} in your restaurant`:item.kind==='equipment'?`Tier ${item.tier}`:'Make it yours'}</span>
           <button className={css.place} disabled={!item.stored&&(item.locked||state.coins<item.price)} onClick={()=>{
             if(item.stored){place(item.id);return;}
@@ -80,7 +81,7 @@ export function FurnishingCatalog({state,send,place,moreStyle,onGrow,onCook,onSt
           {view==='storage'&&item.kind==='decor'&&!item.locked&&item.stored>0&&(sale===item.id?<div className={css.sale}><span>Sell one for {money(decorResaleValue(item.id)??0)} coins?</span><button onClick={()=>{if(send({type:'sellDecor',decorId:item.id})){setSale(null);setNotice(`${item.name} sold for ${money(decorResaleValue(item.id)??0)} coins.`);}}}>Sell one</button><button onClick={()=>setSale(null)}>Keep it</button></div>:<button className={css.sell} onClick={()=>setSale(item.id)}>Sell · {money(decorResaleValue(item.id)??0)} coins</button>)}
         </div>
       </article>)}</div>:<div className={css.empty}><DinerIcon name="gift" size={40}/><h3>Everything has a home.</h3><p>New finds and stored furnishings will wait here.</p><button onClick={()=>setView('furnish')}>Browse furniture</button></div>}
-      {view==='furnish'&&discoveries.length>0&&<section className={css.discovery} aria-label="Equipment to discover"><div className={css.discoveryHeading}><DinerIcon name="truck" size={25}/><div><h3>Bring something good home</h3><p>Discover equipment on a truck trip. Then buy copies for your restaurant here.</p></div></div><div className={css.discoveries}>{discoveries.map(item=><article key={item.id}><ModelIcon kind={item.id} label={item.name} size={110}/><h4>{item.name}</h4><p>{item.detail}</p><strong className={css.source}>{item.id==='fryer'&&!state.tutorial.finished?'A gift after your first adventure':'Find at a truck shop stop'}</strong><small>Restaurant copy: {money(item.price)} coins</small></article>)}</div>{onCook&&<button className={css.roadButton} onClick={onCook}>Explore with the truck<DinerIcon name="arrow" size={17}/></button>}</section>}
+      {view==='furnish'&&discoveries.length>0&&<section className={css.discovery} aria-label="Equipment to discover"><div className={css.discoveryHeading}><DinerIcon name="truck" size={25}/><div><h3>Bring something good home</h3><p>Discover equipment on a truck trip. Then buy copies for your restaurant here.</p></div></div><div className={css.discoveries}>{discoveries.map(item=><article key={item.id}><ModelIcon kind={item.id} label={item.name} size={110} tableStyle={item.id.startsWith('table_')&&state.home.roomPlan?.stage==='restaurant'?'restaurant':'cafe'}/><h4>{item.name}</h4><p>{item.detail}</p><strong className={css.source}>{item.id==='fryer'&&!state.tutorial.finished?'A gift after your first adventure':'Find at a truck shop stop'}</strong><small>Restaurant copy: {money(item.price)} coins</small></article>)}</div>{onCook&&<button className={css.roadButton} onClick={onCook}>Explore with the truck<DinerIcon name="arrow" size={17}/></button>}</section>}
     </>}
   </div>;
 }

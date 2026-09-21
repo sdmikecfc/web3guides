@@ -44,15 +44,15 @@ export function createHomeCameraBounds(scene:Pick<DinerSceneData,'width'|'height
 
   // The full supported board fixes the composition when customers or daily
   // parcels appear/disappear. Only real walls receive the full wall height.
-  add(space.bounds.minX,-.18,space.bounds.minY,space.bounds.maxX,.10,scene.roomPlan?scene.height+.22:space.bounds.maxY);
+  add(space.bounds.minX,-.18,space.bounds.minY,space.bounds.maxX,.10,space.bounds.maxY);
   add(-.70,0,-.70,scene.width-.30,scene.roomPlan?2.98:2.55,-.24);
   add(-.70,0,-.70,-.24,2.55,scene.height-.30);
   add(space.door.x-1.02,0,scene.height-.75,space.door.x+1.02,2.50,scene.height+.60);
 
   // Reserve the four permanent terrace destinations even after a parcel claim,
   // plus the regular's standing space even when nobody is visiting.
-  if(!scene.roomPlan){for(const point of Object.values(space.context))add(point.x-.50,0,point.y-.50,point.x+.50,1.65,point.y+.50);
-  add(space.regular.x-.48,0,space.regular.y-.48,space.regular.x+.48,2.05,space.regular.y+.48);}
+  for(const point of scene.roomPlan?[space.context.parcel,space.delivery]:Object.values(space.context))add(point.x-.50,0,point.y-.50,point.x+.50,scene.roomPlan?.95:1.65,point.y+.50);
+  if(!scene.roomPlan)add(space.regular.x-.48,0,space.regular.y-.48,space.regular.x+.48,2.05,space.regular.y+.48);
 
   for(const object of scene.objects){
     if(object.id.startsWith('incident:')||CONTEXT_IDS.has(object.id)||object.kind==='spill'||object.kind==='parcel')continue;

@@ -6,8 +6,8 @@ import css from './finish-preview.module.css';
 
 export const STAGE_COPY:Record<RestaurantStage,{name:string;description:string;included:string}>={
   burger_shop:{name:'Neighbourhood burger shop',description:'A little burger shop with a proper counter, three stools and room to make it yours.',included:'10 × 8 · cook, cashier & server · 3 stools · 2 bathroom bays, 1 toilet & 1 hand basin'},
-  diner:{name:'Your first diner',description:'A separate kitchen, a sliding serving hatch and a six-seat chef’s bar. Your servers take orders and start earning tips.',included:'12 × 10 · 6 bar stools · cashier becomes a second server · 3 bathroom bays'},
-  restaurant:{name:'Your full restaurant',description:'An enclosed kitchen and a dining room ready for your own style. Servers collect food inside the kitchen.',included:'14 × 12 · 3 two-seat tables & 6 chairs included · 4 bathroom bays'},
+  diner:{name:'Your first diner',description:'A warm oak chef’s bar, six upholstered stools and a booth for two. A separate kitchen serves through its hatch; servers take orders and earn tips.',included:'12 × 10 · 6 bar stools + a booth for two · oak & teal finishes · cashier becomes a second server · 3 bathroom bays'},
+  restaurant:{name:'Your full restaurant',description:'An enclosed kitchen and a dining room with linen-covered tables, flowers and proper place settings. Servers collect food inside the kitchen.',included:'14 × 12 · 3 dressed two-seat tables & 6 chairs included · keep your booth in storage · 4 bathroom bays'},
 };
 export type RenovationChoice=NonNullable<ReturnType<typeof getRenovationPreview>>;
 export function RenovationPreview({state,choice,before,setBefore,cancel,confirm}:{state:DinerState;choice:RenovationChoice;before:boolean;setBefore:(v:boolean)=>void;cancel:()=>void;confirm:()=>void}){

@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import { createDiner, dispatchDiner, homeSimulationConfig, sanitizeDinerSave, type DinerCommand, type DinerState } from '../src/lib/chef/diner/progression';
 import { createHomeWorld } from '../src/lib/chef/diner/home-simulation';
 import { makeTable } from '../src/lib/chef/diner/geometry';
+import { createRestaurantBlueprint, roomTableSeats } from '../src/lib/chef/diner/room-plan';
+import { fixtureInventoryFor } from '../src/lib/chef/diner/renovation';
 import { aimHomeMount, createPlacementDraft, movePlacementDraft, previewPlacement, rotatePlacementDraft } from '../src/app/chef/diner-preview/placement-preview';
 const now=Date.UTC(2026,8,20,8);
 const fresh=()=>createLegacyDinerFixture(now,'placement-check');
@@ -91,5 +93,14 @@ test('wall art previews snap to exterior walls, commit facing into the room and 
   state=reloaded;draft={...draft,existing:true};
  }
  assert(previewPlacement(state,{...draft,mount:{kind:'wall',targetId:'outer-back',slot:state.home.w}}).error);
+});
+test('booth previews and committed rooms share fixed bench cells, including invalid draft positions',()=>{
+ const state=createDiner(now,'booth-placement'),blueprint=createRestaurantBlueprint('diner');Object.assign(state.home,{w:blueprint.roomPlan.w,h:blueprint.roomPlan.h,roomPlan:blueprint.roomPlan,fixtureInventory:fixtureInventoryFor(blueprint.roomPlan),layout:blueprint.layout,staff:blueprint.staff});state.equipment.booth_2={tier:1,truckOwned:false,homeCopies:1};
+ const booth=state.home.layout.find(p=>p.equipmentId==='booth_2')!,original=structuredClone(state);let draft=movePlacementDraft(createPlacementDraft(state,'home','booth_2',booth.id,true),8,7,true);
+ for(let r=0;r<4;r++){
+  const preview=previewPlacement(state,draft);assert.equal(preview.error,null);assert.equal(preview.table!.kind,'booth');const saved=act(state,preview.command),actual=createHomeWorld(homeSimulationConfig(saved)).tables.find(t=>t.id===booth.id)!;assert.deepEqual(preview.table!.seats,actual.seats);assert.equal(sanitizeDinerSave(saved)!.home.layout.find(p=>p.id===booth.id)!.rotation,r);
+  const invalid=movePlacementDraft(draft,0,0,true),blocked=previewPlacement(state,invalid);assert(blocked.error);assert.deepEqual(blocked.table!.seats.map(({x,y})=>({x,y})),roomTableSeats({...booth,x:0,y:0,rotation:draft.rotation},()=>true),'fixed booth benches should remain visible when the draft is blocked');draft=rotatePlacementDraft(draft);
+ }
+ assert.deepEqual(state,original,'hovering and rotation must never rearrange the live room');
 });
 console.log(`Diner placement: ${groups} groups passed.`);

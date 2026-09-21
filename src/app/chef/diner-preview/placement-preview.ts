@@ -6,7 +6,7 @@ import { createHomeWorld } from '../../../lib/chef/diner/home-simulation';
 import { homeSimulationConfig, truckStorage, validateDinerHomePlacement, type DinerCommand, type DinerState, type HomePlacement } from '../../../lib/chef/diner/progression';
 import type { ServiceState } from '../../../lib/chef/diner/types';
 import type { SceneObject, SceneTable } from './scene-types';
-import { resolveRoomMount, roomModuleGeometry } from '../../../lib/chef/diner/room-plan';
+import { resolveRoomMount, roomModuleGeometry, roomTableSeats } from '../../../lib/chef/diner/room-plan';
 
 export interface PlacementDraft { mode:'home'|'truck'; id:string; equipmentId:string; x:number;y:number;rotation:0|1|2|3;existing:boolean;pinned:boolean;mount?:HomePlacement['mount'] }
 export interface PlacementPreview { command:DinerCommand; error:string|null; object?:SceneObject; table?:SceneTable }
@@ -26,7 +26,7 @@ export function aimHomeMount(state:DinerState,draft:PlacementDraft,x:number,y:nu
 }
 function serviceOf(state:DinerState):ServiceState|null{return state.run?.service??null;}
 export function previewPlacement(state:DinerState,draft:PlacementDraft):PlacementPreview {
-  const {id,equipmentId,x,y,rotation}=draft,capacity=equipmentId==='table_1'?1:equipmentId==='table_2'?2:equipmentId==='table_4'?4:null;
+  const {id,equipmentId,x,y,rotation}=draft,capacity=equipmentId==='table_1'?1:equipmentId==='table_2'||equipmentId==='booth_2'?2:equipmentId==='table_4'?4:null;
   if(draft.mode==='home'){
     const existing=state.home.layout.find(p=>p.id===id);
     const item:HomePlacement={...(existing??{}),id,equipmentId,x,y,rotation,mount:draft.mount};
@@ -36,10 +36,11 @@ export function previewPlacement(state:DinerState,draft:PlacementDraft):Placemen
     if(capacity){
       // Home seating is selected by the real room simulation, including rotated single chairs.
       const table=createHomeWorld({...homeSimulationConfig(state),layout,chefs:0,waiters:0,arrivalRate:0}).tables.find(t=>t.id===id);
-      // A single chair has an exact rotated anchor even when blocked. Larger home
-      // tables choose reachable perimeter seats, so the truck's seat pattern would lie.
-      const seats=table?.seats??(capacity===1?makeTable(id,x,y,1,1,rotation).seats:[]);
-      return {command,error,table:{id,x,y,capacity,rotation,seats}};
+      // Fixed chairs and booth benches must remain visible even in an invalid draft.
+      // Loose larger tables instead choose their reachable perimeter seats.
+      const seats=equipmentId==='booth_2'?(table?.seats.length===2?table.seats:roomTableSeats(item,()=>true).map((point,i)=>({...point,id:`${id}_seat_${i+1}`,status:'clean' as const}))):
+        table?.seats??(capacity===1?makeTable(id,x,y,1,1,rotation).seats:[]);
+      return {command,error,table:{id,x,y,capacity,rotation,seats,kind:equipmentId==='booth_2'?'booth':undefined,tableStyle:state.home.roomPlan?.stage==='restaurant'?'restaurant':'cafe'}};
     }
     const colors:Record<string,string>={cherry:'#b66751',mint:'#91b29a',cream:'#ede1bc'};
     const mounted=draft.mount&&state.home.roomPlan?resolveRoomMount(state.home.roomPlan,draft.mount):null;

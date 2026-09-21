@@ -19,9 +19,10 @@ export function physicalHomeScene(state:HomeVisualState,world:HomeWorld|null,sel
   const plan=state.home.roomPlan;
   for(const p of state.home.layout){
     if(p.mount&&plan){const mounted=resolveRoomMount(plan,p.mount);if(mounted)objects.push({id:p.id,kind:p.equipmentId,x:mounted.x,y:mounted.y,rotation:mounted.rotation,mount:{kind:p.mount.kind,targetId:p.mount.targetId,surfaceHeight:mounted.surfaceHeight},elevation:p.mount.kind==='wall'?.095+mounted.surfaceHeight-(p.equipmentId==='chrome_clock'?1.54:1.49):.095+mounted.surfaceHeight});continue;}
-    if(p.equipmentId.startsWith('table_')){
+    if(p.equipmentId.startsWith('table_')||p.equipmentId==='booth_2'){
       const table=world?.tables.find(t=>t.id===p.id);
-      tables.push({id:p.id,x:p.x,y:p.y,capacity:p.equipmentId==='table_1'?1:p.equipmentId==='table_4'?4:2,rotation:p.rotation,seats:table?.seats.map(s=>({...s,item:plated(s.item)}))??[]});
+      const boothSurface=p.equipmentId==='booth_2'&&table?.seats.length===2?{x:(table.seats[0].x+table.seats[1].x)/2,y:(table.seats[0].y+table.seats[1].y)/2}:undefined;
+      tables.push({id:p.id,x:p.x,y:p.y,capacity:p.equipmentId==='table_1'?1:p.equipmentId==='table_4'?4:2,rotation:p.rotation,kind:p.equipmentId==='booth_2'?'booth':undefined,tableStyle:plan?.stage==='restaurant'?'restaurant':'cafe',seats:table?.seats.map(s=>({...s,item:plated(s.item),...(boothSurface?{surface:boothSurface}:{})}))??[]});
     }else{
       const station=world?.stations.find(s=>s.id===p.id),slot=station?.slots.find(s=>s.item);
       const finish:Record<string,string>={cherry:'#b66751',mint:'#91b29a',cream:'#ede1bc'};
@@ -50,5 +51,5 @@ export function physicalHomeScene(state:HomeVisualState,world:HomeWorld|null,sel
     const order=working?world.orders.find(o=>o.id===working.orderId):undefined,recipeId=order?.recipeId??(working?station?.slots[working.slotIndex]?.item?.recipeId:undefined);
     return {id:a.id,role:a.role,x:a.x,y:a.y,pose:a.pose,held:plated(a.held),target:a.path[0]??(station?{x:station.x,y:station.y}:a.pose==='idle'?space.door:undefined),work:station?{stationKind:station.kind,recipeId}:undefined};
   })??[]),...(world?.customers.map((c):ScenePerson=>{const table=tables.find(table=>table.id===c.tableId),fixture=world.bathrooms.find(f=>f.id===c.fixtureId);return {id:c.id,role:'customer',x:c.x,y:c.y,look:Number(c.id.replace(/\D/g,''))%8,pose:c.phase==='eating'?'eat':c.phase==='seated'?'sit':c.path.length?'walk':c.phase==='washingHands'?'wash':'idle',target:c.path[0]??fixture,tableId:c.tableId,seatId:c.seatId,hidden:c.phase==='usingToilet',work:{seatHeight:table?.seatHeight,stationKind:c.phase==='washingHands'?'handwash_sink':undefined},order:c.phase==='seated'||c.phase==='ordering'?{recipeId:c.recipeId,patience:1}:null};})??[])];
-  return {width:state.home.w,height:state.home.h,homeTerraceDepth:plan?1:space.terrace.h,sign:state.home.name,paint,selectedId,objects,tables,people,tick:world?.tick,roomPlan:plan,roomFinishes:state.home.finishes,menu:Object.values(state.home.menu).flat(),floor:state.cosmetics.floor,wall:state.cosmetics.wall,wrap:state.cosmetics.wrap,uniform:state.cosmetics.uniform};
+  return {width:state.home.w,height:state.home.h,homeTerraceDepth:space.terrace.h,sign:state.home.name,paint,selectedId,objects,tables,people,tick:world?.tick,roomPlan:plan,roomFinishes:state.home.finishes,menu:Object.values(state.home.menu).flat(),floor:state.cosmetics.floor,wall:state.cosmetics.wall,wrap:state.cosmetics.wrap,uniform:state.cosmetics.uniform};
 }

@@ -3,6 +3,7 @@ import type { RoomPlan } from '../../../lib/chef/diner/room-plan';
 import { roomZoneAt, ROOM_FIXTURES, roomModuleGeometry } from '../../../lib/chef/diner/room-plan';
 import { RECIPE_BY_ID } from '../../../lib/chef/diner/content';
 import { ROOM_PALETTES } from '../../../lib/chef/diner/collections';
+import { homeSpatial,HOME_TERRACE_ELEVATION } from '../../../lib/chef/diner/home-spatial';
 import { box,cylinder,material,PALETTE } from './models';
 import type { DinerSceneData } from './scene-types';
 
@@ -50,14 +51,17 @@ function partition(length:number,height:number,color:string,normal:THREE.Vector3
 }
 export function createRoomShell(plan:RoomPlan,data:Pick<DinerSceneData,'sign'|'menu'|'floor'|'wall'|'roomFinishes'>){
   const root=new THREE.Group();root.name=`restaurant-shell:${plan.stage}`;const colors=roomColors(data),wallColor=ROOM_FINISH_COLORS[data.wall??'cream']??CREAM;
-  // A continuous building foundation, with only a narrow supported shop threshold.
-  root.add(box(plan.w+.28,.21,plan.h+1.40,'#795b45',(plan.w-1)/2,-.055,plan.h/2-.05,.07));
+  // The front apron is real supported pavement, not an oversized doorway prop.
+  const space=homeSpatial(plan.w,plan.h),depth=plan.h+space.terrace.h;
+  root.add(box(plan.w+.28,.21,depth+.28,'#c2b7a2',(plan.w-1)/2,-.10,(depth-1)/2,.065));
   const cells:Array<{x:number;y:number;h:number;color:string}>=[];
   for(let y=0;y<plan.h;y++)for(let x=0;x<plan.w;x++){
     const zone=roomZoneAt(plan,{x,y})?.kind,checker=(x+y)%2;
     const color=zone==='bathroom'?(checker?'#d8e7da':'#bfdbce'):zone==='kitchen'?(checker?'#efe7d5':'#e4ddc9'):data.floor==='terracotta'?(checker?'#cc9274':'#dfae8b'):data.floor==='cream'?'#f2e5ce':checker?'#efe4d0':'#ded1b5';cells.push({x,y,h:.095,color});
   }
-  const tiles=new THREE.InstancedMesh(new THREE.BoxGeometry(1,.06,1),new THREE.MeshToonMaterial({color:'#fff'}),cells.length),matrix=new THREE.Matrix4();tiles.userData.tiles=cells;tiles.receiveShadow=true;cells.forEach((cell,i)=>{matrix.makeTranslation(cell.x,.065,cell.y);tiles.setMatrixAt(i,matrix);tiles.setColorAt(i,new THREE.Color(cell.color));});root.add(tiles);
+  for(let y=plan.h;y<depth;y++)for(let x=0;x<plan.w;x++)cells.push({x,y,h:HOME_TERRACE_ELEVATION,color:x===space.door.x||x===space.door.x-1?'#e5ddcc':(Math.floor(x/2)+y)%2?'#c8cbbf':'#d5d6ca'});
+  const tiles=new THREE.InstancedMesh(new THREE.BoxGeometry(.99,.06,.99),new THREE.MeshToonMaterial({color:'#fff'}),cells.length),matrix=new THREE.Matrix4();tiles.name='room-supported-floor';tiles.userData.tiles=cells;tiles.receiveShadow=true;cells.forEach((cell,i)=>{matrix.makeTranslation(cell.x,cell.h-.03,cell.y);tiles.setMatrixAt(i,matrix);tiles.setColorAt(i,new THREE.Color(cell.color));});root.add(tiles);
+  root.add(box(plan.w+.25,.11,.12,'#aea994',(plan.w-1)/2,.01,depth-.40,.022));
   const back=partition(plan.w+.12,2.78,colors.counter,new THREE.Vector3(0,0,-1),.85);back.name='room-wall:outer-back';back.position.set((plan.w-1)/2,.095,-.55);root.add(back);
   const side=partition(plan.h+.12,2.40,colors.counter,new THREE.Vector3(-1,0,0),.85);side.name='room-wall:outer-side';side.rotation.y=Math.PI/2;side.position.set(-.55,.095,(plan.h-1)/2);root.add(side);
   // Broad plaster and orderly dado rails replace the tiny decorative wall clutter.
@@ -66,11 +70,12 @@ export function createRoomShell(plan:RoomPlan,data:Pick<DinerSceneData,'sign'|'m
     const x=(edge.a.x+edge.b.x)/2,y=(edge.a.y+edge.b.y)/2,dx=edge.b.x-edge.a.x,dy=edge.b.y-edge.a.y;
     if(edge.kind==='staff_gate'||edge.kind==='hatch')continue;
     const bathroom=roomZoneAt(plan,edge.a)?.kind==='bathroom'||roomZoneAt(plan,edge.b)?.kind==='bathroom';
-    const color=bathroom?TILE:colors.counter,height=bathroom?1.92:plan.stage==='burger_shop'?1.03:2.16;
+    const color=bathroom?TILE:colors.counter,height=bathroom?1.92:plan.stage==='burger_shop'?1.03:2.50;
     if(edge.kind==='door'){
       const door=new THREE.Group();door.name=`room-door:${edge.id}`;door.position.set(x,.095,y);door.rotation.y=dx?Math.PI/2:0;
       const entrance=(roomZoneAt(plan,edge.a)?.kind==='bathroom')!==(roomZoneAt(plan,edge.b)?.kind==='bathroom');
-      for(const px of [-.45,.45])door.add(box(.09,1.91,.115,WOOD,px,.955,0,.015));door.add(box(.98,.10,.13,WOOD,0,1.93,0,.018));
+      const aperture=bathroom?1.91:2.35;
+      for(const px of [-.45,.45])door.add(box(.09,aperture,.115,WOOD,px,aperture/2,0,.015));door.add(box(.98,.10,.13,WOOD,0,aperture+.02,0,.018));
       const hinge=new THREE.Group();hinge.name='room-door-hinge';hinge.position.set(-.40,.12,0);hinge.add(box(.80,1.55,.06,bathroom?TILE:CREAM,.40,.775,0,.025),box(.027,.11,.024,WOOD,.72,.86,-.047,.009));
       if(entrance){
         door.userData.bathroomEntrance=true;
@@ -85,12 +90,13 @@ export function createRoomShell(plan:RoomPlan,data:Pick<DinerSceneData,'sign'|'m
       const panel=partition(1.01,height,color,new THREE.Vector3(dx,0,dy),Math.min(.63,height));panel.position.set(x,.095,y);panel.rotation.y=dx?Math.PI/2:0;panel.name=`room-wall:${edge.id}`;panel.userData.pick={id:`edge:${edge.id}`};root.add(panel);
     }
   }
-  // The brand and genuine selected menu live above the kitchen workline.
+  // Keep the actual menu over the kitchen, with the name above the bathroom wing.
   const kitchen=plan.zones.find(zone=>zone.kind==='kitchen'),cx=(kitchen?.w??5)/2-.5;
   const signColor=ROOM_FINISH_COLORS[data.roomFinishes?.sign??'cream']??CREAM;
-  const brand=lettering([data.sign??'My little diner'],3.12,.49,signColor,data.roomFinishes?.sign==='coral'||data.roomFinishes?.sign==='sage'?CREAM:RED);brand.position.set(cx,2.17,-.476);brand.userData.wallOwner=back;root.add(brand);
+  const bathroom=plan.zones.find(zone=>zone.kind==='bathroom'),signX=bathroom?bathroom.x+(bathroom.w-1)/2:plan.w-2,signWidth=Math.min(4.4,(bathroom?.w??3)-.25);
+  const frame=box(signWidth+.16,.85,.11,WOOD,signX,2.18,-.485,.035);frame.name='restaurant-name-frame';frame.userData.wallOwner=back;root.add(frame);
+  const brand=lettering([data.sign??'My little diner'],signWidth,.65,signColor,data.roomFinishes?.sign==='coral'||data.roomFinishes?.sign==='sage'?CREAM:RED);brand.name='restaurant-name-sign';brand.position.set(signX,2.19,-.420);brand.userData.wallOwner=back;root.add(brand);
   const menu=menuBoard(data.menu??['classic_burger']);menu.position.set(cx,1.56,-.476);menu.userData.pick={id:'home-binder'};menu.userData.wallOwner=back;root.add(menu);
-  brand.position.y=2.49;
   for(const trim of [box(3.38,.09,.15,WOOD,cx,2.79,-.49,.026),box(3.43,.06,.10,WOOD,cx,.94,-.49,.016)]){trim.userData.wallOwner=back;root.add(trim);}
   // Real framed shop windows give the cutaway restaurant a recognisable frontage.
   for(const y of [Math.max(2.25,plan.h-5.35),plan.h-2.25]){const window=shopWindow(2.02,1.03);window.rotation.y=Math.PI/2;window.position.set(-.476,1.58,y);window.userData.wallOwner=side;root.add(window);}
@@ -114,6 +120,6 @@ export function updateRoomShell(root:THREE.Object3D,data:DinerSceneData,toCamera
   root.traverse(object=>{
     if(object.userData.wallOwner)object.visible=object.userData.wallOwner.userData.cutaway.upper.scale.y>.80;
     const cut=object.userData.cutaway;if(cut){const near=toCamera.dot(cut.normal)>.05,target=near?0:1;cut.upper.scale.y+=(target-cut.upper.scale.y)*Math.min(1,dt*12);cut.upper.visible=cut.upper.scale.y>.015;cut.cap.position.y=cut.low+(cut.height-cut.low)*cut.upper.scale.y+.015;}
-    const edge=object.userData.doorEdge;if(edge){object.scale.y+=((!object.userData.bathroomEntrance&&toCamera.dot(object.userData.doorNormal)>.05?.46:1)-object.scale.y)*Math.min(1,dt*12);const hinge=object.getObjectByName('room-door-hinge');if(hinge){const moving=data.people.some(person=>person.pose==='walk'&&Math.hypot(person.x-(edge.a.x+edge.b.x)/2,person.y-(edge.a.y+edge.b.y)/2)<.85);hinge.rotation.y+=((moving?-1.40:0)-hinge.rotation.y)*Math.min(1,dt*10);}}
+    const edge=object.userData.doorEdge;if(edge){object.scale.y=1;const hinge=object.getObjectByName('room-door-hinge');if(hinge){const moving=data.people.some(person=>person.pose==='walk'&&Math.hypot(person.x-(edge.a.x+edge.b.x)/2,person.y-(edge.a.y+edge.b.y)/2)<.85);hinge.rotation.y+=((moving?-1.40:0)-hinge.rotation.y)*Math.min(1,dt*10);}}
   });
 }

@@ -2,6 +2,7 @@
 import { useEffect,useMemo,useRef,useState } from 'react';
 import { createDiner,homeSimulationConfig } from '@/lib/chef/diner/progression';
 import { createRestaurantBlueprint,type RestaurantStage } from '@/lib/chef/diner/room-plan';
+import { stageDefaultFinishes } from '@/lib/chef/diner/renovation';
 import { createHomeWorld,stepHomeWorld } from '@/lib/chef/diner/home-simulation';
 import DinerScene from '../diner-preview/DinerScene';
 import { homeScene } from '../diner-preview/home-scene';
@@ -9,7 +10,7 @@ import { homeScene } from '../diner-preview/home-scene';
 /** Development-only live simulation. No wallet, save, rewards, or authority writes. */
 export default function RoomReview(){
  const [stage,setStage]=useState<RestaurantStage>('burger_shop'),[rotation,setRotation]=useState(0),[editing,setEditing]=useState(false),[selected,setSelected]=useState<string|null>(null),[frame,setFrame]=useState(0),[speed,setSpeed]=useState(1),[fps,setFps]=useState(0);
- const state=useMemo(()=>{const s=createDiner(1_800_000_000_000,'room-review'),blueprint=createRestaurantBlueprint(stage);s.home={...s.home,...blueprint.roomPlan,roomPlan:blueprint.roomPlan,layout:stage==='burger_shop'?s.home.layout:blueprint.layout,staff:blueprint.staff,name:stage==='burger_shop'?'Bun & Butter':stage==='diner'?'The Cherry Counter':'Sunday Supper'};s.home.menu.main=['classic_burger'];return s;},[stage]);
+ const state=useMemo(()=>{const s=createDiner(1_800_000_000_000,'room-review'),blueprint=createRestaurantBlueprint(stage);s.home={...s.home,...blueprint.roomPlan,roomPlan:blueprint.roomPlan,layout:stage==='burger_shop'?s.home.layout:blueprint.layout,staff:blueprint.staff,finishes:stageDefaultFinishes(stage),name:stage==='burger_shop'?'Bun & Butter':stage==='diner'?'The Oak Room':'Sunday Supper'};s.home.menu.main=['classic_burger'];return s;},[stage]);
  const world=useMemo(()=>createHomeWorld({...homeSimulationConfig(state),arrivalRate:90}),[state]);
  const current=useRef(world);current.current=world;
  useEffect(()=>{const timer=setInterval(()=>{if(document.visibilityState==='visible'){stepHomeWorld(current.current,speed);setFrame(v=>v+1);}},50);return()=>clearInterval(timer);},[speed]);

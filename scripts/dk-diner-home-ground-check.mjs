@@ -7,8 +7,9 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import ts from 'typescript';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),require=createRequire(import.meta.url);
 require.extensions['.ts']=(module,file)=>module._compile(ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText,file);
-const {createDiner,homeSimulationConfig,homeIncidents}=require('../src/lib/chef/diner/progression.ts');
+const {createDiner,homeSimulationConfig,homeIncidents,dailyIngredientParcel}=require('../src/lib/chef/diner/progression.ts');
 const {createHomeWorld,stepHomeWorld}=require('../src/lib/chef/diner/home-simulation.ts');
+const {createRestaurantBlueprint}=require('../src/lib/chef/diner/room-plan.ts');
 const {homeScene}=require('../src/app/chef/diner-preview/home-scene.ts');
 const spatial=require('../src/lib/chef/diner/home-spatial.ts');
 const threeUrl=pathToFileURL(resolve(root,'node_modules/three/build/three.module.js')).href,THREE=await import(threeUrl);
@@ -22,6 +23,10 @@ const modelUrl=moduleUrl('src/app/chef/diner-preview/models.ts',[['three',threeU
 const spaceUrl=moduleUrl('src/lib/chef/diner/home-spatial.ts');
 const boardUrl=moduleUrl('src/app/chef/diner-preview/home-board.ts',[['three',threeUrl],['./models',modelUrl],['../../../lib/chef/diner/home-spatial',spaceUrl]]);
 const {createHomeBoard}=await import(boardUrl),models=await import(modelUrl);
+const contentUrl=moduleUrl('src/lib/chef/diner/content.ts'),collectionsUrl=moduleUrl('src/lib/chef/diner/collections.ts');
+const roomPlanUrl=moduleUrl('src/lib/chef/diner/room-plan.ts',[['./content',contentUrl],['./collections',collectionsUrl]]);
+const shellUrl=moduleUrl('src/app/chef/diner-preview/room-shell.ts',[['three',threeUrl],['./models',modelUrl],['../../../lib/chef/diner/room-plan',roomPlanUrl],['../../../lib/chef/diner/content',contentUrl],['../../../lib/chef/diner/collections',collectionsUrl],['../../../lib/chef/diner/home-spatial',spaceUrl]]);
+const {createRoomShell}=await import(shellUrl);
 // These are the preserved open-room/terrace fixtures. Staged-room geometry is
 // covered separately by dk-diner-room-art-check and room-plan-check.
 function legacyDiner(now,seed){const state=createDiner(now,seed);delete state.home.roomPlan;delete state.home.fixtureInventory;state.home.w=state.home.h=8;state.home.staff={chefs:1,waiters:1,cashiers:0};state.home.layout=[{id:'grill',equipmentId:'grill',x:1,y:0,rotation:0},{id:'prep',equipmentId:'prep',x:3,y:0,rotation:0},{id:'sink',equipmentId:'sink',x:5,y:0,rotation:0},{id:'table',equipmentId:'table_2',x:2,y:3,rotation:0}];state.equipment.table_2.homeCopies=1;return state;}
@@ -87,5 +92,16 @@ check('free-tile selector respects reachability, reserves and a blocked entrance
   input.reserved.push({x:2,y:2});assert.notDeepEqual(spatial.chooseHomeInteractionTile(input),{x:2,y:2});
   input.blocked=Array.from({length:8},(_,x)=>({x,y:4}));assert.ok(spatial.chooseHomeInteractionTile(input).y>4,'selected unreachable side of wall');
   input.blocked.push(spatial.homeSpatial(8,8).door);assert.equal(spatial.chooseHomeInteractionTile(input),null);
+});
+check('all staged rooms retain a real three-row concrete apron with clear package and entry positions',()=>{
+ for(const stage of ['burger_shop','diner','restaurant']){
+  const state=createDiner(20*86400000+1000,`staged-ground-${stage}`),blueprint=createRestaurantBlueprint(stage);Object.assign(state.home,{w:blueprint.roomPlan.w,h:blueprint.roomPlan.h,roomPlan:blueprint.roomPlan,layout:blueprint.layout,staff:blueprint.staff});state.updatedAt+=7200000;
+  const scene=homeScene(state,createHomeWorld(homeSimulationConfig(state)),null,'#bd654e'),shell=createRoomShell(blueprint.roomPlan,scene),tiles=shell.getObjectByName('room-supported-floor');shell.updateMatrixWorld(true);assert(tiles);const space=spatial.homeSpatial(scene.width,scene.height),ray=new THREE.Raycaster(),down=new THREE.Vector3(0,-1,0);
+  assert.equal(space.terrace.h,3);assert.equal(tiles.userData.tiles.filter(cell=>cell.y>=scene.height).length,scene.width*3);
+  for(let y=scene.height;y<scene.height+3;y++)for(let x=0;x<scene.width;x++){ray.set(new THREE.Vector3(x,3,y),down);const hit=ray.intersectObject(tiles,true)[0];assert(hit,`${stage}: no floor at ${x},${y}`);assert(Math.abs(hit.point.y-spatial.HOME_TERRACE_ELEVATION)<.00001);}
+  const parcel=dailyIngredientParcel(state),delivery=homeIncidents(state).find(item=>item.kind==='delivery');assert(delivery);
+  for(const point of [parcel,delivery]){const object=scene.objects.find(item=>item.id===(point.sceneId??point.id));assert(object);assert.equal(spatial.homeSupportAt(scene.width,scene.height,point.x,point.y)?.zone,'terrace');assert(![space.door,...space.approach].some(p=>p.x===point.x&&p.y===point.y));const model=models.createModel('parcel');model.position.set(point.x,spatial.HOME_TERRACE_ELEVATION,point.y);model.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(model);assert(bounds.min.x>=-.5&&bounds.max.x<=scene.width-.5&&bounds.min.z>=scene.height-.5&&bounds.max.z<=scene.height+2.5,`${stage}: parcel overhangs apron`);models.disposeObject(model);}
+  assert.notDeepEqual({x:parcel.x,y:parcel.y},{x:delivery.x,y:delivery.y});assert(!scene.objects.some(o=>o.kind==='parcel'&&o.y<scene.height),'staged parcels are still inside the doorway');models.disposeObject(shell);
+ }
 });
 console.log(`Home grounding PASS: ${groups} groups; ${samples} sampled live home states; all supported sizes and actual Three.js floor raycasts. No screenshot approval claimed.`);

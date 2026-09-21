@@ -83,9 +83,9 @@ export function finishPrice(slot: FinishSlot, id: string): number | null {
 }
 export type RoomFinishSlot='counter'|'worktop'|'upholstery'|'sign';
 export const ROOM_PALETTES={
-  counter:[{id:'tomato',name:'Tomato enamel',color:'#bd654e',price:0},{id:'sage',name:'Deep sage',color:'#365f55',price:250},{id:'cream',name:'Warm cream',color:'#f7f2e6',price:250}],
+  counter:[{id:'tomato',name:'Tomato enamel',color:'#bd654e',price:0},{id:'sage',name:'Deep sage',color:'#365f55',price:250},{id:'cream',name:'Warm cream',color:'#f7f2e6',price:250},{id:'oak',name:'Warm oak',color:'#9b7650',price:250}],
   worktop:[{id:'porcelain',name:'Porcelain',color:'#fff9ee',price:0},{id:'walnut',name:'Walnut',color:'#876647',price:300},{id:'charcoal',name:'Charcoal',color:'#394b46',price:300}],
-  upholstery:[{id:'cherry',name:'Cherry vinyl',color:'#bd654e',price:0},{id:'mint',name:'Soft mint',color:'#94b9a2',price:200},{id:'mustard',name:'Golden mustard',color:'#e3b454',price:200}],
+  upholstery:[{id:'cherry',name:'Cherry vinyl',color:'#bd654e',price:0},{id:'mint',name:'Soft mint',color:'#94b9a2',price:200},{id:'mustard',name:'Golden mustard',color:'#e3b454',price:200},{id:'teal',name:'Muted teal',color:'#477b73',price:200}],
   sign:[{id:'cream',name:'Cream sign',color:'#f7f2e6',price:0},{id:'sage',name:'Sage sign',color:'#365f55',price:200},{id:'coral',name:'Coral sign',color:'#bd654e',price:200}],
 } as const;
 export const ROOM_FINISH_DEFAULTS:Record<RoomFinishSlot,string>={counter:'tomato',worktop:'porcelain',upholstery:'cherry',sign:'cream'};

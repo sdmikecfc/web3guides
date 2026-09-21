@@ -54,16 +54,18 @@ export const EQUIPMENT: EquipmentDef[] = [
   machine('waffle','Waffle iron','cooking',[200,480,950]), machine('drinks','Drinks station','cooking',[100,280,600],[1,1,1]), machine('prep','Prep counter','prep',[80,220,500],[1,1,2]),
   machine('pass','Pass with heat lamp','prep',[180,400,800],[2,4,6],[2,1]), machine('sink','Sink','cleaning',[80,240,600],[2,4,6]), machine('bin','Bin','cleaning',[20],[1]),
   machine('table_1','Table and one chair','service',[60,160],[1,1]), machine('table_2','Table for two','service',[80,220],[2,2],[1,2]), machine('table_4','Table for four','service',[180,420],[4,4],[2,2]),
+  machine('booth_2','Upholstered booth for two','service',[180],[2],[1,2]),
   machine('tray','Serving tray','service',[100,300],[2,3]), machine('queue_bench','Queue bench','comfort',[120,280],[1,1],[2,1]),
   machine('jukebox','Jukebox','comfort',[200,500],[1,1]), machine('neon_sign','Neon sign','attraction',[180,450],[1,1]), machine('tip_jar','Tip jar','attraction',[80,220],[1,1]),
 ];
 export const EQUIPMENT_BY_ID: Record<string, EquipmentDef> = Object.fromEntries(EQUIPMENT.map(d => [d.id,d]));
 /** Keep reserved content IDs for checkpoints, but sell only implemented equipment. */
 export const DEFERRED_EQUIPMENT_IDS = ['tray','queue_bench','jukebox','neon_sign','tip_jar'] as const;
-export const TRUCK_EQUIPMENT = EQUIPMENT.filter(item=>!(DEFERRED_EQUIPMENT_IDS as readonly string[]).includes(item.id));
+export const HOME_ONLY_EQUIPMENT_IDS = ['booth_2'] as const;
+export const TRUCK_EQUIPMENT = EQUIPMENT.filter(item=>!(DEFERRED_EQUIPMENT_IDS as readonly string[]).includes(item.id)&&!(HOME_ONLY_EQUIPMENT_IDS as readonly string[]).includes(item.id));
 /** Utilities do not imply a corresponding restaurant machine or free home copy. */
 export const TRUCK_ONLY_EQUIPMENT_IDS = ['crate','fridge','plates','cups','boxes','bin','pass'] as const;
-export const HOME_EQUIPMENT = TRUCK_EQUIPMENT.filter(item=>!(TRUCK_ONLY_EQUIPMENT_IDS as readonly string[]).includes(item.id));
+export const HOME_EQUIPMENT = EQUIPMENT.filter(item=>!(DEFERRED_EQUIPMENT_IDS as readonly string[]).includes(item.id)&&!(TRUCK_ONLY_EQUIPMENT_IDS as readonly string[]).includes(item.id));
 export const isTruckEquipmentAvailable = (id:string):boolean => TRUCK_EQUIPMENT.some(item=>item.id===id);
 export const isHomeEquipmentAvailable = (id:string):boolean => HOME_EQUIPMENT.some(item=>item.id===id);
 export const TRUCK_TIERS: Record<DinerTier, { tier: DinerTier; w: number; h: number; tables: number; helpers: number; pavementW: number; pavementH: number; route: string | null }> = {

@@ -50,6 +50,7 @@ export function createRestaurantBlueprint(stage:RestaurantStage):{roomPlan:RoomP
  for(const [i,p] of bays.toilets.entries()){edges.push({id:`stall-door-${i}`,a:{x:p.x,y:1},b:{x:p.x,y:2},kind:'door',zoneId:'bathroom'});for(const y of [0,1])edges.push({id:`stall-side-${i}-${y}`,a:{x:p.x-1,y},b:{x:p.x,y},kind:'wall',zoneId:'bathroom'});}
  const roomPlan:RoomPlan={version:1,stage,w:spec.w,h:spec.h,modules,edges,zones:[{id:'kitchen',kind:'kitchen',x:0,y:0,w:kitchenWidth,h:4},{id:'bathroom',kind:'bathroom',x:bathX,y:0,w:spec.w-bathX,h:4}]};
  const layout:HomePlacement[]=[{id:'home-grill',equipmentId:'grill',x:0,y:0,rotation:0},{id:'home-prep',equipmentId:'prep',x:2,y:0,rotation:0},{id:'home-sink',equipmentId:'sink',x:4,y:0,rotation:0}];
+ if(stage==='diner')layout.push({id:'home-booth-1',equipmentId:'booth_2',x:2,y:7,rotation:0});
  if(stage==='restaurant')layout.push({id:'home-table-1',equipmentId:'table_2',x:2,y:6,rotation:0},{id:'home-table-2',equipmentId:'table_2',x:6,y:6,rotation:0},{id:'home-table-3',equipmentId:'table_2',x:10,y:6,rotation:0});
  return {roomPlan,layout,staff:{chefs:1,waiters:stage==='burger_shop'?1:2,cashiers:stage==='burger_shop'?1:0}};
 }
@@ -98,7 +99,13 @@ export function resolveRoomMount(plan:RoomPlan,mount:{kind:'wall'|'counter';targ
 }
 /** One source for staged table chairs, used by both validation and simulation. */
 export function roomTableSeats(p:HomePlacement,available:(point:Point)=>boolean):Point[] {
- const capacity=p.equipmentId==='table_1'?1:p.equipmentId==='table_2'?2:p.equipmentId==='table_4'?4:0;if(!capacity)return [];
+ const capacity=p.equipmentId==='table_1'?1:p.equipmentId==='table_2'||p.equipmentId==='booth_2'?2:p.equipmentId==='table_4'?4:0;if(!capacity)return [];
+ // Booth benches belong to the furnishing. Unlike loose chairs they cannot
+ // jump to a different side when somebody places an object next to them.
+ if(p.equipmentId==='booth_2'){
+  const turn=(x:number,y:number):Point=>p.rotation===0?{x:p.x+x,y:p.y+y}:p.rotation===1?{x:p.x+1-y,y:p.y+x}:p.rotation===2?{x:p.x-x,y:p.y+1-y}:{x:p.x+y,y:p.y-x};
+  const seats=[turn(-1,0),turn(1,0)];return seats.every(available)?seats:[];
+ }
  const def=EQUIPMENT_BY_ID[p.equipmentId],[width,height]=p.rotation%2?[def.footprint[1],def.footprint[0]]:def.footprint;
  const front=p.rotation===0?{x:p.x,y:p.y+height}:p.rotation===1?{x:p.x-1,y:p.y}:p.rotation===2?{x:p.x,y:p.y-1}:{x:p.x+width,y:p.y};if(capacity===1)return available(front)?[front]:[];
  const candidates:Point[]=[];for(let y=0;y<height;y++)for(let x=0;x<width;x++)candidates.push({x:p.x+x-1,y:p.y+y},{x:p.x+x+1,y:p.y+y},{x:p.x+x,y:p.y+y-1},{x:p.x+x,y:p.y+y+1});
@@ -129,7 +136,7 @@ export function validateRoomPlan(value:RoomPlan,layout:HomePlacement[]=[]):strin
  const chairs=new Set<string>();for(const m of value.modules)for(const seat of roomModuleGeometry(m).seats){if(!inside(seat)||solid.has(key(seat))||chairs.has(key(seat)))return 'Give each stool its own clear floor space.';chairs.add(key(seat));}
  const reach=(role:RoomRole,blockChairs:boolean)=>{const seen=new Set<string>([key(door)]),queue=[door];for(let i=0;i<queue.length;i++)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const q={x:queue[i].x+dx,y:queue[i].y+dy};if(inside(q)&&!solid.has(key(q))&&(!blockChairs||!chairs.has(key(q)))&&!seen.has(key(q))&&roomCanStep(value,queue[i],q,role)){seen.add(key(q));queue.push(q);}}return seen;};
  const publicFloor=reach('customer',false),tableSeats=new Map<string,Point[]>();
- for(const p of layout)if(['table_1','table_2','table_4'].includes(p.equipmentId)){const seats=roomTableSeats(p,point=>publicFloor.has(key(point))&&!solid.has(key(point)));if(!seats.length)return 'Keep every table chair reachable from the public dining room.';for(const seat of seats){if(chairs.has(key(seat))||key(seat)===key(door))return 'Give each chair its own clear floor space.';chairs.add(key(seat));}tableSeats.set(p.id,seats);}
+ for(const p of layout)if(['table_1','table_2','table_4','booth_2'].includes(p.equipmentId)){const seats=roomTableSeats(p,point=>publicFloor.has(key(point))&&!solid.has(key(point)));if(!seats.length)return p.equipmentId==='booth_2'?'Keep both fixed booth benches clear and reachable from the dining room.':'Keep every table chair reachable from the public dining room.';for(const seat of seats){if(chairs.has(key(seat))||key(seat)===key(door))return 'Give each chair its own clear floor space.';chairs.add(key(seat));}tableSeats.set(p.id,seats);}
  const staff=reach('waiter',true),publicAisles=reach('customer',true);
  for(const point of [...value.modules.flatMap(m=>roomModuleGeometry(m).seats),...tableSeats.values()].flat())if(![[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>{const from={x:point.x+dx,y:point.y+dy};return publicAisles.has(key(from))&&roomCanStep(value,from,point,'customer');}))return 'Leave a public aisle to each chair without crossing another chair.';
  for(const p of layout)if(tableSeats.has(p.id)){const def=EQUIPMENT_BY_ID[p.equipmentId],[width,height]=p.rotation%2?[def.footprint[1],def.footprint[0]]:def.footprint;let service=false;for(let y=0;y<height;y++)for(let x=0;x<width;x++)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])if(staff.has(key({x:p.x+x+dx,y:p.y+y+dy})))service=true;if(!service)return 'Leave a serving side beside every table.';}

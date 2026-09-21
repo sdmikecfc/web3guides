@@ -18,6 +18,7 @@ export function homeSpatial(width:number,height:number){
       binder:{x:width-2,y:height+2},till:{x:width-1,y:height+2},
     },
     regular:{x:doorX-2,y:height+1},
+    delivery:{x:width-2,y:height+1},
     approach:[{x:doorX,y:height},{x:doorX,y:height+1},{x:doorX,y:height+2}],
   };
 }

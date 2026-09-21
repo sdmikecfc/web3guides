@@ -10,10 +10,12 @@ require.extensions['.ts']=(module,filename)=>module._compile(ts.transpileModule(
 const {makeTable,tableFootprint}=require('../src/lib/chef/diner/geometry.ts');
 const {HOME_EQUIPMENT}=require('../src/lib/chef/diner/content.ts');
 const {DECOR}=require('../src/lib/chef/diner/collections.ts');
+const {roomTableSeats}=require('../src/lib/chef/diner/room-plan.ts');
 const threeURL=pathToFileURL(resolve('node_modules/three/build/three.module.js')).href,THREE=await import(threeURL);
 function moduleURL(path,replacements={}){let source=readFileSync(path,'utf8').replaceAll("from 'three'",`from '${threeURL}'`);for(const [from,to]of Object.entries(replacements))source=source.replaceAll(`from '${from}'`,`from '${to}'`);return `data:text/javascript;base64,${Buffer.from(ts.transpileModule(source,{fileName:path,compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText).toString('base64')}`;}
 const modelURL=moduleURL('src/app/chef/diner-preview/models.ts',{'three/examples/jsm/geometries/RoundedBoxGeometry.js':pathToFileURL(resolve('node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js')).href});
-const kit=await import(modelURL),{createPlacementGhost,projectPlacementTile}=await import(moduleURL('src/app/chef/diner-preview/placement-ghost.ts',{'./models':modelURL}));
+const tableURL=moduleURL('src/app/chef/diner-preview/table-presentation.ts');
+const kit=await import(modelURL),{createPlacementGhost,projectPlacementTile}=await import(moduleURL('src/app/chef/diner-preview/placement-ghost.ts',{'./models':modelURL,'./table-presentation':tableURL}));
 const height=()=>.095,close=(a,b,message)=>assert(Math.abs(a-b)<1e-7,message);
 let cases=0,disposed=0;
 function verifyGhost(ghost,expectedCells){
@@ -26,11 +28,18 @@ function verifyGhost(ghost,expectedCells){
   kit.disposeObject(ghost);assert.equal(uniqueDisposed,materials.size,'preview material leak');assert.equal(sharedDisposed,0,'preview disposed shared model geometry');disposed+=uniqueDisposed;cases++;
 }
 for(const def of [...HOME_EQUIPMENT,...DECOR])for(let rotation=0;rotation<4;rotation++){
-  if(def.id.startsWith('table_'))continue;
+  if(def.id.startsWith('table_')||def.id==='booth_2')continue;
   const object={id:'draft',kind:def.id,x:2,y:3,rotation,footprint:def.footprint,tier:1},valid=rotation%2===0,ghost=createPlacementGhost({object,valid},height,'home'),model=ghost.getObjectByName('placement-object');
   const [w,h]=rotation%2?[def.footprint[1],def.footprint[0]]:def.footprint;
   close(model.position.x,2+(w-1)/2,`${def.id}: footprint x anchor`);close(model.position.z,3+(h-1)/2,`${def.id}: footprint y anchor`);close(model.position.y,.095,'floor contact');close(model.rotation.y,Math.PI-rotation*Math.PI/2,'front direction');
   const cells=[];for(let y=0;y<h;y++)for(let x=0;x<w;x++)cells.push({x:2+x,y:3+y});verifyGhost(ghost,cells);
+}
+for(let rotation=0;rotation<4;rotation++){
+  const placement={id:'preview-booth',equipmentId:'booth_2',x:4,y:5,rotation},seats=roomTableSeats(placement,()=>true).map((p,index)=>({...p,id:`bench-${index}`,status:'clean'}));
+  const table={id:placement.id,x:placement.x,y:placement.y,rotation,capacity:2,kind:'booth',seats};
+  const ghost=createPlacementGhost({table,valid:true},height,'home'),model=ghost.getObjectByName('placement-table');assert(model);close(model.rotation.y,-rotation*Math.PI/2,'booth uses exact fixed bench rotation');
+  for(const seat of seats)assert.equal(ghost.getObjectByName(`placement-seat:${seat.id}`),undefined,'integrated booths must not render loose chairs');
+  const [w,h]=rotation%2?[2,1]:[1,2],cells=Array.from({length:w*h},(_,i)=>({x:4+i%w,y:5+Math.floor(i/w)}));verifyGhost(ghost,[...cells,...seats]);
 }
 for(const capacity of [1,2,4])for(let rotation=0;rotation<4;rotation++){
   const table=makeTable('preview',2,3,capacity,1,rotation),cells=tableFootprint(table),ghost=createPlacementGhost({table,valid:true},height,'home'),model=ghost.getObjectByName('placement-table');

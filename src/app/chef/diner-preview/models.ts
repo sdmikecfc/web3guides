@@ -4,7 +4,7 @@ import type { SceneFood,SceneObject } from './scene-types';
 
 /** Align original floor-authored art with a real architectural support. */
 export function configureRoomMount(model:THREE.Group,object:SceneObject){
-  model.scale.setScalar(object.mount?.kind==='counter'?(object.kind==='herb_planter'?.32:.52):1);model.position.set(0,0,0);
+  model.scale.setScalar(object.mount?.kind==='counter'?(object.kind==='herb_planter'?.32:object.kind==='daisy_pot'?.38:.52):1);model.position.set(0,0,0);
   if(object.mount?.kind==='wall'){const back=object.kind==='chrome_clock'?.435:.49,offset=-(back+.052),angle=Math.PI-(object.rotation??0)*Math.PI/2;model.position.set(Math.sin(angle)*offset,0,Math.cos(angle)*offset);}
 }
 
@@ -240,8 +240,61 @@ function createChair(color:string){
   const tuft=ball(.023,PALETTE.porcelain,0,.846,.091);tuft.scale.z=.42;g.add(tuft);
   return packMeshes(g,`cafe-chair:${color}`);
 }
-export function createDiningTable(capacity:1|2|4=2){
+/** Table dressing stays under the engine's .85 m dish surface. The two-place
+ * setting leaves the serving positions at (+/-.235, -.325) unobstructed. */
+function restaurantTablecloth(w:number,d:number){
+  const geometry=geo(`restaurant-linen:${w}:${d}`,()=>{
+    const xs=[-w/2-.065,-w/2-.045,-w/2+.035,0,w/2-.035,w/2+.045,w/2+.065];
+    const zs=[-d/2-.065,-d/2-.045,-d/2+.035,-d/4,0,d/4,d/2-.035,d/2+.045,d/2+.065];
+    const vertices:number[]=[],indices:number[]=[];
+    for(let z=0;z<zs.length;z++)for(let x=0;x<xs.length;x++){
+      const drop=Math.max(Math.max(0,Math.abs(xs[x])-w/2+.035)/.10,Math.max(0,Math.abs(zs[z])-d/2+.035)/.10);
+      vertices.push(xs[x],.847-.15*drop+(drop>0?.006*Math.sin(x*1.9+z*1.7):0),zs[z]);
+    }
+    for(let z=0;z<zs.length-1;z++)for(let x=0;x<xs.length-1;x++){const a=z*xs.length+x,b=a+1,c=a+xs.length,e=c+1;indices.push(a,c,b,b,c,e);}
+    const result=new THREE.BufferGeometry();result.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));result.setIndex(indices);result.computeVertexNormals();return result;
+  });
+  return mesh(geometry,'#f5eddd');
+}
+function tableFlowers(g:THREE.Group,x:number,z:number,large=false){
+  g.add(cylinder(.038,.061,.115,'#7c9f86',x,.909,z),cylinder(.030,.035,.052,'#c6d4bc',x,.990,z));
+  for(let i=0;i<(large?5:3);i++){
+    const angle=i*2.4,dx=Math.sin(angle)*.054,dz=Math.cos(angle)*.043,y=1.109+(i%2)*.046;
+    const stem=cylinder(.005,.006,.145,PALETTE.leaf,x+dx*.5,y-.071,z+dz*.5,6);stem.rotation.z=-dx*2;g.add(stem);
+    const leaf=ball(.039,'#7f9d69',x+dx+.019,y-.076,z+dz);leaf.scale.set(1.1,.36,.45);g.add(leaf);
+    for(let p=0;p<5;p++){const petal=ball(.025,i%2?'#e5a189':'#fff6dc',x+dx+Math.cos(p*Math.PI*2/5)*.021,y+Math.sin(p*Math.PI*2/5)*.021,z+dz);petal.scale.z=.48;g.add(petal);}
+    g.add(ball(.012,'#c9a34f',x+dx,y,z+dz-.015));
+  }
+}
+export function createDiningTable(capacity:1|2|4=2,style:'cafe'|'restaurant'='cafe',placeSettings?:ModelOptions['placeSettings']){
   const g=new THREE.Group(),w=capacity===4?1.72:.88,d=capacity===1?.88:1.72;
+  if(style==='restaurant'){
+    // An honest little linen-covered dining table: warm timber, curved linen
+    // edges and a couple of prepared settings, with space for actual food.
+    for(const x of [-w/2+.12,w/2-.12])for(const z of [-d/2+.15,d/2-.15]){
+      g.add(box(.067,.68,.067,'#6d5540',x,.352,z,.018),box(.080,.073,.080,'#b5aa87',x,.068,z,.017));
+    }
+    g.add(box(w-.10,.080,d-.10,'#876447',0,.744,0,.035),box(w,.050,d,'#ba986b',0,.806,0,.055),restaurantTablecloth(w,d));
+    const defaults=capacity===1?[[0,-.08]]:capacity===2?[[-.235,-.325],[.235,-.325]]:[[-.44,-.39],[.44,-.39],[-.44,.39],[.44,.39]];
+    const settings=placeSettings?.length?placeSettings:defaults.map(([x,z])=>({x,z,rotation:0}));
+    const used:Array<{x:number;z:number}>=[],corners=[-1,1].flatMap(sx=>[-1,1].flatMap(sz=>[.20,.39,.60].filter(v=>v<d/2-.08).map(v=>({x:sx*(w/2-.15),z:sz*v}))));
+    for(const {x,z,rotation}of settings){
+      const turned=Math.abs(Math.sin(rotation))>.5,maxX=Math.max(.14,2*(w/2+.005-Math.abs(x))),maxZ=Math.max(.14,2*(d/2+.005-Math.abs(z))),matW=Math.min(capacity===2?.38:.49,turned?maxZ:maxX),matD=Math.min(.53,turned?maxX:maxZ);
+      const mat=group(box(matW,.006,matD,'#cbb895',0,.850,0,.029),box(matW-.03,.003,matD-.03,'#ded0b3',0,.855,0,.023));mat.position.set(x,0,z);mat.rotation.y=rotation;g.add(mat);
+      // Seat order depends on reachable sides of a placed table. Keep dressing
+      // out of those actual plate circles, including a guest at an end seat.
+      const spot=corners.filter(p=>settings.every(s=>Math.hypot(p.x-s.x,p.z-s.z)>.33)&&used.every(s=>Math.hypot(p.x-s.x,p.z-s.z)>.19)).sort((a,b)=>Math.hypot(a.x-x,a.z-z)-Math.hypot(b.x-x,b.z-z))[0];
+      if(!spot)continue;used.push(spot);
+      const napkin=box(.133,.026,.17,'#fffaf0',spot.x,.868,spot.z,.009);napkin.rotation.y=spot.x<0?-.20:.20;g.add(napkin);
+      const fold=box(.014,.029,.149,'#d8e0cd',spot.x,.870,spot.z,.004);fold.rotation.y=napkin.rotation.y;g.add(fold);
+      const utensilX=spot.x+(spot.x<0?.105:-.105);
+      g.add(box(.015,.011,.153,'#adbcb4',utensilX,.863,spot.z,.004),box(.037,.009,.035,'#c8d4c9',utensilX,.863,spot.z-.087,.009));
+    }
+    const vaseCandidates=[{x:0,z:capacity===2?.58:0},{x:0,z:0},{x:0,z:-.58},{x:.24,z:.25},{x:-.24,z:.25}].filter(p=>Math.abs(p.x)<w/2-.06&&Math.abs(p.z)<d/2-.07);
+    const vase=vaseCandidates.sort((a,b)=>Math.min(...settings.map(s=>Math.hypot(b.x-s.x,b.z-s.z)))-Math.min(...settings.map(s=>Math.hypot(a.x-s.x,a.z-s.z))))[0];
+    tableFlowers(g,vase.x,vase.z,true);
+    g.userData.surfaceHeight=.85;return packMeshes(g,`restaurant-table-v1:${capacity}:${JSON.stringify(settings)}`);
+  }
   // A proper cafe pedestal gives knees room and a quieter, recognisable silhouette.
   for(const z of capacity===1?[0]:[-.44,.44]){
     g.add(box(w*.68,.065,.30,PALETTE.dark,0,.046,z,.08),cylinder(.080,.108,.64,PALETTE.sage,0,.393,z));
@@ -255,6 +308,27 @@ export function createDiningTable(capacity:1|2|4=2){
   g.add(cylinder(.044,.065,.14,PALETTE.sage,vaseX,.922,vaseZ),cylinder(.031,.044,.045,PALETTE.sage,vaseX,1.014,vaseZ));
   for(let i=0;i<3;i++){const stem=cylinder(.007,.008,.14,PALETTE.leaf,vaseX+(i-1)*.018,1.087,vaseZ);stem.rotation.z=(i-1)*.20;g.add(stem);const flower=ball(.039,[PALETTE.mustard,PALETTE.tomato,PALETTE.porcelain][i],vaseX+(i-1)*.035,1.151+(i%2)*.025,vaseZ);flower.scale.y=.62;g.add(flower);}
   return packMeshes(g,`cafe-table:${capacity}`);
+}
+/** One owned booth includes both banquettes. Positions are the fixed engine
+ * seat anchors relative to the centre of the table's 1 x 2 tile footprint. */
+function createBoothTable(colors?:ModelOptions['roomColors']){
+  const g=new THREE.Group(),upholstery=colors?.upholstery??'#47756b',wood='#78553b',trim='#bba779';
+  for(const z of [-.45,.45])g.add(box(.57,.06,.33,'#35433d',0,.047,z,.035),box(.083,.68,.083,wood,0,.390,z,.019),box(.089,.075,.089,trim,0,.145,z,.018));
+  g.add(box(.90,.085,1.75,wood,0,.784,0,.085),box(.855,.027,1.705,colors?.worktop??'#f3e8d1',0,.830,0,.071));
+  // A single inset border is readable as laminate/stone at playing scale.
+  g.add(box(.79,.004,1.64,'#c6bc9e',0,.846,0,.058),box(.765,.004,1.615,colors?.worktop??'#f3e8d1',0,.849,0,.055));
+  for(const side of [-1,1]){
+    const bench=new THREE.Group();bench.position.set(side,0,-.5);bench.rotation.y=side<0?-Math.PI/2:Math.PI/2;
+    bench.add(box(.87,.055,.64,'#443e32',0,.050,.02,.024),box(.94,.33,.64,wood,0,.235,.015,.048),box(.94,.055,.68,trim,0,.404,-.012,.018),box(.92,.135,.67,upholstery,0,.4325,-.019,.059));
+    // The top of the cushion is the exact .5 m seated-body contact surface.
+    bench.add(box(.96,.81,.16,wood,0,.774,.270,.064),box(.88,.59,.112,upholstery,0,.832,.169,.058),box(.90,.023,.030,'#b9c7ac',0,1.122,.121,.010));
+    for(const x of [-.29,0,.29])bench.add(box(.013,.52,.010,'#31564d',x,.832,.108,.006));
+    for(const x of [-.46,.46])bench.add(box(.056,.63,.17,wood,x,.73,.245,.017));
+    packMeshes(bench,`booth-bench-v1:${upholstery}`);g.add(bench);
+  }
+  tableFlowers(g,0,.55);
+  g.name='two-seat-booth';g.userData.surfaceHeight=.85;g.userData.integratedSeats=true;
+  return packMeshes(g,`booth-table-v1:${JSON.stringify(colors??{})}`);
 }
 function plant(){const g=group(cylinder(.20,.15,.33,PALETTE.tomato,0,.18),cylinder(.18,.18,.04,'#866448',0,.35));for(let i=0;i<7;i++){const angle=i*2.4,leaf=ball(.18,i%2?PALETTE.leaf:'#89a971',Math.sin(angle)*.16,.58+Math.cos(i)*.1,Math.cos(angle)*.16);leaf.scale.set(.55,1.3,.6);leaf.rotation.z=Math.sin(angle)*.5;g.add(leaf);}return g;}
 
@@ -606,11 +680,21 @@ function createFramedPrint(kind:string){
   packMeshes(art,`wall-print-v2:${kind}`);art.traverse(object=>{if(object instanceof THREE.Mesh)object.castShadow=false;});
   const result=group(frame,art);result.name=`framed-print:${kind}`;result.userData.wallMountPlane=back;return result;
 }
-export interface ModelOptions {tier?:number;color?:string;recipeId?:string;stage?:string;look?:number;stock?:number;roomColors?:{counter:string;worktop:string;upholstery:string}}
+export interface ModelOptions {tier?:number;color?:string;recipeId?:string;stage?:string;look?:number;stock?:number;tableStyle?:'cafe'|'restaurant';seatStyle?:'classic'|'diner';placeSettings?:Array<{x:number;z:number;rotation:number}>;roomColors?:{counter:string;worktop:string;upholstery:string}}
 /** Constructed restaurant fixtures share the floor-centred, front -Z contract. */
-function roomFixture(kind:string,colors?:ModelOptions['roomColors']){
+function roomFixture(kind:string,colors?:ModelOptions['roomColors'],seatStyle:ModelOptions['seatStyle']='classic'){
   const red=kind==='stool'?colors?.upholstery??'#b94f43':colors?.counter??'#b94f43',cream=['toilet','handwash_sink'].includes(kind)?PALETTE.porcelain:colors?.worktop??'#fff1d8',walnut='#745038',chrome='#b3c7bd',g=new THREE.Group();g.name=`room-fixture:${kind}`;const paletteKey=JSON.stringify(colors??{}),enamelHighlight='#'+new THREE.Color(red).lerp(new THREE.Color(PALETTE.porcelain),.16).getHexString();
   if(kind==='stool'){
+    if(seatStyle==='diner'){
+      // A supported upholstered back makes these feel like bar seats, not the
+      // starter's little soda-fountain stools. Cushion contact remains .75 m.
+      for(const x of [-.175,.175])for(const z of [-.165,.165]){const leg=cylinder(.024,.031,.65,chrome,x,.329,z,10);leg.rotation.z=-x*.16;g.add(leg);}
+      g.add(ring(.22,.018,chrome,0,.295,0),box(.51,.042,.48,walnut,0,.670,0,.06),box(.52,.09,.48,red,0,.705,-.017,.085),box(.47,.013,.023,enamelHighlight,0,.742,-.233,.006));
+      for(const x of [-.208,.208])g.add(cylinder(.018,.022,.38,chrome,x,.861,.161,10));
+      g.add(box(.52,.29,.085,red,0,1.050,.174,.093),box(.465,.017,.014,enamelHighlight,0,1.163,.127,.007));
+      for(const x of [-.14,0,.14]){const seam=box(.007,.18,.009,enamelHighlight,x,1.049,.128,.003);g.add(seam);}
+      return packMeshes(g,`room-diner-stool-v1:${paletteKey}`);
+    }
     for(const x of [-.165,.165])for(const z of [-.165,.165]){const leg=cylinder(.025,.032,.65,chrome,x,.33,z,10);leg.rotation.z=-x*.15;g.add(leg);}
     g.add(ring(.212,.018,chrome,0,.30,0),cylinder(.237,.23,.058,chrome,0,.657),cylinder(.244,.239,.080,red,0,.707,0,24),cylinder(.217,.218,.010,enamelHighlight,0,.751,0,24));
     return packMeshes(g,`room-stool-v1:${paletteKey}`);
@@ -646,14 +730,14 @@ function roomFixture(kind:string,colors?:ModelOptions['roomColors']){
     // The door lies on the same cell edge as the engine's staff-only opening.
     // A real jamb carries the hinge; the leaf swings into the kitchen cell.
     const assembly=new THREE.Group();assembly.name='staff-door-assembly';assembly.position.z=-.50;
-    for(const x of [-.447,.447])assembly.add(box(.114,2.06,.19,walnut,x,1.03,0,.016),box(.035,2.02,.025,cream,x,1.01,-.109,.006));
-    assembly.add(box(1.01,.13,.21,walnut,0,2.04,0,.016));
+    for(const x of [-.447,.447])assembly.add(box(.114,2.42,.19,walnut,x,1.21,0,.016),box(.035,2.37,.025,cream,x,1.185,-.109,.006));
+    assembly.add(box(1.01,.14,.21,walnut,0,2.42,0,.016));
     const leaf=new THREE.Group();leaf.name='staff-door-leaf';leaf.position.set(-.383,.025,0);
-    leaf.add(box(.762,1.91,.073,red,.381,.955,0,.020),box(.670,1.10,.017,cream,.381,1.322,-.049,.025),box(.665,.050,.022,walnut,.381,.731,-.052,.010));
-    const rim=ring(.169,.024,chrome,.381,1.422,-.073);rim.rotation.x=0;
-    const glass=cylinder(.148,.148,.019,'#a9cecb',.381,1.422,-.074,24);glass.rotation.x=Math.PI/2;
+    leaf.add(box(.762,2.285,.073,red,.381,1.1425,0,.020),box(.670,1.38,.017,cream,.381,1.572,-.049,.025),box(.665,.050,.022,walnut,.381,.851,-.052,.010));
+    const rim=ring(.169,.024,chrome,.381,1.662,-.073);rim.rotation.x=0;
+    const glass=cylinder(.148,.148,.019,'#a9cecb',.381,1.662,-.074,24);glass.rotation.x=Math.PI/2;
     leaf.add(rim,glass,box(.062,.26,.025,chrome,.657,.948,-.063,.018),box(.034,.185,.014,cream,.657,.948,-.081,.009),box(.63,.19,.019,chrome,.381,.17,-.05,.017));
-    packMeshes(leaf,'room-staff-door-leaf:'+paletteKey);assembly.add(leaf);g.add(assembly);return g;
+    packMeshes(leaf,'room-staff-door-leaf-v2:'+paletteKey);assembly.add(leaf);g.add(assembly);return g;
   }
   if(kind==='service_hatch'||kind==='internal_pass'){
     const w=kind==='service_hatch'?1:2;g.add(box(w-.08,.93,.58,red,0,.505,0,.025),box(w-.025,.085,.61,walnut,0,.064,0,.022),box(w,.10,.70,walnut,0,1.04,0,.042),box(w-.08,.023,.62,cream,0,1.10,0,.028));
@@ -665,7 +749,20 @@ function roomFixture(kind:string,colors?:ModelOptions['roomColors']){
     }
     g.userData.surfaceHeight=1.13;return g;
   }
-  const length=kind==='chef_bar'?6:3,isConsole=kind==='console',top=1.03;
+  if(kind==='chef_bar'){
+    const face=colors?.counter??'#9b7650',faceHighlight='#'+new THREE.Color(face).lerp(new THREE.Color('#e4cca3'),.15).getHexString(),faceShadow='#'+new THREE.Color(face).multiplyScalar(.76).getHexString();
+    g.add(box(5.94,.88,.67,faceShadow,0,.493,0,.025),box(5.96,.093,.70,walnut,0,.094,0,.026));
+    // Closely spaced timber flutes read as one crafted bar front at play size.
+    // Geometry is batched by paint so the detail does not add 60 draw calls.
+    for(let i=0;i<60;i++)g.add(box(.069,.73,.032,i%3===0?faceHighlight:face,(i-29.5)*.098,.505,-.352,.014));
+    for(const x of [-2.955,2.955])g.add(box(.077,.92,.73,walnut,x,.506,0,.022));
+    g.add(box(6.04,.087,.89,walnut,0,1.027,0,.060),box(6.02,.020,.86,'#bdad87',0,1.078,0,.045),box(6.015,.027,.855,cream,0,1.0965,0,.048));
+    g.add(box(5.95,.032,.029,'#ceb887',0,.987,-.402,.009));
+    for(const x of [-2.56,0,2.56])g.add(cylinder(.021,.025,.19,chrome,x,.208,-.509,10));
+    const rail=cylinder(.024,.024,5.40,chrome,0,.30,-.521,12);rail.rotation.z=Math.PI/2;g.add(rail);
+    g.userData.surfaceHeight=1.11;return packMeshes(g,`room-chef-bar-v2:${paletteKey}`);
+  }
+  const length=3,isConsole=kind==='console',top=1.03;
   if(isConsole){for(const x of [-length/2+.28,length/2-.28])g.add(box(.09,.99,.09,walnut,x,.503,.11,.018),box(.10,.09,.51,walnut,x,.926,-.015,.018));}
   else{
     g.add(box(length-.08,.91,.69,red,0,.471,0,.035),box(length-.04,.10,.72,walnut,0,.073,0,.026));
@@ -704,6 +801,23 @@ function createHerbPlanter(){
     const sprout=ball(.068,PALETTE.mint,x,h,0);sprout.scale.set(.65,1,.38);g.add(sprout);
   }
   g.add(box(.20,.089,.010,'#eadabc',0,.201,-.186,.014));for(const x of [-.055,0,.055])g.add(box(.017,.012,.006,PALETTE.sage,x,.2,-.193,.003));return packMeshes(g,'decor-herb-planter');
+}
+function createDaisyPlanter(){
+  // Floor version is a planted ceramic tub, not a tiny tabletop vase stranded
+  // on a tile. Counter mounting scales this same owned object to .38.
+  const g=group(cylinder(.31,.245,.43,'#e8c680',0,.236,0,24),cylinder(.324,.314,.055,'#d2a65b',0,.470,0,24),cylinder(.285,.285,.020,'#715840',0,.497,0,24),cylinder(.252,.247,.041,PALETTE.porcelain,0,.036,0,24));
+  for(let i=0;i<9;i++){
+    const a=i*2.4,r=.13+(i%3)*.035,leaf=ball(.19,i%2?'#75985b':'#4f7e50',Math.sin(a)*r,.55+(i%3)*.07,Math.cos(a)*r);leaf.scale.set(.72,.35,1.25);leaf.rotation.set(Math.cos(a)*.3,a,Math.sin(a)*.33);g.add(leaf);
+  }
+  for(let i=0;i<5;i++){
+    const a=i*2.4,x=Math.sin(a)*.18,z=Math.cos(a)*.14,y=.91+(i%3)*.085;
+    const stalk=cylinder(.010,.014,y-.49,PALETTE.leaf,x*.62,(y+.49)/2,z*.62,8);stalk.rotation.z=-x*.2;g.add(stalk);
+    for(let p=0;p<7;p++){
+      const angle=p*Math.PI*2/7,petal=ball(.048,PALETTE.porcelain,x+Math.cos(angle)*.075,y+Math.sin(angle)*.075,z-.015);petal.scale.set(.83,1,.31);petal.rotation.z=angle-Math.PI/2;g.add(petal);
+    }
+    const centre=ball(.037,'#dfb24f',x,y,z-.033);centre.scale.z=.46;g.add(centre);
+  }
+  return packMeshes(g,'decor-floor-daisy-v2');
 }
 /** These are miniature counter ornaments, authored at catalogue scale; the
  * common counter mount makes their real footprint about a third of a tile. */
@@ -755,16 +869,17 @@ function createWelcomeMat(){
   g.name='decor-welcome-mat';return packMeshes(g,'decor-welcome-mat');
 }
 export function createModel(kind:string,options:ModelOptions={}):THREE.Group{
-  if(['display_counter','console','chef_bar','lift_gate','staff_door','service_hatch','internal_pass','toilet','handwash_sink','stool','counter_till','counter_book'].includes(kind))return roomFixture(kind,options.roomColors);
+  if(['display_counter','console','chef_bar','lift_gate','staff_door','service_hatch','internal_pass','toilet','handwash_sink','stool','counter_till','counter_book'].includes(kind))return roomFixture(kind,options.roomColors,options.seatStyle);
   if(kind==='fridge')return createFridge(options.color??PALETTE.sage);
   if(kind==='plates')return createPlateRack(options.stock??2);
   if(kind==='cups')return createCupStand(options.stock??2);
   if(kind==='boxes')return createBoxStand();
   if(kind==='chef'||kind==='waiter'||kind==='customer'||kind==='cashier')return createCharacter(kind,options.look??0,options.color);
   if(kind==='chair')return createChair(options.color??PALETTE.tomato);
-  if(kind==='table_1')return createDiningTable(1);
-  if(kind==='table_2'||kind==='table')return createDiningTable(2);
-  if(kind==='table_4')return createDiningTable(4);
+  if(kind==='table_1')return createDiningTable(1,options.tableStyle,options.placeSettings);
+  if(kind==='table_2'||kind==='table')return createDiningTable(2,options.tableStyle,options.placeSettings);
+  if(kind==='table_4')return createDiningTable(4,options.tableStyle,options.placeSettings);
+  if(kind==='booth_2')return createBoothTable(options.roomColors);
   if(kind==='plant'||kind==='red_planter')return plant();
   if(kind==='leafy_plant')return createLeafyPlant();
   if(kind==='herb_planter')return createHerbPlanter();
@@ -772,7 +887,7 @@ export function createModel(kind:string,options:ModelOptions={}):THREE.Group{
   if(kind==='retro_radio')return createRetroRadio();
   if(kind==='condiment_caddy')return createCondimentCaddy();
   if(kind==='welcome_mat')return createWelcomeMat();
-  if(kind==='daisy_pot'){const g=group(cylinder(.18,.13,.25,PALETTE.mustard,0,.15));for(let i=0;i<3;i++){const x=(i-1)*.12,y=.54+(i%2)*.15;g.add(cylinder(.01,.012,y-.25,PALETTE.leaf,x,(y+.25)/2,0));for(let p=0;p<6;p++){const petal=ball(.055,PALETTE.porcelain,x+Math.cos(p*Math.PI/3)*.085,y+Math.sin(p*Math.PI/3)*.085,-.015);petal.scale.z=.35;g.add(petal);}g.add(ball(.047,PALETTE.mustard,x,y,-.025));}return g;}
+  if(kind==='daisy_pot')return createDaisyPlanter();
   if(kind==='parcel'||kind==='delivery'){
     const g=group(box(.59,.045,.50,PALETTE.wood,0,.057,0,.020));
     for(const x of [-.277,.277])g.add(box(.035,.40,.50,PALETTE.oak,x,.267,0,.012));

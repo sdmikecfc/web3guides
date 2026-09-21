@@ -108,7 +108,19 @@ const cookedPatty=kit.createFoodModel({recipeId:'classic_burger',kind:'processed
 assert.notEqual(fingerprint(cookedPatty),fingerprint(kit.createIngredientModel('beef')),'raw and grilled patties are indistinguishable');
 for(const item of EQUIPMENT)for(const tier of item.tiers){
   const model=kit.createModel(item.id,{tier:tier.tier});
-  inspect(model,`${item.id}/tier${tier.tier}`,{maxWidth:item.footprint[0]+.12,maxDepth:item.footprint[1]+.12});
+  // A booth owns two fixed seat cells as well as its 1 x 2 tabletop. Test its
+  // actual reserved-cell union; unrelated equipment keeps the original bounds.
+  inspect(model,`${item.id}/tier${tier.tier}`,{maxWidth:item.id==='booth_2'?3:item.footprint[0]+.12,maxDepth:item.footprint[1]+.12});
+  if(item.id==='booth_2'){
+    assert.deepEqual(item.footprint,[1,2]);assert.equal(model.userData.integratedSeats,true,'booth lost its integral benches');
+    const occupied=[{x:0,z:-.5},{x:0,z:.5},{x:-1,z:-.5},{x:1,z:-.5}];
+    for(const rotation of [0,1,2,3]){
+      model.rotation.y=-rotation*Math.PI/2;model.updateMatrixWorld(true);const turn=new THREE.Matrix4().makeRotationY(model.rotation.y),cells=occupied.map(p=>new THREE.Vector3(p.x,0,p.z).applyMatrix4(turn));
+      model.traverse(part=>{if(!part.isMesh)return;const vertices=part.geometry.getAttribute('position');for(let i=0;i<vertices.count;i++){const p=new THREE.Vector3().fromBufferAttribute(vertices,i).applyMatrix4(part.matrixWorld);assert(cells.some(c=>Math.abs(c.x-p.x)<=.502&&Math.abs(c.z-p.z)<=.502),`booth rotation ${rotation} escapes a reserved table/bench cell`);}});
+    }
+    model.rotation.y=0;model.updateMatrixWorld(true);
+    for(const x of [-1,1]){const hits=new THREE.Raycaster(new THREE.Vector3(x,.6,-.5),new THREE.Vector3(0,-1,0)).intersectObject(model,true);assert(hits[0]&&Math.abs(hits[0].point.y-.5)<.002,'booth cushion misses the simulated seated hip');}
+  }
   const before=new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());model.rotation.y=Math.PI/2;
   const after=new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());assert.ok(Math.abs(before.x-after.z)<1e-5&&Math.abs(before.z-after.x)<1e-5,`${item.id}: rotation changes footprint size`);
 }

@@ -11,7 +11,7 @@ export type HomeTask = { kind:'cook'|'deliver'|'wash'|'order'|'handoff'|'return'
 export type HomeActor = Point & { id:string;role:'chef'|'waiter'|'cashier';path:Point[];goal:Point|null;blockedTicks:number;held:ServiceItem|null;task:HomeTask|null;pose:'idle'|'walk'|'cook'|'carry'|'wash'|'takeOrder' };
 export type HomeStation = Point & { id:string;kind:StationKind;tier:number;rotation:number;front:Point;handoff:Point;moduleId?:string;dirtySlots?:{item:ServiceItem|null;workerId:string|null}[];slots:{item:ServiceItem|null;job:ServiceJob|null;orderId:string|null;workerId:string|null}[] };
 export type HomeSeat = Point & { id:string;status:'clean'|'occupied'|'eating'|'dirty'|'awaitingWash';customerId:string|null;mealId:string|null;item:ServiceItem|null };
-export type HomeTable = Point & { id:string;rotation:number;capacity:number;tier:number;front:Point;servicePoints:Point[];seats:HomeSeat[];kind?:'console'|'chef_bar';moduleId?:string };
+export type HomeTable = Point & { id:string;rotation:number;capacity:number;tier:number;front:Point;servicePoints:Point[];seats:HomeSeat[];kind?:'console'|'chef_bar'|'booth';moduleId?:string };
 export type HomeCustomer = Point & { id:string;phase:'queue'|'walking'|'seated'|'eating'|'leaving'|'counterWalking'|'ordering'|'waitingSeat'|'bathroomWait'|'walkingToilet'|'usingToilet'|'walkingHandwash'|'washingHands';path:Point[];tableId:string|null;seatId:string|null;orderId:string|null;recipeId:string;eatRemaining:number;blockedTicks?:number;ordered?:boolean;fixtureId?:string|null;bathroomTicks?:number;needsHandwash?:boolean };
 export type HomeBathroom = Point & {id:string;kind:'toilet'|'handwash_sink';front:Point;condition:number;occupiedBy:string|null};
 export type HomeOrder = { id:string;customerId:string;recipeId:string;status:'queued'|'cooking'|'ready'|'carried'|'served';chefId:string|null;waiterId:string|null;stationId:string|null;slotIndex:number;itemId:string };
@@ -134,13 +134,13 @@ export function createHomeWorld(input:HomeSimulationConfig):HomeWorld {
   for(const p of config.layout){if(!EQUIPMENT_BY_ID[p.equipmentId])continue;const front=frontOf(p),reachable=homePath(w,w.door,front)!==null,tier=Math.floor(bounded(config.equipment[p.equipmentId]?.tier??1,1,1,EQUIPMENT_BY_ID[p.equipmentId].tiers.length));
     if(!reachable)continue;
     if(kinds.includes(p.equipmentId as StationKind)){const kind=p.equipmentId as StationKind,capacity=EQUIPMENT_BY_ID[kind].tiers[tier-1].capacity;w.stations.push({id:p.id,kind,x:p.x,y:p.y,rotation:p.rotation,tier,front,handoff:{...front},slots:Array.from({length:capacity},()=>({item:null,job:null,orderId:null,workerId:null}))});}
-    if(p.equipmentId==='table_1'||p.equipmentId==='table_2'||p.equipmentId==='table_4'){
+    if(p.equipmentId==='table_1'||p.equipmentId==='table_2'||p.equipmentId==='table_4'||p.equipmentId==='booth_2'){
       const capacity=p.equipmentId==='table_4'?4:p.equipmentId==='table_1'?1:2,cells=footprint(p),corners=cells.flatMap(c=>[{x:c.x-1,y:c.y},{x:c.x+1,y:c.y},{x:c.x,y:c.y-1},{x:c.x,y:c.y+1}]);
       const usable=corners.filter((c,i)=>canWalk(w,c)&&homePath(w,w.door,c)!==null&&corners.findIndex(other=>key(other)===key(c))===i).sort((a,b)=>a.y-b.y||a.x-b.x);
       if(usable.length<capacity)continue;
       // Seats occupy distinct reachable sides; mirrored/rotated table footprints share the same navigation source.
-      const points=config.roomPlan?roomTableSeats(p,point=>canWalk(w,point)&&homePath(w,w.door,point,new Set(),'customer')!==null):Array.from({length:capacity},(_,i)=>capacity===1?front:usable[Math.floor(i*usable.length/capacity)]);if(points.length!==capacity)continue;const seats=points.map((p,i)=>({...p,id:`${p.x}_${p.y}_seat_${i}`,status:'clean' as const,customerId:null,mealId:null,item:null}));
-      w.tables.push({id:p.id,x:p.x,y:p.y,rotation:p.rotation,capacity,tier,front,servicePoints:[],seats:seats.map((seat,i)=>({...seat,id:`${p.id}_seat_${i+1}`}))});
+      const points=config.roomPlan||p.equipmentId==='booth_2'?roomTableSeats(p,point=>canWalk(w,point)&&homePath(w,w.door,point,new Set(),'customer')!==null):Array.from({length:capacity},(_,i)=>capacity===1?front:usable[Math.floor(i*usable.length/capacity)]);if(points.length!==capacity)continue;const seats=points.map((p,i)=>({...p,id:`${p.x}_${p.y}_seat_${i}`,status:'clean' as const,customerId:null,mealId:null,item:null}));
+      w.tables.push({id:p.id,...(p.equipmentId==='booth_2'?{kind:'booth' as const}:{}),x:p.x,y:p.y,rotation:p.rotation,capacity,tier,front,servicePoints:[],seats:seats.map((seat,i)=>({...seat,id:`${p.id}_seat_${i+1}`}))});
     }
   }
   addRoomModules(w);
