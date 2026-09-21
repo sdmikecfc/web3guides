@@ -6,6 +6,7 @@ import { createHomeWorld } from '../src/lib/chef/diner/home-simulation';
 import { homeScene } from '../src/app/chef/diner-preview/home-scene';
 import { createHomeCameraBounds,fitHomeCamera,homeCameraPresentation } from '../src/app/chef/diner-preview/home-camera';
 import { createRestaurantBlueprint } from '../src/lib/chef/diner/room-plan';
+import { stageDecorLayout } from '../src/lib/chef/diner/stage-style-kit';
 
 const starter=createDiner(42*86400000+1000,'camera-review');
 const initial=homeScene(starter,createHomeWorld(homeSimulationConfig(starter)),null,'#bd654e');
@@ -72,7 +73,7 @@ console.log(JSON.stringify({portraitPlus15:{focus:portrait.focus,vertical:portra
 
 let roomPhoneCases=0;
 for(const stage of ['burger_shop','diner','restaurant'] as const){
- const state=createDiner(42*86400000+1000,'phone-room-camera'),blueprint=createRestaurantBlueprint(stage);state.home={...state.home,w:blueprint.roomPlan.w,h:blueprint.roomPlan.h,roomPlan:blueprint.roomPlan,layout:blueprint.layout,staff:blueprint.staff};
+ const state=createDiner(42*86400000+1000,'phone-room-camera'),blueprint=createRestaurantBlueprint(stage);state.home={...state.home,w:blueprint.roomPlan.w,h:blueprint.roomPlan.h,roomPlan:blueprint.roomPlan,layout:[...blueprint.layout,...stageDecorLayout(blueprint.roomPlan)],staff:blueprint.staff};
  const scene=homeScene(state,createHomeWorld(homeSimulationConfig(state)),null,'#bd654e'),bounds=createHomeCameraBounds(scene);
  for(const [width,height]of [[360,720],[390,844],[430,932],[503,920]])for(const previewInset of [undefined,190,245,270,330])for(let quarter=0;quarter<4;quarter++){
   const presentation=homeCameraPresentation(width,true,previewInset),rotation=quarter*Math.PI/2,fit=fitHomeCamera({bounds,width,height,rotation,...presentation}),camera=cameraFor(fit,width,height,rotation,presentation.azimuthOffset);
@@ -85,3 +86,15 @@ for(const stage of ['burger_shop','diner','restaurant'] as const){
 }
 assert.deepEqual(homeCameraPresentation(1280,true),{azimuthOffset:Math.PI/4,insets:{bottom:125},scaleBoost:1.04},'desktop framing changed');
 console.log(`PASS ${roomPhoneCases} authored room phone fits: three stages, four widths, four rotations, five HUD insets; full width,50px higher, desktop unchanged.`);
+
+let ceilingCases=0;
+for(const [x,y]of [[0,0],[13,0],[0,11],[13,11]]){
+ const scene={width:14,height:12,roomPlan:createRestaurantBlueprint('restaurant').roomPlan,tables:[],objects:[{id:'ceiling-check',kind:'chandelier',x,y,elevation:.195,mount:{kind:'ceiling' as const,targetId:'ceiling',surfaceHeight:2.8}}]},bounds=createHomeCameraBounds(scene);
+ const envelope=bounds.boxes.find(box=>box.min.x===x-.54&&box.min.z===y-.54&&box.max.y>2.89);assert(envelope,'ceiling light was framed like floor furniture');
+ assert(envelope.min.y<=2.132&&envelope.max.y>=2.896,'camera envelope clips actual hanging geometry');
+ for(const [width,height]of [[390,844],[1280,720]])for(let quarter=0;quarter<4;quarter++){
+  const presentation=homeCameraPresentation(width,true),rotation=quarter*Math.PI/2,fit=fitHomeCamera({bounds,width,height,rotation,...presentation}),camera=cameraFor(fit,width,height,rotation,presentation.azimuthOffset);
+  for(const px of [x-.423,x+.423])for(const py of [2.132,2.896])for(const pz of [y-.423,y+.423]){const point=pointToScreen(camera,width,height,px,py,pz);assert(point.x>=fit.insets.left&&point.x<=width-fit.insets.right&&point.y>=fit.insets.top&&point.y<=height-fit.insets.bottom,'edge-mounted chandelier clips the playing frame');}ceilingCases++;
+ }
+}
+console.log(`PASS ${ceilingCases} corner-mounted chandelier fits: phone/desktop, all four room turns.`);

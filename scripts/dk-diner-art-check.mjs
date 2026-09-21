@@ -124,7 +124,28 @@ for(const item of EQUIPMENT)for(const tier of item.tiers){
   const before=new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());model.rotation.y=Math.PI/2;
   const after=new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());assert.ok(Math.abs(before.x-after.z)<1e-5&&Math.abs(before.z-after.x)<1e-5,`${item.id}: rotation changes footprint size`);
 }
-for(const decor of DECOR)inspect(kit.createModel(decor.id),decor.id,{maxWidth:1.12,maxDepth:1.12});
+for(const decor of DECOR)inspect(kit.createModel(decor.id),decor.id,{maxWidth:1.12,maxDepth:1.12,...(decor.id==='chandelier'?{minY:1.93,maxY:2.71}:{})});
+const stageDecor=['diner_clock','bear_statue','deer_trophy','pie_display','coffee_sign','jukebox','wine_rack','deco_mirror','brass_planter','chandelier','brass_sconce','velvet_rope','runner_menu'],stageHashes=new Set();
+for(const id of stageDecor){
+  const definition=DECOR.find(item=>item.id===id);assert(definition,`${id}: art is absent from the shop catalog`);assert.deepEqual(definition.footprint,[1,1]);
+  const model=kit.createModel(id),hash=fingerprint(model),bounds=new THREE.Box3().setFromObject(model);assert(!stageHashes.has(hash),`${id}: reused a generic ornament`);stageHashes.add(hash);
+  assert(bounds.max.x<=.505&&bounds.min.x>=-.505&&bounds.max.z<=.505&&bounds.min.z>=-.505,`${id}: ornament escapes its own floor or support cell`);
+  if(definition.wall){
+    assert.equal(model.userData.wallMountPlane,.49,`${id}: missing authored wall support plane`);
+    for(let rotation=0;rotation<4;rotation++){
+      const mounted=kit.createModel(id);mounted.rotation.y=Math.PI-rotation*Math.PI/2;kit.configureRoomMount(mounted,{kind:id,rotation,mount:{kind:'wall',targetId:'test-wall',surfaceHeight:1.5}});mounted.updateMatrixWorld(true);
+      const inverse=new THREE.Matrix4().makeRotationY(-mounted.rotation.y),local=new THREE.Box3();mounted.traverse(part=>{if(!part.isMesh)return;const p=part.geometry.getAttribute('position');for(let i=0;i<p.count;i++)local.expandByPoint(new THREE.Vector3().fromBufferAttribute(p,i).applyMatrix4(part.matrixWorld).applyMatrix4(inverse));});
+      assert(local.max.z<=-.049&&local.max.z>=-.060,`${id}/${rotation}: decoration intersects or floats away from its supporting wall`);
+    }
+  }else if(definition.ceiling){
+    assert.equal(id,'chandelier','an unreviewed ceiling model bypassed the floor checks');assert.equal(model.userData.ceilingMountHeight,2.7);assert(model.userData.inputPassthrough,'overhead model blocks pointer targets');
+    assert(bounds.min.y>=model.userData.clearanceHeight,'claimed head clearance exceeds the actual suspended geometry');assert(Math.abs(bounds.max.y-model.userData.ceilingMountHeight)<.002,'ceiling cap does not reach its anchor');
+    const chef=kit.createModel('chef'),chefTop=new THREE.Box3().setFromObject(chef).max.y;assert(bounds.min.y+2.8-model.userData.ceilingMountHeight>chefTop+.10,'chandelier hangs into the chef hat');
+  }else{
+    assert(bounds.min.y>=-.001&&bounds.min.y<.025,`${id}: free-standing prop misses its floor or counter support`);
+    if(definition.counter){kit.configureRoomMount(model,{kind:id,mount:{kind:'counter',targetId:'test-counter',surfaceHeight:1.11}});const mounted=new THREE.Box3().setFromObject(model);assert(mounted.max.x<=.27&&mounted.min.x>=-.27&&mounted.max.z<=.27&&mounted.min.z>=-.27,`${id}: counter miniature exceeds its clear display spot`);}
+  }
+}
 const extraDecor={coffee_print:250,burger_print:250,leafy_plant:450,herb_planter:300};
 const extraPrints=new Set(['coffee_print','burger_print']),extraHashes=new Set();
 for(const [id,price]of Object.entries(extraDecor)){

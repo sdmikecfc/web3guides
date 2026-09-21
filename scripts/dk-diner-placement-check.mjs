@@ -35,6 +35,19 @@ for(const def of [...HOME_EQUIPMENT,...DECOR])for(let rotation=0;rotation<4;rota
   const cells=[];for(let y=0;y<h;y++)for(let x=0;x<w;x++)cells.push({x:2+x,y:3+y});verifyGhost(ghost,cells);
 }
 for(let rotation=0;rotation<4;rotation++){
+  const object={id:'wide-counter',kind:'display_counter',x:2,y:3,rotation,footprint:[4,1]},ghost=createPlacementGhost({object,valid:true},height,'home'),model=ghost.getObjectByName('placement-object'),[w,h]=rotation%2?[1,4]:[4,1];
+  const bounds=new THREE.Box3().setFromObject(model);assert(Math.abs((rotation%2?bounds.max.z-bounds.min.z:bounds.max.x-bounds.min.x)-4)<.002,'four-tile counter preview reverted to the legacy three-tile model');
+  const cells=Array.from({length:w*h},(_,i)=>({x:2+i%w,y:3+Math.floor(i/w)}));verifyGhost(ghost,cells);
+}
+for(let rotation=0;rotation<4;rotation++){
+  const object={id:'hanging-chandelier',kind:'chandelier',x:5,y:7,rotation,footprint:[1,1],elevation:.095+2.8-2.7,mount:{kind:'ceiling',targetId:'ceiling',surfaceHeight:2.8}},ghost=createPlacementGhost({object,valid:true},height,'home'),model=ghost.getObjectByName('placement-object');ghost.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(model);
+  assert(Math.abs(bounds.max.y-2.895)<.003,'chandelier preview does not attach to the actual room ceiling');assert(bounds.min.y>2.10,'chandelier preview intrudes on diners');assert(Math.abs((bounds.min.x+bounds.max.x)/2-5)<.001&&Math.abs((bounds.min.z+bounds.max.z)/2-7)<.001,'ceiling preview drifts from its chosen spot');verifyGhost(ghost,[{x:5,y:7}]);
+}
+{
+ const table={id:'owned-stools',kind:'chef_bar',x:2,y:3,rotation:0,footprint:[6,1],capacity:6,seats:[{id:'old-stool',x:2,y:4,status:'clean',style:'classic',surface:{x:2,y:3}},{id:'new-stool',x:3,y:4,status:'clean',style:'diner',surface:{x:3,y:3}}]},ghost=createPlacementGhost({table,valid:true},height,'home');ghost.updateMatrixWorld(true);
+ const old=ghost.getObjectByName('placement-seat:old-stool'),upgraded=ghost.getObjectByName('placement-seat:new-stool');assert(old&&upgraded);assert(new THREE.Box3().setFromObject(old).max.y<.095+.8,'old stool silently gained an upholstered back in the editor');assert(new THREE.Box3().setFromObject(upgraded).max.y>.095+1.15,'purchased upholstered stool loses its back in the placement preview');assert.equal(ghost.children.filter(child=>child.name.startsWith('placement-seat:')).length,2,'preview adds stools that are not owned');verifyGhost(ghost,[...Array.from({length:6},(_,i)=>({x:2+i,y:3})),...table.seats]);
+}
+for(let rotation=0;rotation<4;rotation++){
   const placement={id:'preview-booth',equipmentId:'booth_2',x:4,y:5,rotation},seats=roomTableSeats(placement,()=>true).map((p,index)=>({...p,id:`bench-${index}`,status:'clean'}));
   const table={id:placement.id,x:placement.x,y:placement.y,rotation,capacity:2,kind:'booth',seats};
   const ghost=createPlacementGhost({table,valid:true},height,'home'),model=ghost.getObjectByName('placement-table');assert(model);close(model.rotation.y,-rotation*Math.PI/2,'booth uses exact fixed bench rotation');

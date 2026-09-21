@@ -1,7 +1,7 @@
 import type { HomeWorld } from '../../../lib/chef/diner/home-simulation';
 import type { DinerState } from '../../../lib/chef/diner/progression';
 import { homeSpatial } from '../../../lib/chef/diner/home-spatial';
-import { roomModuleGeometry,ROOM_FIXTURES,resolveRoomMount } from '../../../lib/chef/diner/room-plan';
+import { roomModuleGeometry,roomModuleFootprint,roomSeatStyles,ROOM_FIXTURES,resolveRoomMount } from '../../../lib/chef/diner/room-plan';
 import type { DinerSceneData,SceneFood,SceneObject,ScenePerson,SceneTable } from './scene-types';
 
 /** Explicit public visual fields only. No balances, inventory, jobs, parcels or rewards. */
@@ -18,7 +18,7 @@ export function physicalHomeScene(state:HomeVisualState,world:HomeWorld|null,sel
   const plated=(item?:SceneFood|null):SceneFood|null=>item?{...item,mastery:state.recipes[item.recipeId]?.level??0}:null;
   const plan=state.home.roomPlan;
   for(const p of state.home.layout){
-    if(p.mount&&plan){const mounted=resolveRoomMount(plan,p.mount);if(mounted)objects.push({id:p.id,kind:p.equipmentId,x:mounted.x,y:mounted.y,rotation:mounted.rotation,mount:{kind:p.mount.kind,targetId:p.mount.targetId,surfaceHeight:mounted.surfaceHeight},elevation:p.mount.kind==='wall'?.095+mounted.surfaceHeight-(p.equipmentId==='chrome_clock'?1.54:1.49):.095+mounted.surfaceHeight});continue;}
+    if(p.mount&&plan){const mounted=resolveRoomMount(plan,p.mount);if(mounted)objects.push({id:p.id,kind:p.equipmentId,x:mounted.x,y:mounted.y,rotation:mounted.rotation,mount:{kind:p.mount.kind,targetId:p.mount.targetId,surfaceHeight:mounted.surfaceHeight},elevation:.095+mounted.surfaceHeight-(p.mount.kind==='wall'?(p.equipmentId==='chrome_clock'?1.54:1.49):p.mount.kind==='ceiling'?2.7:0)});continue;}
     if(p.equipmentId.startsWith('table_')||p.equipmentId==='booth_2'){
       const table=world?.tables.find(t=>t.id===p.id);
       const boothSurface=p.equipmentId==='booth_2'&&table?.seats.length===2?{x:(table.seats[0].x+table.seats[1].x)/2,y:(table.seats[0].y+table.seats[1].y)/2}:undefined;
@@ -35,10 +35,10 @@ export function physicalHomeScene(state:HomeVisualState,world:HomeWorld|null,sel
     for(const module of plan.modules){
       const geometry=roomModuleGeometry(module),station=world?.stations.find(st=>st.moduleId===module.id),table=world?.tables.find(table=>table.moduleId===module.id),bath=world?.bathrooms.find(f=>f.id===module.id);
       if(module.kind==='console'||module.kind==='chef_bar'){
-        tables.push({id:module.id,kind:module.kind,x:module.x,y:module.y,rotation:module.rotation,capacity:module.kind==='console'?3:6,footprint:ROOM_FIXTURES[module.kind].footprint,seatHeight:.707,surfaceHeight:1.11,seats:(table?.seats??geometry.seats.map((p,i)=>({...p,id:`${module.id}_seat_${i+1}`,status:'clean'}))).map(seat=>({...seat,item:'item'in seat?plated(seat.item):null,surface:geometry.cells.reduce((best,p)=>Math.hypot(p.x-seat.x,p.y-seat.y)<Math.hypot(best.x-seat.x,best.y-seat.y)?p:best,geometry.cells[0])}))});
+        tables.push({id:module.id,kind:module.kind,x:module.x,y:module.y,rotation:module.rotation,capacity:module.kind==='console'?3:6,footprint:ROOM_FIXTURES[module.kind].footprint,seatHeight:.707,surfaceHeight:1.11,seats:(table?.seats??geometry.seats.map((p,i)=>({...p,id:`${module.id}_seat_${i+1}`,status:'clean',style:roomSeatStyles(module)[i]}))).map(seat=>({...seat,item:'item'in seat?plated(seat.item):null,surface:geometry.cells.reduce((best,p)=>Math.hypot(p.x-seat.x,p.y-seat.y)<Math.hypot(best.x-seat.x,best.y-seat.y)?p:best,geometry.cells[0])}))});
       }else{
         const gateOpen=module.kind==='lift_gate'&&world?.actors.some(actor=>actor.path.length&&Math.hypot(actor.x-module.x,actor.y-module.y)<1.05);
-        objects.push({id:module.id,kind:module.kind==='lift_gate'&&plan.stage!=='burger_shop'?'staff_door':module.kind,x:module.x,y:module.y,rotation:module.rotation,footprint:ROOM_FIXTURES[module.kind].footprint,gateOpen,condition:bath?.condition??module.condition,
+        objects.push({id:module.id,kind:module.kind==='lift_gate'&&plan.stage!=='burger_shop'?'staff_door':module.kind,x:module.x,y:module.y,rotation:module.rotation,footprint:roomModuleFootprint(module),gateOpen,condition:bath?.condition??module.condition,
           state:bath?.occupiedBy?'working':(bath?.condition??module.condition??100)<=20?'burning':'idle',slots:station?[...station.slots.map(slot=>({food:plated(slot.item),state:slot.item?'ready' as const:'idle' as const})),...(station.dirtySlots??[]).map(slot=>({food:plated(slot.item),state:slot.item?'ready' as const:'idle' as const}))]:undefined});
       }
     }

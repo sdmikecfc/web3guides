@@ -25,7 +25,7 @@ export function createPlacementGhost(placement:ScenePlacement,floorHeight:(x:num
   if(placement.object){
     const object=placement.object,facing=object.rotation??0,footprint=object.footprint??(object.kind==='pass'||object.kind==='queue_bench'?[2,1]:[1,1]);
     const width=footprint[facing%2?1:0],height=footprint[facing%2?0:1];
-    const model=createModel(object.kind,{tier:object.tier,color:object.color,stock:object.stock});
+    const model=createModel(object.kind,{tier:object.tier,color:object.color,stock:object.stock,fixtureWidth:object.footprint?.[0]});
     model.name='placement-object';model.rotation.y=Math.PI-facing*Math.PI/2;
     if(object.mount){const holder=new THREE.Group();holder.position.set(object.x+(width-1)/2,object.elevation??floorHeight(object.x,object.y),object.y+(height-1)/2);holder.add(model);configureRoomMount(model,object);root.add(holder);}
     else{model.position.set(object.x+(width-1)/2,object.elevation??floorHeight(object.x,object.y),object.y+(height-1)/2);root.add(model);}
@@ -36,7 +36,7 @@ export function createPlacementGhost(placement:ScenePlacement,floorHeight:(x:num
     const model=createModel(table.kind==='booth'?'booth_2':table.kind??`table_${table.capacity}`,{tableStyle:table.tableStyle,placeSettings:diningPlaceSettings(table)});model.name='placement-table';model.position.set(center.x,floorHeight(table.x,table.y),center.y);model.rotation.y=table.kind&&table.kind!=='booth'?Math.PI-facing*Math.PI/2:-facing*Math.PI/2;root.add(model);
     const [width,height]=tableShape(table);
     for(let y=0;y<height;y++)for(let x=0;x<width;x++)cells.push({x:table.x+x,y:table.y+y});
-    for(const seat of table.seats){if(table.kind!=='booth'){const chair=createModel(table.kind?'stool':'chair',{color:mode==='truck'?PALETTE.tomato:PALETTE.mint});chair.name=`placement-seat:${seat.id}`;chair.position.set(seat.x,floorHeight(seat.x,seat.y),seat.y);chair.lookAt(seat.surface?.x??center.x,chair.position.y,seat.surface?.y??center.y);chair.rotateY(Math.PI);root.add(chair);}cells.push({x:seat.x,y:seat.y,chair:true});}
+    for(const seat of table.seats){if(table.kind!=='booth'){const chair=createModel(table.kind?'stool':'chair',{color:mode==='truck'?PALETTE.tomato:PALETTE.mint,seatStyle:seat.style??'classic'});chair.name=`placement-seat:${seat.id}`;chair.position.set(seat.x,floorHeight(seat.x,seat.y),seat.y);chair.lookAt(seat.surface?.x??center.x,chair.position.y,seat.surface?.y??center.y);chair.rotateY(Math.PI);root.add(chair);}cells.push({x:seat.x,y:seat.y,chair:true});}
   }
   const materials=new Map<THREE.Material,THREE.Material>();
   root.traverse(object=>{

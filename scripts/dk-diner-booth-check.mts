@@ -46,14 +46,14 @@ check('both booth guests can order, eat and have dishes cleared without losing d
  assert.equal(served.size,2);assert.equal(collected.size,2);assert(world.metrics.plates>20);assert(world.metrics.washed>20);const resumed=JSON.parse(JSON.stringify(world));stepHomeWorld(world,1600);stepHomeWorld(resumed,1600);assert.deepEqual(resumed,world);
 });
 check('coordinated diner finishes appear in the preview, are owned once and restore with the room',()=>{
- const s=eligible(),before=structuredClone(s),preview=getRenovationPreview(s)!;assert.deepEqual(preview.finishes,stageDefaultFinishes('diner'));assert.deepEqual(preview.includedPalette,{counter:['oak'],upholstery:['teal']});assert.deepEqual(s,before);
- const next=act(s,{type:'renovateHome',stage:'diner',previewToken:preview.token});assert.deepEqual(next.home.finishes,preview.finishes);assert.deepEqual(next.paletteOwned!.counter,['tomato','oak']);assert.deepEqual(next.paletteOwned!.upholstery,['cherry','teal']);assert(sanitizeDinerSave(next));
+ const s=eligible(),before=structuredClone(s),preview=getRenovationPreview(s)!;assert.deepEqual(preview.finishes,stageDefaultFinishes('diner'));assert.deepEqual(preview.includedPalette,{counter:['oak']});assert.deepEqual(s,before);
+ const next=act(s,{type:'renovateHome',stage:'diner',previewToken:preview.token});assert.deepEqual(next.home.finishes,preview.finishes);assert.deepEqual(next.paletteOwned!.counter,['tomato','oak']);assert.deepEqual(next.paletteOwned!.upholstery,['cherry']);assert(sanitizeDinerSave(next));
  const restored=act(next,{type:'restoreRenovation',backupId:next.renovation.backups[0].id});assert.deepEqual(restored.home.finishes,s.home.finishes);assert.deepEqual(restored.paletteOwned,next.paletteOwned);const second=getRenovationPreview(restored)!;assert.deepEqual(second.includedPalette,{});assert.deepEqual(second.finishes,s.home.finishes,'switching back to an owned original color is intentional');
  const changed=act(s,{type:'buyRoomFinish',slot:'counter',id:'sage'});const stale=dispatchDiner(changed,{type:'renovateHome',stage:'diner',previewToken:preview.token},{now});assert.equal(stale.code,'renovation_changed');
 });
 check('renovating or migrating never replaces a purchased finish, even when original colors are selected',()=>{
  let s=eligible();s=act(s,{type:'buyRoomFinish',slot:'counter',id:'sage'});s=act(s,{type:'buyRoomFinish',slot:'upholstery',id:'mint'});s=act(s,{type:'setRoomFinish',slot:'counter',id:'tomato'});
- const chosen=structuredClone(s.home.finishes),preview=getRenovationPreview(s)!;assert.deepEqual(preview.finishes,chosen);s=act(s,{type:'renovateHome',stage:'diner',previewToken:preview.token});assert.deepEqual(s.home.finishes,chosen);assert(s.paletteOwned!.counter.includes('oak'));assert(s.paletteOwned!.upholstery.includes('teal'));
+ const chosen=structuredClone(s.home.finishes),preview=getRenovationPreview(s)!;assert.deepEqual(preview.finishes,chosen);s=act(s,{type:'renovateHome',stage:'diner',previewToken:preview.token});assert.deepEqual(s.home.finishes,chosen);assert(s.paletteOwned!.counter.includes('oak'));assert(!s.paletteOwned!.upholstery.includes('teal'));
  delete s.renovation.boothGrant;delete s.renovation.dinerPaletteGranted;s.paletteOwned!.counter=s.paletteOwned!.counter.filter(id=>id!=='oak');s.paletteOwned!.upholstery=s.paletteOwned!.upholstery.filter(id=>id!=='teal');const migrated=migrateDinerRestaurant(s);assert.deepEqual(migrated.home,s.home);assert.deepEqual(migrateDinerRestaurant(migrated),migrated);
 });
 console.log(`PASS ${groups} booth ownership and service groups`);

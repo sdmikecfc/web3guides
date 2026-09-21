@@ -6,6 +6,7 @@ import { ROOM_PALETTES } from '../../../lib/chef/diner/collections';
 import { homeSpatial,HOME_TERRACE_ELEVATION } from '../../../lib/chef/diner/home-spatial';
 import { box,cylinder,material,PALETTE } from './models';
 import type { DinerSceneData } from './scene-types';
+import { createDiningFloorFinish,dressRoomWall } from './room-materials';
 
 const CREAM='#fff1d8',RED='#b94f43',WOOD='#745038',TILE='#a6c9bb';
 export const ROOM_FINISH_COLORS:Record<string,string>={rose:'#e5b9a9',sky:'#8caeb9',wood:'#c39468',oak:'#c39468',caramel:'#b88c55',buttercream:'#ebd29f',...Object.fromEntries(Object.values(ROOM_PALETTES).flat().map(palette=>[palette.id,palette.color]))};
@@ -34,9 +35,9 @@ function menuBoard(ids:string[],width=3.3,height=1.18){
  c.fillStyle='#dfaa5d';c.beginPath();c.ellipse(208,229,124,104,0,Math.PI,Math.PI*2);c.closePath();c.fill();c.fillStyle='#fff1c7';for(const [x,y,r]of[[155,171,-.3],[205,154,.3],[260,180,-.4],[210,202,.4],[116,203,.2]]){c.save();c.translate(x,y);c.rotate(r);c.beginPath();c.ellipse(0,0,9,4,0,0,Math.PI*2);c.fill();c.restore();}
  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;board.material=new THREE.MeshBasicMaterial({map:texture});return board;
 }
-function shopWindow(width:number,height:number){
+function shopWindow(width:number,height:number,frameColor=RED){
  const group=new THREE.Group();group.add(box(width+.18,height+.18,.10,WOOD,0,0,0,.04),box(width+.11,height+.11,.12,CREAM,0,0,.016,.025),box(width,height,.018,'#abd2cf',0,0,.085,.018));
- for(const x of [-width/2,width/2])group.add(box(.07,height+.05,.08,RED,x,0,.104,.014));for(const y of [-height/2,height/2])group.add(box(width+.08,.07,.08,RED,0,y,.104,.014));
+ for(const x of [-width/2,width/2])group.add(box(.07,height+.05,.08,frameColor,x,0,.104,.014));for(const y of [-height/2,height/2])group.add(box(width+.08,.07,.08,frameColor,0,y,.104,.014));
  group.add(box(.060,height,.073,CREAM,0,0,.117,.010),box(width,.050,.06,CREAM,0,-.05,.115,.010),box(width+.27,.105,.32,WOOD,0,-height/2-.065,.14,.025));
  const gleam=box(width*.30,.034,.007,'#deeee0',width*.24,height*.25,.098,.006);gleam.rotation.z=.70;gleam.material=new THREE.MeshToonMaterial({color:'#deeee0',transparent:true,opacity:.45,depthWrite:false});gleam.userData.inputPassthrough=true;group.add(gleam);
  return group;
@@ -50,7 +51,7 @@ function partition(length:number,height:number,color:string,normal:THREE.Vector3
   root.add(box(length,.055,.132,WOOD,0,.12,0,.010));root.userData.cutaway={upper,cap,normal,height,low};return root;
 }
 export function createRoomShell(plan:RoomPlan,data:Pick<DinerSceneData,'sign'|'menu'|'floor'|'wall'|'roomFinishes'>){
-  const root=new THREE.Group();root.name=`restaurant-shell:${plan.stage}`;const colors=roomColors(data),wallColor=ROOM_FINISH_COLORS[data.wall??'cream']??CREAM;
+  const root=new THREE.Group();root.name=`restaurant-shell:${plan.stage}`;const colors=roomColors(data),wallColor=data.wall==='deco'?'#e9e4d5':data.wall==='diner_panel'?'#d7c3a1':ROOM_FINISH_COLORS[data.wall??'cream']??CREAM;
   // The front apron is real supported pavement, not an oversized doorway prop.
   const space=homeSpatial(plan.w,plan.h),depth=plan.h+space.terrace.h;
   root.add(box(plan.w+.28,.21,depth+.28,'#c2b7a2',(plan.w-1)/2,-.10,(depth-1)/2,.065));
@@ -61,16 +62,18 @@ export function createRoomShell(plan:RoomPlan,data:Pick<DinerSceneData,'sign'|'m
   }
   for(let y=plan.h;y<depth;y++)for(let x=0;x<plan.w;x++)cells.push({x,y,h:HOME_TERRACE_ELEVATION,color:x===space.door.x||x===space.door.x-1?'#e5ddcc':(Math.floor(x/2)+y)%2?'#c8cbbf':'#d5d6ca'});
   const tiles=new THREE.InstancedMesh(new THREE.BoxGeometry(.99,.06,.99),new THREE.MeshToonMaterial({color:'#fff'}),cells.length),matrix=new THREE.Matrix4();tiles.name='room-supported-floor';tiles.userData.tiles=cells;tiles.receiveShadow=true;cells.forEach((cell,i)=>{matrix.makeTranslation(cell.x,cell.h-.03,cell.y);tiles.setMatrixAt(i,matrix);tiles.setColorAt(i,new THREE.Color(cell.color));});root.add(tiles);
+  root.add(createDiningFloorFinish(plan,data.floor));
   root.add(box(plan.w+.25,.11,.12,'#aea994',(plan.w-1)/2,.01,depth-.40,.022));
   const back=partition(plan.w+.12,2.78,colors.counter,new THREE.Vector3(0,0,-1),.85);back.name='room-wall:outer-back';back.position.set((plan.w-1)/2,.095,-.55);root.add(back);
   const side=partition(plan.h+.12,2.40,colors.counter,new THREE.Vector3(-1,0,0),.85);side.name='room-wall:outer-side';side.rotation.y=Math.PI/2;side.position.set(-.55,.095,(plan.h-1)/2);root.add(side);
   // Broad plaster and orderly dado rails replace the tiny decorative wall clutter.
   for(const panel of [back,side]){const u=panel.userData.cutaway.upper as THREE.Group;for(const child of u.children)if(child instanceof THREE.Mesh)child.material=material(wallColor);}
+  dressRoomWall(back,plan.w+.12,data.wall);dressRoomWall(side,plan.h+.12,data.wall);
   for(const edge of plan.edges){
     const x=(edge.a.x+edge.b.x)/2,y=(edge.a.y+edge.b.y)/2,dx=edge.b.x-edge.a.x,dy=edge.b.y-edge.a.y;
     if(edge.kind==='staff_gate'||edge.kind==='hatch')continue;
     const bathroom=roomZoneAt(plan,edge.a)?.kind==='bathroom'||roomZoneAt(plan,edge.b)?.kind==='bathroom';
-    const color=bathroom?TILE:colors.counter,height=bathroom?1.92:plan.stage==='burger_shop'?1.03:2.50;
+    const color=bathroom?TILE:colors.counter,height=bathroom?1.92:plan.stage==='burger_shop'?1.11:2.50;
     if(edge.kind==='door'){
       const door=new THREE.Group();door.name=`room-door:${edge.id}`;door.position.set(x,.095,y);door.rotation.y=dx?Math.PI/2:0;
       const entrance=(roomZoneAt(plan,edge.a)?.kind==='bathroom')!==(roomZoneAt(plan,edge.b)?.kind==='bathroom');
@@ -87,7 +90,11 @@ export function createRoomShell(plan:RoomPlan,data:Pick<DinerSceneData,'sign'|'m
       }
       door.add(hinge);door.userData.doorEdge=edge;door.userData.doorNormal=new THREE.Vector3(dx,0,dy);door.userData.pick={id:`edge:${edge.id}`};root.add(door);
     }else{
-      const panel=partition(1.01,height,color,new THREE.Vector3(dx,0,dy),Math.min(.63,height));panel.position.set(x,.095,y);panel.rotation.y=dx?Math.PI/2:0;panel.name=`room-wall:${edge.id}`;panel.userData.pick={id:`edge:${edge.id}`};root.add(panel);
+      const backedByBar=plan.modules.some(module=>module.kind==='chef_bar'&&roomModuleGeometry(module).cells.some(cell=>cell.x===edge.a.x&&cell.y===edge.a.y));
+      const panel=partition(1.01,height,color,new THREE.Vector3(dx,0,dy),backedByBar?1.11:Math.min(.63,height));
+      if(backedByBar){const base=panel.children[0];base.visible=false;panel.userData.cutaway.cap.material=material(colors.worktop);}
+      if(!bathroom&&plan.stage==='burger_shop')panel.userData.cutaway.cap.material=material(colors.worktop);
+      panel.position.set(x,.095,y);panel.rotation.y=dx?Math.PI/2:0;panel.name=`room-wall:${edge.id}`;panel.userData.pick={id:`edge:${edge.id}`};root.add(panel);
     }
   }
   // Keep the actual menu over the kitchen, with the name above the bathroom wing.
@@ -99,7 +106,7 @@ export function createRoomShell(plan:RoomPlan,data:Pick<DinerSceneData,'sign'|'m
   const menu=menuBoard(data.menu??['classic_burger']);menu.position.set(cx,1.56,-.476);menu.userData.pick={id:'home-binder'};menu.userData.wallOwner=back;root.add(menu);
   for(const trim of [box(3.38,.09,.15,WOOD,cx,2.79,-.49,.026),box(3.43,.06,.10,WOOD,cx,.94,-.49,.016)]){trim.userData.wallOwner=back;root.add(trim);}
   // Real framed shop windows give the cutaway restaurant a recognisable frontage.
-  for(const y of [Math.max(2.25,plan.h-5.35),plan.h-2.25]){const window=shopWindow(2.02,1.03);window.rotation.y=Math.PI/2;window.position.set(-.476,1.58,y);window.userData.wallOwner=side;root.add(window);}
+  for(const y of [Math.max(2.25,plan.h-5.35),plan.h-2.25]){const window=shopWindow(2.02,1.03,data.wall==='deco'?'#a98d58':data.wall==='diner_panel'?'#795232':RED);window.rotation.y=Math.PI/2;window.position.set(-.476,1.58,y);window.userData.wallOwner=side;root.add(window);}
   // A wall console touches this low perimeter dado; the public aisle stays clear.
   root.add(box(.13,1.03,plan.h-3.8,colors.counter,plan.w-.49,.095+1.03/2,(plan.h+3)/2,.025),box(.18,.065,plan.h-3.7,WOOD,plan.w-.49,1.145,(plan.h+3)/2,.016));
   // A glazed shop front is suggested by its jambs, striped canopy and entrance mat.

@@ -2,7 +2,7 @@ import { EQUIPMENT_BY_ID, RECIPE_BY_ID, SERVICE_RULES, recipePrice } from './con
 import { DECOR_BY_ID } from './collections';
 import type { HomePlacement } from './progression';
 import type { Point, ServiceItem, ServiceJob, StationKind } from './types';
-import { ROOM_FIXTURES, ROOM_RULES, roomCanStep, roomModuleGeometry, roomZoneAt, roomTableSeats, validateRoomPlan } from './room-plan';
+import { ROOM_FIXTURES, ROOM_RULES, roomCanStep, roomModuleGeometry, roomSeatStyles, roomZoneAt, roomTableSeats, validateRoomPlan } from './room-plan';
 import type { RoomPlan, RoomModule, RoomRole } from './room-plan';
 
 export const HOME_SIM_RULES = { version:1,ticksPerSecond:20,chefSpeed:2.6,waiterSpeed:3,customerSpeed:2.4,eatTicks:240,washTicks:60,queueLimit:24,measurementWarmupTicks:6000,measurementTicks:144000,cacheEntries:100 } as const;
@@ -10,7 +10,7 @@ export type HomeSimulationConfig = { w:number;h:number;layout:HomePlacement[];eq
 export type HomeTask = { kind:'cook'|'deliver'|'wash'|'order'|'handoff'|'return'|'washReturn';orderId:string|null;stationId:string|null;slotIndex:number;tableId:string|null;seatId:string|null;phase:'approach'|'work'|'pickup'|'carry'|'drop';customerId?:string;remaining?:number;sourceId?:string;sourceSlot?:number };
 export type HomeActor = Point & { id:string;role:'chef'|'waiter'|'cashier';path:Point[];goal:Point|null;blockedTicks:number;held:ServiceItem|null;task:HomeTask|null;pose:'idle'|'walk'|'cook'|'carry'|'wash'|'takeOrder' };
 export type HomeStation = Point & { id:string;kind:StationKind;tier:number;rotation:number;front:Point;handoff:Point;moduleId?:string;dirtySlots?:{item:ServiceItem|null;workerId:string|null}[];slots:{item:ServiceItem|null;job:ServiceJob|null;orderId:string|null;workerId:string|null}[] };
-export type HomeSeat = Point & { id:string;status:'clean'|'occupied'|'eating'|'dirty'|'awaitingWash';customerId:string|null;mealId:string|null;item:ServiceItem|null };
+export type HomeSeat = Point & { id:string;status:'clean'|'occupied'|'eating'|'dirty'|'awaitingWash';customerId:string|null;mealId:string|null;item:ServiceItem|null;style?:'classic'|'diner' };
 export type HomeTable = Point & { id:string;rotation:number;capacity:number;tier:number;front:Point;servicePoints:Point[];seats:HomeSeat[];kind?:'console'|'chef_bar'|'booth';moduleId?:string };
 export type HomeCustomer = Point & { id:string;phase:'queue'|'walking'|'seated'|'eating'|'leaving'|'counterWalking'|'ordering'|'waitingSeat'|'bathroomWait'|'walkingToilet'|'usingToilet'|'walkingHandwash'|'washingHands';path:Point[];tableId:string|null;seatId:string|null;orderId:string|null;recipeId:string;eatRemaining:number;blockedTicks?:number;ordered?:boolean;fixtureId?:string|null;bathroomTicks?:number;needsHandwash?:boolean };
 export type HomeBathroom = Point & {id:string;kind:'toilet'|'handwash_sink';front:Point;condition:number;occupiedBy:string|null};
@@ -164,7 +164,7 @@ function emptyStation(w:HomeWorld,kind:StationKind,from:HomeActor):{station:Home
 function addRoomModules(w:HomeWorld):void {
  for(const m of w.roomModules){const g=roomModuleGeometry(m),reachable=homePath(w,w.door,g.back)!==null;
   if(['display_counter','service_hatch','internal_pass'].includes(m.kind)&&reachable&&canWalk(w,g.front))w.stations.push({id:m.id,moduleId:m.id,kind:'pass',x:m.x,y:m.y,rotation:m.rotation,tier:1,front:g.back,handoff:g.front,slots:Array.from({length:ROOM_FIXTURES[m.kind].capacity},()=>({item:null,job:null,orderId:null,workerId:null})),dirtySlots:Array.from({length:2},()=>({item:null,workerId:null}))});
-  if((m.kind==='console'||m.kind==='chef_bar')&&g.seats.every(p=>canWalk(w,p)&&homePath(w,w.door,p,new Set(),'customer'))&&g.servicePoints.some(p=>canWalk(w,p)&&homePath(w,w.door,p)))w.tables.push({id:m.id,moduleId:m.id,kind:m.kind,x:m.x,y:m.y,rotation:m.rotation,capacity:g.seats.length,tier:1,front:g.front,servicePoints:g.servicePoints.filter(p=>canWalk(w,p)&&homePath(w,w.door,p)),seats:g.seats.map((p,i)=>({...p,id:`${m.id}_seat_${i+1}`,status:'clean',customerId:null,mealId:null,item:null}))});
+  if((m.kind==='console'||m.kind==='chef_bar')&&g.seats.every(p=>canWalk(w,p)&&homePath(w,w.door,p,new Set(),'customer'))&&g.servicePoints.some(p=>canWalk(w,p)&&homePath(w,w.door,p)))w.tables.push({id:m.id,moduleId:m.id,kind:m.kind,x:m.x,y:m.y,rotation:m.rotation,capacity:g.seats.length,tier:1,front:g.front,servicePoints:g.servicePoints.filter(p=>canWalk(w,p)&&homePath(w,w.door,p)),seats:g.seats.map((p,i)=>({...p,style:roomSeatStyles(m)[i],id:`${m.id}_seat_${i+1}`,status:'clean',customerId:null,mealId:null,item:null}))});
   if(m.kind==='toilet'||m.kind==='handwash_sink')w.bathrooms.push({id:m.id,kind:m.kind,x:m.x,y:m.y,front:g.front,condition:m.condition??100,occupiedBy:null});
  }
 }
@@ -314,6 +314,9 @@ function updateCustomers(w:HomeWorld):void {
     if(['bathroomWait','walkingToilet','usingToilet','walkingHandwash','washingHands'].includes(c.phase)){bathroomVisit(w,c);continue;}
     if(c.phase==='counterWalking'){moveCustomer(w,c);const target=orderPoint(w,'front');if(target&&at(c,target))c.phase='ordering';continue;}
     if(c.phase==='walking'||c.phase==='leaving'){
+      // The doorway is an opening, not a single-file point. Two guests reaching
+      // it from opposite sides must be able to cross its threshold and leave.
+      if(c.phase==='leaving'&&Math.hypot(c.x-w.door.x,c.y-w.door.y)<.45){w.customers.splice(i,1);continue;}
       moveCustomer(w,c);
       if(!c.path.length){if(c.phase==='leaving'&&!at(c,w.door))continue;if(c.phase==='walking'){const seat=w.tables.find(t=>t.id===c.tableId)?.seats.find(s=>s.id===c.seatId);if(!seat||!at(c,seat))continue;}if(c.phase==='leaving'){w.customers.splice(i,1);continue;}c.phase='seated';if(!w.config.roomPlan||c.ordered)queueOrder(w,c);}
     }else if(c.phase==='eating'&&--c.eatRemaining<=0){

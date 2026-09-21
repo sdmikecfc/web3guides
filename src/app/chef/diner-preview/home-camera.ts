@@ -58,6 +58,7 @@ export function createHomeCameraBounds(scene:Pick<DinerSceneData,'width'|'height
     if(object.id.startsWith('incident:')||CONTEXT_IDS.has(object.id)||object.kind==='spill'||object.kind==='parcel')continue;
     const shape=object.footprint??own(EQUIPMENT_BY_ID,object.kind)?.footprint??own(DECOR_BY_ID,object.kind)?.footprint??[1,1];
     const turned=(object.rotation??0)%2===1,w=shape[turned?1:0],h=shape[turned?0:1],y=floor(object.y);
+    if(object.mount?.kind==='ceiling'){add(object.x-.54,object.mount.surfaceHeight-.85,object.y-.54,object.x+.54,object.mount.surfaceHeight+.1,object.y+.54);continue;}
     add(object.x-.54,y,object.y-.54,object.x+w-.46,y+(own(HEIGHTS,object.kind)??2.35),object.y+h-.46);
   }
   for(const table of scene.tables){

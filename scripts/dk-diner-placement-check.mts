@@ -103,4 +103,14 @@ test('booth previews and committed rooms share fixed bench cells, including inva
  }
  assert.deepEqual(state,original,'hovering and rotation must never rearrange the live room');
 });
+test('ceiling lights preview, move above occupied tables and reload on the same ceiling anchor',()=>{
+ let state=createDiner(now,'ceiling-placement');const blueprint=createRestaurantBlueprint('restaurant');Object.assign(state.home,{w:blueprint.roomPlan.w,h:blueprint.roomPlan.h,roomPlan:blueprint.roomPlan,fixtureInventory:fixtureInventoryFor(blueprint.roomPlan),layout:blueprint.layout,staff:blueprint.staff});state.equipment.table_2.homeCopies=3;state.decorOwned.chandelier=2;
+ let draft=createPlacementDraft(state,'home','chandelier','ceiling-light');
+ for(const [x,y]of [[5,8],[2,6]] as const){
+  const before=JSON.stringify(state);draft=aimHomeMount(state,draft,x,y,true);const preview=previewPlacement(state,draft);
+  assert.equal(preview.error,null);assert.deepEqual(draft.mount,{kind:'ceiling',targetId:'ceiling',slot:y*state.home.w+x});assert.equal(preview.object?.mount?.kind,'ceiling');assert.equal(preview.object?.x,x);assert.equal(preview.object?.y,y);assert(Math.abs(preview.object!.elevation!-(.095+2.8-2.7))<.001);assert.equal(JSON.stringify(state),before);
+  state=act(state,preview.command);const saved=sanitizeDinerSave(JSON.stringify(state));assert(saved);assert.deepEqual(saved.home.layout.find(p=>p.id===draft.id)?.mount,draft.mount);state=saved;draft={...draft,existing:true};
+ }
+ const duplicate={...draft,id:'second-light',existing:false};assert(previewPlacement(state,duplicate).error,'two ceiling lights share the same anchor');assert(previewPlacement(state,{...draft,mount:{kind:'ceiling',targetId:'ceiling',slot:state.home.w*state.home.h}}).error,'ceiling light escapes the room bounds');
+});
 console.log(`Diner placement: ${groups} groups passed.`);

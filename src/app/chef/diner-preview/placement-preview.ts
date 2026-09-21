@@ -19,7 +19,7 @@ export function aimHomeMount(state:DinerState,draft:PlacementDraft,x:number,y:nu
     ...plan.edges.filter(e=>e.kind==='wall').map(e=>({kind:'wall' as const,targetId:e.id,slot:0})),
     ...Array.from({length:plan.w},(_,slot)=>({kind:'wall' as const,targetId:'outer-back',slot})),
     ...Array.from({length:plan.h},(_,slot)=>({kind:'wall' as const,targetId:'outer-side',slot})),
-  ]:plan.modules.filter(m=>['display_counter','internal_pass','console','chef_bar'].includes(m.kind)).flatMap(m=>roomModuleGeometry(m).cells.map((_,slot)=>({kind:'counter' as const,targetId:m.id,slot})));
+  ]:draft.mount.kind==='ceiling'?Array.from({length:plan.w*plan.h},(_,slot)=>({kind:'ceiling' as const,targetId:'ceiling',slot})):plan.modules.filter(m=>['display_counter','internal_pass','console','chef_bar'].includes(m.kind)).flatMap(m=>roomModuleGeometry(m).cells.map((_,slot)=>({kind:'counter' as const,targetId:m.id,slot})));
   const available=candidates.filter(m=>!!resolveRoomMount(plan,m)&&!state.home.layout.some(p=>p.id!==draft.id&&p.mount?.kind===m.kind&&p.mount.targetId===m.targetId&&p.mount.slot===m.slot));
   available.sort((a,b)=>{const pa=resolveRoomMount(plan,a)!,pb=resolveRoomMount(plan,b)!;return Math.hypot(pa.x-x,pa.y-y)-Math.hypot(pb.x-x,pb.y-y);});
   const mount=available[0];if(!mount)return {...draft,pinned};const point=resolveRoomMount(plan,mount)!;return {...draft,mount,x:Math.floor(point.x),y:Math.floor(point.y),rotation:point.rotation,pinned};
@@ -44,7 +44,7 @@ export function previewPlacement(state:DinerState,draft:PlacementDraft):Placemen
     }
     const colors:Record<string,string>={cherry:'#b66751',mint:'#91b29a',cream:'#ede1bc'};
     const mounted=draft.mount&&state.home.roomPlan?resolveRoomMount(state.home.roomPlan,draft.mount):null;
-    return {command,error,object:{id,kind:equipmentId,x:mounted?.x??x,y:mounted?.y??y,rotation:mounted?.rotation??rotation,elevation:mounted?.surfaceHeight===undefined?undefined:.095+mounted.surfaceHeight-(draft.mount?.kind==='wall'?(equipmentId==='chrome_clock'?1.54:1.49):0),mount:mounted&&draft.mount?{kind:draft.mount.kind,targetId:draft.mount.targetId,surfaceHeight:mounted.surfaceHeight}:undefined,tier:state.equipment[equipmentId]?.tier,footprint:(EQUIPMENT_BY_ID[equipmentId]??DECOR_BY_ID[equipmentId])?.footprint,color:item.skin?colors[item.skin]:undefined}};
+    return {command,error,object:{id,kind:equipmentId,x:mounted?.x??x,y:mounted?.y??y,rotation:mounted?.rotation??rotation,elevation:mounted?.surfaceHeight===undefined?undefined:.095+mounted.surfaceHeight-(draft.mount?.kind==='wall'?(equipmentId==='chrome_clock'?1.54:1.49):draft.mount?.kind==='ceiling'?2.7:0),mount:mounted&&draft.mount?{kind:draft.mount.kind,targetId:draft.mount.targetId,surfaceHeight:mounted.surfaceHeight}:undefined,tier:state.equipment[equipmentId]?.tier,footprint:(EQUIPMENT_BY_ID[equipmentId]??DECOR_BY_ID[equipmentId])?.footprint,color:item.skin?colors[item.skin]:undefined}};
   }
   const service=serviceOf(state),stations=(service?.stations??[]).filter(s=>s.id!==id),tables=(service?.tables??[]).filter(t=>t.id!==id);
   const tier=Math.min(3,state.equipment[equipmentId]?.tier??1) as 1|2|3;
@@ -59,6 +59,7 @@ export function createPlacementDraft(state:DinerState,mode:PlacementDraft['mode'
   const service=serviceOf(state),old=mode==='home'?state.home.layout.find(p=>p.id===id):service?.stations.find(s=>s.id===id)??service?.tables.find(t=>t.id===id);
   const draft:PlacementDraft={mode,id,equipmentId,x:old?.x??0,y:old?.y??0,rotation:old?('facing'in old?old.facing:old.rotation??0):0,existing,pinned:false};
   if(mode==='home'&&old&&'mount'in old)draft.mount=old.mount;
+  if(mode==='home'&&state.home.roomPlan&&DECOR_BY_ID[equipmentId]?.ceiling){draft.mount??={kind:'ceiling',targetId:'ceiling',slot:0};return aimHomeMount(state,draft,draft.x,draft.y);}
   if(mode==='home'&&state.home.roomPlan&&DECOR_BY_ID[equipmentId]?.wall){draft.mount??={kind:'wall',targetId:'',slot:0};return aimHomeMount(state,draft,draft.x,draft.y);}
   if(mode==='home'&&!existing&&state.home.roomPlan&&DECOR_BY_ID[equipmentId]?.counter){draft.mount={kind:'counter',targetId:'',slot:0};return aimHomeMount(state,draft,draft.x,draft.y);}
   if(existing)return draft;

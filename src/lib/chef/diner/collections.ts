@@ -1,7 +1,7 @@
 import type { DinerState } from "./progression";
 import type { Course } from "./types";
 
-export interface DecorDef { id: string; name: string; footprint: [number, number]; price: number; setId: string; wall?: boolean; counter?: boolean; passable?: boolean; memento?: boolean }
+export interface DecorDef { id: string; name: string; footprint: [number, number]; price: number; setId: string; wall?: boolean; counter?: boolean; ceiling?:boolean; passable?: boolean; memento?: boolean }
 export const DECOR: DecorDef[] = [
   { id: "red_planter", name: "Cherry-red planter", footprint: [1, 1], price: 150, setId: "fifties", counter: true },
   { id: "chrome_clock", name: "Chrome wall clock", footprint: [1, 1], price: 150, setId: "fifties", wall: true },
@@ -17,6 +17,19 @@ export const DECOR: DecorDef[] = [
   { id: "retro_radio", name: "Lunch-break radio", footprint: [1, 1], price: 220, setId: "welcome", counter: true },
   { id: "condiment_caddy", name: "Ketchup & mustard caddy", footprint: [1, 1], price: 120, setId: "welcome", counter: true },
   { id: "welcome_mat", name: "Gingham welcome mat", footprint: [1, 1], price: 120, setId: "welcome", passable: true },
+  { id:'diner_clock',name:'Last-call wall clock',footprint:[1,1],price:420,setId:'smalltown',wall:true },
+  { id:'bear_statue',name:'Big friendly bear',footprint:[1,1],price:950,setId:'smalltown' },
+  { id:'deer_trophy',name:'Carved woodland trophy',footprint:[1,1],price:650,setId:'smalltown',wall:true },
+  { id:'pie_display',name:'Pie under glass',footprint:[1,1],price:380,setId:'smalltown',counter:true },
+  { id:'coffee_sign',name:'Fresh coffee sign',footprint:[1,1],price:320,setId:'smalltown',wall:true },
+  { id:'jukebox',name:'Saturday-night jukebox',footprint:[1,1],price:1400,setId:'smalltown' },
+  { id:'wine_rack',name:'Cellar wine cabinet',footprint:[1,1],price:1200,setId:'deco' },
+  { id:'deco_mirror',name:'Sunburst mirror',footprint:[1,1],price:800,setId:'deco',wall:true },
+  { id:'brass_planter',name:'Brass palm planter',footprint:[1,1],price:850,setId:'deco' },
+  { id:'chandelier',name:'Golden-hour chandelier',footprint:[1,1],price:2200,setId:'deco',ceiling:true,passable:true },
+  { id:'brass_sconce',name:'Pearl wall light',footprint:[1,1],price:500,setId:'deco',wall:true },
+  { id:'velvet_rope',name:'Velvet welcome rope',footprint:[1,1],price:700,setId:'deco' },
+  { id:'runner_menu',name:'Brass menu stand',footprint:[1,1],price:420,setId:'deco',counter:true },
   { id: "pete_postcard", name: "Pete's first postcard", footprint: [1, 1], price: 0, setId: "mementos", wall: true, memento: true },
   { id: "marge_badge", name: "Marge's thank-you badge", footprint: [1, 1], price: 0, setId: "mementos", wall: true, memento: true },
   { id: "dottie_portrait", name: "Dottie and her poodle", footprint: [1, 1], price: 0, setId: "mementos", wall: true, memento: true },
@@ -67,14 +80,14 @@ export function charmOf(state: DinerState) {
   return { score: Math.min(100, ids.size * 2 + sets.length * 10), sets };
 }
 export const COSMETICS = {
-  wraps: ["tomato", "buttercream", "sage", "sky"], horns: ["quiet", "friendly", "jazzy"], uniforms: ["classic", "cherry", "mint"], floors: ["checker", "cream", "terracotta"], walls: ["cream", "mint", "rose"], skins: ["original", "cherry", "mint", "cream"],
+  wraps: ["tomato", "buttercream", "sage", "sky"], horns: ["quiet", "friendly", "jazzy"], uniforms: ["classic", "cherry", "mint"], floors: ["checker", "cream", "terracotta", "wood", "terrazzo"], walls: ["cream", "mint", "rose", "diner_panel", "deco"], skins: ["original", "cherry", "mint", "cream"],
 } as const;
 export type FinishSlot = "floor" | "wall";
 /** One purchase owns the whole-room finish permanently. Changing it has no service effect. */
 export const FINISH_RULES = {
   version: 1,
   defaults: { floor: "checker", wall: "cream" },
-  prices: { floor: { checker: 0, cream: 150, terracotta: 150 }, wall: { cream: 0, mint: 100, rose: 100 } },
+  prices: { floor: { checker: 0, cream: 150, terracotta: 150, wood:600, terrazzo:1600 }, wall: { cream: 0, mint: 100, rose: 100, diner_panel:500, deco:1800 } },
 } as const;
 export function finishPrice(slot: FinishSlot, id: string): number | null {
   if (typeof id !== "string") return null;

@@ -185,7 +185,7 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
   function resize(){width=Math.max(1,host.clientWidth);height=Math.max(1,host.clientHeight);renderer.setSize(width,height,false);fitCamera();}
   const observer=new ResizeObserver(resize);observer.observe(host);
   function makeStation(object:SceneObject){
-    const root=new THREE.Group(),model=createModel(object.kind,{tier:object.tier,color:object.color,stock:object.stock,roomColors:roomColors(data)}),food=new THREE.Group();root.add(model,food);root.userData.pick={id:object.id} satisfies ScenePick;
+    const root=new THREE.Group(),model=createModel(object.kind,{tier:object.tier,color:object.color,stock:object.stock,fixtureWidth:object.footprint?.[0],roomColors:roomColors(data)}),food=new THREE.Group();root.add(model,food);root.userData.pick={id:object.id} satisfies ScenePick;
     const halo=new THREE.Mesh(new THREE.RingGeometry(.48,.535,32),new THREE.MeshBasicMaterial({color:PALETTE.mustard,transparent:true,opacity:.85,depthWrite:false}));halo.rotation.x=-Math.PI/2;halo.position.y=.017;root.add(halo);
     const progress=new THREE.Mesh(new THREE.PlaneGeometry(.72,.055),new THREE.MeshBasicMaterial({color:PALETTE.sage,side:THREE.DoubleSide}));progress.position.set(0,object.kind==='spill'?.54:object.kind==='parcel'?.85:1.43,0);root.add(progress);
     const steam=new THREE.Group();
@@ -196,11 +196,11 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
     const cooking=['grill','prep','fryer','oven','blender','coffee','drinks','waffle','pass'].includes(object.kind)?createCookingEffects():null;
     if(cooking)root.add(cooking.group);
     for(const feedback of [progress,halo,steam])feedback.userData.inputPassthrough=true;
-    const result={root,model,food,foodKey:'',progress,halo,steam,cooking,kind:`${object.kind}:${object.tier}:${object.color}:${object.stock}:${JSON.stringify(data.roomFinishes)}`};stationRoot.add(root);stationViews.set(object.id,result);return result;
+    const result={root,model,food,foodKey:'',progress,halo,steam,cooking,kind:`${object.kind}:${object.tier}:${object.color}:${object.stock}:${object.footprint?.join(',')}:${JSON.stringify(data.roomFinishes)}`};stationRoot.add(root);stationViews.set(object.id,result);return result;
   }
   function syncObjects(){
     const ids=new Set(data.objects.map(o=>o.id));for(const [id,view] of stationViews)if(!ids.has(id)){view.cooking?.dispose();disposeObject(view.root);stationRoot.remove(view.root);stationViews.delete(id);}
-    for(const object of data.objects){let view=stationViews.get(object.id);if(view&&view.kind!==`${object.kind}:${object.tier}:${object.color}:${object.stock}:${JSON.stringify(data.roomFinishes)}`){view.cooking?.dispose();disposeObject(view.root);stationRoot.remove(view.root);stationViews.delete(object.id);view=undefined;}view??=makeStation(object);
+    for(const object of data.objects){let view=stationViews.get(object.id);if(view&&view.kind!==`${object.kind}:${object.tier}:${object.color}:${object.stock}:${object.footprint?.join(',')}:${JSON.stringify(data.roomFinishes)}`){view.cooking?.dispose();disposeObject(view.root);stationRoot.remove(view.root);stationViews.delete(object.id);view=undefined;}view??=makeStation(object);
       const footprint=object.footprint??(object.kind==='pass'||object.kind==='queue_bench'?[2,1]:[1,1]),facing=object.rotation??0;
       const fw=facing%2?footprint[1]:footprint[0],fh=facing%2?footprint[0]:footprint[1];
       const basket=view.model.getObjectByName('fryer-basket');if(basket)basket.position.y=object.basketRaised?.22:0;view.food.position.y=object.basketRaised?.22:0;
@@ -228,10 +228,10 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
   }
   function syncTables(){
     const ids=new Set(data.tables.map(t=>t.id));for(const [id,view] of tableViews)if(!ids.has(id)){disposeObject(view.root);tableRoot.remove(view.root);tableViews.delete(id);}
-    for(const table of data.tables){const key=JSON.stringify([table.x,table.y,table.capacity,table.rotation,table.kind,table.tableStyle,table.footprint,data.roomFinishes,table.seats.map(s=>[s.id,s.x,s.y,s.surface])]);let view=tableViews.get(table.id);
+    for(const table of data.tables){const key=JSON.stringify([table.x,table.y,table.capacity,table.rotation,table.kind,table.tableStyle,table.footprint,data.roomFinishes,table.seats.map(s=>[s.id,s.x,s.y,s.surface,s.style])]);let view=tableViews.get(table.id);
       const center=tableCenter(table);
       if(!view||view.key!==key){if(view){disposeObject(view.root);tableRoot.remove(view.root);}const root=new THREE.Group(),model=createModel(table.kind==='booth'?'booth_2':table.kind??`table_${table.capacity}`,{roomColors:roomColors(data),tableStyle:table.tableStyle,placeSettings:diningPlaceSettings(table)}),food=new THREE.Group();model.position.set(center.x,floorHeight(table.x,table.y),center.y);model.rotation.y=table.kind&&table.kind!=='booth'?rotationAngle(table.rotation??0):-(table.rotation??0)*Math.PI/2;model.userData.pick={id:table.id} satisfies ScenePick;root.add(model,food);
-        if(table.kind!=='booth')for(const seat of table.seats){const chair=createModel(table.kind?'stool':'chair',{color:mode==='truck'?PALETTE.tomato:data.roomPlan?roomColors(data).upholstery:PALETTE.mint,roomColors:roomColors(data),seatStyle:table.kind==='chef_bar'?'diner':'classic'});chair.position.set(seat.x,floorHeight(seat.x,seat.y),seat.y);chair.lookAt(seat.surface?.x??center.x,chair.position.y,seat.surface?.y??center.y);chair.rotateY(Math.PI);chair.userData.pick={id:table.id,seatId:seat.id} satisfies ScenePick;root.add(chair);}
+        if(table.kind!=='booth')for(const seat of table.seats){const chair=createModel(table.kind?'stool':'chair',{color:mode==='truck'?PALETTE.tomato:data.roomPlan?roomColors(data).upholstery:PALETTE.mint,roomColors:roomColors(data),seatStyle:seat.style??(table.kind==='chef_bar'?'diner':'classic')});chair.position.set(seat.x,floorHeight(seat.x,seat.y),seat.y);chair.lookAt(seat.surface?.x??center.x,chair.position.y,seat.surface?.y??center.y);chair.rotateY(Math.PI);chair.userData.pick={id:table.id,seatId:seat.id} satisfies ScenePick;root.add(chair);}
         const [tw,th]=tableShape(table),halo=new THREE.Mesh(new THREE.PlaneGeometry(tw-.02,th-.02),new THREE.MeshBasicMaterial({color:PALETTE.mustard,transparent:true,opacity:.32,depthWrite:false}));halo.rotation.x=-Math.PI/2;halo.position.set(center.x,floorHeight(table.x,table.y)+.006,center.y);root.add(halo);tableRoot.add(root);view={root,key,food,foodKey:'',halo};tableViews.set(table.id,view);}
       view.halo.userData.inputPassthrough=true;view.halo.visible=table.id===data.selectedId||table.id===data.guideTarget;
       const keyFood=JSON.stringify(table.seats.map(s=>[s.id,foodKey(s.item),s.status]));if(view.foodKey!==keyFood){view.food.clear();for(const seat of table.seats){if(!seat.item)continue;const food=createFoodModel(seat.item);const dx=seat.x-center.x,dz=seat.y-center.y,setting=diningFoodPoint(table,seat);food.position.set(setting?.x??seat.surface?.x??center.x+(table.capacity===1?0:dx*((table.rotation??0)%2?.65:table.capacity===2?.16:.33)),floorHeight(table.x,table.y)+(table.surfaceHeight??.85),setting?.y??seat.surface?.y??center.y+(table.capacity===1?0:dz*((table.rotation??0)%2?(table.capacity===2?.16:.33):.65)));food.scale.setScalar(setting?.74:.80);food.userData.pick={id:table.id,seatId:seat.id} satisfies ScenePick;view.food.add(food);}view.foodKey=keyFood;}
@@ -265,6 +265,7 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
     }
   }
   function syncEdit(){
+    for(const object of data.objects)if(object.mount?.kind==='ceiling'){const view=stationViews.get(object.id);if(view)view.model.userData.inputPassthrough=!editing;}
     const key=JSON.stringify(data.tileHighlights??[]);if(key!==placementKey){placementKey=key;disposeObject(placementTiles);placementTiles.clear();for(const tile of data.tileHighlights??[]){const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.84,.84),new THREE.MeshBasicMaterial({color:'#f7cf6e',transparent:true,opacity:.48,depthWrite:false}));mesh.rotation.x=-Math.PI/2;mesh.position.set(tile.x,floorHeight(tile.x,tile.y)+.012,tile.y);placementTiles.add(mesh);}}
     placementTiles.visible=editing;
     const nextGhostKey=editing&&data.placement?JSON.stringify(data.placement):'';

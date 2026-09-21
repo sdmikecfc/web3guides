@@ -5,8 +5,8 @@ import css from "./model-icon.module.css";
 import type { SceneFood } from './scene-types';
 
 const images=new Map<string,string>();
-export interface ModelIconProps {kind:string;recipeId?:string;ingredientId?:string;vesselKind?:SceneFood['vesselKind'];label:string;size?:number;foodKind?:SceneFood['kind'];look?:number;stage?:string;cold?:boolean;tier?:number;color?:string;mastery?:number;tableStyle?:'cafe'|'restaurant'}
-const iconKey=({kind,recipeId,ingredientId,vesselKind,foodKind='dish',look=0,stage,cold=false,tier=1,color,mastery=0,tableStyle='cafe'}:ModelIconProps)=>JSON.stringify([kind,recipeId,ingredientId,vesselKind,foodKind,look,stage,cold,tier,color,mastery>=10?10:mastery>=3?3:0,tableStyle]);
+export interface ModelIconProps {kind:string;recipeId?:string;ingredientId?:string;vesselKind?:SceneFood['vesselKind'];label:string;size?:number;foodKind?:SceneFood['kind'];look?:number;stage?:string;cold?:boolean;tier?:number;color?:string;mastery?:number;tableStyle?:'cafe'|'restaurant';seatStyle?:'classic'|'diner'}
+const iconKey=({kind,recipeId,ingredientId,vesselKind,foodKind='dish',look=0,stage,cold=false,tier=1,color,mastery=0,tableStyle='cafe',seatStyle='classic'}:ModelIconProps)=>JSON.stringify([kind,recipeId,ingredientId,vesselKind,foodKind,look,stage,cold,tier,color,mastery>=10?10:mastery>=3?3:0,tableStyle,seatStyle]);
 let studio:Promise<Awaited<ReturnType<typeof makeStudio>>>|null=null;
 const pendingIcons:{priority:number;run:()=>Promise<void>}[]=[];
 let drawingIcons=false;
@@ -56,9 +56,9 @@ function requireContext(renderer:Awaited<ReturnType<typeof makeStudio>>['rendere
   if(renderer.getContext().isContextLost())throw new Error('Thumbnail graphics context is temporarily unavailable.');
 }
 async function renderIcon(props:ModelIconProps):Promise<string>{
-  const {kind,recipeId,ingredientId,vesselKind,foodKind='dish',look=0,stage,cold,tier,color,mastery,tableStyle}=props,key=iconKey(props),cached=images.get(key);if(cached)return cached;
+  const {kind,recipeId,ingredientId,vesselKind,foodKind='dish',look=0,stage,cold,tier,color,mastery,tableStyle,seatStyle}=props,key=iconKey(props),cached=images.get(key);if(cached)return cached;
   const s=await getStudio();requireContext(s.renderer);
-  const model=kind==='food'?s.models.createFoodModel({recipeId:recipeId??'classic_burger',kind:foodKind,ingredientId,vesselKind,stage,cold,mastery}):s.models.createModel(kind,{recipeId,look,tier,color,tableStyle});
+  const model=kind==='food'?s.models.createFoodModel({recipeId:recipeId??'classic_burger',kind:foodKind,ingredientId,vesselKind,stage,cold,mastery}):s.models.createModel(kind,{recipeId,look,tier,color,tableStyle,seatStyle});
   model.rotation.y=Math.PI;
   s.scene.add(model);
   try{

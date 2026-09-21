@@ -25,7 +25,8 @@ const boardUrl=moduleUrl('src/app/chef/diner-preview/home-board.ts',[['three',th
 const {createHomeBoard}=await import(boardUrl),models=await import(modelUrl);
 const contentUrl=moduleUrl('src/lib/chef/diner/content.ts'),collectionsUrl=moduleUrl('src/lib/chef/diner/collections.ts');
 const roomPlanUrl=moduleUrl('src/lib/chef/diner/room-plan.ts',[['./content',contentUrl],['./collections',collectionsUrl]]);
-const shellUrl=moduleUrl('src/app/chef/diner-preview/room-shell.ts',[['three',threeUrl],['./models',modelUrl],['../../../lib/chef/diner/room-plan',roomPlanUrl],['../../../lib/chef/diner/content',contentUrl],['../../../lib/chef/diner/collections',collectionsUrl],['../../../lib/chef/diner/home-spatial',spaceUrl]]);
+const roomMaterialsUrl=moduleUrl('src/app/chef/diner-preview/room-materials.ts',[['three',threeUrl],['./models',modelUrl],['../../../lib/chef/diner/room-plan',roomPlanUrl]]);
+const shellUrl=moduleUrl('src/app/chef/diner-preview/room-shell.ts',[['three',threeUrl],['./models',modelUrl],['./room-materials',roomMaterialsUrl],['../../../lib/chef/diner/room-plan',roomPlanUrl],['../../../lib/chef/diner/content',contentUrl],['../../../lib/chef/diner/collections',collectionsUrl],['../../../lib/chef/diner/home-spatial',spaceUrl]]);
 const {createRoomShell}=await import(shellUrl);
 // These are the preserved open-room/terrace fixtures. Staged-room geometry is
 // covered separately by dk-diner-room-art-check and room-plan-check.
