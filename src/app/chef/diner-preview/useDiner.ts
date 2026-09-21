@@ -4,19 +4,22 @@ import { createDiner, dispatchDiner, sanitizeDinerSave, DINER_SAVE_KEY, dinerTic
 import type { DinerSocialCommand } from '@/lib/chef/diner/social';
 import { DinerSync, type SyncStatus, type DinerSession, type DinerSnapshot } from './diner-sync';
 import { useDinerAccess } from './DinerAccess';
+import { betaStorageKeys } from './beta-access';
 
 const SOCIAL_PENDING_KEY='diner_preview_social_pending_v1';
 
-/** Guest checkpoints and canonical accounts never share an ownership source. */
+/** Beta/guest browser checkpoints and canonical accounts never share storage. */
 export function useDiner(){
-  const access=useDinerAccess(),requiredWallet=access?.mode==='wallet'?access.wallet:undefined,localAllowed=access?.mode==='local';
+  const access=useDinerAccess(),requiredWallet=access?.mode==='wallet'?access.wallet:undefined,localAllowed=access?.mode==='local'||access?.mode==='beta';
+  const localSaveKey=access?.mode==='beta'?betaStorageKeys(access.wallet).save:DINER_SAVE_KEY;
   const reauthenticate=access?.mode==='wallet'?access.reauthenticate:undefined;
   const socialPendingKey=requiredWallet?`${SOCIAL_PENDING_KEY}:${requiredWallet}`:SOCIAL_PENDING_KEY;
   const [state,setState]=useState<DinerState|null>(null),live=useRef<DinerState|null>(null);
   const [message,setMessage]=useState<{text:string;error:boolean}|null>(null),[syncStatus,setSyncStatus]=useState<SyncStatus>('guest'),[serverEnabled,setServerEnabled]=useState(false);
+  const [localSaveError,setLocalSaveError]=useState<string|null>(null);
   const timer=useRef<ReturnType<typeof setTimeout>|null>(null),dirty=useRef(false),sync=useRef<DinerSync|null>(null),guestWritable=useRef(true),externalBusy=useRef(false);
   const announce=useCallback((text:string,error=false)=>{setMessage({text,error});if(timer.current)clearTimeout(timer.current);timer.current=null;if(!error||live.current)timer.current=setTimeout(()=>setMessage(null),error?6000:3600);},[]);
-  const write=useCallback(()=>{if(!localAllowed||!live.current||!dirty.current||sync.current?.session||!guestWritable.current)return;try{localStorage.setItem(DINER_SAVE_KEY,JSON.stringify(live.current));dirty.current=false;}catch{announce('Your browser could not save this diner. Keep this tab open.',true);}},[announce,localAllowed]);
+  const write=useCallback(()=>{if(!localAllowed||!live.current||!dirty.current||sync.current?.session||!guestWritable.current)return;try{localStorage.setItem(localSaveKey,JSON.stringify(live.current));dirty.current=false;setLocalSaveError(null);}catch{setLocalSaveError('Your browser could not save this diner. Keep this tab open and allow browser storage to save your progress.');}},[localAllowed,localSaveKey]);
   const replace=useCallback((next:DinerState)=>{if(!live.current){setMessage(null);if(timer.current)clearTimeout(timer.current);timer.current=null;}live.current=next;setState(next);dirty.current=true;},[]);
   const send=useCallback((command:DinerCommand):boolean=>{
     if(!live.current||externalBusy.current)return false;
@@ -29,15 +32,14 @@ export function useDiner(){
     if(!dinerCommandTicks(command)&&!(command.type==='homeTaskInput'&&command.action.type==='stroke'))write();return true;
   },[announce,replace,write,localAllowed]);
   const connect=useCallback(async()=>{
-    if(!requiredWallet){announce('This is a local development sandbox. Connect your wallet from the opening screen for an account.');return false;}
+    if(!requiredWallet){announce('This diner is saved in this browser. Cloud accounts are separate from beta progress.');return false;}
     if(!sync.current)sync.current=new DinerSync({state:replace,status:setSyncStatus,message:text=>announce(text,true)},localStorage,fetch,requiredWallet);
     const client=sync.current,connected=await client.connect(!client.session);
     if(!client.stopped&&!connected&&client.needsSignature)reauthenticate?.();return connected;
   },[replace,announce,requiredWallet,reauthenticate]);
   const read=useCallback(async(path:string,body?:unknown):Promise<unknown>=>{
     if(sync.current?.session)return sync.current.read(path,body);
-    const response=await fetch(`/api/chef/diner/${path}`,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)}),cache:'no-store'});
-    const result=await response.json();if(!response.ok)throw new Error(result.error??'The diner service is unavailable.');return result;
+    throw new Error('Online friends and cloud saves are not available in this beta.');
   },[]);
   const signOut=useCallback(async()=>{
     const client=sync.current;if(!client?.session||externalBusy.current)return false;
@@ -85,19 +87,20 @@ export function useDiner(){
   useEffect(()=>{
     let active=true;
     const load=async()=>{
-      void fetch('/api/chef/diner/status',{cache:'no-store'}).then(r=>r.json()).then(s=>{if(active)setServerEnabled(s.enabled===true);}).catch(()=>{});
       if(requiredWallet){
+        void fetch('/api/chef/diner/status',{cache:'no-store'}).then(r=>r.json()).then(s=>{if(active)setServerEnabled(s.enabled===true);}).catch(()=>{});
         sync.current=new DinerSync({state:replace,status:setSyncStatus,message:text=>announce(text,true)},localStorage,fetch,requiredWallet);
         const restored=await sync.current.connect(true);if(!active)return;if(!restored&&sync.current.needsSignature){reauthenticate?.();return;}if(restored||sync.current.canonical)return;
         announce('Your wallet account could not load. Reconnect to retry; your diner has not been replaced.',true);return;
       }
       if(!active||!localAllowed)return;
-      const now=Date.now();let loaded=createDiner(now,crypto.randomUUID());
-      try{const raw=localStorage.getItem(DINER_SAVE_KEY);if(raw){const candidate=sanitizeDinerSave(raw);
+      const now=Date.now();let loaded=createDiner(now,crypto.randomUUID()),recoveryNotice='';
+      try{const raw=localStorage.getItem(localSaveKey);if(raw){const candidate=sanitizeDinerSave(raw);
         if(candidate){const settled=dispatchDiner(candidate,{type:'settle'},{now});if(!settled.error)loaded=settled.state;}
-        else {try{localStorage.setItem(`${DINER_SAVE_KEY}_recovery_${now}`,raw);}catch{guestWritable.current=false;}announce('The earlier checkpoint needs recovery. A backup has been preserved; this preview starts separately.',true);}
-      }}catch{guestWritable.current=false;announce('Browser storage is unavailable. This session cannot be saved yet.',true);}
+        else {try{localStorage.setItem(`${localSaveKey}_recovery_${now}`,raw);recoveryNotice='The earlier checkpoint needs recovery. A backup has been preserved; this preview starts separately.';}catch{guestWritable.current=false;setLocalSaveError('Your earlier save could not be backed up. It has been left untouched; this session cannot be saved.');}}
+      }}catch{guestWritable.current=false;setLocalSaveError('Browser storage is unavailable. This session cannot be saved. Allow browser storage and reload to save progress.');}
       replace(loaded);
+      if(recoveryNotice)announce(recoveryNotice,true);
     };
     void load();
     const tick=setInterval(()=>{if(live.current&&document.visibilityState==='visible'&&!sync.current?.blocked&&!externalBusy.current){const command=dinerTickCommand(live.current,1);if(command)send(command);}},50);
@@ -109,7 +112,7 @@ export function useDiner(){
     };
     const pageHide=()=>{hidden();write();};
     document.addEventListener('visibilitychange',hidden);window.addEventListener('pagehide',pageHide);
-    return()=>{active=false;clearInterval(tick);clearInterval(save);clearInterval(settle);document.removeEventListener('visibilitychange',hidden);window.removeEventListener('pagehide',pageHide);const pause=live.current?dinerPauseCommand(live.current):null;if(pause&&sync.current?.session)sync.current.send(pause);write();sync.current?.dispose();sync.current=null;if(timer.current)clearTimeout(timer.current);};
-  },[announce,replace,send,write,requiredWallet,localAllowed,reauthenticate]);
-  return {state,send,announce,message,replace,syncStatus,serverEnabled,connect,read,social,acceptSession,signOut};
+    return()=>{active=false;clearInterval(tick);clearInterval(save);clearInterval(settle);document.removeEventListener('visibilitychange',hidden);window.removeEventListener('pagehide',pageHide);const pause=live.current?dinerPauseCommand(live.current):null;if(pause)send(pause);write();sync.current?.dispose();sync.current=null;if(timer.current)clearTimeout(timer.current);};
+  },[announce,replace,send,write,requiredWallet,localAllowed,localSaveKey,reauthenticate]);
+  return {state,send,announce,message,replace,syncStatus,serverEnabled,localSaveError,connect,read,social,acceptSession,signOut};
 }

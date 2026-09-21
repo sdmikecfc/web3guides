@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import WalletEntry from "./WalletEntry";
+import BetaEntry from "./BetaEntry";
 
 export const metadata: Metadata = {
-  title: "Domain Kitchen · The diner preview",
+  title: "Domain Kitchen · Open beta",
   description: "Your little diner. A whole road of possibilities.",
   robots: { index: false, follow: false },
 };
 
 export default function DinerPreviewPage() {
   if (process.env.NODE_ENV !== "development" && process.env.DINER_PREVIEW_ENABLED === "false") notFound();
-  return <WalletEntry allowLocalGuest={process.env.NODE_ENV === "development"} />;
+  return <BetaEntry />;
 }
