@@ -8,6 +8,7 @@
 /coverage
 
 # next.js
+/.next-diner-noodles/
 /.next/
 /out/
 
