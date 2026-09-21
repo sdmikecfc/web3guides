@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { DinerWalletConnect } from './DinerWalletConnect';
 import { useAccount } from 'wagmi';
 import { DinerAccessContext } from './DinerAccess';
 import { GameEmblem } from './GameEmblem';
@@ -42,7 +42,7 @@ export default function BetaEntry() {
         <p>{BETA_RESET_NOTICE}</p>
       </div>
       <div className={css.actions}>
-        <ConnectButton showBalance={false} chainStatus="none" accountStatus="address" />
+        <DinerWalletConnect />
         {wallet && <button onClick={() => setEnteredWallet(wallet)}>Play beta</button>}
       </div>
       <p className={css.small}>{BETA_SAVE_NOTICE}</p>
