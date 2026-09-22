@@ -1,6 +1,6 @@
 /** Independent roadside discovery and preservation of retired kit ownership. */
 import assert from 'node:assert/strict';
-import {createDiner,dispatchDiner,homeMenu,homeSimulationConfig,migrateDinerRestaurant,recipeKitOffers,recipeEquipmentNeeded,roadsideShopVisit,sanitizeDinerSave,shopOffers,truckRecipeShop,validateDinerHome,type DinerCommand,type DinerState} from '../src/lib/chef/diner/progression';
+import {createDiner,dispatchDiner,generateDinerMap,homeMenu,homeSimulationConfig,migrateDinerRestaurant,recipeKitOffers,recipeEquipmentNeeded,roadsideShopVisit,sanitizeDinerSave,shopOffers,truckRecipeShop,validateDinerHome,type DinerCommand,type DinerState} from '../src/lib/chef/diner/progression';
 import {createService,dispatchService} from '../src/lib/chef/diner/service';
 import {buildServiceLoadout,makeTable} from '../src/lib/chef/diner/geometry';
 import {measureHomeRates} from '../src/lib/chef/diner/home-simulation';
@@ -21,7 +21,7 @@ test('first actual market offers real machines and upgrades, never recipes or un
  const s=market(),seen=new Set<string>();assert.equal(roadsideShopVisit(s),1);
  for(let i=0;i<100;i++){const offers=shopOffers(s,`stock-${i}`);assert(offers.some(o=>o.kind==='upgrade'));assert(!offers.some(o=>o.kind==='recipe'));for(const o of offers){seen.add(o.target);assert(!(DEFERRED_EQUIPMENT_IDS as readonly string[]).includes(o.target));}}
  for(const id of ['boiler','fryer','oven','blender','coffee'])assert(seen.has(id),id);
- const late=structuredClone(s),last=late.run!.map.filter(n=>n.kind==='shop').at(-1)!;late.run!.position=last.id;late.run!.visited=[];assert.equal(roadsideShopVisit(late),1);assert(!shopOffers(late).some(o=>o.kind==='recipe'));late.run!.visited=[last.id,last.id];assert.equal(roadsideShopVisit(late),1);
+ const late=structuredClone(s);late.run!.mapVersion=3;late.run!.map=generateDinerMap(late.run!.seed,3);const last=late.run!.map.filter(n=>n.kind==='shop').at(-1)!;late.run!.position=last.id;late.run!.visited=[];assert.equal(roadsideShopVisit(late),1);assert(!shopOffers(late).some(o=>o.kind==='recipe'));late.run!.visited=[last.id,last.id];assert.equal(roadsideShopVisit(late),1);
 });
 test('second actual market samples useful and aspirational recipes independently of owned machinery',()=>{
  const s=market(2),seen=new Set<string>();assert.equal(roadsideShopVisit(s),2);
@@ -57,7 +57,7 @@ test('old kit receipts, recipes, mastery and gifted machinery survive without re
  const old=fresh();old.coins=4321;old.recipeProgression={version:1,claimedKits:['pasta_starter','ramen_starter']};old.recipes.tomato_pasta={level:4};old.recipes.vegetable_ramen={level:2};old.equipment.boiler={tier:2,truckOwned:true,homeCopies:3};old.equipment.bowls={tier:1,truckOwned:true,homeCopies:0};old.equipment.fryer={tier:2,truckOwned:true,homeCopies:2};old.tutorial.fryerGifted=true;const before=structuredClone(old),loaded=sanitizeDinerSave(old)!;assert(loaded);for(const key of ['coins','equipment','recipes','recipeProgression','home','truckConfig'] as const)assert.deepEqual(loaded[key],before[key],key);assert.deepEqual(migrateDinerRestaurant(loaded),loaded);assert.deepEqual(old,before);reject(loaded,{type:'buyRecipeKit',kitId:'pasta_starter'},'recipe_kit_unavailable');
 });
 test('new opening trips do not force a loss or fryer gift; already-active old trips keep their promise',()=>{
- let s=act(fresh(),{type:'startRun'});assert.equal(s.run!.discoveryVersion,2);s.run!.serviceDays=2;const next=s.run!.map.find(n=>n.row===3)!;s.run!.available=[next.id];s=act(s,{type:'chooseNode',nodeId:next.id});assert.equal(s.run!.service!.config.tutorialFailure,false);assert.equal(s.run!.service!.config.tutorialLearning,false);s.run!.service=null;s.run!.position=null;s=act(s,{type:'goHome'});assert.equal(s.tutorial.finished,true);assert.equal(s.tutorial.fryerGifted,false);assert.equal(s.equipment.fryer.truckOwned,false);assert.equal(s.equipment.fryer.homeCopies,0);
+ let s=act(fresh(),{type:'startRun'});assert.equal(s.run!.discoveryVersion,2);s.run!.serviceDays=2;const next=s.run!.map.find(n=>n.row===2)!;s.run!.available=[next.id];s=act(s,{type:'chooseNode',nodeId:next.id});assert.equal(s.run!.service!.config.tutorialFailure,false);assert.equal(s.run!.service!.config.tutorialLearning,false);s.run!.service=null;s.run!.position=null;s=act(s,{type:'goHome'});assert.equal(s.tutorial.finished,true);assert.equal(s.tutorial.fryerGifted,false);assert.equal(s.equipment.fryer.truckOwned,false);assert.equal(s.equipment.fryer.homeCopies,0);
  let legacy=act(fresh(),{type:'startRun'});delete legacy.run!.discoveryVersion;legacy.run!.serviceDays=1;legacy=act(legacy,{type:'goHome'});assert.equal(legacy.tutorial.fryerGifted,true);assert.equal(legacy.equipment.fryer.homeCopies,1);
 });
 let pasta:DinerState;

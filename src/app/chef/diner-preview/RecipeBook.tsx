@@ -13,6 +13,7 @@ import css from "./recipe-book.module.css";
 
 export interface RecipeBookProps {
   state: DinerState;
+  initialRecipeId?: string|null;
   send: (command: DinerCommand) => boolean;
   openPantry: () => void;
 }
@@ -25,9 +26,9 @@ const DISCOVERIES = [
 ];
 
 /** The binder's contents; its parent owns the modal and close/focus behavior. */
-export function RecipeBook({ state, send, openPantry }: RecipeBookProps) {
+export function RecipeBook({ state, initialRecipeId, send, openPantry }: RecipeBookProps) {
   const owned = RECIPES.filter(recipe => Object.hasOwn(state.recipes, recipe.id));
-  const [selectedId, setSelectedId] = useState(owned[0]?.id ?? "classic_burger");
+  const [selectedId, setSelectedId] = useState(owned.some(recipe=>recipe.id===initialRecipeId)?initialRecipeId!:owned[0]?.id ?? "classic_burger");
   const [discoveryId, setDiscoveryId] = useState("downtown");
   // Account changes can replace the collection while this panel remains open.
   const selected = owned.find(recipe => recipe.id === selectedId) ?? owned[0];
@@ -50,6 +51,8 @@ export function RecipeBook({ state, send, openPantry }: RecipeBookProps) {
       <div><span className={css.eyebrow}>Made your own</span><h3>Your recipes <span>{learned}<small> / {RECIPES.length}</small></span></h3></div>
       <span className={css.masteredCount}><DinerIcon name="star" size={17} />{mastered} mastered</span>
     </div>
+    <p className={css.discoveryHint}>Use saved pantry ingredients to improve dishes permanently. Each upgrade uses one of every ingredient shown and increases the coins earned per serving.</p>
+    {state.rally.service?<p className={css.discoveryHint}>These are your permanent recipes. Everyone keeps the same loaned recipe levels in the rally.</p>:state.run?.service&&<p className={css.discoveryHint}>Upgrades improve your restaurant and next cooking day. The current truck service keeps its starting recipe levels.</p>}
 
     <div className={css.recipeRail} aria-label="Choose one of your recipes">
       {owned.map(recipe => {

@@ -28,6 +28,16 @@ export function tableFootprint(table: Pick<ServiceTable,'x'|'y'|'capacity'> & Pa
   return Array.from({length:w*h},(_,i) => ({x:table.x+i%w,y:table.y+Math.floor(i/w)}));
 }
 export function blockedCells(stations: ServiceStation[],tables: ServiceTable[]): Set<string> { return new Set([...stations.flatMap(stationFootprint),...tables.flatMap(tableFootprint)].map(pointKey)); }
+/** A real waiting line on the pavement. The exit, ramp and chairs stay free.
+ * Extra perimeter spots let an older checkpoint with a crowd recover safely. */
+export function serviceQueueSlots(tier:DinerTier,stations:ServiceStation[],tables:ServiceTable[]):Point[]{
+  const g=serviceGeometry(tier),blocked=blockedCells(stations,tables),seats=new Set(tables.flatMap(t=>t.seats).map(pointKey));
+  const points:Point[]=[];
+  for(let y=g.pavement.y;y<g.exit.y;y++)points.push({x:g.queue.x,y});
+  for(let x=g.pavement.x+1;x<g.pavement.x+g.pavement.w;x++)points.push({x,y:g.exit.y});
+  for(let y=g.exit.y-1;y>=g.pavement.y;y--)points.push({x:g.pavement.x+g.pavement.w-1,y});
+  return points.filter(p=>!blocked.has(pointKey(p))&&!seats.has(pointKey(p))&&!(p.x===g.ramp.x&&p.y===g.ramp.y+1)&&servicePath(tier,stations,tables,g.door,p)!==null);
+}
 const neighbors = (p:Point):Point[] => [{x:p.x,y:p.y-1},{x:p.x+1,y:p.y},{x:p.x,y:p.y+1},{x:p.x-1,y:p.y}];
 export function servicePath(tier: DinerTier,stations: ServiceStation[],tables: ServiceTable[],from:Point,to:Point):Point[] | null {
   const start = {x:Math.round(from.x),y:Math.round(from.y)};

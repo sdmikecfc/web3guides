@@ -10,9 +10,9 @@ function paths(map:DinerNode[]):DinerNode[][]{
   map.filter(n=>n.row===0).forEach(n=>visit(n,[]));return out;
 }
 function started(tutorial=false){const s=createDiner(now,'route-check');s.tutorial.finished=!tutorial;const result=dispatchDiner(s,{type:'startRun'},{now});assert.equal(result.error,undefined);return result.state;}
-check('new routes have only one or two options, no orphans, and seven services per full path',()=>{
+check('saved v3 routes keep one or two options and seven services per full path',()=>{
   for(let seed=0;seed<100;seed++){
-    const map=generateDinerMap(`choices-${seed}`),all=paths(map);assert.equal(map.filter(n=>n.row===0).length,1);assert.equal(all.length,8);assert.equal(map.filter(n=>n.kind==='finale').length,1);
+    const map=generateDinerMap(`choices-${seed}`,3),all=paths(map);assert.equal(map.filter(n=>n.row===0).length,1);assert.equal(all.length,8);assert.equal(map.filter(n=>n.kind==='finale').length,1);
     for(const node of map){assert(node.next.length<3);assert.equal(node.next.length===0,node.row===11);for(const id of node.next)assert.equal(map.find(n=>n.id===id)!.row,node.row+1);}
     assert.equal(new Set(all.flatMap(path=>path.map(n=>n.id))).size,map.length);
     for(const path of all){assert.equal(path.length,12);assert.equal(path.filter(n=>serviceKinds.has(n.kind)).length,7);assert.equal(path.filter(n=>!serviceKinds.has(n.kind)).length,5);}
@@ -22,7 +22,7 @@ check('new routes have only one or two options, no orphans, and seven services p
 });
 check('both main choices sacrifice the other road until the next shared service',()=>{
   for(let seed=0;seed<100;seed++){
-    const map=generateDinerMap(`commit-${seed}`);
+    const map=generateDinerMap(`commit-${seed}`,3);
     for(const first of [2,6]){
       const branch=map.filter(n=>n.row===first).map(start=>{const path=[start];for(let row=first;row<first+2;row++){assert.equal(path.at(-1)!.next.length,1);path.push(map.find(n=>n.id===path.at(-1)!.next[0])!);}return path;});
       assert(branch[0].every(n=>!branch[1].some(other=>other.id===n.id)));
@@ -36,8 +36,8 @@ check('both main choices sacrifice the other road until the next shared service'
   }
 });
 check('legacy map versions keep their exact generation and in-progress checkpoint',()=>{
-  const digests={1:'3c2c321e0b075542f2b5ca6452d2bee6c22a4adfb5571347d12dad15e347cbad',2:'81550a2859ea5ada7508da888a10edcb6ce6704a8df0578710aeb4c192e2e695'};
-  for(const version of [1,2] as const){
+  const digests={1:'3c2c321e0b075542f2b5ca6452d2bee6c22a4adfb5571347d12dad15e347cbad',2:'81550a2859ea5ada7508da888a10edcb6ce6704a8df0578710aeb4c192e2e695',3:'da11f8e2e96f7a57dd628f0cbe9bcd14caffc79f4fe274f338d17e541965c656'};
+  for(const version of [1,2,3] as const){
     assert.equal(createHash('sha256').update(JSON.stringify(generateDinerMap('legacy-route-snapshot',version))).digest('hex'),digests[version]);
     const state=started(),run=state.run!;run.mapVersion=version;run.map=generateDinerMap(run.seed,version);
     const taken=paths(run.map)[0].slice(0,4);run.visited=taken.map(n=>n.id);run.available=[...taken.at(-1)!.next];run.haul=237;run.strikes=1;
@@ -46,9 +46,9 @@ check('legacy map versions keep their exact generation and in-progress checkpoin
   }
 });
 check('new run, tutorial and head-start checkpoints keep bounded choices after reload',()=>{
-  for(const tutorial of [false,true]){const state=started(tutorial);assert.equal(state.run!.mapVersion,3);assert.equal(state.run!.available.length,1);assert.deepEqual(sanitizeDinerSave(state)!.run,state.run);}
+  for(const tutorial of [false,true]){const state=started(tutorial);assert.equal(state.run!.mapVersion,4);assert.equal(state.run!.available.length,1);assert.deepEqual(sanitizeDinerSave(state)!.run,state.run);}
   const state=createDiner(now,'headstart');state.tutorial.finished=true;state.collections.routeWins=['downtown'];state.coins=10_000;
-  const result=dispatchDiner(state,{type:'startRun',headStart:true},{now});assert.equal(result.error,undefined);assert.equal(result.state.run!.available.length,2);assert(result.state.run!.available.every(id=>result.state.run!.map.find(n=>n.id===id)!.row===3));assert(sanitizeDinerSave(result.state));
+  const result=dispatchDiner(state,{type:'startRun',headStart:true},{now});assert.equal(result.error,undefined);assert.equal(result.state.run!.available.length,1);assert(result.state.run!.available.every(id=>result.state.run!.map.find(n=>n.id===id)!.row===4));assert(sanitizeDinerSave(result.state));
 });
 check('failed and voluntary returns still bank the same haul and retain purchases',()=>{
   const state=started();state.run!.haul=237;
@@ -67,6 +67,15 @@ check('tutorial v3 names match forced stops and earlier checkpoints retain every
       assert.deepEqual(restored.run!.map.map(({name,...node})=>node),before.run!.map.map(({name,...node})=>node));}
     assert.equal(restored.coins,before.coins);assert.deepEqual(restored.recipes,before.recipes);assert.deepEqual(restored.equipment,before.equipment);
   }
-  const fresh=started(true);assert(fresh.run!.map.filter(node=>node.row===2).every(node=>node.name==='A little surprise'&&node.kind==='bonus'));assert.deepEqual(sanitizeDinerSave(fresh)!.run,fresh.run);
+  const fresh=started(true);assert(fresh.run!.map.filter(node=>node.row===2).every(node=>node.name==='Around the corner'&&node.kind==='medium'));assert(fresh.run!.map.filter(node=>node.row===3).every(node=>node.kind==='shop'));assert.deepEqual(sanitizeDinerSave(fresh)!.run,fresh.run);
+});
+check('v4 guarantees equipment markets after exactly three and six services on every branch',()=>{
+  for(let seed=0;seed<100;seed++){
+    const map=generateDinerMap(`scheduled-${seed}`),all=paths(map);assert.equal(all.length,4);assert.deepEqual(map,generateDinerMap(`scheduled-${seed}`,4));
+    for(const node of map){assert(node.next.length<=2);for(const id of node.next)assert.equal(map.find(n=>n.id===id)!.row,node.row+1);}
+    assert.equal(new Set(all.flatMap(path=>path.map(n=>n.id))).size,map.length);
+    for(const path of all){let services=0;const markets:number[]=[];assert.equal(path.length,12);for(const node of path){if(serviceKinds.has(node.kind))services++;if(node.kind==='shop')markets.push(services);}assert.equal(services,8);assert.deepEqual(markets,[3,6]);assert.deepEqual(path.slice(0,3).map(n=>n.kind),['slow','slow','medium']);}
+    const branches=map.filter(n=>n.row===5);assert.equal(branches.length,2);for(const start of branches){let current=start;for(let row=5;row<7;row++){assert.equal(current.next.length,1);current=map.find(n=>n.id===current.next[0])!;}assert.equal(map.find(n=>n.id===current.next[0])!.kind,'shop');}
+  }
 });
 console.log(`PASS ${groups} diner route groups`);

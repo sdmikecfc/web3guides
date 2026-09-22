@@ -47,14 +47,14 @@ class Cook {
   }
 }
 
-test('every new path has seven service rows and five nonservice rows; old maps remain reconstructible',()=>{
-  const serviceRows=new Set([0,1,3,5,7,9,11]);
+test('every new path has eight service rows and four nonservice rows; old maps remain reconstructible',()=>{
+  const serviceRows=new Set([0,1,2,4,6,7,9,11]);
   for(let seed=0;seed<100;seed++)for(const node of generateDinerMap(`map-${seed}`)){
     assert.equal(['slow','medium','busy','special','finale'].includes(node.kind),serviceRows.has(node.row));
     for(const next of node.next)assert.equal(Number(next.match(/^r(\d+)/)![1]),node.row+1);
   }
   const legacy=generateDinerMap('legacy',1);assert(legacy.filter(n=>n.row===3).every(n=>n.kind==='shop'));
-  let s=act(createDiner(now),{type:'startRun'});assert.equal(s.run!.mapVersion,3);assert(sanitizeDinerSave(s));
+  let s=act(createDiner(now),{type:'startRun'});assert.equal(s.run!.mapVersion,4);assert(sanitizeDinerSave(s));
 });
 test('all seven roadside events have distinct valid outcomes and cannot replay their resolution',()=>{
   assert.equal(EVENT_DEFINITIONS.length,7);
@@ -90,11 +90,11 @@ test('tyre repair enforces green timing, one press per revolution, deadline and 
   started=replayDiner(started,[{type:'eventInput',action:{type:'tick',ticks:18}},{type:'eventInput',action:{type:'tap'}}],now+900).record;assert.equal(started.state.run!.event!.hits,1);
   const paused=replayDiner(started,[{type:'eventInput',action:{type:'tick',ticks:1}}],now+10000);assert(paused.interrupted);assert.equal(paused.record.state.run!.event!.phase,'paused');
 });
-test('event progression applies service modifiers, recruits and skip choice without duplicate rewards',()=>{
+test('event progression applies modifiers and recruits without skipping a scheduled service',()=>{
   let s=eventState('street_festival');s=act(s,{type:'eventChoice',choiceId:'join'});assert.equal(s.run!.position,null);assert.equal(s.run!.nextService!.kind,'festival');
   s=act(s,{type:'chooseNode',nodeId:s.run!.available[0]});assert.equal(s.run!.service!.config.tipMultiplier,2);assert.equal(s.run!.nextService,null);
   const stranger=eventState('lost_tourist'),before=stranger.staffMembers.length;const friend=act(stranger,{type:'eventChoice',choiceId:'directions'});assert.equal(friend.staffMembers.length,before+1);assert(dispatchDiner(friend,{type:'eventChoice',choiceId:'directions'},{now}).error);
-  let rain=eventState('rainstorm');const nextRow=rain.run!.map.find(n=>n.id===rain.run!.position)!.row+2;rain=act(rain,{type:'eventChoice',choiceId:'wait'});assert(rain.run!.available.every(id=>rain.run!.map.find(n=>n.id===id)!.row===nextRow));assert.equal(rain.run!.haul,0);
+  let rain=eventState('rainstorm');const nextRow=rain.run!.map.find(n=>n.id===rain.run!.position)!.row+1;rain=act(rain,{type:'eventChoice',choiceId:'wait'});assert(rain.run!.available.every(id=>rain.run!.map.find(n=>n.id===id)!.row===nextRow));assert.equal(rain.run!.haul,0);
   assert(dispatchDiner(eventState('flat_tyre'),{type:'eventInput',action:{type:'tick',ticks:100,haul:99}} as any,{now}).error);
 });
 test('rally snapshot is fixed, separate from permanent progression and uses real input completion',()=>{
@@ -153,7 +153,7 @@ test('all three cosy route finales complete through legal paths, physical boxed 
         stops++;
       }else {s=act(s,{type:'chooseGift',choice:'coins'});stops++;}
     }
-    assert.equal(s.lastRun!.reason,'won',route.id);assert.equal(serviced,7);assert.equal(stops,5);assert(s.collections.routeWins.includes(route.id));assert(paid>70);assert.equal(washed,0);assert(cleared>50);
+    assert.equal(s.lastRun!.reason,'won',route.id);assert.equal(serviced,8);assert.equal(stops,4);assert(s.collections.routeWins.includes(route.id));assert(paid>70);assert.equal(washed,0);assert(cleared>50);
     console.log(`  ${route.name}: ${serviced} services, ${stops} stops, ${paid} real meals, ${cleared} cleared cartons, ${(ticks/1200).toFixed(1)} simulated minutes`);
   }
 });

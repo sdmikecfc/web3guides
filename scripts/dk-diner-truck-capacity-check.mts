@@ -6,6 +6,7 @@ import {createDiner,dispatchDiner,sanitizeDinerSave,truckMenuCapacity,type Diner
 import {createDinerRecord,migrateDinerRecord,replayDiner} from '../src/lib/chef/diner/authority';
 import {createService,dispatchService,sanitizeService,serviceReadyError} from '../src/lib/chef/diner/service';
 import {Cook} from './dk-diner-cook-fixture';
+import {unlockedTruckHelpers} from '../src/lib/chef/diner/service-level';
 import type {DinerTier,ServiceState} from '../src/lib/chef/diner/types';
 const now=Date.UTC(2026,8,21,12);let groups=0;
 function test(name:string,fn:()=>void){fn();groups++;console.log(`PASS ${name}`);}
@@ -13,7 +14,8 @@ function send(state:DinerState,command:DinerCommand):DinerState{const r=dispatch
 function owned(tier:DinerTier=1){const s=createDiner(now,'truck-capacity');s.truckTier=tier;s.tutorial.finished=true;for(const recipe of RECIPES)s.recipes[recipe.id]={level:0};for(const def of EQUIPMENT)s.equipment[def.id]={tier:1,truckOwned:true,homeCopies:s.equipment[def.id]?.homeCopies??0};return s;}
 function dropBowlDefaults(s:ServiceState){delete (s.config as any).bowlCount;delete (s as any).bowlStock;delete (s as any).cleanBowls;delete s.config.recipeLevels.tomato_pasta;delete s.config.recipeLevels.vegetable_ramen;}
 test('truck floors grow from seven by three without shrinking old footprints or helper capacity',()=>{
- const sizes=[[7,3],[8,3],[9,3],[10,4]],caps=[2,3,4,4],helpers=[0,1,1,2];
+ const sizes=[[7,3],[8,3],[9,3],[10,4]],caps=[2,3,4,4],helpers=[1,1,1,2];
+ assert.equal(unlockedTruckHelpers(createDiner(now,'fresh-helper-gate')),0,'physical space does not bypass the five-service helper unlock');
  for(const tier of [1,2,3,4] as const){const def=TRUCK_TIERS[tier];assert.deepEqual([def.w,def.h],sizes[tier-1]);assert.equal(truckMenuCapacity({truckTier:tier}),caps[tier-1]);assert.equal(def.helpers,helpers[tier-1]);if(tier>1){assert(def.w>=TRUCK_TIERS[(tier-1) as DinerTier].w);assert(def.h>=TRUCK_TIERS[(tier-1) as DinerTier].h);}}
  const fresh=createDiner(now,'fresh-wide');assert.equal(fresh.truckConfig.layoutVersion,2);assert.deepEqual(fresh.truckConfig.menu,['classic_burger']);assert.equal(fresh.truckConfig.tables.length,1);assert.equal(fresh.truckConfig.tables[0].capacity,1);assert(!fresh.equipment.fryer?.truckOwned);assert(fresh.equipment.grill.truckOwned&&fresh.equipment.prep.truckOwned);assert(!fresh.truckConfig.stations.some(st=>st.kind==='grill'||st.kind==='prep'),'owned cooking pieces still start in the equipment trailer');
 });

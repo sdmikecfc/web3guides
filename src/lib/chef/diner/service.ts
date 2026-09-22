@@ -1,5 +1,5 @@
 import { CONTENT_VERSION, DAILY_SPECIALS, DIFFICULTIES, EQUIPMENT_BY_ID, INGREDIENT_BY_ID, ingredientSupply, RECIPE_BY_ID, SERVICE_RULES, SPICES, TRUCK_TIERS, recipePrice } from './content';
-import { blockedCells, inServiceFloor, isAtStationAccess, makeStation, makeTable, pointKey, serviceGeometry, servicePath, starterStations, starterTables, stationAccessPath, stationFootprint, tableFootprint, targetPath, validateServiceLayout } from './geometry';
+import { blockedCells, inServiceFloor, isAtStationAccess, makeStation, makeTable, pointKey, serviceGeometry, servicePath, serviceQueueSlots, starterStations, starterTables, stationAccessPath, stationFootprint, tableFootprint, targetPath, validateServiceLayout } from './geometry';
 import type { CreateServiceOptions, CustomerType, Point, RecipeStep, ServiceAction, ServiceCustomer, ServiceEvent, ServiceHelper, ServiceItem, ServiceResult, ServiceSeat, ServiceState, ServiceStation, ServiceTable, StationSlot } from './types';
 export type * from './types';
 import {createFryBatch,markFryBatchReady,raiseFryBatch,burnFryBatch,takeFryPortion,validateFryBatch,createBoilBasket,validateBoilBasket,recipeVessel,vesselReusable,SERVING_VESSELS,type VesselKind} from './batch';
@@ -13,6 +13,7 @@ function returnVessel(s:ServiceState,item:ServiceItem):void{const kind=vesselOf(
 /** Additive defaults for canonical as well as local saves. Never pauses a
  * service, restocks a vessel pool, advances time or changes existing items. */
 export function normalizeServiceAdditions(s:ServiceState):void {
+  s.config.maxWaitingCustomers??=4;
   s.config.bowlCount??=0;s.cleanBowls??=0;s.bowlStock??=[];
   if(s.config.recipeLevels)for(const id of ['tomato_pasta','vegetable_ramen'])s.config.recipeLevels[id]??=0;
   if(s.config.counterVersion===undefined){
@@ -47,7 +48,7 @@ export function createService(options:CreateServiceOptions={}):ServiceState {
     chef:{...serviceGeometry(tier).door,path:[],held:null,targetId:null,targetSeatId:null,targetRecipeId:null,targetIngredientId:null,targetItemId:null,holding:false},helpers:[],
     stations:options.stations?options.stations.map(st=>makeStation(st.id,st.kind,st.x,st.y,st.tier,st.facing)):starterStations(tier),
     tables:options.tables?options.tables.map(t=>makeTable(t.id,t.x,t.y,t.capacity,t.tier,t.rotation??0)):starterTables(tier),customers:[],
-    config:{seed,tier,menu,recipeLevels:levels,customers:integer(options.customers,DIFFICULTIES.slow.customers,1,80),arrivalTicks:integer(options.arrivalTicks,DIFFICULTIES.slow.arrivalTicks,20,2400),queuePatienceTicks:integer(options.queuePatienceTicks,DIFFICULTIES.slow.queuePatienceTicks,20,12000),tablePatienceTicks:integer(options.tablePatienceTicks,DIFFICULTIES.slow.tablePatienceTicks,20,12000),cosy:options.cosy===true,practice:options.practice===true,strikeLimit:integer(options.strikeLimit,options.cosy?5:3,1,5),tutorialFailure:options.tutorialFailure===true,customerTypes:(options.customerTypes??['walk_in']).filter(t=>['walk_in','office','kid','family','critic','influencer','regular'].includes(t)),specials:[...new Set((options.specials??[]).filter(k=>(DAILY_SPECIALS as readonly string[]).includes(k)))].slice(0,3),spices:[...new Set((options.spices??[]).filter(k=>(SPICES as readonly string[]).includes(k)))],helpers:[],tipMultiplier:integer(options.tipMultiplier,1,1,2),tutorialLearning:options.tutorialLearning===true,physicalSupplies:options.physicalSupplies!==false,plateCount,cupCount,bowlCount,batchVersion,counterVersion:1},
+    config:{seed,tier,menu,recipeLevels:levels,customers:integer(options.customers,DIFFICULTIES.slow.customers,1,80),arrivalTicks:integer(options.arrivalTicks,DIFFICULTIES.slow.arrivalTicks,20,2400),maxWaitingCustomers:integer(options.maxWaitingCustomers,4,1,4),queuePatienceTicks:integer(options.queuePatienceTicks,DIFFICULTIES.slow.queuePatienceTicks,20,12000),tablePatienceTicks:integer(options.tablePatienceTicks,DIFFICULTIES.slow.tablePatienceTicks,20,12000),cosy:options.cosy===true,practice:options.practice===true,strikeLimit:integer(options.strikeLimit,options.cosy?5:3,1,5),tutorialFailure:options.tutorialFailure===true,customerTypes:(options.customerTypes??['walk_in']).filter(t=>['walk_in','office','kid','family','critic','influencer','regular'].includes(t)),specials:[...new Set((options.specials??[]).filter(k=>(DAILY_SPECIALS as readonly string[]).includes(k)))].slice(0,3),spices:[...new Set((options.spices??[]).filter(k=>(SPICES as readonly string[]).includes(k)))],helpers:[],tipMultiplier:integer(options.tipMultiplier,1,1,2),tutorialLearning:options.tutorialLearning===true,physicalSupplies:options.physicalSupplies!==false,plateCount,cupCount,bowlCount,batchVersion,counterVersion:1},
     cleanBowls:bowlCount,bowlStock:Array.from({length:bowlCount},(_,i)=>`service_bowl_${i+1}`),cleanCups:cupCount,cupStock:Array.from({length:cupCount},(_,i)=>`service_cup_${i+1}`),cleanPlates:plateCount,plateStock:Array.from({length:plateCount},(_,i)=>`service_plate_${i+1}`),spawned:0,nextArrival:20,coins:0,reputation:0,strikes:0,combo:0,served:0,paid:0,missed:0,burnt:0,washed:0,notice:'Choose your menu and open for service.',events:[],influenceRemaining:0};
   if(!s.config.customerTypes.length)s.config.customerTypes=['walk_in'];
   s.config.helpers=(options.spices?.includes('short_staffed')?[]:(options.helpers??[])).filter((helper,i,all)=>helper&&/^[a-zA-Z0-9_-]{1,64}$/.test(helper.id)&&['washer','runner','prep'].includes(helper.role)&&all.findIndex(h=>h.id===helper.id)===i).slice(0,TRUCK_TIERS[tier].helpers).map(helper=>({id:helper.id,role:helper.role,look:integer(helper.look,0,0,7)}));
@@ -134,6 +135,7 @@ export function sanitizeService(raw:unknown):ServiceState|null {
     if(s.chef.targetId!==null&&!s.stations.some(st=>st.id===s.chef.targetId)&&!s.tables.some(t=>t.id===s.chef.targetId))return null;
     s.events=Array.isArray(s.events)?s.events.filter(e=>e&&whole(e.id)&&whole(e.tick,s.tick)&&['arrive','sit','ready','burn','serve','pay','strike','wash','complete'].includes(e.type)&&typeof e.targetId==='string').slice(-SERVICE_RULES.maxEvents):[];
     s.notice=typeof s.notice==='string'?s.notice.slice(0,300):'';
+    arrangeServiceQueue(s,true);
     if(active(s)){s.pausedPhase=s.phase as 'preparing'|'playing'|'closing';s.phase='paused';}s.chef.holding=false;
     return s;
   } catch {return null;}
@@ -421,6 +423,34 @@ function moveActor(actor:Point&{path:Point[]},speed:number):void {
   let distance=speed/SERVICE_RULES.ticksPerSecond;
   while(distance>0&&actor.path.length) {const next=actor.path[0],dx=next.x-actor.x,dy=next.y-actor.y,d=Math.hypot(dx,dy);if(d<=distance+.000001){actor.x=next.x;actor.y=next.y;actor.path.shift();distance-=d;}else{actor.x+=dx/d*distance;actor.y+=dy/d*distance;break;}}
 }
+const CUSTOMER_SPACING=.8;
+/** An arrival needs an actual empty standing spot, not just a queue count. */
+export function availableServiceQueueSpots(s:ServiceState):Point[]{
+  const visible=s.customers.filter(c=>c.phase!=='gone');
+  return serviceQueueSlots(s.config.tier,s.stations,s.tables).filter(p=>visible.every(c=>Math.hypot(c.x-p.x,c.y-p.y)>=CUSTOMER_SPACING));
+}
+function arrangeServiceQueue(s:ServiceState,restore=false):void {
+  const waiting=s.customers.filter(c=>c.phase==='queue');if(!waiting.length)return;
+  // Preserve legitimate mid-step checkpoints exactly. Only the old version's
+  // shared spawn coordinate needs a one-time repair on reload.
+  if(restore&&!waiting.some((c,i)=>waiting.slice(i+1).some(other=>Math.hypot(c.x-other.x,c.y-other.y)<.05)))return;
+  const slots=serviceQueueSlots(s.config.tier,s.stations,s.tables);
+  const occupied=restore?s.customers.filter(c=>c.phase!=='queue'&&c.phase!=='gone'):[];
+  const available=restore?slots.filter(p=>occupied.every(c=>Math.hypot(c.x-p.x,c.y-p.y)>=CUSTOMER_SPACING)):slots;
+  waiting.forEach((customer,i)=>{
+    const spot=available[i];if(!spot)return;
+    if(restore){customer.x=spot.x;customer.y=spot.y;customer.path=[];return;}
+    const destination=customer.path.at(-1)??customer;
+    if(Math.hypot(destination.x-spot.x,destination.y-spot.y)>.001)customer.path=servicePath(s.config.tier,s.stations,s.tables,customer,spot)??[];
+  });
+}
+function moveWaitingCustomer(s:ServiceState,customer:ServiceCustomer):void {
+  if(!customer.path.length)return;
+  const proposed={x:customer.x,y:customer.y,path:[...customer.path]};moveActor(proposed,SERVICE_RULES.customerSpeed);
+  // Follow the guest ahead without walking through them while the line closes.
+  if(s.customers.some(other=>other!==customer&&other.phase!=='gone'&&Math.hypot(other.x-proposed.x,other.y-proposed.y)<CUSTOMER_SPACING))return;
+  customer.x=proposed.x;customer.y=proposed.y;customer.path=proposed.path;
+}
 function patienceFactor(type:CustomerType):number { return type==='office'?.68:type==='kid'?1.5:type==='regular'?1.2:1; }
 function chooseRecipe(s:ServiceState,type:CustomerType):string {
   let menu=s.config.menu;
@@ -436,23 +466,32 @@ export function servicePatienceMinimum(s:ServiceState,recipeId:string):{table:nu
   return {table:Math.ceil(Math.max(45*20,cooking+travel+20*20)*drain),queue:Math.ceil(Math.max(60*20,cooking+travel+30*20)*drain)};
 }
 function spawnCustomer(s:ServiceState):void {
-  const cfg=s.config,g=serviceGeometry(cfg.tier),remaining=cfg.customers-s.spawned;
+  const cfg=s.config,remaining=cfg.customers-s.spawned;
+  const queueRoom=(cfg.maxWaitingCustomers??4)-s.customers.filter(c=>c.phase==='queue').length;
+  // A full line delays arrivals instead of accumulating an overdue burst.
+  // Nobody is discarded from the day's total when the queue is full.
+  if(queueRoom<=0)return;
+  const spots=availableServiceQueueSpots(s),room=Math.min(spots.length,queueRoom);
+  if(room<=0)return;
   let type=cfg.customerTypes[Math.floor(random(s)*cfg.customerTypes.length)];
   if(type==='kid'&&!cfg.menu.some(id=>['dessert','drink'].includes(RECIPE_BY_ID[id].course)))type='walk_in';
-  if(type==='family'&&(!s.tables.some(t=>t.capacity===4)||remaining<3))type='walk_in';
-  const groupSize=type==='family'?Math.min(remaining,random(s)<.5?3:4):1,groupId=groupSize>1?id(s,'family'):null;
+  if(type==='family'&&(!s.tables.some(t=>t.capacity===4)||remaining<3||room<3))type='walk_in';
+  const groupSize=type==='family'?Math.min(remaining,room,random(s)<.5?3:4):1,groupId=groupSize>1?id(s,'family'):null;
   for(let i=0;i<groupSize;i++) {
     let factor=patienceFactor(type)*(cfg.specials.includes('early_bird')&&s.spawned<5?2:1);
     if(s.influenceRemaining>0){factor*=1.25;s.influenceRemaining--;}
     const forced=cfg.tutorialFailure&&s.spawned>=Math.max(2,cfg.customers-cfg.strikeLimit);
     const recipeId=chooseRecipe(s,type),minimum=servicePatienceMinimum(s,recipeId),tableTicks=Math.max(minimum.table,forced?minimum.table:Math.round(cfg.tablePatienceTicks*factor)),queueTicks=Math.max(minimum.queue,forced?minimum.queue:Math.round(cfg.queuePatienceTicks*factor));
-    const customer:ServiceCustomer={id:id(s,'customer'),groupId,type,phase:'queue',...g.queue,path:[],recipeId,patience:queueTicks,maxPatience:tableTicks,queuePatience:queueTicks,tableId:null,seatId:null,mealId:null,eatRemaining:0,payment:0,tip:0,servedCold:false,servedTick:null};
+    const spot=spots[i];
+    const customer:ServiceCustomer={id:id(s,'customer'),groupId,type,phase:'queue',...spot,path:[],recipeId,patience:queueTicks,maxPatience:tableTicks,queuePatience:queueTicks,tableId:null,seatId:null,mealId:null,eatRemaining:0,payment:0,tip:0,servedCold:false,servedTick:null};
     s.customers.push(customer);s.spawned++;emit(s,'arrive',customer.id);
   }
   s.nextArrival=cfg.arrivalTicks*(s.spawned===1?1.5:s.spawned===2?1.2:1)/(cfg.specials.includes('happy_hour')?1.2:1);
   if(s.spawned>=cfg.customers)s.phase='closing';
 }
 function seatQueue(s:ServiceState):void {
+  // Canonical services already in progress may predate distinct queue slots.
+  arrangeServiceQueue(s,true);
   // Dirty dishes belong to historical meals; they do not reserve a chair.
   const available=(seat:ServiceSeat)=>['clean','dirty'].includes(seat.status)&&!s.customers.some(c=>c.id===seat.customerId&&c.mealId===seat.mealId&&['walking','seated','eating'].includes(c.phase));
   const waiting=s.customers.filter(c=>c.phase==='queue');
@@ -462,13 +501,14 @@ function seatQueue(s:ServiceState):void {
     if(first.groupId) {table=s.tables.find(t=>t.capacity>=group.length&&t.seats.every(available));if(table)seats=table.seats.slice(0,group.length);}
     else {table=s.tables.find(t=>t.seats.some(available)&&!t.seats.some(seat=>s.customers.some(c=>c.id===seat.customerId&&c.groupId&&c.phase!=='gone'&&c.phase!=='leaving')));if(table)seats=[table.seats.find(available)!];}
     if(!table)break;
-    const paths=seats.map(seat=>servicePath(s.config.tier,s.stations,s.tables,first,seat));if(paths.some(p=>!p))break;
+    const paths=seats.map((seat,i)=>servicePath(s.config.tier,s.stations,s.tables,group[i],seat));if(paths.some(p=>!p))break;
     for(let i=0;i<group.length;i++) {
       const c=group[i],seat=seats[i],mealId=id(s,'meal');seat.status='reserved';seat.customerId=c.id;seat.mealId=mealId;
       c.tableId=table.id;c.seatId=seat.id;c.mealId=mealId;c.phase='walking';c.path=paths[i]!;c.patience=c.maxPatience;
       waiting.splice(waiting.indexOf(c),1);
     }
   }
+  arrangeServiceQueue(s);
 }
 function leaveCustomer(s:ServiceState,c:ServiceCustomer,upset:boolean):void {
   const seat=s.tables.find(t=>t.id===c.tableId)?.seats.find(seat=>seat.id===c.seatId);
@@ -521,7 +561,8 @@ export function stepService(s:ServiceState,ticks=1):void {
     const drain=(s.config.cosy?2/3:1)*(s.config.spices.includes('rush_hour')?1.25:1);
     for(const customer of s.customers) {
       if(!active(s))break;
-      if(customer.phase==='walking') {moveActor(customer,SERVICE_RULES.customerSpeed);if(!customer.path.length){customer.phase='seated';const seat=s.tables.find(t=>t.id===customer.tableId)?.seats.find(seat=>seat.id===customer.seatId);if(seat)seat.status='occupied';emit(s,'sit',customer.id);}}
+      if(customer.phase==='queue')moveWaitingCustomer(s,customer);
+      else if(customer.phase==='walking') {moveActor(customer,SERVICE_RULES.customerSpeed);if(!customer.path.length){customer.phase='seated';const seat=s.tables.find(t=>t.id===customer.tableId)?.seats.find(seat=>seat.id===customer.seatId);if(seat)seat.status='occupied';emit(s,'sit',customer.id);}}
       else if(customer.phase==='leaving'){moveActor(customer,SERVICE_RULES.customerSpeed);if(!customer.path.length)customer.phase='gone';}
       else if(customer.phase==='eating'){if(--customer.eatRemaining<=0)payCustomer(s,customer);}
       if(!s.config.tutorialLearning&&(customer.phase==='queue'||customer.phase==='seated')) {customer.patience-=drain;if(customer.patience<=0)leaveCustomer(s,customer,true);}

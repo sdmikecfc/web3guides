@@ -18,14 +18,22 @@ export type NextServiceEffect={kind:'festival'|'rain'|'rival'|'film';scrapRecipe
 export type DinerEvent={version:1;id:string;kind:EventKind;phase:'choice'|'challenge'|'paused'|'resolved';tick:number;remaining:number;tasks:{id:string;label:string;x:number;y:number;progress:number;required:number}[];heldTarget:string|null;hits:number;mistakes:number;lastTapCycle:number;result:string|null};
 export type EventAction={type:'choice';choiceId:string}|{type:'tick';ticks:number}|{type:'clean';targetId:string;active:boolean}|{type:'tap'|'pause'|'resume'};
 export type EventOutcome={haulDelta:number;strikes:number;skipRows?:number;nextService?:NextServiceEffect;recruitId?:string};
-export type EventContext={haul:number;routeRecipeIds:string[];seed:string};
+export type EventContext={haul:number;routeRecipeIds:string[];seed:string;scheduledMarkets?:boolean};
 function hash(value:string){let result=2166136261;for(let i=0;i<value.length;i++)result=Math.imul(result^value.charCodeAt(i),16777619);return result>>>0;}
 export function eventKindFor(seed:string):EventKind{return EVENT_DEFINITIONS[hash(seed)%EVENT_DEFINITIONS.length].id;}
 export function createDinerEvent(id:string,seed:string,kind:EventKind=eventKindFor(seed)):DinerEvent{return {version:1,id,kind,phase:'choice',tick:0,remaining:0,tasks:[],heldTarget:null,hits:0,mistakes:0,lastTapCycle:-1,result:null};}
 export function sanitizeDinerEvent(raw:unknown):DinerEvent|null {try{const e=structuredClone(raw) as DinerEvent;if(!e||e.version!==1||typeof e.id!=='string'||!EVENT_BY_ID[e.kind]||!['choice','challenge','paused','resolved'].includes(e.phase)||![e.tick,e.remaining,e.hits,e.mistakes].every(n=>Number.isSafeInteger(n)&&n>=0&&n<=600)||!Number.isSafeInteger(e.lastTapCycle)||!Array.isArray(e.tasks)||e.tasks.length>3||e.tasks.some(t=>!['grill_surface','prep_surface','aisle_spill'].includes(t.id)||!Number.isInteger(t.progress)||t.progress<0||t.progress>EVENT_RULES.cleanTicks||t.required!==EVENT_RULES.cleanTicks))return null;if(e.phase==='challenge'){e.phase='paused';e.heldTarget=null;}return e;}catch{return null;}}
 export function eventNeedle(event:DinerEvent):number{return (event.tick%EVENT_RULES.tyrePeriod)/EVENT_RULES.tyrePeriod;}
-export function eventServiceOptions(effect:NextServiceEffect|undefined):Partial<CreateServiceOptions>{
+export function eventServiceOptions(effect:NextServiceEffect|undefined,pacing:Partial<CreateServiceOptions>={}):Partial<CreateServiceOptions>{
   if(!effect)return {};
+  // Keep route pacing as the baseline: an event changes the next service
+  // without replacing a beginner's day with the old eleven-second rush.
+  if(pacing.customers!==undefined&&pacing.arrivalTicks!==undefined){
+    const customers=pacing.customers,arrivalTicks=pacing.arrivalTicks;
+    if(effect.kind==='festival')return {customers:Math.ceil(customers*1.2),arrivalTicks:Math.round(arrivalTicks*.9),tipMultiplier:2};
+    if(effect.kind==='rain')return {customers:Math.max(4,Math.ceil(customers*.65)),arrivalTicks:Math.round(arrivalTicks*1.25),queuePatienceTicks:Math.round(pacing.queuePatienceTicks!*.85),tablePatienceTicks:Math.round(pacing.tablePatienceTicks!*.85)};
+    if(effect.kind==='rival')return {customers:customers+2,arrivalTicks:Math.round(arrivalTicks*.85),tablePatienceTicks:Math.round(pacing.tablePatienceTicks!*.9)};
+  }
   if(effect.kind==='festival')return {...DIFFICULTIES.busy,tipMultiplier:2};
   if(effect.kind==='rain')return {...DIFFICULTIES.slow,customers:6,queuePatienceTicks:780,tablePatienceTicks:650};
   if(effect.kind==='rival')return {...DIFFICULTIES.medium,arrivalTicks:240,tablePatienceTicks:780};
@@ -42,7 +50,7 @@ export function dispatchDinerEvent(previous:DinerEvent,action:EventAction,contex
     const normal={haulDelta:0,strikes:0};
     switch(event.kind){
       case 'street_festival':return done(action.choiceId==='join'?'The next block is ready for your festival lunch.':'The quiet street looks inviting.',{...normal,...(action.choiceId==='join'?{nextService:{kind:'festival' as const}}:{})});
-      case 'rainstorm':return done(action.choiceId==='wait'?'The rain passed. The next stop was skipped without rewards.':'The awning is up. A few impatient guests are on their way.',{...normal,...(action.choiceId==='wait'?{skipRows:1}:{nextService:{kind:'rain' as const}})});
+      case 'rainstorm':return done(action.choiceId==='wait'?(context.scheduledMarkets?'The rain passed. Your planned route is ready.':'The rain passed. The next stop was skipped without rewards.'):'The awning is up. A few impatient guests are on their way.',{...normal,...(action.choiceId==='wait'?(context.scheduledMarkets?{}:{skipRows:1}):{nextService:{kind:'rain' as const}})});
       case 'health_inspector':event.phase='challenge';event.remaining=EVENT_RULES.inspectionTicks;event.tasks=[{id:'grill_surface',label:'Wipe the grill surface',x:1,y:0,progress:0,required:EVENT_RULES.cleanTicks},{id:'prep_surface',label:'Clean the prep board',x:2,y:0,progress:0,required:EVENT_RULES.cleanTicks},{id:'aisle_spill',label:'Mop the aisle spill',x:1,y:1,progress:0,required:EVENT_RULES.cleanTicks}];return {event};
       case 'flat_tyre':if(action.choiceId==='pay'){if(context.haul<EVENT_RULES.tyrePrice)return bad('You need 200 carried coins for the mechanic.');return done('A fresh tyre, and back on the road.',{haulDelta:-EVENT_RULES.tyrePrice,strikes:0});}event.phase='challenge';event.remaining=EVENT_RULES.tyreTicks;return {event};
       case 'rival_truck':return done(action.choiceId==='challenge'?'Your next lunch will settle the friendly rivalry.':'A friendly wave, and on you go.',{...normal,...(action.choiceId==='challenge'?{nextService:{kind:'rival' as const,scrapRecipeId:context.routeRecipeIds[hash(context.seed)%Math.max(1,context.routeRecipeIds.length)]}}:{})});

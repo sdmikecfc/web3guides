@@ -1,7 +1,8 @@
 "use client";
 import { useState } from 'react';
 import { COSMETICS, DECOR, DECOR_BY_ID, REGULARS, FRIENDSHIP_LEVELS, finishPrice, type FinishSlot } from '@/lib/chef/diner/collections';
-import { RECIPES, RECIPE_BY_ID, SPICES, TRUCK_TIERS } from '@/lib/chef/diner/content';
+import { RECIPES, RECIPE_BY_ID, SPICES } from '@/lib/chef/diner/content';
+import { serviceLevelProgress, unlockedTruckHelpers } from '@/lib/chef/diner/service-level';
 import type { DinerCommand, DinerState } from '@/lib/chef/diner/progression';
 import { DinerIcon } from './DinerIcon';
 import { ModelIcon } from './ModelIcon';
@@ -47,18 +48,27 @@ export function StaffRitual({state,send}:Props){return <>
   <h3 className={css.sectionTitle}>Aprons for the team</h3><div className={css.tabs}>{COSMETICS.uniforms.map(id=><button key={id} className={state.cosmetics.uniform===id?css.tabActive:''} onClick={()=>send({type:'setCosmetic',slot:'uniform',id})}>{friendly(id)}</button>)}</div>
 </>;}
 
-export function TruckExtras({state,send}:Props){
-  const spiceDetails:Record<string,string>={rush_hour:'Patience drains 25% faster.',picky_eaters:'Only dishes at level 3 or higher.',short_staffed:'Leave your helpers at home.',two_strikes:'Two strikes end the trip.',full_menu:'Cook at least three recipes.'};
-  const locked=!!state.run||!!state.rally.service,capacity=TRUCK_TIERS[state.truckTier].helpers;
+export function TruckHelpers({state,send}:Props){
+  const progress=serviceLevelProgress(state),capacity=unlockedTruckHelpers(state);
+  const locked=!!state.rally.service||!!(state.run?.service&&state.run.service.phase!=='setup');
   const helperSlots=[{slot:0 as const,id:state.truckConfig.helperId,role:state.truckConfig.helperRole},{slot:1 as const,id:state.truckConfig.helperId2,role:state.truckConfig.helperRole2}];
   return <>
-    <h3 className={css.sectionTitle}>An extra pair of hands</h3><p className={css.small}>{capacity?'Choose different crew members and one fixed job each before leaving home.':'Grow your truck to tier 2 for a helper seat.'}{locked?' Change your crew after returning home.':''}</p>
+    <h3 className={css.sectionTitle}>An extra pair of hands</h3><p className={css.small}>{capacity?'Assign an existing crew member for free and choose one fixed job before the next service.':`Clear ${progress.remaining} more ${progress.remaining===1?'service':'services'} to earn your first helper seat.`}{locked?' Change helpers between rounds or during untimed setup.':''}</p>
     {helperSlots.filter(helper=>helper.slot===0||capacity>1).map(helper=>{const other=helperSlots[1-helper.slot].id;return <div key={helper.slot} role="group" aria-label={`Helper seat ${helper.slot+1}`}>
       {capacity>1&&<h4 className={css.small}>Helper seat {helper.slot+1}</h4>}
       <div className={css.tabs}><button disabled={locked||capacity<=helper.slot} aria-pressed={!helper.id} className={!helper.id?css.tabActive:''} onClick={()=>send({type:'assignHelper',slot:helper.slot,staffId:null})}>Empty seat</button>{state.staffMembers.map(member=><button key={member.id} disabled={locked||capacity<=helper.slot||other===member.id} aria-pressed={helper.id===member.id} title={other===member.id?'Already in the other helper seat':undefined} className={helper.id===member.id?css.tabActive:''} onClick={()=>send({type:'assignHelper',slot:helper.slot,staffId:member.id,role:helper.role})}>{member.name}</button>)}</div>
       {helper.id&&<div className={css.tabs} role="group" aria-label={`Job for helper seat ${helper.slot+1}`}>{(['washer','runner','prep'] as const).map(role=><button key={role} disabled={locked||capacity<=helper.slot} aria-pressed={helper.role===role} className={helper.role===role?css.tabActive:''} onClick={()=>send({type:'assignHelper',slot:helper.slot,staffId:helper.id,role})}>{role==='washer'?'Clear & wash':role==='runner'?'Serve ready dishes':'Help prepare'}</button>)}</div>}
     </div>;})}
     {capacity<2&&<p className={css.tiny}>A second helper seat opens at truck tier 4.</p>}
+
+  </>;
+}
+
+export function TruckExtras({state,send,showHelpers=true}:Props&{showHelpers?:boolean}){
+  const spiceDetails:Record<string,string>={rush_hour:'Patience drains 25% faster.',picky_eaters:'Only dishes at level 3 or higher.',short_staffed:'Leave your helpers at home.',two_strikes:'Two strikes end the trip.',full_menu:'Cook at least three recipes.'};
+  const locked=!!state.run||!!state.rally.service;
+  return <>
+    {showHelpers&&<TruckHelpers state={state} send={send}/>}
     <h3 className={css.sectionTitle}>A little extra spice</h3><p className={css.small}>After your first finale, add optional challenges for skill trophies.</p><div className={css.list}>{SPICES.map(id=><div className={css.row} key={id}><DinerIcon name="star"/><div><h3>{friendly(id)}</h3><p>{spiceDetails[id]}</p></div><button disabled={locked||!state.collections.routeWins.length} className={state.truckConfig.spices.includes(id)?css.softButton:css.button} onClick={()=>send({type:'setSpices',spiceIds:state.truckConfig.spices.includes(id)?state.truckConfig.spices.filter(s=>s!==id):[...state.truckConfig.spices,id]})}>{state.truckConfig.spices.includes(id)?'Added':'Add'}</button></div>)}</div>
   </>;
 }

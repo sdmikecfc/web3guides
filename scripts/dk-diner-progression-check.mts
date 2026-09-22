@@ -22,9 +22,9 @@ test("seeded twelve-row branches only reach the next row and terminate at one fi
   const map = generateDinerMap("branch-seed"); assert.deepEqual(map, generateDinerMap("branch-seed")); assert.notDeepEqual(map, generateDinerMap("other-seed"));
   assert.equal(map.filter(n => n.kind === "finale").length, 1);
   for (const node of map) { if (node.row < 11) assert.ok(node.next.length >= 1 && node.next.length <= 2); for (const id of node.next) assert.equal(map.find(n => n.id === id)!.row, node.row + 1); }
-  const services = new Set([0, 1, 3, 5, 7, 9, 11]);
+  const services = new Set([0, 1, 2, 4, 6, 7, 9, 11]);
   for (const node of map) assert.equal(["slow", "medium", "busy", "special", "finale"].includes(node.kind), services.has(node.row));
-  assert.deepEqual(map.filter(n => n.row === 4).map(n => n.kind).sort(),["ingredients","shop"]);
+  assert.deepEqual(map.filter(n => n.row === 3).map(n => n.kind),["shop"]);
 });
 test("opening crate is exact burger set and cannot be repeated or rewound", () => {
   let state = action(fresh(), { type: "claimCrate" }); assert.deepEqual(state.pantry, { beef: 1, bun: 1 }); assert.equal(state.daily.minted, 2);
@@ -70,7 +70,7 @@ test("legacy active tutorial failure retains its promised home fryer exactly onc
   let state = action(atService(true), { type: 'service', action: { type: 'open' } }); delete state.run!.discoveryVersion; rejected(state, { type: "goHome" }, "between_stops");
   // The third tutorial service is the intentional learning setback. The first two never drain patience.
   state.run!.serviceDays = 2; state.run!.service = null; state.run!.position = null;
-  const scripted = state.run!.map.find(n => n.row === 3)!; state.run!.available = [scripted.id];
+  const scripted = state.run!.map.find(n => n.row === 2)!; state.run!.available = [scripted.id];
   state = action(state, { type: "chooseNode", nodeId: scripted.id });
   state = action(state, { type: "service", action: { type: "open" } });
   for (let i = 0; i < 500 && state.run; i++) state = action(state, { type: "service", action: { type: "tick", ticks: SERVICE_RULES.maxTicksPerAction } });
@@ -134,7 +134,7 @@ test("head starts and spices need actual route ownership; helpers use roster and
   rejected(state, { type: "assignHelper", staffId: "waiter-1" }, "helper_unavailable"); state.collections.routeWins.push("downtown"); state.truckTier = 2;
   state = action(state, { type: "assignHelper", staffId: "waiter-1", role: "washer" });
   state = action(state, { type: "setSpices", spiceIds: ["two_strikes"] }); state = action(state, { type: "startRun", headStart: true });
-  assert.ok(state.run!.available.every(id => state.run!.map.find(n => n.id === id)!.row === 3)); assert.equal(state.run!.haul, 0); assert.deepEqual(state.run!.visited, []);
+  assert.ok(state.run!.available.every(id => state.run!.map.find(n => n.id === id)!.row === 4)); assert.equal(state.run!.haul, 0); assert.deepEqual(state.run!.visited, []);
   const service = state.run!.map.find(n => n.kind === "slow")!; state.run!.available = [service.id]; state.run!.strikes = 1;
   state = action(state, { type: "chooseNode", nodeId: service.id }); assert.equal(state.run!.service!.config.strikeLimit, 1); assert.equal(state.run!.service!.helpers[0].role, "washer");
 });
@@ -167,7 +167,7 @@ test("decor, skins and saved layouts preserve ownership and create only bounded 
   rejected(state, { type: "homeLayout", layout: [...state.home.layout, { id: "duplicate-plant", equipmentId: "red_planter", x: 6, y: 0, rotation: 0 }] }, "invalid_layout"); assert.ok(sanitizeDinerSave(state));
 });
 test("largest truck assigns two distinct fixed-role helpers and preserves primary-slot checkpoints", () => {
-  let state=fresh();state.truckTier=2;
+  let state=prepared();state.truckTier=2;
   state=action(state,{type:'assignHelper',staffId:'chef-1',role:'runner'});
   rejected(state,{type:'assignHelper',slot:1,staffId:'waiter-1',role:'washer'},'helper_unavailable');
   state.truckTier=4;state=action(state,{type:'assignHelper',slot:1,staffId:'waiter-1',role:'washer'});
@@ -178,6 +178,8 @@ test("largest truck assigns two distinct fixed-role helpers and preserves primar
   assert.equal(sanitizeDinerSave(state)!.truckConfig.helperRole2,'washer');
   state=action(state,{type:'startPractice',recipeIds:['classic_burger']});
   assert.deepEqual(state.run!.service!.helpers.map(h=>[h.id,h.role]),[['chef-1','runner'],['waiter-1','washer']]);
+  state=action(state,{type:'service',action:{type:'prepare'}});
+  assert.equal(state.run!.service!.phase,'preparing');
   rejected(state,{type:'assignHelper',slot:1,staffId:null},'helper_unavailable');
   state=action(state,{type:'endPractice'});state=action(state,{type:'assignHelper',slot:1,staffId:null});
   assert.equal(state.truckConfig.helperId,'chef-1');assert.equal(state.truckConfig.helperId2,null);

@@ -123,3 +123,7 @@
 .renameTitle{display:inline-flex;align-items:center;gap:8px;border:0;padding:0;background:none;color:inherit;font:inherit;cursor:pointer;text-align:left}.renameTitle svg{opacity:.55}.renameTitle:hover svg{opacity:1}.renameTitle:focus-visible{outline:3px solid #659381;outline-offset:4px;border-radius:4px}
 
 @media(max-width:700px){.homeCoach{left:12px;right:12px;bottom:150px;top:auto;width:auto;max-width:366px;padding:11px 14px;min-height:0}.homeCoach h3{font-size:17px;line-height:1.2;margin:3px 0}.homeCoach p{display:none}.homeCoach>button{margin-top:6px!important;min-height:40px;padding:8px 13px}.homeCoach .coachStep{font-size:8px}}
+
+.mapAccess{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:44px;padding:8px 12px;border:1px solid #dfd6bf;border-radius:14px;background:var(--paper);color:var(--sage);font:inherit;font-size:12px;font-weight:800;box-shadow:0 3px 0 #d9d3bc55;cursor:pointer}.mapAccess:hover{background:#efe9d8}@media(max-width:700px){.mapAccess{min-height:40px;padding:7px 8px;font-size:11px;gap:4px}}
+
+.serviceLevelCard{margin:0 0 18px;border:1px solid #d8dfc8;background:#eef0e0;border-radius:16px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}.serviceLevelCard>div{flex:1;min-width:180px}.serviceLevelCard h3{margin:3px 0;font-size:19px;line-height:1.25}.serviceLevelCard p{margin:3px 0;color:#6c775d;font-size:12px;line-height:1.5}.serviceLevelCard>small{flex-basis:100%;font-size:10px;color:#758266}.serviceLevelCard progress{width:130px;height:9px;accent-color:#5e8a68}

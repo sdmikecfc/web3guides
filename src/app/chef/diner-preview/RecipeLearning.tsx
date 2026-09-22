@@ -1,5 +1,5 @@
 import { roadsideShopVisit, recipeEquipmentNeeded, type DinerState, type DinerCommand } from '@/lib/chef/diner/progression';
-import { EQUIPMENT_BY_ID, RECIPES, RECIPE_BY_ID, isHomeEquipmentAvailable } from '@/lib/chef/diner/content';
+import { EQUIPMENT_BY_ID, INGREDIENT_BY_ID, RECIPES, RECIPE_BY_ID, isHomeEquipmentAvailable } from '@/lib/chef/diner/content';
 import { ModelIcon } from './ModelIcon';
 import css from './recipe-learning.module.css';
 
@@ -8,7 +8,7 @@ const coins=(value:number)=>Math.floor(value).toLocaleString('en-US');
 export const equipmentDisplayName=(id:string,tier=1)=>id==='pass'?(tier>=2?'Warming counter':'Holding counter'):EQUIPMENT_BY_ID[id]?.name??id;
 export function recipeEquipmentHint(state:DinerState,recipeId:string):string{
   const missing=recipeEquipmentNeeded(state,recipeId),supplies=missing.filter(id=>['cups','bowls','boxes'].includes(id)),machines=missing.filter(id=>!supplies.includes(id));
-  return missing.length?[machines.length?`Still to find: ${names(machines)}.`:'',supplies.length?`Buy ${names(supplies)} in the preparation shop.`:''].filter(Boolean).join(' '):'Equipment owned. Arrange it before opening.';
+  return missing.length?[machines.length?`Still to find: ${names(machines)}.`:'',supplies.length?`Buy ${names(supplies)} at roadside markets.`:''].filter(Boolean).join(' '):'Equipment owned. Arrange it before opening.';
 }
 
 /** Copy describes implemented truck behavior, not aspirational appliance names. */
@@ -36,20 +36,21 @@ export function equipmentUpgradeDescription(id:string,tier:number):string{
 export function RecipeLearning({state,compact=false}:{state:DinerState;compact?:boolean}){
   const waiting=RECIPES.filter(recipe=>state.recipes[recipe.id]).map(recipe=>({recipe,missing:recipeEquipmentNeeded(state,recipe.id)})).find(item=>item.missing.length>0);
   return <section className={`${css.learning} ${compact?css.compact:''}`} aria-label="Discover recipes on the road">
-    <div className={css.heading}><h3>Find your next favourite</h3><p>The first roadside market sells equipment and upgrades. From the second market, look for paid recipe finds too. Each visit has a small changing selection.</p></div>
+    <div className={css.heading}><h3>Find your next favourite</h3><p>A roadside market follows every three cooking rounds. Spend your haul on equipment, upgrades and ingredient sets. From the second market, look for new recipes too.</p></div>
     {!compact&&<p className={css.note}>A machine and its recipe are separate finds. Keep either while you hunt for the other. Then arrange your truck and choose what goes on today&apos;s menu.</p>}
     {waiting&&!compact&&<p className={css.waiting}><strong>{waiting.recipe.name} is learned.</strong> {recipeEquipmentHint(state,waiting.recipe.id)}</p>}
   </section>;
 }
 
 /** The real randomized market; buying never changes the player's chosen menu. */
-export function RoadsideMarket({state,send}:{state:DinerState;send:(command:DinerCommand)=>boolean}){
+export function RoadsideMarket({state,send,openRecipe}:{state:DinerState;send:(command:DinerCommand)=>boolean;openRecipe?:(recipeId:string)=>void}){
   const run=state.run;if(!run)return null;
   const visit=roadsideShopVisit(state);
   return <section className={css.market} aria-label="Roadside finds">
-    <div className={css.heading}><h3>{visit<2?'A few useful finds':'Something new for your kitchen'}</h3><p>{visit<2?'Equipment and upgrades today. Your second market starts offering recipes too.':'A changing mix of equipment, upgrades and recipes. Take what suits your next menu.'} Spend the coins carried on this trip; purchases stay yours.</p></div>
+    <div className={css.heading}><h3>{visit<2?'A few useful finds':'Something new for your kitchen'}</h3><p>{visit<2?'Equipment, upgrades and pantry ingredients today. Your second market starts offering recipes too.':'Equipment, ingredients and recipes for your next menu. Take what suits your kitchen.'} Spend the coins carried on this trip; purchases stay yours.</p></div>
     <div className={css.marketCards}>{run.offers.map(offer=>{
       const recipe=offer.kind==='recipe'?RECIPE_BY_ID[offer.target]:undefined;
+      const ingredientRecipe=offer.kind==='ingredients'&&offer.id.startsWith('ingredients:recipe:')?RECIPE_BY_ID[offer.target]:undefined;
       const equipment=EQUIPMENT_BY_ID[offer.target];
       const targetTier=(state.equipment[offer.target]?.tier??1)+(offer.kind==='upgrade'&&!offer.purchased?1:0);
       const missing=recipe?recipeEquipmentNeeded(state,recipe.id):[];
@@ -57,12 +58,13 @@ export function RoadsideMarket({state,send}:{state:DinerState;send:(command:Dine
       const learned=dishes.filter(dish=>state.recipes[dish.id]);
       const homeCopy=equipment&&isHomeEquipmentAvailable(equipment.id)&&['cooking','prep','cleaning'].includes(equipment.family);
       const affordable=run.haul>=offer.price;
-      const title=recipe?.name??(equipment?equipmentDisplayName(equipment.id,targetTier):'Ingredient parcel');
+      const title=recipe?.name??(equipment?equipmentDisplayName(equipment.id,targetTier):ingredientRecipe?`${ingredientRecipe.name} upgrade ingredients`:'Ingredient parcel');
       return <article className={css.find} key={offer.id} aria-label={title}>
-        <div className={css.art}><ModelIcon kind={recipe?'food':offer.kind==='ingredients'?'crate':offer.target} recipeId={recipe?.id} tier={targetTier} label={title} size={172}/>{offer.purchased&&<span className={css.kept}>Yours to keep</span>}</div>
+        <div className={css.art}><ModelIcon kind={recipe||ingredientRecipe?'food':offer.kind==='ingredients'?'crate':offer.target} recipeId={recipe?.id??ingredientRecipe?.id} tier={targetTier} label={title} size={172}/>{offer.purchased&&<span className={css.kept}>Yours to keep</span>}</div>
         <div className={css.findBody}><span className={css.category}>{offer.kind==='recipe'?'Recipe':offer.kind==='upgrade'?`Upgrade · tier ${targetTier}`:offer.kind==='ingredients'?'Mastery ingredients':'Equipment'}</span><h4>{title}</h4>
-          {recipe?<><p>{recipe.steps.map(step=>step.label).join(' → ')}.</p><p className={missing.length?css.needs:css.ready}>{recipeEquipmentHint(state,recipe.id)}</p><small>Recipe only. Add it to your menu when you are ready.</small></>:equipment?<><p>{equipmentUpgradeDescription(equipment.id,targetTier)}</p>{dishes.length>0&&<p className={css.needs}>{learned.length?`For your ${learned.map(dish=>dish.name.toLowerCase()).join(', ')}.`:`Try it with ${dishes.slice(0,2).map(dish=>dish.name.toLowerCase()).join(' or ')}. Recipes sold separately.`}</p>}<small>{offer.kind==='upgrade'?'Improves your owned equipment. No extra machine copy.':homeCopy?'First discovery includes one restaurant copy in storage. Recipe sold separately.':'Truck item. No restaurant copy included.'}</small></>:<p>Permanent ingredients for upgrading your recipes.</p>}
+          {recipe?<><p>{recipe.steps.map(step=>step.label).join(' → ')}.</p><p className={missing.length?css.needs:css.ready}>{recipeEquipmentHint(state,recipe.id)}</p><small>Recipe only. Add it to your menu when you are ready.</small></>:equipment?<><p>{equipmentUpgradeDescription(equipment.id,targetTier)}</p>{dishes.length>0&&<p className={css.needs}>{learned.length?`For your ${learned.map(dish=>dish.name.toLowerCase()).join(', ')}.`:`Try it with ${dishes.slice(0,2).map(dish=>dish.name.toLowerCase()).join(' or ')}. Recipes sold separately.`}</p>}<small>{offer.kind==='upgrade'?'Improves your owned equipment. No extra machine copy.':homeCopy?'First discovery includes one restaurant copy in storage. Recipe sold separately.':'Truck item. No restaurant copy included.'}</small></>:ingredientRecipe?<><p>One complete ingredient set for a permanent {ingredientRecipe.name.toLowerCase()} upgrade.</p><p>{ingredientRecipe.ingredients.map(id=>`1 × ${INGREDIENT_BY_ID[id].name}`).join(' · ')}</p><small>Added to your pantry. Use in the cookbook when you are ready; buying does not spend the ingredients.</small></>:<p>Permanent ingredients for upgrading your recipes.</p>}
           <button type="button" disabled={offer.purchased||!affordable} onClick={()=>send({type:'buyOffer',offerId:offer.id})}>{offer.purchased?'Bought':`Buy ${recipe?'recipe':offer.kind==='upgrade'?'upgrade':'find'} · ${coins(offer.price)} coins`}</button>
+          {ingredientRecipe&&openRecipe&&<button type="button" onClick={()=>openRecipe(ingredientRecipe.id)}>Use in cookbook</button>}
           {!offer.purchased&&!affordable&&<span className={css.priceNote}>Need {coins(offer.price-run.haul)} more carried coins</span>}
         </div>
       </article>;

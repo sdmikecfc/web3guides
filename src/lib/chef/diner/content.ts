@@ -76,7 +76,7 @@ export const isHomeEquipmentAvailable = (id:string):boolean => HOME_EQUIPMENT.so
 /** Width-only growth keeps every earlier saved coordinate on the board. */
 export const TRUCK_LAYOUT_VERSION=2 as const;
 export const TRUCK_TIERS: Record<DinerTier, { tier: DinerTier; w: number; h: number; tables: number; helpers: number; menuCapacity:2|3|4; pavementW: number; pavementH: number; route: string | null }> = {
-  1: { tier:1,w:7,h:3,tables:1,helpers:0,menuCapacity:2,pavementW:10,pavementH:4,route:null },
+  1: { tier:1,w:7,h:3,tables:1,helpers:1,menuCapacity:2,pavementW:10,pavementH:4,route:null },
   2: { tier:2,w:8,h:3,tables:2,helpers:1,menuCapacity:3,pavementW:11,pavementH:5,route:'downtown' },
   3: { tier:3,w:9,h:3,tables:3,helpers:1,menuCapacity:4,pavementW:12,pavementH:6,route:'boardwalk' },
   4: { tier:4,w:10,h:4,tables:5,helpers:2,menuCapacity:4,pavementW:13,pavementH:7,route:'night_market' },
