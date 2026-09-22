@@ -39,7 +39,7 @@ function shopWindow(width:number,height:number,frameColor=RED){
  const group=new THREE.Group();group.add(box(width+.18,height+.18,.10,WOOD,0,0,0,.04),box(width+.11,height+.11,.12,CREAM,0,0,.016,.025),box(width,height,.018,'#abd2cf',0,0,.085,.018));
  for(const x of [-width/2,width/2])group.add(box(.07,height+.05,.08,frameColor,x,0,.104,.014));for(const y of [-height/2,height/2])group.add(box(width+.08,.07,.08,frameColor,0,y,.104,.014));
  group.add(box(.060,height,.073,CREAM,0,0,.117,.010),box(width,.050,.06,CREAM,0,-.05,.115,.010),box(width+.27,.105,.32,WOOD,0,-height/2-.065,.14,.025));
- const gleam=box(width*.30,.034,.007,'#deeee0',width*.24,height*.25,.098,.006);gleam.rotation.z=.70;gleam.material=new THREE.MeshToonMaterial({color:'#deeee0',transparent:true,opacity:.45,depthWrite:false});gleam.userData.inputPassthrough=true;group.add(gleam);
+ const gleam=box(width*.30,.034,.007,'#deeee0',width*.24,height*.25,.098,.006);gleam.rotation.z=.70;gleam.material=new THREE.MeshStandardMaterial({color:'#deeee0',roughness:.3,transparent:true,opacity:.45,depthWrite:false});gleam.userData.inputPassthrough=true;group.add(gleam);
  return group;
 }
 /** Structural walls are cut into a permanent low plinth and a retractable upper
@@ -61,7 +61,7 @@ export function createRoomShell(plan:RoomPlan,data:Pick<DinerSceneData,'sign'|'m
     const color=zone==='bathroom'?(checker?'#d8e7da':'#bfdbce'):zone==='kitchen'?(checker?'#efe7d5':'#e4ddc9'):data.floor==='terracotta'?(checker?'#cc9274':'#dfae8b'):data.floor==='cream'?'#f2e5ce':checker?'#efe4d0':'#ded1b5';cells.push({x,y,h:.095,color});
   }
   for(let y=plan.h;y<depth;y++)for(let x=0;x<plan.w;x++)cells.push({x,y,h:HOME_TERRACE_ELEVATION,color:x===space.door.x||x===space.door.x-1?'#e5ddcc':(Math.floor(x/2)+y)%2?'#c8cbbf':'#d5d6ca'});
-  const tiles=new THREE.InstancedMesh(new THREE.BoxGeometry(.99,.06,.99),new THREE.MeshToonMaterial({color:'#fff'}),cells.length),matrix=new THREE.Matrix4();tiles.name='room-supported-floor';tiles.userData.tiles=cells;tiles.receiveShadow=true;cells.forEach((cell,i)=>{matrix.makeTranslation(cell.x,cell.h-.03,cell.y);tiles.setMatrixAt(i,matrix);tiles.setColorAt(i,new THREE.Color(cell.color));});root.add(tiles);
+  const tiles=new THREE.InstancedMesh(new THREE.BoxGeometry(.99,.06,.99),new THREE.MeshStandardMaterial({color:'#fff',roughness:.82}),cells.length),matrix=new THREE.Matrix4();tiles.name='room-supported-floor';tiles.userData.tiles=cells;tiles.receiveShadow=true;cells.forEach((cell,i)=>{matrix.makeTranslation(cell.x,cell.h-.03,cell.y);tiles.setMatrixAt(i,matrix);tiles.setColorAt(i,new THREE.Color(cell.color));});root.add(tiles);
   root.add(createDiningFloorFinish(plan,data.floor));
   root.add(box(plan.w+.25,.11,.12,'#aea994',(plan.w-1)/2,.01,depth-.40,.022));
   const back=partition(plan.w+.12,2.78,colors.counter,new THREE.Vector3(0,0,-1),.85);back.name='room-wall:outer-back';back.position.set((plan.w-1)/2,.095,-.55);root.add(back);

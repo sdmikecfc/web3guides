@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { animateCharacter,box,cylinder,createModel,createFoodModel,disposeObject,material,PALETTE,configureRoomMount,holdingCounterSlotPositions,type CharacterRig } from './models';
+import { setupCinematicLighting } from './cinematic-lighting';
+import { createContactShadows } from './contact-shadows';
+import { createOrderBubble,updateOrderBubble } from './order-bubble';
 import type { DinerSceneData,DinerSceneProps,SceneFood,ScenePerson,SceneObject,SceneTable } from './scene-types';
 import { homeSpatial, homeSupportAt, HOME_TERRACE_ELEVATION } from '../../../lib/chef/diner/home-spatial';
 import { createHomeBoard } from './home-board';
@@ -113,15 +116,13 @@ function homeShell(width:number,height:number,sign:string,wallColor:string){
 export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:DinerSceneData,callbacks:SceneCallbacks):DinerSceneController{
   const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance',preserveDrawingBuffer:true});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.75));renderer.setClearColor('#f4e9dd');renderer.outputColorSpace=THREE.SRGBColorSpace;
-  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.NoToneMapping;
   const canvas=renderer.domElement;canvas.style.cssText='width:100%;height:100%;display:block;touch-action:none;outline:none';canvas.tabIndex=0;canvas.setAttribute('aria-label','Three-dimensional diner. Tap equipment or a table to interact. Drag to look around.');host.appendChild(canvas);
   const scene=new THREE.Scene(),camera=new THREE.OrthographicCamera(-7,7,7,-7,.1,100);scene.background=new THREE.Color('#f4e9dd');
-  // Neutral daylight preserves mint, porcelain and red; lower fill leaves readable contact shadows.
-  scene.add(new THREE.HemisphereLight('#f5fcff','#b3a39a',1.12));
-  const sun=new THREE.DirectionalLight('#fff7ed',1.48);sun.position.set(-5,11,7);sun.castShadow=true;sun.shadow.mapSize.set(1536,1536);sun.shadow.camera.left=-14;sun.shadow.camera.right=14;sun.shadow.camera.top=14;sun.shadow.camera.bottom=-14;sun.shadow.camera.near=.1;sun.shadow.camera.far=35;sun.shadow.normalBias=.025;sun.shadow.bias=-.0002;sun.shadow.radius=2;scene.add(sun,sun.target);
-  const fill=new THREE.DirectionalLight('#e3f0ff',.30);fill.position.set(6,4,-7);scene.add(fill);
+  const lighting=setupCinematicLighting(scene,renderer,mode);
   const ground=new THREE.Mesh(new THREE.BoxGeometry(80,.10,80),new THREE.ShadowMaterial({color:'#685d50',opacity:.14}));ground.position.set(3,mode==='truck'?-.06:-.16,4);ground.castShadow=false;ground.receiveShadow=true;scene.add(ground);
   const staticRoot=new THREE.Group(),stationRoot=new THREE.Group(),tableRoot=new THREE.Group(),actorRoot=new THREE.Group(),overlayRoot=new THREE.Group();scene.add(staticRoot,stationRoot,tableRoot,actorRoot,overlayRoot);
+  const contactShadows=createContactShadows();scene.add(contactShadows.root);
+  const actorShadowPosition=new THREE.Vector3();
   const workArrowShape=new THREE.Shape();workArrowShape.moveTo(0,.22);workArrowShape.lineTo(.20,-.04);workArrowShape.lineTo(.07,-.04);workArrowShape.lineTo(.07,-.20);workArrowShape.lineTo(-.07,-.20);workArrowShape.lineTo(-.07,-.04);workArrowShape.lineTo(-.20,-.04);workArrowShape.closePath();
   const workArrow=new THREE.Mesh(new THREE.ShapeGeometry(workArrowShape),new THREE.MeshBasicMaterial({color:PALETTE.sage,side:THREE.DoubleSide,depthWrite:false}));workArrow.rotation.x=-Math.PI/2;overlayRoot.add(workArrow);workArrow.visible=false;
   const placementTiles=new THREE.Group();overlayRoot.add(placementTiles);let placementKey='';
@@ -137,15 +138,20 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
   let homePointer:{incidentId:string;x:number;y:number}|null=null,scrubPointerId:number|null=null,lastHomeSample=0;
   const floorHeight=(x:number,y:number)=>mode==='home'?(homeSupportAt(data.width,data.height,x,y)?.elevation??-.11):(x>=-.5&&x<data.width-.5&&y>=-.5&&y<data.height-.5)?.455:(x>.48&&x<1.52&&y<data.height+.5)?Math.max(.06,.455-(y-data.height+.5)*.36):.065;
   function buildStatic(){
-    const key=JSON.stringify([data.width,data.height,data.pavementWidth,data.pavementHeight,data.sign,data.paint,data.floor,data.wall,data.wrap,data.trailer,data.roomPlan&&{...data.roomPlan,modules:data.roomPlan.modules.map(({condition,...module})=>module)},data.roomFinishes,data.menu]);if(key===staticKey)return;staticKey=key;
+    const key=JSON.stringify([data.characterReview,data.width,data.height,data.pavementWidth,data.pavementHeight,data.sign,data.paint,data.floor,data.wall,data.wrap,data.trailer,data.roomPlan&&{...data.roomPlan,modules:data.roomPlan.modules.map(({condition,...module})=>module)},data.roomFinishes,data.menu]);if(key===staticKey)return;staticKey=key;
     disposeObject(staticRoot);staticRoot.clear();homeAmbience=null;
+    lighting.setRoomBounds(data.width,data.height);
+    if(data.characterReview){
+      staticRoot.add(box(data.width+.1,.15,data.height+.1,'#e8ddc6',(data.width-1)/2,.02,(data.height-1)/2,.08));
+      baseFocus.set((data.width-1)/2,.75,(data.height-1)/2);focus.copy(baseFocus);resize();return;
+    }
     staticRoot.add(mode==='truck'?truckShell(data.width,data.height,data.sign??'The Little Diner',cosmetics[data.wrap??'']??data.paint??PALETTE.tomato):data.roomPlan?createRoomShell(data.roomPlan,data):homeShell(data.width,data.height,data.sign??'The Little Diner',cosmetics[data.wall??'cream']??PALETTE.cream));
     if(mode==='home'){if(!data.roomPlan)staticRoot.add(createHomeBoard(data.width,data.height,data.floor));homeAmbience=createHomeAmbience(data.width,data.height);staticRoot.add(homeAmbience.root);}
     const coords:Array<{x:number;y:number;h:number;color:string}>=[];
     const floorColors=data.floor==='terracotta'?['#cb8c72','#dca68b']:data.floor==='cream'?['#f2ece0','#eee7da']:['#8eaf9b','#f5f0e6'];
     if(mode==='truck')for(let y=0;y<data.height;y++)for(let x=0;x<data.width;x++)coords.push({x,y,h:floorHeight(x,y),color:floorColors[(x+y)%2]});
     if(mode==='truck')for(let y=data.height+1;y<data.height+1+(data.pavementHeight??4);y++)for(let x=-1;x<(data.pavementWidth??7)-1;x++)coords.push({x,y,h:.06,color:(x+y)%2?'#d7d7c8':'#e2dfcf'});
-    if(coords.length){const geometry=new THREE.BoxGeometry(.975,.075,.975),tileMaterial=new THREE.MeshToonMaterial({color:'#ffffff'});tiles=new THREE.InstancedMesh(geometry,tileMaterial,coords.length);tiles.receiveShadow=true;tiles.userData.tiles=coords;const matrix=new THREE.Matrix4();
+    if(coords.length){const geometry=new THREE.BoxGeometry(.975,.075,.975),tileMaterial=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.84});tiles=new THREE.InstancedMesh(geometry,tileMaterial,coords.length);tiles.receiveShadow=true;tiles.userData.tiles=coords;const matrix=new THREE.Matrix4();
       coords.forEach((tile,i)=>{matrix.makeTranslation(tile.x,tile.h-.038,tile.y);tiles!.setMatrixAt(i,matrix);tiles!.setColorAt(i,new THREE.Color(tile.color));});tiles.instanceMatrix.needsUpdate=true;if(tiles.instanceColor)tiles.instanceColor.needsUpdate=true;staticRoot.add(tiles);}
     if(mode==='truck'){
       const pavingW=data.pavementWidth??7,pavingH=data.pavementHeight??4;
@@ -163,6 +169,7 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
     if(mode==='home'){
       homeCameraBounds??=createHomeCameraBounds(data);
       const {azimuthOffset,insets,scaleBoost}=homeCameraPresentation(width,!!data.roomPlan,data.previewInset);
+      if(data.previewInset!==undefined)Object.assign(insets,{top:data.previewInset,bottom:data.previewInset,left:16,right:16});
       const fit=fitHomeCamera({bounds:homeCameraBounds,width,height,rotation,azimuthOffset,insets}),dx=focus.x-baseFocus.x,dz=focus.z-baseFocus.z;
       baseFocus.set(fit.focus.x,fit.focus.y,fit.focus.z);focus.set(baseFocus.x+dx,baseFocus.y,baseFocus.z+dz);
       const angle=rotation+azimuthOffset,distance=22;
@@ -237,30 +244,19 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
       const keyFood=JSON.stringify(table.seats.map(s=>[s.id,foodKey(s.item),s.status]));if(view.foodKey!==keyFood){view.food.clear();for(const seat of table.seats){if(!seat.item)continue;const food=createFoodModel(seat.item);const dx=seat.x-center.x,dz=seat.y-center.y,setting=diningFoodPoint(table,seat);food.position.set(setting?.x??seat.surface?.x??center.x+(table.capacity===1?0:dx*((table.rotation??0)%2?.65:table.capacity===2?.16:.33)),floorHeight(table.x,table.y)+(table.surfaceHeight??.85),setting?.y??seat.surface?.y??center.y+(table.capacity===1?0:dz*((table.rotation??0)%2?(table.capacity===2?.16:.33):.65)));food.scale.setScalar(setting?.74:.80);food.userData.pick={id:table.id,seatId:seat.id} satisfies ScenePick;view.food.add(food);}view.foodKey=keyFood;}
     }
   }
-  function makeOrder(recipeId:string,needsClear=false){
-    const root=new THREE.Group(),back=box(.75,.57,.045,PALETTE.porcelain,0,0,0,.10),food=createFoodModel({recipeId,kind:'dish'});food.scale.setScalar(.75);food.rotation.x=Math.PI*.30;food.position.set(0,-.075,.07);root.add(back,food);
-    const base=box(.57,.032,.024,'#ddd8c1',0,-.225,.04,.01),bar=box(.55,.033,.025,PALETTE.leaf,0,-.225,.055,.01);bar.material=material(PALETTE.leaf).clone();bar.material.userData.sharedKitResource=false;root.add(base,bar);root.userData.bar=bar;
-    if(needsClear){
-      const badge=new THREE.Group();badge.name='dirty-vessel-badge';badge.position.set(.30,.215,.115);
-      const surround=cylinder(.124,.124,.025,PALETTE.tomato),plate=cylinder(.079,.079,.016,PALETTE.porcelain),stain=cylinder(.034,.041,.012,PALETTE.wood);
-      for(const part of [surround,plate,stain]){part.rotation.x=Math.PI/2;part.position.y=0;}
-      plate.position.z=.025;stain.position.set(.012,-.006,.043);badge.add(surround,plate,stain);root.add(badge);
-    }
-    return root;
-  }
   function syncPeople(){
     const ids=new Set(data.people.map(p=>p.id)),now=performance.now();for(const [id,view] of personViews)if(!ids.has(id)){disposeObject(view.root);actorRoot.remove(view.root);personViews.delete(id);}
     for(const person of data.people){let view=personViews.get(person.id);const destination=point3(person.x,person.y,floorHeight(person.x,person.y));
       const uniform=cosmetics[data.uniform??'classic']??PALETTE.sage;
       if(!view){const root=new THREE.Group(),body=createModel(person.role,{look:person.look??0,color:uniform});root.add(body);root.position.copy(destination);actorRoot.add(root);view={root,body,previous:destination.clone(),destination:destination.clone(),changed:now,angle:rotationAngle(person.facing??0),foodKey:'',person,order:null,orderKey:'',uniform};personViews.set(person.id,view);}
-      else if(view.uniform!==uniform&&person.role!=='customer'){view.root.remove(view.body);view.body=createModel(person.role,{look:person.look??0,color:uniform});view.root.add(view.body);view.uniform=uniform;view.foodKey='';}
+      else if(view.uniform!==uniform&&person.role!=='customer'){disposeObject(view.body);view.root.remove(view.body);view.body=createModel(person.role,{look:person.look??0,color:uniform});view.root.add(view.body);view.uniform=uniform;view.foodKey='';}
       if(view.destination.distanceToSquared(destination)>0.00001){view.previous.copy(view.root.position);view.destination.copy(destination);view.changed=now;const delta=destination.clone().sub(view.previous);if(delta.lengthSq()>.00001)view.angle=Math.atan2(-delta.x,-delta.z);}
       if(person.target)view.angle=Math.atan2(view.root.position.x-person.target.x,view.root.position.z-person.target.y);
       if(person.pose==='sit'||person.pose==='eat'){const table=data.tables.find(t=>t.id===person.tableId);if(table){const center=table.seats.find(seat=>seat.id===person.seatId)?.surface??tableCenter(table);view.angle=Math.atan2(person.x-center.x,person.y-center.y);}}
       const rig=view.body.userData.rig as CharacterRig,key=foodKey(person.held);if(key!==view.foodKey){rig.held.clear();if(person.held){const held=createFoodModel(person.held);held.scale.setScalar(.75);rig.held.add(held);}view.foodKey=key;}
       const needsClear=!!person.tableId&&data.tables.find(table=>table.id===person.tableId)?.seats.find(seat=>seat.id===person.seatId)?.item?.kind==='dirty';
-      const orderKey=person.order?`${person.order.recipeId}:${needsClear}`:'';if(orderKey!==view.orderKey){if(view.order){disposeObject(view.order);view.root.remove(view.order);}view.order=person.order?makeOrder(person.order.recipeId,needsClear):null;if(view.order){view.order.position.y=person.pose==='sit'||person.pose==='eat'?1.72:2.07;view.root.add(view.order);}view.orderKey=orderKey;}
-      if(view.order){view.order.position.y=person.pose==='sit'||person.pose==='eat'?1.72:2.07;const bar=view.order.userData.bar as THREE.Mesh,patience=Math.max(0,Math.min(1,person.order?.patience??1));bar.scale.x=Math.max(.01,patience);bar.position.x=-.275+.275*patience;(bar.material as THREE.MeshToonMaterial).color.set(patience<.25?PALETTE.tomato:PALETTE.leaf);}
+      const orderKey=person.order?`${person.order.recipeId}:${needsClear}`:'';if(orderKey!==view.orderKey){if(view.order){disposeObject(view.order);view.root.remove(view.order);}view.order=person.order?createOrderBubble(person.order.recipeId,needsClear):null;if(view.order)view.root.add(view.order);view.orderKey=orderKey;}
+      if(view.order){view.order.position.y=2.26+(person.pose==='sit'||person.pose==='eat'?(person.work?.seatHeight??.48)-.63:0);updateOrderBubble(view.order,person.order?.patience??1);}
       setActorPicking(view.root,mode,person);view.root.visible=!person.hidden;view.person=person;
     }
   }
@@ -279,10 +275,10 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
   }
   function syncScene(){
     if(mode==='home'){
-      const key=JSON.stringify([data.width,data.height,data.roomPlan?.stage,data.objects.filter(o=>!o.id.startsWith('incident:')&&o.kind!=='parcel'&&o.kind!=='spill').map(o=>[o.id,o.kind,o.x,o.y,o.rotation,o.footprint]),data.tables.map(t=>[t.id,t.x,t.y,t.rotation,t.capacity,t.footprint,t.seats.map(s=>[s.x,s.y])])]);
-      if(key!==homeCameraKey){homeCameraBounds=createHomeCameraBounds(data);homeCameraKey=key;}
+      const key=JSON.stringify([data.characterReview,data.width,data.height,data.roomPlan?.stage,data.objects.filter(o=>!o.id.startsWith('incident:')&&o.kind!=='parcel'&&o.kind!=='spill').map(o=>[o.id,o.kind,o.x,o.y,o.rotation,o.footprint]),data.tables.map(t=>[t.id,t.x,t.y,t.rotation,t.capacity,t.footprint,t.seats.map(s=>[s.x,s.y])])]);
+      if(key!==homeCameraKey){homeCameraBounds=data.characterReview?{boxes:[{min:{x:-.6,y:0,z:-.6},max:{x:data.width-.4,y:2.1,z:data.height-.4}}]}:createHomeCameraBounds(data);homeCameraKey=key;}
     }
-    buildStatic();syncObjects();syncTables();syncPeople();syncEdit();
+    buildStatic();syncObjects();syncTables();syncPeople();syncEdit();contactShadows.update(data,floorHeight);
   }
   function ndc(clientX:number,clientY:number){const rect=canvas.getBoundingClientRect();pointer.set((clientX-rect.left)/rect.width*2-1,-(clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);}
   // Truck crew pass station selection through their whole rig. Furniture and
@@ -356,7 +352,17 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
   function animate(now:number){if(disposed)return;frame=requestAnimationFrame(animate);const delta=Math.min(.05,(now-lastFrame)/1000),time=now/1000;lastFrame=now;rotation+=(targetRotation-rotation)*Math.min(1,delta*10);fitCamera();
     homeAmbience?.update(time,!reducedMotion&&!data.paused);
     if(!data.paused)actingTime+=delta;
-    for(const view of personViews.values()){const progress=Math.min(1,(now-view.changed)/50);view.root.position.lerpVectors(view.previous,view.destination,progress);let angle=THREE.MathUtils.euclideanModulo(view.angle-view.body.rotation.y+Math.PI,Math.PI*2)-Math.PI;view.body.rotation.y+=angle*Math.min(1,delta*18);animateCharacter(view.body,actingTime,view.person.pose??'idle',!!view.person.held,!data.paused&&(view.person.pose==='walk'||progress<1),view.person.work);if(view.order)view.order.quaternion.copy(camera.quaternion);}
+    for(const view of personViews.values()){
+      const progress=Math.min(1,(now-view.changed)/50),speed=view.previous.distanceTo(view.destination)/.05;
+      view.root.position.lerpVectors(view.previous,view.destination,progress);
+      const angle=THREE.MathUtils.euclideanModulo(view.angle-view.body.rotation.y+Math.PI,Math.PI*2)-Math.PI;
+      view.body.rotation.y+=angle*Math.min(1,delta*18);
+      animateCharacter(view.body,actingTime,view.person.pose??'idle',!!view.person.held,view.person.pose==='walk'||progress<1,view.person.work,{delta:data.paused?0:delta,speed,reducedMotion});
+      const rig=view.body.userData.rig as CharacterRig;
+      actorShadowPosition.copy(rig.body.position).applyQuaternion(view.body.quaternion).add(view.root.position);
+      contactShadows.setActorPosition(view.person.id,actorShadowPosition.x,actorShadowPosition.z,view.body.rotation.y+rig.body.rotation.y);
+      if(view.order)view.order.quaternion.copy(camera.quaternion);
+    }
     const toCamera=camera.position.clone().sub(focus).normalize();
     for(const [id,view] of stationViews){view.progress.quaternion.copy(camera.quaternion);
       view.cooking?.update(delta,!!data.paused,reducedMotion);
@@ -386,7 +392,7 @@ export function createDinerScene(host:HTMLElement,mode:'truck'|'home',initial:Di
     canvas.removeEventListener('lostpointercapture',onUp);document.removeEventListener('visibilitychange',onHidden);window.removeEventListener('blur',endHomeGesture);
     canvas.removeEventListener('keydown',onKeyDown);canvas.removeEventListener('keyup',onKeyUp);
     for(const view of stationViews.values())view.cooking?.dispose();
-    disposeObject(scene);sun.shadow.dispose();renderer.dispose();renderer.forceContextLoss();canvas.remove();
+    contactShadows.dispose();disposeObject(scene);lighting.dispose();renderer.dispose();renderer.forceContextLoss();canvas.remove();
   }
   try{syncScene();resize();frame=requestAnimationFrame(animate);}catch(error){dispose();throw error;}
   return {setScene(next){data=next;if(homePointer&&!data.objects.some(item=>item.id===homePointer!.incidentId))endHomeGesture();syncScene();},setRotation(value){const desired=Math.round(value)*Math.PI/2;targetRotation=rotation+Math.atan2(Math.sin(desired-rotation),Math.cos(desired-rotation));},setEditing(value){editing=value;if(value)endHomeGesture();else clearHover();syncEdit();},zoomBy(factor){zoom=THREE.MathUtils.clamp(zoom*factor,.65,2.4);fitCamera();},resetCamera(){focus.copy(baseFocus);zoom=1;fitCamera();},dispose};

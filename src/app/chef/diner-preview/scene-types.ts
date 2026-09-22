@@ -20,6 +20,8 @@ export interface DinerSceneData {
   width:number;height:number;pavementWidth?:number;pavementHeight?:number;sign?:string;paint?:string;
   homeTerraceDepth?:number;
   previewInset?:number;
+  /** Isolated art-review stage. Never used by saved restaurants. */
+  characterReview?:boolean;
   trailer?:Array<{id:string;kind:string;tier:number}>;
   guideTarget?:string|null;
   floor?:string;wall?:string;wrap?:string;uniform?:string;

@@ -1,15 +1,8 @@
 /** Checks the actual authored perimeter geometry without a browser or WebGL. */
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {resolve,dirname} from 'node:path';
-import {fileURLToPath,pathToFileURL} from 'node:url';
-import ts from 'typescript';
-const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
-const threeUrl=pathToFileURL(resolve(root,'node_modules/three/build/three.module.js')).href,THREE=await import(threeUrl);
-function moduleUrl(file,replacements=[]){let source=readFileSync(resolve(root,file),'utf8');for(const [from,to] of replacements)source=source.replaceAll(`from '${from}'`,`from '${to}'`);const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;return `data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`;}
-const modelUrl=moduleUrl('src/app/chef/diner-preview/models.ts',[['three',threeUrl],['three/examples/jsm/geometries/RoundedBoxGeometry.js',pathToFileURL(resolve(root,'node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js')).href]]),spaceUrl=moduleUrl('src/lib/chef/diner/home-spatial.ts');
-const {createHomeAmbience,createCafeWallLight}=await import(moduleUrl('src/app/chef/diner-preview/home-ambience.ts',[['three',threeUrl],['./models',modelUrl],['../../../lib/chef/diner/home-spatial',spaceUrl]]));
-const {disposeObject}=await import(modelUrl);
+import {THREE,sourceModule} from './dk-diner-source-loader.mjs';
+const {createHomeAmbience,createCafeWallLight}=await sourceModule('src/app/chef/diner-preview/home-ambience.ts');
+const {disposeObject}=await sourceModule('src/app/chef/diner-preview/models.ts');
 let cases=0;
 for(const size of [8,10,12,14]){
   const ambience=createHomeAmbience(size,size),root=ambience.root,depth=size+3,ray=new THREE.Raycaster(new THREE.Vector3(0,5,0),new THREE.Vector3(0,-1,0));

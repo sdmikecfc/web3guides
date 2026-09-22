@@ -1,18 +1,13 @@
 /** Actual model geometry: a print must stay flat, face into the room and meet its wall. */
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import ts from 'typescript';
-const threeURL=pathToFileURL(resolve('node_modules/three/build/three.module.js')).href;
-const THREE=await import(threeURL);
-let source=await readFile('src/app/chef/diner-preview/models.ts','utf8');
-source=source.replaceAll("from 'three'",`from '${threeURL}'`).replaceAll("from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'",`from '${pathToFileURL(resolve('node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js')).href}'`);
-const compiled=ts.transpileModule(source,{fileName:'models.ts',compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
-const kit=await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
-const collectionSource=ts.transpileModule(await readFile('src/lib/chef/diner/collections.ts','utf8'),{fileName:'collections.ts',compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
-const {DECOR}=await import(`data:text/javascript;base64,${Buffer.from(collectionSource).toString('base64')}`);
-const ids=DECOR.filter(item=>item.wall&&item.id!=='chrome_clock').map(item=>item.id);
+import {THREE,sourceModule} from './dk-diner-source-loader.mjs';
+const kit=await sourceModule('src/app/chef/diner-preview/models.ts');
+const {DECOR}=await sourceModule('src/lib/chef/diner/collections.ts');
+// These deliberately sculpted wall props have contact/footprint coverage in
+// dk-diner-art-check; all remaining wall decorations must keep flat print art.
+const sculptedWallProps=new Set(['chrome_clock','diner_clock','deer_trophy','coffee_sign','deco_mirror','brass_sconce']);
+const ids=DECOR.filter(item=>item.wall&&!sculptedWallProps.has(item.id)).map(item=>item.id);
+assert.equal(ids.length,12,'framed print coverage changed without review');
 const close=(actual,expected,label)=>assert(Math.abs(actual-expected)<.00001,`${label}: ${actual} != ${expected}`);
 let cases=0,vertices=0;
 for(const id of ids){

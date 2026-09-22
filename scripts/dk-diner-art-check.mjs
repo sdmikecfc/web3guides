@@ -1,19 +1,7 @@
 /** Geometry integrity for the actual Three.js kit; no browser or WebGL required. */
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
-import {resolve,dirname} from 'node:path';
-import {fileURLToPath,pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
-import ts from 'typescript';
-const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
-const threeUrl=pathToFileURL(resolve(root,'node_modules/three/build/three.module.js')).href;
-const THREE=await import(threeUrl);
-async function sourceModule(relative){
-  let source=await readFile(resolve(root,relative),'utf8');
-  source=source.replaceAll("from 'three'",`from '${threeUrl}'`).replaceAll("from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'",`from '${pathToFileURL(resolve(root,'node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js')).href}'`);
-  const result=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext},fileName:relative});
-  return import(`data:text/javascript;base64,${Buffer.from(result.outputText).toString('base64')}`);
-}
+import {THREE,sourceModule} from './dk-diner-source-loader.mjs';
 const kit=await sourceModule('src/app/chef/diner-preview/models.ts');
 const {RECIPES,EQUIPMENT,INGREDIENTS}=await sourceModule('src/lib/chef/diner/content.ts');
 const {DECOR,charmOf}=await sourceModule('src/lib/chef/diner/collections.ts');
@@ -30,7 +18,15 @@ function inspect(model,label,{minY=-.04,maxY=2.1,maxWidth=2.1,maxDepth=2.1}={}){
     const count=object.geometry.index?.count??position.count;assert.equal(count%3,0,`${label}: incomplete triangle`);triangleCount+=count/3;
     for(const value of object.matrixWorld.elements)assert.ok(Number.isFinite(value),`${label}: nonfinite transform`);
     const materials=Array.isArray(object.material)?object.material:[object.material];
-    for(const material of materials)assert.ok(material.isMeshToonMaterial,`${label}: material escaped shared toon specification`);
+    for(const material of materials){
+      assert.ok(material.isMeshToonMaterial||material.isMeshStandardMaterial,`${label}: unsupported model material`);
+      assert.ok(material.color?.isColor&&material.color.toArray().every(value=>Number.isFinite(value)&&value>=0&&value<=1),`${label}: invalid material colour`);
+      assert.ok(Number.isFinite(material.opacity)&&material.opacity>=0&&material.opacity<=1,`${label}: invalid material opacity`);
+      if(material.isMeshStandardMaterial){
+        for(const field of ['roughness','metalness'])assert.ok(Number.isFinite(material[field])&&material[field]>=0&&material[field]<=1,`${label}: invalid ${field}`);
+        assert.ok(Number.isFinite(material.envMapIntensity)&&material.envMapIntensity>=0,`${label}: invalid environment response`);
+      }
+    }
   });
   assert.ok(meshCount>0&&triangleCount>0,`${label}: empty model`);
   const bounds=new THREE.Box3().setFromObject(model),size=bounds.getSize(new THREE.Vector3());
@@ -192,14 +188,36 @@ for(const role of ['chef','waiter','customer'])for(let look=0;look<8;look++){
   const actor=kit.createModel(role,{look}),rig=actor.userData.rig;
   const anchor=inspect(actor,`${role}/${look}`);assert.ok(Math.abs(anchor.min.y)<.025,`${role}: feet do not meet floor anchor`);assert.equal(rig.arms.length,2);assert.equal(rig.legs.length,2);assert.equal(rig.knees.length,2);
   assert.ok(rig.held.position.z<0,`${role}: carried item is behind character`);
-  for(const pose of ['walk','carry','cook','wash','sit','eat']){kit.animateCharacter(actor,.2,pose,pose==='carry',pose==='walk');inspect(actor,`${role}/${look}/${pose}`,{minY:-.09});}
-  kit.animateCharacter(actor,0,'sit',false,false);const hip=new THREE.Vector3();rig.legs[0].getWorldPosition(hip);assert.ok(hip.y>.43&&hip.y<.56,`${role}: seated hip misses chair cushion`);
+  let time=0;
+  for(const pose of ['walk','carry','cook','wash','sit','eat'])for(let frame=0;frame<4;frame++){
+    time+=.05;kit.animateCharacter(actor,time,pose,pose==='carry',pose==='walk');inspect(actor,`${role}/${look}/${pose}/frame${frame}`,{minY:-.09});
+  }
+  kit.animateCharacter(actor,time+.05,'sit',false,false);const hip=new THREE.Vector3();rig.legs[0].getWorldPosition(hip);assert.ok(hip.y>.43&&hip.y<.56,`${role}: seated hip misses chair cushion`);
 }
 // Removing temporary previews must preserve shared world resources, while
 // unique canvas/card materials and selection geometry are actually disposed.
 const shared=kit.createModel('prep');let sharedDisposed=false;shared.children[0].geometry.addEventListener('dispose',()=>{sharedDisposed=true;});kit.disposeObject(shared);assert.equal(sharedDisposed,false,'catalogue disposal invalidates live shared geometry');
 const unique=new THREE.Group(),geometry=new THREE.BoxGeometry(1,1,1),material=new THREE.MeshToonMaterial();let geometryDisposed=false,materialDisposed=false;
 geometry.addEventListener('dispose',()=>{geometryDisposed=true;});material.addEventListener('dispose',()=>{materialDisposed=true;});unique.add(new THREE.Mesh(geometry,material));kit.disposeObject(unique);assert.ok(geometryDisposed&&materialDisposed,'unique resources leak on disposal');
+// Removing one rigged preview must release its GPU bone textures while another
+// actor keeps its independent skeleton and shared immutable art alive.
+const retiredActor=kit.createCharacter('chef',0),liveActor=kit.createCharacter('chef',0);
+const skeletonsOf=actor=>{const result=new Set();actor.traverse(part=>{if(part.isSkinnedMesh)result.add(part.skeleton);});return result;};
+const retiredSkeletons=skeletonsOf(retiredActor),liveSkeletons=skeletonsOf(liveActor);
+assert(retiredSkeletons.size>0&&liveSkeletons.size>0,'character has no skinned skeleton to dispose');
+let retiredTexturesDisposed=0,liveTexturesDisposed=0,sharedActorResourcesDisposed=0;
+for(const skeleton of retiredSkeletons){assert(!liveSkeletons.has(skeleton),'actors share mutable skeletons');skeleton.computeBoneTexture();skeleton.boneTexture.addEventListener('dispose',()=>{retiredTexturesDisposed++;});}
+for(const skeleton of liveSkeletons){skeleton.computeBoneTexture();skeleton.boneTexture.addEventListener('dispose',()=>{liveTexturesDisposed++;});}
+const sharedActorResources=new Set();retiredActor.traverse(part=>{if(!part.isMesh)return;sharedActorResources.add(part.geometry);for(const mat of Array.isArray(part.material)?part.material:[part.material])sharedActorResources.add(mat);});
+for(const resource of sharedActorResources)if(resource.userData.sharedKitResource)resource.addEventListener('dispose',()=>{sharedActorResourcesDisposed++;});
+kit.disposeObject(retiredActor);
+assert.equal(retiredTexturesDisposed,retiredSkeletons.size,'retired character leaks a skeleton bone texture');
+assert([...retiredSkeletons].every(skeleton=>skeleton.boneTexture===null),'disposed skeleton retains its GPU texture');
+assert.equal(liveTexturesDisposed,0,'removing a preview disposed another actor skeleton');
+assert([...liveSkeletons].every(skeleton=>skeleton.boneTexture),'live actor lost its GPU texture');
+assert.equal(sharedActorResourcesDisposed,0,'removing a character disposed shared art');
+kit.animateCharacter(liveActor,.1,'walk',false,true);kit.disposeObject(liveActor);
+assert.equal(liveTexturesDisposed,liveSkeletons.size,'remaining actor leaks its skeleton on removal');
 const warmStats=kit.modelKitStats();
 for(let cycle=0;cycle<10;cycle++){
   for(const recipe of RECIPES)kit.disposeObject(kit.createFoodModel({recipeId:recipe.id,kind:'dish'}));

@@ -2,32 +2,17 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
-import {resolve,dirname} from 'node:path';
-import {fileURLToPath,pathToFileURL} from 'node:url';
 import ts from 'typescript';
-const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),require=createRequire(import.meta.url);
+import {THREE,sourceModule} from './dk-diner-source-loader.mjs';
+const require=createRequire(import.meta.url);
 require.extensions['.ts']=(module,file)=>module._compile(ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText,file);
 const {createDiner,homeSimulationConfig,homeIncidents,dailyIngredientParcel}=require('../src/lib/chef/diner/progression.ts');
 const {createHomeWorld,stepHomeWorld}=require('../src/lib/chef/diner/home-simulation.ts');
 const {createRestaurantBlueprint}=require('../src/lib/chef/diner/room-plan.ts');
 const {homeScene}=require('../src/app/chef/diner-preview/home-scene.ts');
 const spatial=require('../src/lib/chef/diner/home-spatial.ts');
-const threeUrl=pathToFileURL(resolve(root,'node_modules/three/build/three.module.js')).href,THREE=await import(threeUrl);
-function moduleUrl(file,replacements=[]){
-  let source=readFileSync(resolve(root,file),'utf8');
-  for(const [from,to] of replacements)source=source.replaceAll(`from '${from}'`,`from '${to}'`);
-  const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
-  return `data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`;
-}
-const modelUrl=moduleUrl('src/app/chef/diner-preview/models.ts',[['three',threeUrl],['three/examples/jsm/geometries/RoundedBoxGeometry.js',pathToFileURL(resolve(root,'node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js')).href]]);
-const spaceUrl=moduleUrl('src/lib/chef/diner/home-spatial.ts');
-const boardUrl=moduleUrl('src/app/chef/diner-preview/home-board.ts',[['three',threeUrl],['./models',modelUrl],['../../../lib/chef/diner/home-spatial',spaceUrl]]);
-const {createHomeBoard}=await import(boardUrl),models=await import(modelUrl);
-const contentUrl=moduleUrl('src/lib/chef/diner/content.ts'),collectionsUrl=moduleUrl('src/lib/chef/diner/collections.ts');
-const roomPlanUrl=moduleUrl('src/lib/chef/diner/room-plan.ts',[['./content',contentUrl],['./collections',collectionsUrl]]);
-const roomMaterialsUrl=moduleUrl('src/app/chef/diner-preview/room-materials.ts',[['three',threeUrl],['./models',modelUrl],['../../../lib/chef/diner/room-plan',roomPlanUrl]]);
-const shellUrl=moduleUrl('src/app/chef/diner-preview/room-shell.ts',[['three',threeUrl],['./models',modelUrl],['./room-materials',roomMaterialsUrl],['../../../lib/chef/diner/room-plan',roomPlanUrl],['../../../lib/chef/diner/content',contentUrl],['../../../lib/chef/diner/collections',collectionsUrl],['../../../lib/chef/diner/home-spatial',spaceUrl]]);
-const {createRoomShell}=await import(shellUrl);
+const {createHomeBoard}=await sourceModule('src/app/chef/diner-preview/home-board.ts'),models=await sourceModule('src/app/chef/diner-preview/models.ts');
+const {createRoomShell}=await sourceModule('src/app/chef/diner-preview/room-shell.ts');
 // These are the preserved open-room/terrace fixtures. Staged-room geometry is
 // covered separately by dk-diner-room-art-check and room-plan-check.
 function legacyDiner(now,seed){const state=createDiner(now,seed);delete state.home.roomPlan;delete state.home.fixtureInventory;state.home.w=state.home.h=8;state.home.staff={chefs:1,waiters:1,cashiers:0};state.home.layout=[{id:'grill',equipmentId:'grill',x:1,y:0,rotation:0},{id:'prep',equipmentId:'prep',x:3,y:0,rotation:0},{id:'sink',equipmentId:'sink',x:5,y:0,rotation:0},{id:'table',equipmentId:'table_2',x:2,y:3,rotation:0}];state.equipment.table_2.homeCopies=1;return state;}

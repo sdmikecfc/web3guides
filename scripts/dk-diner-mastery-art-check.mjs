@@ -1,12 +1,12 @@
 /** Real model geometry and scene adapters; no WebGL or simulation mutations by rendering. */
 import assert from 'node:assert/strict';
-import {readFile,readFileSync} from 'node:fs';
-import {promisify} from 'node:util';
+import {readFileSync} from 'node:fs';
 import {resolve,dirname} from 'node:path';
-import {fileURLToPath,pathToFileURL} from 'node:url';
+import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 import ts from 'typescript';
+import {THREE,sourceModule} from './dk-diner-source-loader.mjs';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),require=createRequire(import.meta.url),Module=require('node:module');
 for(const extension of ['.ts','.mts'])require.extensions[extension]=(module,filename)=>module._compile(ts.transpileModule(readFileSync(filename,'utf8'),{fileName:filename,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText,filename);
@@ -18,11 +18,7 @@ const {createHomeWorld,stepHomeWorld}=require('../src/lib/chef/diner/home-simula
 const {createRally,startRally}=require('../src/lib/chef/diner/rally.ts');
 const {serviceScene}=require('../src/app/chef/diner-preview/scene-adapter.ts');
 const {homeScene}=require('../src/app/chef/diner-preview/home-scene.ts');
-const threeUrl=pathToFileURL(resolve(root,'node_modules/three/build/three.module.js')).href,THREE=await import(threeUrl);
-const modelPath=resolve(root,'src/app/chef/diner-preview/models.ts');
-const source=(await promisify(readFile)(modelPath,'utf8')).replaceAll("from 'three'",`from '${threeUrl}'`).replaceAll("from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'",`from '${pathToFileURL(resolve(root,'node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js')).href}'`);
-const compiled=ts.transpileModule(source,{fileName:modelPath,compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
-const kit=await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
+const kit=await sourceModule('src/app/chef/diner-preview/models.ts');
 const now=Date.UTC(2026,8,20,12);let groups=0,geometryCases=0;
 function test(name,run){run();groups++;console.log(`PASS ${name}`);}
 function fingerprint(model){

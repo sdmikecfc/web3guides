@@ -1,21 +1,16 @@
 /** Actual model placement, rotations and picking without a browser or WebGL. */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import ts from 'typescript';
+import {THREE,sourceModule} from './dk-diner-source-loader.mjs';
 const require=createRequire(import.meta.url);
 require.extensions['.ts']=(module,filename)=>module._compile(ts.transpileModule(readFileSync(filename,'utf8'),{fileName:filename,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,filename);
 const {makeTable,tableFootprint}=require('../src/lib/chef/diner/geometry.ts');
 const {HOME_EQUIPMENT}=require('../src/lib/chef/diner/content.ts');
 const {DECOR}=require('../src/lib/chef/diner/collections.ts');
 const {roomTableSeats}=require('../src/lib/chef/diner/room-plan.ts');
-const threeURL=pathToFileURL(resolve('node_modules/three/build/three.module.js')).href,THREE=await import(threeURL);
-function moduleURL(path,replacements={}){let source=readFileSync(path,'utf8').replaceAll("from 'three'",`from '${threeURL}'`);for(const [from,to]of Object.entries(replacements))source=source.replaceAll(`from '${from}'`,`from '${to}'`);return `data:text/javascript;base64,${Buffer.from(ts.transpileModule(source,{fileName:path,compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText).toString('base64')}`;}
-const modelURL=moduleURL('src/app/chef/diner-preview/models.ts',{'three/examples/jsm/geometries/RoundedBoxGeometry.js':pathToFileURL(resolve('node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js')).href});
-const tableURL=moduleURL('src/app/chef/diner-preview/table-presentation.ts');
-const kit=await import(modelURL),{createPlacementGhost,projectPlacementTile}=await import(moduleURL('src/app/chef/diner-preview/placement-ghost.ts',{'./models':modelURL,'./table-presentation':tableURL}));
+const kit=await sourceModule('src/app/chef/diner-preview/models.ts'),{createPlacementGhost,projectPlacementTile}=await sourceModule('src/app/chef/diner-preview/placement-ghost.ts');
 const height=()=>.095,close=(a,b,message)=>assert(Math.abs(a-b)<1e-7,message);
 let cases=0,disposed=0;
 function verifyGhost(ghost,expectedCells){

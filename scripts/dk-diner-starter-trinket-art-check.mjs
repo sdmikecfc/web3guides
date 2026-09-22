@@ -1,15 +1,10 @@
 /** Real miniature geometry, support contact and staff readability checks. */
 import assert from 'node:assert/strict';
-import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
-import {resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {writeFileSync,mkdirSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {deflateSync} from 'node:zlib';
-import ts from 'typescript';
-const require=createRequire(import.meta.url),threeURL=pathToFileURL(resolve('node_modules/three/build/three.module.js')).href,T=await import(threeURL);
-let source=readFileSync('src/app/chef/diner-preview/models.ts','utf8');
-source=source.replaceAll("from 'three'",`from '${threeURL}'`).replaceAll("from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'",`from '${pathToFileURL(resolve('node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js')).href}'`);
-const compiled=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText,kit=await import('data:text/javascript;base64,'+Buffer.from(compiled).toString('base64'));
+import {THREE as T,sourceModule} from './dk-diner-source-loader.mjs';
+const require=createRequire(import.meta.url),kit=await sourceModule('src/app/chef/diner-preview/models.ts');
 const kinds=['burger_mascot','retro_radio','condiment_caddy','welcome_mat'];let cases=0;
 for(const kind of kinds){
  const model=kit.createModel(kind);assert.equal(model.userData.unsupportedModel,undefined,`${kind} fell back to a generic box`);let meshes=0;
@@ -27,7 +22,10 @@ const waiter=kit.createModel('waiter',{color:kit.PALETTE.sage}),chef=kit.createM
 assert(waiter.getObjectByName('server-towel')&&waiter.getObjectByName('server-badge'),'server has no identifiable working outfit');
 assert(!chef.getObjectByName('server-towel'),'chef inherited server props');
 const colors=model=>{const result=new Set();model.traverse(part=>{if(part.isMesh)result.add(part.material.color.getHexString());});return result;};
-assert(colors(waiter).has('b94f43'),'default server still blends into sage kitchen crew');
+waiter.updateMatrixWorld(true);chef.updateMatrixWorld(true);
+const apronColor=actor=>new T.Raycaster(new T.Vector3(0,.90,-2),new T.Vector3(0,0,1)).intersectObject(actor,true)[0]?.object.material.color;
+const waiterApron=apronColor(waiter),chefApron=apronColor(chef);
+assert(waiterApron&&chefApron&&waiterApron.r>waiterApron.g*1.5&&waiterApron.r>waiterApron.b*1.5&&!waiterApron.equals(chefApron),'default server still blends into sage kitchen crew');
 assert(colors(kit.createModel('waiter',{color:'#5566aa'})).has('5566aa'),'custom server uniforms no longer work');
 for(const pose of ['idle','walk','takeOrder','serve','wash']){kit.animateCharacter(waiter,1.2,pose,pose==='serve',pose==='walk');waiter.updateMatrixWorld(true);assert(new T.Box3().setFromObject(waiter).max.y<1.85,'server acquired a chef hat or broken pose');cases++;}
 console.log(`Starter trinket art PASS: ${cases} bounds, rotations, support contacts, low-draw-call models and distinct server outfit cases.`);

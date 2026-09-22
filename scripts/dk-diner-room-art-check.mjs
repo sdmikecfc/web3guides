@@ -1,11 +1,10 @@
 /** Actual restaurant fixture geometry, contacts and cutaways; no WebGL required. */
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
-import {resolve,dirname} from 'node:path';
-import {pathToFileURL} from 'node:url';
 import {createRequire} from 'node:module';
 import {deflateSync} from 'node:zlib';
 import ts from 'typescript';
+import {THREE as T,sourceURL} from './dk-diner-source-loader.mjs';
 const require=createRequire(import.meta.url);
 require.extensions['.ts']=(module,filename)=>module._compile(ts.transpileModule(readFileSync(filename,'utf8'),{fileName:filename,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,filename);
 const {createRestaurantBlueprint,roomModuleGeometry,roomModuleFootprint,roomSeatStyles,roomTableSeats,roomZoneAt,ROOM_FIXTURES,validateRoomPlan}=require('../src/lib/chef/diner/room-plan.ts');
@@ -16,8 +15,6 @@ const {homeSupportAt}=require('../src/lib/chef/diner/home-spatial.ts');
 const {createHomeWorld,stepHomeWorld}=require('../src/lib/chef/diner/home-simulation.ts');
 const {createDiner}=require('../src/lib/chef/diner/progression.ts');
 const {homeScene}=require('../src/app/chef/diner-preview/home-scene.ts');
-const threeURL=pathToFileURL(resolve('node_modules/three/build/three.module.js')).href,T=await import(threeURL),urls=new Map();
-function sourceURL(file){file=resolve(file);if(urls.has(file))return urls.get(file);let code=ts.transpileModule(readFileSync(file,'utf8'),{fileName:file,compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;code=code.replace(/from\s+['"]([^'"]+)['"]/g,(all,spec)=>{const url=spec==='three'?threeURL:spec.startsWith('three/')?pathToFileURL(resolve('node_modules',spec)).href:spec.startsWith('.')?sourceURL(resolve(dirname(file),spec+'.ts')):null;return url?`from '${url}'`:all;});const url='data:text/javascript;base64,'+Buffer.from(code).toString('base64');urls.set(file,url);return url;}
 const kit=await import(sourceURL('src/app/chef/diner-preview/models.ts')),shell=await import(sourceURL('src/app/chef/diner-preview/room-shell.ts')),{createPlacementGhost}=await import(sourceURL('src/app/chef/diner-preview/placement-ghost.ts')),{diningTableCenter,diningFoodPoint,diningPlaceSettings}=await import(sourceURL('src/app/chef/diner-preview/table-presentation.ts'));
 let cases=0;
 for(const [kind,definition]of Object.entries(ROOM_FIXTURES))for(let rotation=0;rotation<4;rotation++){

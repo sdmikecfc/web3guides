@@ -13,7 +13,7 @@ export function createHomeBoard(width:number,height:number,floor='checker'){
   const cells:Array<{x:number;y:number;h:number;color:string}>=[];
   for(let y=0;y<depth;y++)for(let x=0;x<width;x++)cells.push({x,y,h:y<height?HOME_INTERIOR_ELEVATION:HOME_TERRACE_ELEVATION,color:y<height?colors[(x+y)%2]:x===space.door.x||x===space.door.x-1?'#ebd9c2':(Math.floor(x/2)+y)%2?'#c8ccbe':'#d2d6c9'});
   // Touch targets remain individual cells. Their seams are not an always-on editor grid.
-  const geometry=new THREE.BoxGeometry(1,.075,1),material=new THREE.MeshToonMaterial({color:'#ffffff'}),tiles=new THREE.InstancedMesh(geometry,material,cells.length),matrix=new THREE.Matrix4();
+  const geometry=new THREE.BoxGeometry(1,.075,1),material=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.84}),tiles=new THREE.InstancedMesh(geometry,material,cells.length),matrix=new THREE.Matrix4();
   tiles.name='home-supported-tiles';tiles.receiveShadow=true;tiles.userData.tiles=cells;
   cells.forEach((cell,index)=>{matrix.makeTranslation(cell.x,cell.h-.0375,cell.y);tiles.setMatrixAt(index,matrix);tiles.setColorAt(index,new THREE.Color(cell.color));});tiles.instanceMatrix.needsUpdate=true;if(tiles.instanceColor)tiles.instanceColor.needsUpdate=true;root.add(tiles);
   const gridVertices:number[]=[];

@@ -43,11 +43,10 @@ function getStudio(){
   return pending;
 }
 async function makeStudio(){
-  const [THREE,models]=await Promise.all([import('three'),import('./models')]);
+  const [THREE,models,{setupCinematicLighting}]=await Promise.all([import('three'),import('./models'),import('./cinematic-lighting')]);
   const renderer=new THREE.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true,powerPreference:'low-power'});
   renderer.setSize(320,320);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;
-  const scene=new THREE.Scene();scene.add(new THREE.HemisphereLight('#fff9ec','#a0b3a0',1.05));
-  const light=new THREE.DirectionalLight('#ffffff',1.4);light.position.set(-3,6,5);scene.add(light);
+  const scene=new THREE.Scene();setupCinematicLighting(scene,renderer,'catalogue');
   const camera=new THREE.OrthographicCamera(-1,1,1,-1,.01,100);
   renderer.domElement.addEventListener('webglcontextrestored',retryMissingIcons);
   return {THREE,models,renderer,scene,camera};

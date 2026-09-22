@@ -1,19 +1,6 @@
 /** Real Three.js raycasts through the shipped model kit; no mocked hit list or WebGL. */
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
-import {resolve,dirname} from 'node:path';
-import {fileURLToPath,pathToFileURL} from 'node:url';
-import ts from 'typescript';
-
-const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
-const threeUrl=pathToFileURL(resolve(root,'node_modules/three/build/three.module.js')).href;
-const THREE=await import(threeUrl);
-async function sourceModule(relative){
-  let source=await readFile(resolve(root,relative),'utf8');
-  source=source.replaceAll("from 'three'",`from '${threeUrl}'`).replaceAll("from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'",`from '${pathToFileURL(resolve(root,'node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js')).href}'`);
-  const result=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext},fileName:relative});
-  return import(`data:text/javascript;base64,${Buffer.from(result.outputText).toString('base64')}`);
-}
+import {THREE,sourceModule} from './dk-diner-source-loader.mjs';
 const {createModel,createFoodModel,animateCharacter}=await sourceModule('src/app/chef/diner-preview/models.ts');
 const {firstVisibleSceneSurface,setActorPicking}=await sourceModule('src/app/chef/diner-preview/scene-picking.ts');
 const raycaster=new THREE.Raycaster();let groups=0;

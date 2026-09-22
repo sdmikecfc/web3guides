@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { miniatureMaterial,miniatureMaterialCount } from './material-library';
 import type { SceneFood,SceneObject } from './scene-types';
+import { createCharacter } from './character-kit';
+export { createCharacter,animateCharacter,type CharacterRig,type CharacterWork } from './character-kit';
 
 /** Align original floor-authored art with a real architectural support. */
 export function configureRoomMount(model:THREE.Group,object:SceneObject){
@@ -11,11 +14,9 @@ export function configureRoomMount(model:THREE.Group,object:SceneObject){
 /** Original toy-diner model kit. Metres, Y-up, floor-centred, front is -Z.
  * This source builds both world models and catalogue previews. No asset provider. */
 export const PALETTE={cream:'#f7f2e6',porcelain:'#fff9ee',ink:'#293e39',sage:'#365f55',mint:'#94b9a2',tomato:'#bd654e',mustard:'#e3b454',wood:'#876647',oak:'#c59a6c',metal:'#bdcdc7',steel:'#647e77',dark:'#394b46',leaf:'#668b55',paving:'#deded3',bun:'#dfad62',skin:'#e4b38e'};
-const geometries=new Map<string,THREE.BufferGeometry>(),materials=new Map<string,THREE.MeshToonMaterial>();
-export function modelKitStats(){return {geometries:geometries.size,materials:materials.size};}
-const gradient=new THREE.DataTexture(new Uint8Array([105,175,245]),3,1,THREE.RedFormat);
-gradient.minFilter=THREE.NearestFilter;gradient.magFilter=THREE.NearestFilter;gradient.needsUpdate=true;
-export function material(color:string){let result=materials.get(color);if(!result){result=new THREE.MeshToonMaterial({color,gradientMap:gradient});result.userData.sharedKitResource=true;materials.set(color,result);}return result;}
+const geometries=new Map<string,THREE.BufferGeometry>();
+export function modelKitStats(){return {geometries:geometries.size,materials:miniatureMaterialCount()};}
+export function material(color:string){return miniatureMaterial(color);}
 function geo(key:string,create:()=>THREE.BufferGeometry){let value=geometries.get(key);if(!value){value=create();value.userData.sharedKitResource=true;geometries.set(key,value);}return value;}
 function mesh(geometry:THREE.BufferGeometry,color:string,x=0,y=0,z=0){const m=new THREE.Mesh(geometry,material(color));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;return m;}
 export function box(w:number,h:number,d:number,color:string,x=0,y=h/2,z=0,r=.035){return mesh(geo(`b${w},${h},${d},${r}`,()=>r?new RoundedBoxGeometry(w,h,d,2,Math.min(r,w/3,h/3,d/3)):new THREE.BoxGeometry(w,h,d)),color,x,y,z);}
@@ -400,201 +401,6 @@ function createBoothTable(colors?:ModelOptions['roomColors']){
   return packMeshes(g,`booth-table-v1:${JSON.stringify(colors??{})}`);
 }
 function plant(){const g=group(cylinder(.20,.15,.33,PALETTE.tomato,0,.18),cylinder(.18,.18,.04,'#866448',0,.35));for(let i=0;i<7;i++){const angle=i*2.4,leaf=ball(.18,i%2?PALETTE.leaf:'#89a971',Math.sin(angle)*.16,.58+Math.cos(i)*.1,Math.cos(angle)*.16);leaf.scale.set(.55,1.3,.6);leaf.rotation.z=Math.sin(angle)*.5;g.add(leaf);}return g;}
-
-export interface CharacterRig {
-  body:THREE.Group;chest:THREE.Group;head:THREE.Group;eyes:THREE.Group[];
-  brows:THREE.Group[];smile:THREE.Group;openMouth:THREE.Group;
-  arms:THREE.Group[];elbows:THREE.Group[];legs:THREE.Group[];knees:THREE.Group[];
-  held:THREE.Group;props:{cook:THREE.Group;spoon:THREE.Group;knife:THREE.Group;wash:THREE.Group;eat:THREE.Group};
-  phase:number;blinkPeriod:number;isChef:boolean;
-}
-function actingProps(){
-  // Tools carry no simulated food or dishes. The real held-item group remains
-  // exclusively owned by the scene's authoritative inventory rendering.
-  const cook=group(cylinder(.018,.020,.22,PALETTE.tomato,0,-.045),box(.098,.11,.021,PALETTE.dark,0,-.205,0,.019));
-  cook.name='acting-spatula';for(const x of [-.027,0,.027])cook.add(box(.010,.063,.023,PALETTE.metal,x,-.208,0,.003));packMeshes(cook,'acting-spatula');
-  const spoon=group(cylinder(.014,.018,.23,PALETTE.wood,0,-.047));const bowl=ball(.048,PALETTE.wood,0,-.202,0);bowl.scale.set(.72,1,.22);spoon.add(bowl);spoon.name='acting-spoon';packMeshes(spoon,'acting-spoon');
-  const knife=group(box(.027,.10,.022,PALETTE.dark,0,.009,0,.010),box(.046,.14,.010,PALETTE.metal,.010,-.112,0,.008));knife.name='acting-knife';
-  const wash=group(box(.105,.048,.085,PALETTE.mustard,0,-.021,-.015,.018),box(.104,.019,.085,PALETTE.sage,0,-.050,-.015,.009));wash.name='acting-sponge';
-  const eat=group(box(.024,.143,.017,PALETTE.steel,0,-.030,0,.007),box(.065,.029,.017,PALETTE.steel,0,-.112,0,.005));
-  eat.name='acting-fork';for(const x of [-.026,0,.026])eat.add(box(.014,.043,.014,PALETTE.steel,x,-.143,0,.004));packMeshes(eat,'acting-fork');
-  for(const prop of [cook,spoon,knife,wash,eat])prop.visible=false;
-  return {cook,spoon,knife,wash,eat};
-}
-const headWidthAt=(y:number)=>1.055+.042*Math.exp(-(((y+.065)/.10)**2));
-const headFrontAt=(x:number,y:number)=>-.95*Math.sqrt(Math.max(0,.26**2-y*y-(x/headWidthAt(y))**2));
-function continuousHeadGeometry(){
-  return geo('character-continuous-head',()=>{
-    const geometry=new THREE.SphereGeometry(.26,32,24),p=geometry.getAttribute('position');
-    for(let i=0;i<p.count;i++)p.setXYZ(i,p.getX(i)*headWidthAt(p.getY(i)),p.getY(i),p.getZ(i)*.95);
-    geometry.computeVertexNormals();return geometry;
-  });
-}
-function fittedHairGeometry(){
-  return geo('character-fitted-hair',()=>{
-    const columns=32,rows=16,geometry=new THREE.SphereGeometry(1,columns,rows,0,Math.PI*2,0,Math.PI/2),p=geometry.getAttribute('position');
-    for(let row=0;row<=rows;row++)for(let col=0;col<=columns;col++){
-      const phi=col/columns*Math.PI*2,front=Math.max(0,-Math.sin(phi));
-      const hairline=.01+.125*front*front,theta=row/rows*Math.acos(hairline/.26),y=.26*Math.cos(theta),radius=.26*Math.sin(theta);
-      p.setXYZ(row*(columns+1)+col,-Math.cos(phi)*radius*headWidthAt(y)*1.035,y*1.035,Math.sin(phi)*radius*.95*1.035);
-    }
-    geometry.computeVertexNormals();return geometry;
-  });
-}
-/** Pigment follows the skin surface; an overlapping flattened sphere would
- * intersect it and produce the jagged second-face patches seen at close zoom. */
-function cheekPatch(side:number,color:string){
-  const geometry=geo(`character-cheek-pigment:${side}`,()=>{
-    const positions:number[]=[],cx=side*.17,cy=-.064;
-    for(let i=0;i<24;i++){
-      for(const [x,y] of [[cx,cy],[cx+Math.cos(i/24*Math.PI*2)*.044,cy+Math.sin(i/24*Math.PI*2)*.021],[cx+Math.cos((i+1)/24*Math.PI*2)*.044,cy+Math.sin((i+1)/24*Math.PI*2)*.021]])positions.push(x,y,headFrontAt(x,y)-.003);
-    }
-    // Front faces point toward -Z.
-    for(let i=0;i<positions.length;i+=9)for(let axis=0;axis<3;axis++){const value=positions[i+3+axis];positions[i+3+axis]=positions[i+6+axis];positions[i+6+axis]=value;}
-    const result=new THREE.BufferGeometry();result.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));result.computeVertexNormals();return result;
-  });
-  return mesh(geometry,color);
-}
-export function createCharacter(role='chef',look=0,uniform?:string){
-  const root=new THREE.Group(),body=new THREE.Group(),head=new THREE.Group(),eyes:THREE.Group[]=[],brows:THREE.Group[]=[];root.add(body);body.add(head);
-  const style=Math.abs(Math.floor(look))%20,skin=['#e6ad83','#bf815b','#855337','#f0c29b'][style%4],hair=['#654330','#302d2b','#b87535','#7b6554'][style%4];
-  const shirt=role==='chef'||role==='waiter'?PALETTE.porcelain:role==='cashier'?'#b94f43':['#b8594b','#548b98','#c99a43','#527c64','#937093'][style%5];
-  const jacket=ball(.29,shirt,0,.807,0);jacket.scale.set(.95,.95,.63);
-  body.add(jacket,box(.39,.13,.29,PALETTE.dark,0,.608,0,.064),cylinder(.076,.080,.12,skin,0,1.096));
-  // Collar and sleeves meet the torso; a generous apron pocket reads at room scale.
-  for(const side of [-1,1]){const collar=box(.10,.095,.030,role==='customer'?PALETTE.porcelain:shirt,side*.061,1.020,-.151,.019);collar.rotation.z=side*.38;body.add(collar);}
-  if(role!=='customer'){
-    // The default crew share a palette, but the server needs a distinct silhouette
-    // and apron at playing size. Purchased uniform colours still carry through.
-    const apron=role==='waiter'&&(!uniform||uniform===PALETTE.sage)?'#b94f43':uniform??(role==='chef'?PALETTE.sage:PALETTE.tomato);
-    body.add(box(.35,.36,.027,apron,0,.738,-.169,.049),box(.23,.20,.029,apron,0,.956,-.163,.035));
-    for(const x of [-.104,.104])body.add(box(.036,.22,.030,apron,x,1.007,-.155,.012));
-    body.add(box(.19,.115,.035,PALETTE.porcelain,0,.755,-.190,.021),box(.13,.018,.012,apron,0,.790,-.213,.006));
-    for(const x of [-.105,.105])body.add(ball(.016,PALETTE.mustard,x,1.009,-.180));
-    const neckerchief=box(.083,.08,.028,role==='chef'?PALETTE.tomato:PALETTE.sage,0,1.048,-.181,.020);neckerchief.rotation.z=Math.PI/4;body.add(neckerchief);
-    if(role==='waiter'){
-      const towel=group(box(.135,.245,.028,PALETTE.porcelain,.210,.665,-.102,.013),box(.022,.212,.005,apron,.184,.660,-.120,.004),box(.10,.012,.005,PALETTE.mustard,.211,.557,-.120,.003));
-      towel.name='server-towel';towel.rotation.z=-.10;body.add(towel);
-      const badge=group(box(.113,.055,.019,PALETTE.mustard,-.054,.956,-.189,.018),box(.052,.010,.009,PALETTE.porcelain,-.054,.956,-.203,.004));badge.name='server-badge';body.add(badge);
-    }
-  }else{
-    body.add(box(.095,.08,.022,PALETTE.porcelain,.107,.915,-.156,.017));
-    for(const y of [.954,.885,.815])body.add(ball(.013,PALETTE.ink,-.023,y,-.159));
-    if(style%3===0)for(const y of [.733,.803])body.add(box(.40,.024,.019,PALETTE.porcelain,0,y,-.164,.006));
-    if(style%3===2)body.add(box(.030,.32,.020,PALETTE.porcelain,-.018,.81,-.165,.006));
-  }
-  // A generous chibi head and simple dark eyes carry expression at phone size.
-  head.position.y=1.274;head.scale.setScalar(1.38);
-  // One continuous shaped surface supplies the skull, chin and cheeks. Keep it
-  // identifiable outside the static material batch for topology regression checks.
-  const faceSurface=group(mesh(continuousHeadGeometry(),skin));faceSurface.name='face-surface';head.add(faceSurface);
-  const haircap=mesh(fittedHairGeometry(),hair);head.add(haircap);
-  const blush=group(cheekPatch(-1,style%4===2?'#a66850':'#d98970'),cheekPatch(1,style%4===2?'#a66850':'#d98970'));
-  blush.name='face-pigment';packMeshes(blush,`face-pigment:${style%4}`);blush.traverse(part=>{part.castShadow=false;});head.add(blush);
-  for(const side of [-1,1]){
-    head.add(ball(.050,skin,side*.261,-.014,.001));
-    const innerEar=ball(.025,'#c78068',side*.282,-.009,-.025);innerEar.scale.z=.4;head.add(innerEar);
-    const eyeGroup=new THREE.Group();eyeGroup.position.set(side*.096,.018,headFrontAt(side*.096,.018)-.010);
-    const eye=ball(.036,PALETTE.ink);eye.scale.set(.91,1.13,.44);eyeGroup.add(eye,ball(.008,PALETTE.porcelain,-.009,.016,-.016));head.add(eyeGroup);eyes.push(eyeGroup);
-    const brow=new THREE.Group();brow.position.set(side*.096,.098,headFrontAt(side*.096,.098)-.010);brow.add(box(.072,.016,.030,hair,0,0,0,.008));brow.rotation.z=-side*.10;head.add(brow);brows.push(brow);
-    if(role!=='chef'&&style%3===1){const curl=ball(.084,hair,side*.214,.048,.025);curl.scale.set(.54,1.70,1.05);head.add(curl);}
-  }
-  head.add(ball(.035,skin,0,-.034,headFrontAt(0,-.034)-.008));
-  const smile=new THREE.Group(),openMouth=new THREE.Group();smile.position.set(0,-.078,-.247);openMouth.position.copy(smile.position);
-  smile.add(mesh(geo('diner-fitted-smile',()=>{
-    const points=[];for(let i=0;i<=12;i++){const t=i/12,x=-.045+.09*t,y=-.037*2*t*(1-t);points.push(new THREE.Vector3(x,y,headFrontAt(x,y-.078)+.247-.003));}
-    return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),12,.0085,5,false);
-  }),'#814935'));
-  const mouthInside=ball(.031,'#814935',0,-.012,-.001);mouthInside.scale.set(1.16,.86,.25);const tongue=ball(.020,'#df967f',0,-.026,-.008);tongue.scale.set(1,.40,.19);openMouth.add(mouthInside,tongue);openMouth.visible=false;head.add(smile,openMouth);
-  if(role!=='chef'){
-    for(let i=0;i<3;i++){const fringe=ball(.072,hair,-.115+i*.087,.178-(i===0?.015:0),-.128);fringe.scale.set(1.10,.55,.75);fringe.rotation.z=-.20;head.add(fringe);}
-    if(style%4===1){
-      for(const x of [-.096,.096]){const lens=ring(.056,.009,PALETTE.ink,x,.018,-.278);lens.rotation.x=0;head.add(lens);}
-      head.add(box(.079,.010,.012,PALETTE.ink,0,.027,-.282,.005));
-    }
-    if(style%4===2)for(const x of [-.16,.16]){const bun=ball(.085,hair,x,.18,.15);bun.scale.set(1,.85,.9);head.add(bun);}
-    if(style%4===3){const sweep=ball(.095,hair,-.105,.205,-.10);sweep.scale.set(1.2,.55,.75);sweep.rotation.z=.35;head.add(sweep);}
-    if(role==='cashier'){head.add(box(.45,.076,.31,PALETTE.porcelain,0,.236,-.022,.035),box(.43,.035,.17,'#b94f43',0,.204,-.210,.025));}
-  }else{
-    head.add(cylinder(.217,.229,.095,PALETTE.porcelain,0,.242),cylinder(.231,.231,.023,PALETTE.sage,0,.218));
-    for(const [x,y,z,r] of [[-.13,.325,0,.112],[0,.363,.012,.138],[.13,.325,0,.112],[0,.325,-.09,.115]]){const puff=ball(r,PALETTE.porcelain,x,y,z);puff.scale.y=.83;head.add(puff);}
-  }
-  packMeshes(head,`head:${role}:${style}`);packMeshes(body,`body:${role}:${style}:${uniform??''}`);
-  const chest=new THREE.Group();for(const part of [...body.children])if(part instanceof THREE.Mesh)chest.add(part);body.add(chest);
-  const arms:THREE.Group[]=[],elbows:THREE.Group[]=[],legs:THREE.Group[]=[],knees:THREE.Group[]=[],props=actingProps();
-  for(const side of [-1,1]){
-    const arm=new THREE.Group(),elbow=new THREE.Group();arm.position.set(side*.255,1.00,0);elbow.position.y=-.207;
-    arm.add(ball(.089,shirt,0,-.029,0),cylinder(.088,.077,.21,shirt,0,-.11),cylinder(.079,.079,.037,PALETTE.porcelain,0,-.208));packMeshes(arm,`upper-arm:${shirt}`);
-    elbow.add(cylinder(.069,.063,.165,skin,0,-.073),ball(.089,skin,0,-.164),ball(.036,skin,-side*.059,-.141,-.044));packMeshes(elbow,`forearm:${skin}:${side}`);
-    if(side===-1){const grip=new THREE.Group();grip.position.y=-.164;grip.add(props.cook,props.spoon,props.knife,props.wash,props.eat);elbow.add(grip);}
-    arm.add(elbow);body.add(arm);arms.push(arm);elbows.push(elbow);
-    const leg=new THREE.Group(),knee=new THREE.Group();leg.position.set(side*.11,.62,0);leg.add(cylinder(.095,.083,.28,PALETTE.dark,0,-.135));knee.position.y=-.27;
-    knee.add(cylinder(.084,.073,.32,PALETTE.dark,0,-.16),box(.207,.096,.298,PALETTE.ink,0,-.300,-.066,.046),box(.210,.019,.299,PALETTE.wood,0,-.340,-.066,.009));
-    packMeshes(knee,'character-knee');leg.add(knee);body.add(leg);legs.push(leg);knees.push(knee);
-  }
-  const held=new THREE.Group();held.position.set(0,.90,-.39);body.add(held);
-  root.userData.rig={body,chest,head,eyes,brows,smile,openMouth,arms,elbows,legs,knees,held,props,phase:(style*1.618+(role==='waiter'?2.4:role==='customer'?.9:0))%7.2,blinkPeriod:4.6+(style%5)*.37,isChef:role==='chef'} satisfies CharacterRig;
-  return root;
-}
-export interface CharacterWork {stationKind?:string;recipeId?:string;seatHeight?:number}
-export function animateCharacter(model:THREE.Group,time:number,pose:string,carrying:boolean,moving:boolean,work?:CharacterWork){
-  const rig=model.userData.rig as CharacterRig;if(!rig)return;
-  const t=time+rig.phase,seated=pose==='sit'||pose==='eat',cooking=pose==='cook'&&!carrying&&!moving,washing=pose==='wash'&&!carrying&&!moving,eating=pose==='eat'&&!carrying&&!moving;
-  const stride=moving?Math.sin(t*9.5)*.43:0,breath=Math.sin(t*1.8);
-  const stirring=cooking&&(!!work?.stationKind&&['drinks','coffee','blender'].includes(work.stationKind)||(work?.stationKind==='prep'&&!!work.recipeId&&['pancakes','strawberry_waffle','brownie'].includes(work.recipeId)));
-  const chopping=cooking&&work?.stationKind==='prep'&&!stirring;
-  rig.props.cook.visible=cooking&&!stirring&&!chopping;rig.props.spoon.visible=stirring;rig.props.knife.visible=chopping;rig.props.wash.visible=washing;rig.props.eat.visible=eating;
-  // Regulars greet briefly, then relax. A held two-arm salute reads as a T-pose.
-  const greetingPhase=((t%7.2)+7.2)%7.2;
-  const greeting=pose==='cheer'&&!carrying&&!moving?Math.max(0,Math.min(1,greetingPhase/.25,(1.8-greetingPhase)/.35)):0;
-  rig.body.position.y=seated?(work?.seatHeight??.48)-.63:moving?Math.abs(Math.sin(t*9.5))*.022:0;
-  rig.body.position.x=0;rig.body.rotation.y=moving?Math.sin(t*9.5)*.026:0;
-  rig.chest.scale.set(1+breath*.006,1+breath*.003,1+breath*.013);
-  for(let i=0;i<2;i++){
-    rig.legs[i].rotation.x=seated?Math.PI/2:(i===0?stride:-stride);rig.knees[i].rotation.x=seated?-Math.PI/2:Math.max(0,i===0?-stride:stride)*.3;
-    rig.arms[i].rotation.set(carrying?.90:seated?.62:(i===0?-stride:stride)*.70,0,moving?0:(i===0?-1:1)*.028);
-    rig.elbows[i].rotation.set(carrying?.85:seated?.46:moving?.14:.06,0,0);
-    if(!moving&&!seated&&!carrying)rig.arms[i].rotation.x=breath*.018;
-  }
-  if(cooking){
-    const cycle=t*(stirring?4.2:chopping?7.8:3.8);
-    rig.arms[0].rotation.set(stirring?.95:chopping?.92:.86+Math.sin(cycle)*.055,stirring?Math.cos(cycle)*.09:0,stirring?Math.sin(cycle)*.095:-.035);
-    rig.elbows[0].rotation.x=stirring?.83+Math.sin(cycle)*.035:chopping?.78+Math.sin(cycle)*.17:.77+Math.sin(cycle)*.13;
-    rig.arms[1].rotation.x=.62;rig.elbows[1].rotation.x=.68;
-  }else if(washing){
-    rig.arms[0].rotation.set(.95+Math.sin(t*6.2)*.045,0,Math.sin(t*6.2)*.14);
-    rig.elbows[0].rotation.x=.83-Math.sin(t*6.2)*.07;
-    rig.arms[1].rotation.x=.70;rig.elbows[1].rotation.x=.73;
-  }else if(eating){
-    const lift=(1-Math.cos(t*2.65))*.5;
-    rig.arms[0].rotation.set(.90+lift*.25,0,.12+lift*.10);rig.elbows[0].rotation.set(1+lift*.35,0,.04+lift*.17);
-    rig.arms[1].rotation.x=.78;rig.elbows[1].rotation.x=.70;
-  }else if(pose==='takeOrder'&&!moving&&!carrying){
-    rig.arms[0].rotation.set(.78,0,-.10);rig.elbows[0].rotation.x=.85;
-    rig.arms[1].rotation.set(.58+Math.sin(t*3)*.08,0,.10);rig.elbows[1].rotation.x=.65;
-    rig.head.rotation.x=.04+Math.sin(t*3)*.025;
-  }else if(greeting>0){
-    rig.arms[0].rotation.x=greeting*(.12+Math.sin(t*13+.6)*.12);
-    rig.arms[0].rotation.z=greeting*(-1.93+Math.sin(t*13)*.17);rig.elbows[0].rotation.x=.16*greeting;
-  }
-  rig.head.rotation.x=cooking||washing?.10+Math.sin(t*2.4)*.018:eating?.045+Math.sin(t*2.65)*.055:pose==='takeOrder'?.04+Math.sin(t*3)*.025:breath*.012;
-  rig.head.rotation.y=cooking||washing?Math.sin(t*2)*.018:eating?-.04:Math.sin(t*.58)*.085;
-  rig.head.rotation.z=-greeting*.065+(moving?Math.sin(t*4.75)*.018:0);
-  // Expressions follow real work and meals. Keep the idle face welcoming and
-  // readable; a brief soft squint makes a customer's bite feel enjoyed.
-  const focused=cooking||washing,savor=eating?Math.pow(Math.max(0,Math.sin(t*2.65-.7)),4):0;
-  for(let i=0;i<2;i++){
-    const side=i===0?-1:1;
-    rig.brows[i].position.y=.098+greeting*.014-(focused?.006:0)+savor*.005;
-    rig.brows[i].rotation.z=side*(focused?-.12:.10+greeting*.14+savor*.08);
-  }
-  rig.smile.scale.set(1+greeting*.16+savor*.05,1+greeting*.10,1);
-  rig.openMouth.visible=greeting>.35;
-  rig.openMouth.scale.setScalar(1+greeting*.07);
-  rig.smile.visible=!rig.openMouth.visible;
-  const blinkCycle=((t%rig.blinkPeriod)+rig.blinkPeriod)%rig.blinkPeriod,blink=blinkCycle<.16?1-Math.sin(blinkCycle/.16*Math.PI)*.92:1;
-  for(const eye of rig.eyes){eye.scale.y=blink*(1-savor*.44);eye.children[1].visible=eye.scale.y>.45;}
-}
 
 function createFridge(color=PALETTE.sage){
   // An actual open cold compartment: separate insulated walls, recessed back,
@@ -1196,6 +1002,9 @@ export function createModel(kind:string,options:ModelOptions={}):THREE.Group{
 
 /** Dispose unique GPU resources when an owning preview renderer is removed. */
 export function disposeObject(root:THREE.Object3D){
+  const skeletons=new Set<THREE.Skeleton>();
+  root.traverse(object=>{if(object instanceof THREE.SkinnedMesh)skeletons.add(object.skeleton);});
+  skeletons.forEach(skeleton=>skeleton.dispose());
   const usedGeometry=new Set<THREE.BufferGeometry>(),usedMaterial=new Set<THREE.Material>(),textures=new Set<THREE.Texture>();
   root.traverse(object=>{if(object instanceof THREE.Mesh||object instanceof THREE.Sprite||object instanceof THREE.Line){if(object instanceof THREE.Mesh||object instanceof THREE.Line)usedGeometry.add(object.geometry);const list=Array.isArray(object.material)?object.material:[object.material];for(const m of list){usedMaterial.add(m);const map=(m as THREE.MeshBasicMaterial).map;if(map)textures.add(map);}}});
   // The world and its catalogue deliberately share immutable kit resources.

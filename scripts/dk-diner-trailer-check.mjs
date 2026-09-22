@@ -1,17 +1,9 @@
 /** The setup trailer uses actual equipment geometry and normal scene picking. */
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
-import {resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
-import ts from 'typescript';
-const threeUrl=pathToFileURL(resolve('node_modules/three/build/three.module.js')).href,THREE=await import(threeUrl);
-async function sourceUrl(file,replacements=[]){
-  let source=await readFile(file,'utf8');for(const [from,to] of replacements)source=source.replaceAll(`from '${from}'`,`from '${to}'`);
-  return `data:text/javascript;base64,${Buffer.from(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText).toString('base64')}`;
-}
-const modelsUrl=await sourceUrl('src/app/chef/diner-preview/models.ts',[['three',threeUrl],['three/examples/jsm/geometries/RoundedBoxGeometry.js',pathToFileURL(resolve('node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js')).href]]),kit=await import(modelsUrl);
-const {createEquipmentTrailer}=await import(await sourceUrl('src/app/chef/diner-preview/trailer.ts',[['three',threeUrl],['./models',modelsUrl]]));
-const {firstVisibleSceneSurface}=await import(await sourceUrl('src/app/chef/diner-preview/scene-picking.ts'));
+import {THREE,sourceModule} from './dk-diner-source-loader.mjs';
+const kit=await sourceModule('src/app/chef/diner-preview/models.ts');
+const {createEquipmentTrailer}=await sourceModule('src/app/chef/diner-preview/trailer.ts');
+const {firstVisibleSceneSurface}=await sourceModule('src/app/chef/diner-preview/scene-picking.ts');
 const kinds=['grill','sink','fryer','prep','coffee','table_1'],slots=kinds.map((kind,i)=>({id:`stored_${i}`,kind,tier:1}));
 let cases=0,pickChecks=0;
 for(const [width,height] of [[4,3],[7,4]])for(const count of [0,1,2,4,6]){
