@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "tracks": {
+    "home": {
+      "mode": "mix",
+      "loopStart": 0,
+      "loopEnd": 118.865,
+      "crossfadeSeconds": 2,
+      "layers": { "mix": "/diner-audio/cafe-swing-v1.mp3" }
+    },
+    "truck": {
+      "mode": "mix",
+      "loopStart": 0,
+      "loopEnd": 147.531,
+      "crossfadeSeconds": 2,
+      "layers": { "mix": "/diner-audio/sunlit-groove-v1.mp3" }
+    }
+  }
+}

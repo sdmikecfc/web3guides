@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {createHeroBuildV7,createFightV7,stepFightV7,fighterPoseV7,AFTERMATH_FRAMES_V7,MAX_FRAMES_V7} from '@/lib/bots/v7';
+import {add,subtract,rotateQuatV6,length3,hashV6} from '@/lib/bots/v6/math';
+import {BODY_SOCKETS_V6,sweepRobotV6} from '@/lib/bots/v6/collision';
+const s=createFightV7([createHeroBuildV7('ranged'),createHeroBuildV7('tank')],75,{autoSpecial:[true,true]});let shots=0,footSamples=0,events=0;
+while(!s.done){stepFightV7(s);const fresh=s.events.slice(events);events=s.events.length;for(const e of fresh){if(e.kind==='shot'&&!fresh.some(x=>x.target===e.who&&(x.kind==='hit'||x.kind==='block'||x.kind==='break'))){const p=fighterPoseV7(s,e.who),mount=p.mounts[e.mount!];assert(mount);assert(length3(subtract(mount.muzzle,e.origin!))<.001,'Shot did not leave its actual bore: '+JSON.stringify({frame:s.frame,event:e,actual:mount.muzzle,action:s.fighters[e.who].action}));assert(length3(subtract(mount.forward,e.direction!))<.000001,'Projectile direction disagrees with barrel direction.');shots++;}}
+  if(s.frame%12===0)for(const side of [0,1] as const){const p=fighterPoseV7(s,side),f=s.fighters[side];if(s.frame<f.downUntil)continue;for(const which of ['left','right'] as const){if(!f.feet[which].planted||f.armour[which==='left'?4:5]<=0)continue;assert(length3(subtract(p.support.feet[which],f.feet[which].plant))<.1,'A planted foot drifted off its physical support.');footSamples++;}}
+}
+assert(shots>5);assert(footSamples>20);assert(s.frame<MAX_FRAMES_V7);
+const loser=(1-s.winner!) as 0|1,after=fighterPoseV7(s,loser,s.frame+AFTERMATH_FRAMES_V7);for(const p of after.proxies){if(p.slot!=='torso'&&s.fighters[loser].armour[BODY_SOCKETS_V6.indexOf(p.slot)]<=0)continue;for(const x of [-1,1])for(const y of [-1,1])for(const z of [-1,1]){const point=add(p.center,rotateQuatV6([x*p.half[0],y*p.half[1],z*p.half[2]],p.orientation!));assert(point[1]>=-.001,'KO armour passed through the floor.');}}
+const both=createFightV7([createHeroBuildV7('tank'),createHeroBuildV7('tank')],8);both.fighters[0].x=0;both.fighters[0].z=0;both.fighters[1].x=0;both.fighters[1].z=0;stepFightV7(both);assert(Math.hypot(both.fighters[0].x-both.fighters[1].x,both.fighters[0].z-both.fighters[1].z)>=899);assert(both.fighters.every(f=>Number.isInteger(f.x)&&Number.isInteger(f.z)));
+console.log(JSON.stringify({groups:4,shots,footSamples,frames:s.frame,aftermath:after.aftermath,checks:['real muzzle and direction','planted feet','KO floor support','coincident root separation']}));

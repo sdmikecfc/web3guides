@@ -171,7 +171,7 @@ export default function StarfallLanding() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
           {[
             ["smoothie.com", "the priority, biggest gap"],
-            ["braking.io", "lists first"],
+            ["earmarking.xyz", "just launched"],
             ["uncage.xyz", ""],
             ["cosmo.xyz", ""],
             ["frenchfries.ai", ""],

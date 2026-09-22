@@ -1,0 +1,186 @@
+{
+  "date": "2026-09-13T11:31:25.411Z",
+  "browser": "153.0.4234.32",
+  "source": "isolated actual browser WebGL renderer",
+  "physicalPhoneTested": false,
+  "structural": [
+    {
+      "style": "tank",
+      "rival": "tank",
+      "maximumJointError": 7.411475059146425e-13,
+      "maximumRotationError": 6.661338147750939e-16,
+      "damage": [
+        {
+          "hash": "b7aed1b8",
+          "dents": 12,
+          "vertices": 628
+        },
+        {
+          "hash": "3c212e3f",
+          "dents": 13,
+          "vertices": 1759
+        }
+      ],
+      "replayDamage": [
+        "b7aed1b8",
+        "3c212e3f"
+      ],
+      "initial": [
+        "62e5bdf5",
+        "62e5bdf5"
+      ],
+      "reset": [
+        "62e5bdf5",
+        "62e5bdf5"
+      ],
+      "resources": [
+        {
+          "textures": 7,
+          "geometries": 188
+        },
+        {
+          "textures": 7,
+          "geometries": 188
+        },
+        {
+          "textures": 7,
+          "geometries": 188
+        },
+        {
+          "textures": 7,
+          "geometries": 188
+        }
+      ],
+      "isolation": {
+        "target": 1,
+        "targetDents": 1,
+        "otherAlsoHit": true,
+        "untouched": false,
+        "separateGeometry": true
+      },
+      "stateFrame": 1300,
+      "errors": [],
+      "writes": []
+    },
+    {
+      "style": "speed",
+      "rival": "ranged",
+      "maximumJointError": 1.8331451766013172e-12,
+      "maximumRotationError": 1.5820153076440135e-8,
+      "damage": [
+        {
+          "hash": "bc710b08",
+          "dents": 13,
+          "vertices": 1197
+        },
+        {
+          "hash": "50b29f1e",
+          "dents": 13,
+          "vertices": 1093
+        }
+      ],
+      "replayDamage": [
+        "bc710b08",
+        "50b29f1e"
+      ],
+      "initial": [
+        "3bf79550",
+        "01b8943e"
+      ],
+      "reset": [
+        "3bf79550",
+        "01b8943e"
+      ],
+      "resources": [
+        {
+          "textures": 9,
+          "geometries": 200
+        },
+        {
+          "textures": 9,
+          "geometries": 200
+        },
+        {
+          "textures": 9,
+          "geometries": 200
+        },
+        {
+          "textures": 9,
+          "geometries": 200
+        }
+      ],
+      "isolation": null,
+      "stateFrame": 1300,
+      "errors": [],
+      "writes": []
+    }
+  ],
+  "performance": [
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "emulatedPhone": false,
+      "gpu": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "frameCount": 600,
+      "medianFrameMs": 16.69999999999891,
+      "p95FrameMs": 16.800000000000182,
+      "meanFPS": 59.90235915457818,
+      "medianRenderSubmitMs": 5.099999964237213,
+      "p95RenderSubmitMs": 8,
+      "renderSubmitIncludesGPUWait": false,
+      "stats": {
+        "dents": 21,
+        "scorches": 0,
+        "vertices": 2187,
+        "gripError": 0,
+        "drawCalls": 237,
+        "triangles": 295838,
+        "drawMs": 3.300000011920929,
+        "crowd": true,
+        "displayFrame": 1105
+      },
+      "canvas": {
+        "width": 1278,
+        "height": 431
+      },
+      "devicePixelRatio": 1,
+      "errors": [],
+      "writes": []
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "emulatedPhone": true,
+      "gpu": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "frameCount": 601,
+      "medianFrameMs": 16.69999999999891,
+      "p95FrameMs": 16.80000000000109,
+      "meanFPS": 60.00279547133654,
+      "medianRenderSubmitMs": 4.800000011920929,
+      "p95RenderSubmitMs": 7.399999976158142,
+      "renderSubmitIncludesGPUWait": false,
+      "stats": {
+        "dents": 22,
+        "scorches": 0,
+        "vertices": 2206,
+        "gripError": 0,
+        "drawCalls": 233,
+        "triangles": 295742,
+        "drawMs": 6.200000047683716,
+        "crowd": true,
+        "displayFrame": 1115
+      },
+      "canvas": {
+        "width": 388,
+        "height": 590
+      },
+      "devicePixelRatio": 1,
+      "errors": [],
+      "writes": []
+    }
+  ]
+}

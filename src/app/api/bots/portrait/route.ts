@@ -1,0 +1,311 @@
+import { ART_VERSION } from "@/app/bots/_view/art-version";
+/**
+ * BATTLE BOTS PORTRAIT: one square picture of one robot, painted.
+ *
+ *   GET /api/bots/portrait?b=<botId>&s=<64|120|300|432>[&v=<updated_at>]
+ *   GET /api/bots/portrait?f=<fightId>&w=<0|1>&s=<size>
+ *   GET /api/bots/portrait?h=<shapeId>&t=<size 5..100>&s=<size>
+ *
+ * THE ONE COMPOSITOR. Everything that shows a small robot points here: the
+ * fights list, the board, the knockout card. Before it, each of those drew
+ * its own thing, and all three were wrong in the same way, showing a grey
+ * clay dummy or one flat colour for a robot that is normally FOUR colours.
+ * One route means one answer, and a robot that changes changes everywhere.
+ *
+ * THE SERVER IS THE TRUTH, and this is why the query carries a robot's ID
+ * and never its look. What a robot wears is derived from rows here
+ * (_server/bots.ts lookOf and earnedOf), so a caller cannot ask for a crown
+ * it did not win by putting one in a URL. `v` is a cache buster, nothing
+ * more: it is never read as data.
+ *
+ * IT NEVER FAILS HARD. A portrait is an <img> in a list; a 500 there is a
+ * broken box on a page that was otherwise fine. An unknown id, an incomplete
+ * robot, a database that is down and a missing art folder all end in the
+ * same place: a plain unpainted robot, drawn from the starter kit, 200 OK.
+ * The one thing that is refused is a private fight (a practice bout), which
+ * falls back the same way rather than telling anyone it exists.
+ *
+ * NODE RUNTIME, deliberately, and the opposite call from the knockout card
+ * next door. That card runs on the edge because next/og's node build reads a
+ * font through an import.meta.url join that a Windows dev box turns into an
+ * invalid file URL. This route uses no next/og at all: it composites raw
+ * pixels and needs node:zlib for the PNG, which the edge runtime has not
+ * got.
+ */
+import { NextResponse } from "next/server";
+import { STARTER_KIT, SOCKETS } from "@/lib/bots/fixtures";
+import { NO_LOOK, NO_MARKS, earnedMarks, type BotLook, type LookMarks, type SocketPaints } from "@/lib/bots/look";
+import type { Build, Part, Slot } from "@/app/bots/_engine/parts";
+import { houseBuild } from "@/app/bots/_engine/catalog";
+import { nearestPortraitSize } from "@/app/bots/_view/pieces";
+import { botsDb } from "@/app/bots/_server/db";
+import {
+  earnedOf,
+  engineBuildOf,
+  loadBot,
+  loadCrownBotIds,
+  loadHats,
+  loadPartsOfBot,
+  lookOf,
+} from "@/app/bots/_server/bots";
+import { canonicalBuild, loadBattle, looksOf } from "@/app/bots/_server/fight-read";
+import { HOUSE_MARKS, houseBotLook, houseShapeIdOfBuild, paintedHouseBuild } from "@/lib/bots/house-look";
+import { fnv1a } from "@/app/bots/_engine/rng";
+import { renderPortrait, type ArtCache, type LoadArt } from "./render";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+/** the eighty part files, decoded once per warm process (see ArtCache) */
+const ART: ArtCache = new Map();
+/** the raw bytes, so a cold cache after a redeploy is one fetch per file */
+const BYTES = new Map<string, Uint8Array | null>();
+
+/**
+ * THE FINISHED PICTURES, KEYED BY WHAT IS IN THEM.
+ *
+ * The fights list asks for a hundred portraits at once (fifty rows, two
+ * robots each) and the compositor takes a fifth of a second each, so the
+ * page painted itself in cream squares that filled in one by one over
+ * half a minute. Measured on the dev box, 2026-09-06.
+ *
+ * But those hundred requests are not a hundred DIFFERENT robots: one player
+ * beating Wobble eight times is eight rows and one picture, and the nine
+ * game robots are most of the list on their own. So the key is not the fight
+ * or the bay, it is the ROBOT: the build, the look and the marks that were
+ * about to be drawn. Two rows that would draw the same pixels now draw them
+ * once.
+ *
+ * IT CANNOT CHANGE A PICTURE. Everything the compositor reads is in the key,
+ * so a hit is the same bytes the miss would have produced. A robot that
+ * changes changes its key and misses. The ETag is untouched and still names
+ * the fight or the bay, so a browser revalidates exactly as before.
+ *
+ * BOUNDED, and oldest out first: a Map keeps insertion order, so deleting
+ * the first key is deleting the least recently added one. Four hundred
+ * pictures is a couple of full list pages at every size, and about 20 MB at
+ * the sizes a list actually asks for.
+ */
+const PNG_CACHE = new Map<string, Uint8Array>();
+const PNG_CACHE_MAX = 400;
+
+function cachedPng(key: string): Uint8Array | undefined {
+  return PNG_CACHE.get(key);
+}
+
+function keepPng(key: string, png: Uint8Array): void {
+  PNG_CACHE.set(key, png);
+  while (PNG_CACHE.size > PNG_CACHE_MAX) {
+    const oldest = PNG_CACHE.keys().next().value;
+    if (oldest === undefined) break;
+    PNG_CACHE.delete(oldest);
+  }
+}
+
+function loaderFor(origin: string): LoadArt {
+  return async (path) => {
+    const hit = BYTES.get(path);
+    if (hit !== undefined) return hit;
+    let out: Uint8Array | null = null;
+    try {
+      const r = await fetch(`${origin}${path}?art=${ART_VERSION}`, { cache: "force-cache" });
+      if (r.ok) out = new Uint8Array(await r.arrayBuffer());
+    } catch {
+      out = null;
+    }
+    BYTES.set(path, out);
+    return out;
+  };
+}
+
+/**
+ * The robot every failure draws: the starter kit, unpainted, no look, no
+ * marks. It is a real legal build, so the compositor takes the same path it
+ * takes for a champion and there is no second rendering path to rot.
+ */
+function starterBuild(): Build {
+  const of = (slot: Slot): Part => {
+    const c = STARTER_KIT.find((k) => k.slot === slot) ?? STARTER_KIT[0];
+    return { id: c.id, s: [c.s[0], c.s[1], c.s[2]] };
+  };
+  return { legs: of("legs"), arms: of("arms"), torso: of("torso"), head: of("head"), weapon: of("weapon") };
+}
+
+interface Subject {
+  build: Build;
+  look: BotLook;
+  marks: LookMarks;
+  /** Historical snapshot colours, including the replay's legacy fallbacks. */
+  paints?: SocketPaints;
+  /** what makes the picture different, for the ETag */
+  key: string;
+}
+
+const FALLBACK: () => Subject = () => ({
+  build: starterBuild(),
+  look: NO_LOOK,
+  marks: NO_MARKS,
+  key: "starter",
+});
+
+/** A bay robot: its build, its look and its marks, all off its own rows. */
+async function subjectOfBot(id: number): Promise<Subject | null> {
+  const db = botsDb();
+  const row = await loadBot(db, id);
+  if (!row) return null;
+  const parts = await loadPartsOfBot(db, row.id);
+  const build = engineBuildOf(row, parts);
+  if (!build) return null; // an unfinished robot has no picture yet
+  const [hats, crowns] = await Promise.all([
+    loadHats(db, row.wallet).catch(() => []),
+    loadCrownBotIds(db, row.wallet).catch(() => new Set<number>()),
+  ]);
+  const crown = crowns.has(row.id);
+  const earned = earnedOf(row, parts, hats, crown);
+  return {
+    build,
+    look: lookOf(row, parts, hats, crown),
+    marks: earnedMarks(earned),
+    // WHAT MAKES THE PICTURE DIFFERENT, and nothing else: the parts it is
+    // wearing and the look it chose (both in the build JSON), plus the four
+    // numbers the earned marks are walked from. The row has no updated_at in
+    // the columns this module selects, and adding one to the select for a
+    // cache key would be a wider read on every list page.
+    key: `b${row.id}:${fnv1a(`${JSON.stringify(row.build)}|${row.wins}|${row.losses}|${row.level}|${crown}|${hats.join(",")}`).toString(36)}`,
+  };
+}
+
+/**
+ * A GAME ROBOT, built the way the fight itself builds one.
+ *
+ * The house's robots exist for the length of one fight and are in no table,
+ * so the battles page's ladder had nothing to ask a picture for and kept a
+ * drawn stand-in: six rounded rectangles beside eleven composited robots,
+ * which read as a placeholder. This draws the real shape at the real size.
+ *
+ * IT ASKS NOTHING OF THE PLAYER'S SIDE. A shape id and a size are the two
+ * values the ladder already publishes (PveLadderRow), and houseBuild is the
+ * pure engine function the fight route itself calls. There is nothing here a
+ * url could claim that has to be earned.
+ *
+ * IT IS PAINTED, AND UNTIL TODAY IT WAS NOT. A game robot has no parts, so
+ * it had no colours, so every one of the nine drew as grey clay next to
+ * eleven robots in four colours each and read as a picture that had failed
+ * to load. The colours, the face, the sticker and the hat come from
+ * lib/bots/house-look.ts, which is a drawing table and is read by nothing
+ * that fights. What a game robot still has is NO MARKS: stars, patches,
+ * cuffs and a crown are won, and the house wins nothing.
+ */
+function subjectOfHouse(shapeId: string, total: number): Subject | null {
+  let build: Build;
+  try {
+    build = houseBuild(shapeId, total);
+  } catch {
+    return null; // an id the catalogue has never heard of
+  }
+  return {
+    build: paintedHouseBuild(build, shapeId),
+    look: houseBotLook(shapeId),
+    marks: HOUSE_MARKS,
+    key: `h${shapeId}:${total}`,
+  };
+}
+
+/** The historical picture uses the exact same stored look/fallback as the
+ * replay. A later makeover or recycled bot cannot change a finished card. */
+async function subjectOfFight(id: string, side: 0 | 1): Promise<Subject | null> {
+  const db = botsDb();
+  const row = await loadBattle(db, id);
+  // A practice bout remains private and falls back to the plain robot.
+  if (!row || row.status !== "resolved" || !row.result || row.mode === "spar") return null;
+  const build = canonicalBuild(side === 0 ? row.result.buildA : row.result.buildB);
+  const appearance = looksOf(row.result)[side];
+  const fallback = row.result.ids?.[side]?.paint ?? null;
+  const paints = Object.fromEntries(SOCKETS.map(socket => [socket, appearance.paints?.[socket] ?? fallback])) as SocketPaints;
+  const houseShape = houseShapeIdOfBuild(build);
+  return {
+    build: houseShape ? paintedHouseBuild(build, houseShape) : build,
+    look: appearance.look ?? NO_LOOK,
+    marks: appearance.marks ?? NO_MARKS,
+    paints,
+    key: `f${row.id}:${side}:${row.resolved_at ?? row.created_at}`,
+  };
+}
+
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const size = nearestPortraitSize(Number(url.searchParams.get("s")) || 300);
+  const b = String(url.searchParams.get("b") || "").slice(0, 12);
+  const f = String(url.searchParams.get("f") || "").slice(0, 12);
+  const h = String(url.searchParams.get("h") || "").slice(0, 24);
+  const w = url.searchParams.get("w") === "1" ? 1 : 0;
+  // a game robot's size: the ladder's own number when it has one (it has
+  // none until the player picks a robot), else the middle of the range
+  const t = Math.max(5, Math.min(100, Math.round(Number(url.searchParams.get("t")) || 0) || 20));
+
+  let subject: Subject | null = null;
+  try {
+    if (/^\d{1,10}$/.test(b)) subject = await subjectOfBot(Number(b));
+    else if (/^\d{1,10}$/.test(f)) subject = await subjectOfFight(f, w as 0 | 1);
+    else if (/^[a-z0-9_-]{1,24}$/.test(h)) subject = subjectOfHouse(h, t);
+  } catch {
+    subject = null; // a database that is down still draws a robot
+  }
+  const known = !!subject;
+  const s = subject ?? FALLBACK();
+
+  const etag = `"bb-portrait-${ART_VERSION}-${size}-${s.key}"`;
+  if (req.headers.get("if-none-match") === etag) {
+    return new NextResponse(null, { status: 304, headers: { ETag: etag } });
+  }
+
+  // A url that carries a `v` names one version of one robot, so it can be
+  // kept for a year. One without it is a robot that may change in the next
+  // minute, so it is kept for five. A GAME robot is a pure function of its
+  // shape and its size and has no owner to change it, so it is a year too.
+  const versioned = known && (!!url.searchParams.get("v") || s.key.startsWith("h"));
+  const answer = (bytes: Uint8Array): NextResponse =>
+    new NextResponse(Buffer.from(bytes), {
+      status: 200,
+      headers: {
+        "Content-Type": "image/png",
+        "Content-Length": String(bytes.byteLength),
+        "Cache-Control": versioned
+          ? "public, max-age=31536000, immutable"
+          : known
+            ? "public, max-age=300, stale-while-revalidate=3600"
+            : "public, max-age=60",
+        ETag: etag,
+      },
+    });
+
+  // what the compositor is about to be handed, and nothing else: two rows
+  // that would draw the same robot share one drawing
+  const drawKey = `${ART_VERSION}:${size}:${fnv1a(JSON.stringify([s.build, s.look, s.marks, s.paints])).toString(36)}`;
+  const hit = cachedPng(drawKey);
+  if (hit) return answer(hit);
+
+  let png: Uint8Array;
+  try {
+    const out = await renderPortrait(
+      { build: s.build, look: s.look, marks: s.marks, paints: s.paints },
+      size,
+      loaderFor(url.origin),
+      ART,
+    );
+    png = out.png;
+    keepPng(drawKey, png);
+  } catch {
+    // the compositor itself fell over: one more try with the plainest robot
+    // there is, and if that fails too the caller gets an honest empty answer
+    try {
+      const bare = FALLBACK();
+      const out = await renderPortrait({ build: bare.build, look: bare.look, marks: bare.marks }, size, async () => null);
+      png = out.png;
+    } catch {
+      return new NextResponse("portrait unavailable", { status: 500 });
+    }
+  }
+
+  return answer(png);
+}

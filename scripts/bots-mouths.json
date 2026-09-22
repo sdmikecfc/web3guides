@@ -1,0 +1,171 @@
+{
+ "_": [
+  "BATTLE BOTS: THE MOUTH TABLE. Read by scripts/bots-import-parts.py.",
+  "",
+  "WHY A TABLE AND NOT A PROMPT. Wave one asked the renderer for five mouths on",
+  "sixteen head looks. Only the O came back different: smile, grille and zigzag",
+  "all came back as the same slatted mouth, because the model has one idea of a",
+  "robot mouth and a thin line on a ruler does not argue with it. So the mouth",
+  "stops being something we ask for and becomes something we draw, the way the",
+  "eye catch light, the wind up key and the coral sole are already drawn.",
+  "",
+  "WHAT THE IMPORTER DOES WITH AN ENTRY. It heals the mouth the render drew back",
+  "to clay, cuts this shape into the clay as a recess with the shading named",
+  "here, and then hands it to the SAME find_grille and light_grille the file",
+  "already ships. Nothing about the lighting is new: the mouth still lands on",
+  "GRILLE_LIT, still rides its own value ramp, still sits under the 0.80 ceiling",
+  "that keeps it out of find_eyes' sweep, and is still an accent no paint can",
+  "reach. Only the shape under the light is ours.",
+  "",
+  "THE DEFAULT IS NO ENTRY. With no mouth named, the importer does exactly what",
+  "it did before: it lights the mouth the render drew. Proved by re-deriving the",
+  "live catalogue from its raws in a shadow tree, all 80 files, byte identical.",
+  "",
+  "EVERY OUTLINE HERE IS CONVEX ON EVERY ROW, and that is a law rather than a",
+  "taste. light_grille recovers a rendered mouth by closing it and then filling",
+  "every row from its own leftmost pixel to its own rightmost one, because a",
+  "rendered mouth is a letterbox with body coloured prongs standing in it. Hand",
+  "that a thin arc and it fills the arc solid; hand it a bare zigzag and it fills",
+  "the zigzag into a bar. So a mouth that wants a line in it carries the line as",
+  "SHADING INSIDE A ROW CONVEX PLATE, exactly the way the shipped grille carries",
+  "its slats. The reward is that the span fill is a no op on every mouth here,",
+  "so scripts/sd/rank-part.py, which runs the importer's own find_grille and",
+  "light_grille on a candidate, sees exactly the mouth that ships. The importer",
+  "refuses any entry whose drawn outline breaks on any row.",
+  "",
+  "GEOMETRY IS MEASURED, NEVER A PIXEL. Every number below is a fraction of the",
+  "head's own face: `sep` is the distance between the two eye centres draw_face",
+  "found, and `span` is the drop from the eye row to the head's own seat. The",
+  "same entry lands correctly on a bear, a cat, a bucket and a TV.",
+  "",
+  "WHAT THE SHEET MEASURED, .bots-preview/sd-shapes2/MOUTHS.png, five mouths on",
+  "the eight wave one head shapes, forty heads, no GPU: MOUTH MISPLACED fired",
+  "zero times; not one mouth pixel landed in an eye keep out; every mouth landed",
+  "wholly on its own head; and find_grille lit exactly the mask the table drew on",
+  "all forty, which is the row convexity law holding in practice and not only on",
+  "paper. Six of the forty were re-judged DOWN ON THEIR EYES, never their mouth:",
+  "judging a file makes the judge measure the exposure again, and the bear and the",
+  "bell pair their eyes at exactly one threshold in find_eyes' sweep. The shipped",
+  "order finds the eyes once, inside an exposure it fixed first, and does not have",
+  "that.",
+  "",
+  "MEASURED ON THE EIGHT WAVE ONE HEADS, which is where drop and the size bands",
+  "come from. The mouth the renderer drew sat with its centre 0.520 to 0.652 of",
+  "the way from the eye row to the seat (six of the eight between 0.52 and 0.58),",
+  "ran 0.30 to 1.16 of the eye separation wide and 0.19 to 0.33 of it tall. Every",
+  "width and height here is inside those bands."
+ ],
+ "law": {
+  "drop": 0.55,
+  "dropNote": "the mouth centre, as a fraction of the drop from the eye row to the head's seat",
+  "centre": "the midpoint of the two eye centres, so the mouth is on the face's own centre and not the canvas'",
+  "keepOutOfEyeR": 1.45,
+  "keepOutNote": "no mouth pixel may fall within this many eye radii of either eye centre. The eye's own bezel reaches 1.136 radii, so this is the bezel plus a fifth of a radius of clear clay, and the importer refuses the family if one pixel breaks it",
+  "insideHeadMin": 0.97,
+  "insideHeadNote": "this share of the drawn mouth must land on the head. A mouth that runs off the chin is a refusal, never a trim",
+  "recessValue": 0.26,
+  "recessValueNote": "the brightest pixel of the authored recess, in value, after the importer's own exposure levelling. find_grille takes the darkest blob at 0.32 or under, so this clears it by 0.06 and the mouth the importer lights is the mouth the table drew. It is a threshold only: light_grille's ramp divides by a percentile of the mouth's own values, so this number cannot change how the mouth looks",
+  "supersample": 4,
+  "supersampleNote": "the outline is drawn at this multiple and thresholded at half coverage, so the mask is boolean at source resolution exactly as the found mouth's mask is"
+ },
+ "mouths": [
+  {
+   "id": "grille",
+   "name": "Grille",
+   "reads": "the mouth the game ships today: a wide brass speaker plate with nine slats",
+   "shape": "plate",
+   "wOfSep": 0.70,
+   "hOfSep": 0.20,
+   "cornerOfH": 0.34,
+   "ramp": {"kind": "plate", "top": 0.88, "bottom": 1.0},
+   "marks": [
+    {"kind": "slats", "count": 9, "widthOfPitch": 0.30, "depth": 0.55, "insetOfH": 0.16}
+   ],
+   "notes": [
+    "THE ONE THAT CHANGES NOTHING. The shipped mouth measures 118 to 131 px wide",
+    "with 9 or 10 slats in it, and the eight wave one heads put it at 0.63 to 1.16",
+    "of the eye separation. 0.70 by 0.20 with nine slats is that mouth, authored,",
+    "so a head can be given the look it already has on any shape."
+   ]
+  },
+  {
+   "id": "smile",
+   "name": "Smile",
+   "reads": "an open, happy mouth: flat along the top, round underneath",
+   "shape": "halfDisc",
+   "wOfSep": 0.56,
+   "hOfSep": 0.24,
+   "ramp": {"kind": "throat", "rim": 1.0, "core": 0.52, "power": 0.85},
+   "notes": [
+    "NOT A CRESCENT, AND THAT IS THE POINT. A thin smiling arc is two horns on its",
+    "top rows, so the span fill would close it into a solid blob and the judge and",
+    "the importer would disagree about what shipped. A flat top with a round bottom",
+    "is one span on every row, is what an open smiling mouth actually looks like,",
+    "and survives the fill untouched. The throat ramp is what stops it reading as a",
+    "flat gold sticker: bright at the rim, soft and deep at the middle."
+   ]
+  },
+  {
+   "id": "o",
+   "name": "Open O",
+   "reads": "a small round surprised mouth",
+   "shape": "ellipse",
+   "wOfSep": 0.30,
+   "hOfSep": 0.34,
+   "ramp": {"kind": "throat", "rim": 1.0, "core": 0.48, "power": 0.9},
+   "notes": [
+    "THE ONE MOUTH THE RENDERER COULD ALREADY DO, and the reason it could is that a",
+    "hole is a shape and not a texture. Authored, every head can have it. The bell",
+    "head that shipped one measured 0.295 of the eye separation wide; this is a",
+    "shade wider and a shade taller than that, because at 0.26 the first sheet",
+    "showed it fading into the cheek on the round head."
+   ]
+  },
+  {
+   "id": "zigzag",
+   "name": "Zigzag",
+   "reads": "a wide plate with one jagged line cut across it",
+   "shape": "plate",
+   "wOfSep": 0.60,
+   "hOfSep": 0.24,
+   "cornerOfH": 0.30,
+   "ramp": {"kind": "plate", "top": 0.90, "bottom": 1.0},
+   "marks": [
+    {"kind": "zigzag", "peaks": 4, "widthOfH": 0.19, "amplitudeOfH": 0.46, "depth": 0.44}
+   ],
+   "notes": [
+    "THE LINE IS SHADING IN A PLATE, for the row convexity law above. Taller and",
+    "narrower than the grille so the two are told apart by silhouette and not only",
+    "by the marks inside them, because at card size the marks are two pixels."
+   ]
+  },
+  {
+   "id": "grin",
+   "name": "Grin",
+   "reads": "a wide open grin, most of the face across, with the top lip shadowed",
+   "shape": "halfDisc",
+   "wOfSep": 0.82,
+   "hOfSep": 0.17,
+   "ramp": {"kind": "throat", "rim": 1.0, "core": 0.55, "power": 0.85},
+   "marks": [
+    {"kind": "lip", "heightOfH": 0.24, "depth": 0.55}
+   ],
+   "notes": [
+    "THE FIFTH, AND IT IS THE SECOND ONE TRIED. The first was a tooth, which the",
+    "ramp cannot draw: a bright feature clips at 1.02 of the mouth's own reference",
+    "while a dark one has the whole way down to 0.72, so the tooth came back two",
+    "percent brighter than the plate and nobody could see it. The second was a",
+    "beak, a small wedge narrowing to the chin. It drew perfectly and it failed",
+    "for a different reason: at card size a small centred wedge under two big lamp",
+    "eyes reads as a NOSE, and the bot then reads as having no mouth at all. That",
+    "is the lesson the sheet paid for: a mouth is WIDE. Width is what tells a",
+    "mouth from a nose at twenty pixels.",
+    "So the fifth is the widest mouth in the table, and the happiest. It is the",
+    "smile's shape at nearly half again the width and two thirds the height, which",
+    "at card size is a different expression and not a different size of the same",
+    "one, and the lip shadow across its top is what keeps a wide shallow bowl from",
+    "reading as a gold shield."
+   ]
+  }
+ ]
+}

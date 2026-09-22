@@ -1,0 +1,31 @@
+/* Geometry is reserved by CSS before hydration, image decode or WebGL setup.
+   The initial phone view must never briefly become five desktop columns. */
+.street { height:130px; }
+.collection { padding:12px; }
+.gallery {
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:minmax(230px,78vw);
+  gap:12px;
+  overflow-x:auto;
+  scroll-snap-type:x mandatory;
+  padding-bottom:12px;
+}
+.portrait { position:relative; height:320px; }
+.robotName { font-size:22px; }
+.sheetPortrait { width:150px; height:200px; }
+
+@media (min-width:900px) {
+  .street { height:190px; }
+  .collection { padding:20px; }
+  .gallery {
+    grid-auto-flow:row;
+    grid-auto-columns:auto;
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    overflow-x:visible;
+    padding-bottom:0;
+  }
+  .portrait { height:330px; }
+  .robotName { font-size:18px; }
+  .sheetPortrait { width:210px; height:260px; }
+}

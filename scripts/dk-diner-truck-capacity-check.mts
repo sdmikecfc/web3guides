@@ -1,0 +1,57 @@
+/** Wider trucks, owned menus and additive canonical-save migration. No network. */
+import assert from 'node:assert/strict';
+import {EQUIPMENT,RECIPES,TRUCK_TIERS} from '../src/lib/chef/diner/content';
+import {blockedCells,buildServiceLoadout,makeStation,makeTable,pointKey,serviceGeometry,servicePath,stationAccessPath,stationFootprint,validateServiceLayout} from '../src/lib/chef/diner/geometry';
+import {createDiner,dispatchDiner,sanitizeDinerSave,truckMenuCapacity,type DinerState,type DinerCommand} from '../src/lib/chef/diner/progression';
+import {createDinerRecord,migrateDinerRecord,replayDiner} from '../src/lib/chef/diner/authority';
+import {createService,dispatchService,sanitizeService,serviceReadyError} from '../src/lib/chef/diner/service';
+import {Cook} from './dk-diner-cook-fixture';
+import {unlockedTruckHelpers} from '../src/lib/chef/diner/service-level';
+import type {DinerTier,ServiceState} from '../src/lib/chef/diner/types';
+const now=Date.UTC(2026,8,21,12);let groups=0;
+function test(name:string,fn:()=>void){fn();groups++;console.log(`PASS ${name}`);}
+function send(state:DinerState,command:DinerCommand):DinerState{const r=dispatchDiner(state,command,{now});assert.equal(r.error,undefined,r.error);return r.state;}
+function owned(tier:DinerTier=1){const s=createDiner(now,'truck-capacity');s.truckTier=tier;s.tutorial.finished=true;for(const recipe of RECIPES)s.recipes[recipe.id]={level:0};for(const def of EQUIPMENT)s.equipment[def.id]={tier:1,truckOwned:true,homeCopies:s.equipment[def.id]?.homeCopies??0};return s;}
+function dropBowlDefaults(s:ServiceState){delete (s.config as any).bowlCount;delete (s as any).bowlStock;delete (s as any).cleanBowls;delete s.config.recipeLevels.tomato_pasta;delete s.config.recipeLevels.vegetable_ramen;}
+test('truck floors grow from seven by three without shrinking old footprints or helper capacity',()=>{
+ const sizes=[[7,3],[8,3],[9,3],[10,4]],caps=[2,3,4,4],helpers=[1,1,1,2];
+ assert.equal(unlockedTruckHelpers(createDiner(now,'fresh-helper-gate')),0,'physical space does not bypass the five-service helper unlock');
+ for(const tier of [1,2,3,4] as const){const def=TRUCK_TIERS[tier];assert.deepEqual([def.w,def.h],sizes[tier-1]);assert.equal(truckMenuCapacity({truckTier:tier}),caps[tier-1]);assert.equal(def.helpers,helpers[tier-1]);if(tier>1){assert(def.w>=TRUCK_TIERS[(tier-1) as DinerTier].w);assert(def.h>=TRUCK_TIERS[(tier-1) as DinerTier].h);}}
+ const fresh=createDiner(now,'fresh-wide');assert.equal(fresh.truckConfig.layoutVersion,2);assert.deepEqual(fresh.truckConfig.menu,['classic_burger']);assert.equal(fresh.truckConfig.tables.length,1);assert.equal(fresh.truckConfig.tables[0].capacity,1);assert(!fresh.equipment.fryer?.truckOwned);assert(fresh.equipment.grill.truckOwned&&fresh.equipment.prep.truckOwned);assert(!fresh.truckConfig.stations.some(st=>st.kind==='grill'||st.kind==='prep'),'owned cooking pieces still start in the equipment trailer');
+});
+test('the full burger and fries kit fits indoors with a rear fridge and continuous usable aisle',()=>{
+ const loadout=buildServiceLoadout(1,['classic_burger','fries']);assert.equal(loadout.error,null);const g=serviceGeometry(1),occupied=blockedCells(loadout.stations,loadout.tables);
+ assert.deepEqual(loadout.stations.map(st=>st.kind).sort(),['crate','fridge','plates','boxes','grill','prep','fryer','sink','bin'].sort());
+ for(const station of loadout.stations){assert(stationFootprint(station).every(p=>p.x>=0&&p.x<7&&p.y>=0&&p.y<3),station.kind);assert(stationAccessPath(1,loadout.stations,loadout.tables,g.door,station),station.kind);}
+ assert.equal(loadout.stations.find(st=>st.kind==='fridge')!.y,0);
+ for(let x=0;x<7;x++)assert(!occupied.has(pointKey({x,y:1})),`aisle ${x}`);
+ assert(servicePath(1,loadout.stations,loadout.tables,g.door,{x:6,y:1}));
+ let s=dispatchService(createService({...loadout,menu:['classic_burger','fries'],tables:[makeTable('one_seat',3,5,1)],customers:5,tutorialLearning:true}),{type:'open'});assert.equal(serviceReadyError(s),null);const cook=new Cook(()=>s,a=>{s=dispatchService(s,a);});cook.run();assert.equal(s.served,5);assert.equal(s.missed,0);assert(sanitizeService(s));
+});
+test('new menu choices follow 2/3/4/4 caps while old larger menus and active orders survive',()=>{
+ const menu=['classic_burger','fries','lemonade','coffee'];
+ for(const tier of [1,2,3,4] as const){let s=owned(tier);s=send(s,{type:'setTruckMenu',recipeIds:menu.slice(0,truckMenuCapacity(s))});assert.equal(s.truckConfig.menu.length,truckMenuCapacity(s));if(tier<3){const rejected=dispatchDiner(s,{type:'setTruckMenu',recipeIds:menu.slice(0,truckMenuCapacity(s)+1)},{now});assert.equal(rejected.code,'invalid_menu');assert.deepEqual(rejected.state.truckConfig.menu,s.truckConfig.menu);assert.equal(dispatchDiner(s,{type:'startPractice',recipeIds:menu},{now}).code,'invalid_menu');}}
+ let legacy=owned();legacy.truckConfig.menu=[...menu];delete legacy.truckConfig.layoutVersion;const loaded=sanitizeDinerSave(legacy);assert(loaded);assert.deepEqual(loaded.truckConfig.menu,menu);legacy=send(loaded,{type:'setTruckMenu',recipeIds:menu.slice(0,3)});assert.equal(legacy.truckConfig.menu.length,3);assert.equal(dispatchDiner(legacy,{type:'setTruckMenu',recipeIds:menu},{now}).code,'invalid_menu');assert.equal(dispatchDiner(legacy,{type:'setTruckMenu',recipeIds:['classic_burger','fries','tomato_pasta']},{now}).code,'invalid_menu');
+ legacy=send(legacy,{type:'startRun'});assert.deepEqual(legacy.run!.menu,menu.slice(0,3));assert.deepEqual(sanitizeDinerSave(legacy)!.run!.menu,menu.slice(0,3));
+});
+test('canonical and browser migration retain old 4x3 furniture positions, ownership and active cooking',()=>{
+ const record=createDinerRecord(now,'old-four-by-three');record.state.truckConfig.stations=[{id:'crate',kind:'crate',x:0,y:0,facing:0},{id:'grill',kind:'grill',x:1,y:0,facing:0},{id:'prep',kind:'prep',x:2,y:0,facing:0},{id:'fridge',kind:'fridge',x:3,y:0,facing:0},{id:'sink',kind:'sink',x:0,y:2,facing:2},{id:'plates',kind:'plates',x:3,y:2,facing:2},{id:'bin',kind:'bin',x:2,y:4,facing:0}];delete record.state.truckConfig.layoutVersion;
+ record.state=send(record.state,{type:'startPractice'});record.state=send(record.state,{type:'service',action:{type:'open'}});let service=record.state.run!.service!;const cook=new Cook(()=>service,a=>{service=dispatchService(service,a);});cook.touch('fridge','classic_burger',undefined,'beef');cook.touch('grill');cook.tick(12);record.state.run!.service=service;record.revision=17;record.clock={lastAt:now,creditMs:25,pausedForAbsence:false};dropBowlDefaults(service);delete record.state.truckConfig.layoutVersion;
+ const original=structuredClone(record),migrated=migrateDinerRecord(record);assert.deepEqual(record,original,'migration must not mutate its source');assert.equal(migrated.revision,17);assert.deepEqual(migrated.clock,original.clock);assert.deepEqual(migrated.state.truckConfig.stations,original.state.truckConfig.stations);assert.deepEqual(migrated.state.truckConfig.tables,original.state.truckConfig.tables);assert.deepEqual(migrated.state.equipment,original.state.equipment);const live=migrated.state.run!.service!;assert.equal(live.phase,service.phase);assert.equal(live.tick,service.tick);assert.deepEqual(live.stations,service.stations);assert.deepEqual(live.plateStock,service.plateStock);assert.deepEqual(live.bowlStock,[]);assert.equal(live.config.bowlCount,0);assert.equal(migrated.state.truckConfig.layoutVersion,2);
+ const browser=sanitizeDinerSave(original.state);assert(browser);assert.deepEqual(browser.truckConfig.stations,original.state.truckConfig.stations);assert.deepEqual(browser.run!.service!.stations,service.stations);assert.equal(browser.run!.service!.phase,'paused');
+ const replayed=replayDiner(migrated,[{type:'service',action:{type:'interact',targetId:'plates'}},{type:'service',action:{type:'tick',ticks:60}}],now+3000).record;assert.equal(replayed.state.run!.service!.chef.held?.kind,'plate','old canonical services must still pick up plates without crashing on absent bowl pools');assert.deepEqual(replayed.state.run!.service!.bowlStock,[]);assert.equal(replayed.state.run!.service!.cleanPlates,1);assert(sanitizeService(replayed.state.run!.service));
+ const again=migrateDinerRecord(migrated);assert.deepEqual(again,migrated,'additive migration is idempotent');
+});
+test('full-menu spice is rejected before departure when the menu cannot meet it',()=>{
+ let s=owned();s.collections.routeWins=['downtown'];s=send(s,{type:'setTruckMenu',recipeIds:['classic_burger','fries']});const locked=dispatchDiner(s,{type:'setSpices',spiceIds:['full_menu']},{now});assert.equal(locked.code,'invalid_menu');assert.match(locked.error!,/grow.*truck/i);assert.deepEqual(locked.state.truckConfig.spices,[]);
+ s.truckConfig.spices=['full_menu'];const before=s.runsStarted,blocked=dispatchDiner(s,{type:'startRun'},{now});assert.equal(blocked.code,'invalid_menu');assert.equal(blocked.state.runsStarted,before);assert.equal(blocked.state.run,null);
+ s.truckConfig.menu=['classic_burger','fries','lemonade'];s=send(s,{type:'setSpices',spiceIds:['full_menu']});assert.equal(dispatchDiner(s,{type:'setTruckMenu',recipeIds:['classic_burger','fries']},{now}).code,'invalid_menu');s=send(s,{type:'startRun'});assert.deepEqual(s.run!.spices,['full_menu']);assert.equal(s.run!.menu.length,3);
+});
+test('truck growth keeps existing stations and chairs and only shifts outside items when depth grows',()=>{
+ for(const tier of [2,3,4] as const){let s=owned((tier-1) as DinerTier);const oldTier=s.truckTier;const l=buildServiceLoadout(oldTier,['classic_burger']);s.truckConfig.stations=l.stations.map(({id,kind,x,y,facing})=>({id,kind,x,y,facing}));s.truckConfig.tables=[{id:'table_1',x:3,y:TRUCK_TIERS[oldTier].h+2,capacity:1,rotation:0}];s.truckConfig.layoutTier=oldTier;s.truckConfig.stations.find(st=>st.kind==='bin')!.x=0;s.truckConfig.stations.find(st=>st.kind==='bin')!.y=TRUCK_TIERS[oldTier].h+1;const before=structuredClone(s.truckConfig);s.truckTier=tier;s=send(s,{type:'startPractice'});const dy=TRUCK_TIERS[tier].h-TRUCK_TIERS[oldTier].h;assert.deepEqual(s.truckConfig.stations,before.stations.map(st=>st.y>=TRUCK_TIERS[oldTier].h+1?{...st,y:st.y+dy}:st));assert.deepEqual(s.truckConfig.tables,before.tables.map(t=>({...t,y:t.y+dy})));assert.equal(serviceReadyError(s.run!.service!),null);assert.equal(s.truckConfig.tableCopies.table_1,1);}
+});
+test('equal rallies use one fixed loadout and legacy rally snapshots also gain safe empty bowl pools',()=>{
+ const fresh=createDinerRecord(now,'equal-poor'),rich=createDinerRecord(now,'equal-rich');rich.state=owned(4);rich.state.equipment.grill.tier=3;for(const value of Object.values(rich.state.recipes))value.level=10;
+ fresh.state=send(fresh.state,{type:'startRally'});rich.state=send(rich.state,{type:'startRally'});assert.deepEqual(fresh.state.rally.service,rich.state.rally.service);assert.equal(fresh.state.rally.service!.config.tier,2);assert.equal(fresh.state.rally.service!.config.menu.length,3);assert.equal(serviceReadyError(fresh.state.rally.service!),null);fresh.state=send(fresh.state,{type:'rallyService',action:{type:'open'}});dropBowlDefaults(fresh.state.rally.service!);const migrated=migrateDinerRecord(fresh);assert.equal(migrated.state.rally.service!.phase,'playing');assert.deepEqual(migrated.state.rally.service!.bowlStock,[]);assert.deepEqual(migrated.clock,fresh.clock);
+});
+console.log(`PASS ${groups} truck capacity and migration groups`);

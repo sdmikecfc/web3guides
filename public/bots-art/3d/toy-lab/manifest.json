@@ -1,0 +1,190 @@
+{
+  "version": "toy-lab-v1",
+  "origin": "Existing Model Kombat garage moulds, adapted for isolated clay deformation",
+  "license": "Project-owned original assets",
+  "units": "metres",
+  "up": "+Y",
+  "front": "+Z",
+  "parts": {
+    "brute-head-0": {
+      "file": "brute-head-0.glb",
+      "bytes": 781652,
+      "sha256": "8a310b81e7750c07ef0f7b409372ea3621191f6a0f68b336536dd79bace3707d",
+      "source": "head.anvilMask"
+    },
+    "brute-torso-0": {
+      "file": "brute-torso-0.glb",
+      "bytes": 822184,
+      "sha256": "6e90028bb16f47d29a45e7395f637e435efc8034f790bd922cb04ab602e1aa8e",
+      "source": "torso.anvilCore"
+    },
+    "brute-arm-0": {
+      "file": "brute-arm-0.glb",
+      "bytes": 148028,
+      "sha256": "0119a16b0d62d7769ea35817067ebb3ac9bd9682e09171fd55d313c7c9a2bfd4",
+      "source": "arms.sprocketMitts"
+    },
+    "brute-leg-0": {
+      "file": "brute-leg-0.glb",
+      "bytes": 357476,
+      "sha256": "70f9867d10fe4ca2b46cc20ba088db1cf7e3affd92610cb346b6bb5f006b9fab",
+      "source": "legs.sprocketPegs"
+    },
+    "brute-head-1": {
+      "file": "brute-head-1.glb",
+      "bytes": 617724,
+      "sha256": "bedeccb91b9992b76826efa2a39e22e9fea2e83b078e30a41d897907c394e70e",
+      "source": "head.pistonVisor"
+    },
+    "brute-torso-1": {
+      "file": "brute-torso-1.glb",
+      "bytes": 1263712,
+      "sha256": "26a3b29f094d3a1f24d7b18acbaf9f2881182596be978ab246f39ad8873b8d84",
+      "source": "torso.bulldozerHull"
+    },
+    "brute-arm-1": {
+      "file": "brute-arm-1.glb",
+      "bytes": 391864,
+      "sha256": "42d42d0988f66abc7e43c5ece7038ca574979411c65dcdb84e11fe1e119d4392",
+      "source": "arms.kettleGrips"
+    },
+    "brute-leg-1": {
+      "file": "brute-leg-1.glb",
+      "bytes": 763268,
+      "sha256": "342bbb42b90dbb9a2c01f90de3c1cc14087c366b3ddd46c6969c2f66b984e589",
+      "source": "legs.pistonTreads"
+    },
+    "hotshot-head-0": {
+      "file": "hotshot-head-0.glb",
+      "bytes": 637672,
+      "sha256": "c39f2e3bb35e005e9d05a88a23d3f85ec43e2404aa74be77c0b6ce57fc0136ca",
+      "source": "head.sprocketCap"
+    },
+    "hotshot-torso-0": {
+      "file": "hotshot-torso-0.glb",
+      "bytes": 738984,
+      "sha256": "af61f2307072b893a329b3ba9fb3a54522fffb4f702bb6fc698eaec6dcbec021",
+      "source": "torso.kettleChest"
+    },
+    "hotshot-arm-0": {
+      "file": "hotshot-arm-0.glb",
+      "bytes": 124212,
+      "sha256": "db895265bd9d0db9c8f571197259376c519da305b18013458320f28c403650b0",
+      "source": "arms.lanternClamps"
+    },
+    "hotshot-leg-0": {
+      "file": "hotshot-leg-0.glb",
+      "bytes": 427408,
+      "sha256": "988c79a90758b5fd62751155312539d40994c5760bd77afb927569bb4a2c8d89",
+      "source": "legs.kettleShins"
+    },
+    "hotshot-head-1": {
+      "file": "hotshot-head-1.glb",
+      "bytes": 532020,
+      "sha256": "aacbce23142ff46844be017af0b48245323fd577855fca8c7885c0241279b681",
+      "source": "head.kettleDome"
+    },
+    "hotshot-torso-1": {
+      "file": "hotshot-torso-1.glb",
+      "bytes": 761808,
+      "sha256": "67a7f55c0f553a19d435f7114870f4018aff9c872d43737fde5ed6ad4ddf459c",
+      "source": "torso.peeperBox"
+    },
+    "hotshot-arm-1": {
+      "file": "hotshot-arm-1.glb",
+      "bytes": 281084,
+      "sha256": "37dcd05e8af88d50069d78f212d55f13155ee511f49c82f242ca560cb5889e86",
+      "source": "arms.pistonLevers"
+    },
+    "hotshot-leg-1": {
+      "file": "hotshot-leg-1.glb",
+      "bytes": 221856,
+      "sha256": "272bd6f200fec5cbfd1250bcd18b3ce8e4a2ece41238f9bcb4cd6584e6e0e962",
+      "source": "legs.peeperStilts"
+    },
+    "deadeye-head-0": {
+      "file": "deadeye-head-0.glb",
+      "bytes": 456516,
+      "sha256": "eab1182d9ca47d4836f35baec4843aedb7a7a55ff328e831383f64639bc36642",
+      "source": "head.peeperEye"
+    },
+    "deadeye-torso-0": {
+      "file": "deadeye-torso-0.glb",
+      "bytes": 771960,
+      "sha256": "f31a0d110c915e0c85ecdb8cabec52f043ff654534fda4442b4e760b72549347",
+      "source": "torso.lanternDrum"
+    },
+    "deadeye-arm-0": {
+      "file": "deadeye-arm-0.glb",
+      "bytes": 166152,
+      "sha256": "3c112a190331120d13eeb03d88eff16bcff9a864ae2c6ffcbc079306e5663fea",
+      "source": "arms.anvilGrips"
+    },
+    "deadeye-leg-0": {
+      "file": "deadeye-leg-0.glb",
+      "bytes": 322296,
+      "sha256": "367a2ce6b2a838604bb4aee4038842677e9c2a1c658458e7cc6e2e43226cd439",
+      "source": "legs.anvilSprings"
+    },
+    "deadeye-head-1": {
+      "file": "deadeye-head-1.glb",
+      "bytes": 486056,
+      "sha256": "2d0612a194f56727ec5fb89679a25a0d274dcda29bf9952828ea54b104c83eac",
+      "source": "head.hornetScope"
+    },
+    "deadeye-torso-1": {
+      "file": "deadeye-torso-1.glb",
+      "bytes": 732144,
+      "sha256": "480e76338572410f939b36e8561ee816b829ab6442b4bfabbc97cd4f5f72ddc7",
+      "source": "torso.sprocketCan"
+    },
+    "deadeye-arm-1": {
+      "file": "deadeye-arm-1.glb",
+      "bytes": 143852,
+      "sha256": "929f14b77cf90783ccfe3e5a461925ad7b609a944b36453662bb1ff12c468d4c",
+      "source": "arms.hornetFists"
+    },
+    "deadeye-leg-1": {
+      "file": "deadeye-leg-1.glb",
+      "bytes": 325860,
+      "sha256": "331ae82a78c627527add96168bda195931be742b3281b6d5b7408a382bb6b844",
+      "source": "legs.bulldozerHooves"
+    },
+    "hammer": {
+      "file": "hammer.glb",
+      "bytes": 62116,
+      "sha256": "9004c463c3efc5ce6ec664cbaab91b4d540b70ffcb4eea318738540510a4c564",
+      "claySurfaces": 0,
+      "vertices": 1056
+    },
+    "baton": {
+      "file": "baton.glb",
+      "bytes": 57164,
+      "sha256": "5d07c390fb318f749df50c554c99ef2befa30ec17dbd5259f45a967469a3db94",
+      "claySurfaces": 0,
+      "vertices": 1006
+    },
+    "rifle": {
+      "file": "rifle.glb",
+      "bytes": 68352,
+      "sha256": "c4ce984248d41dcdacc440e2f91ef55e3bb9666a337c94e89b3a7a331555e9e3",
+      "claySurfaces": 0,
+      "vertices": 1182
+    },
+    "shield": {
+      "file": "shield.glb",
+      "bytes": 90540,
+      "sha256": "80f26f292c06a5d6edb6384d8989b96fc108672dec4788834589de7df8f7440d",
+      "claySurfaces": 1,
+      "vertices": 2218
+    },
+    "flamethrower": {
+      "file": "flamethrower.glb",
+      "bytes": 104752,
+      "sha256": "a4a4a5dbe8e650459b0875a09f3a1aa2a645ddfed80f2c0e6cc3d72ba7d2fc2c",
+      "claySurfaces": 0,
+      "vertices": 1850,
+      "source": "art-src/bots/blender/build_lab_flamethrower.py"
+    }
+  }
+}

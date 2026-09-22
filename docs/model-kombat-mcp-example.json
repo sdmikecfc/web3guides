@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "batchId": "c725de41-d502-4c25-9d81-d3cb8228dbb9",
+  "windowStart": "2026-09-10T10:00:00.000Z",
+  "windowEnd": "2026-09-10T11:00:00.000Z",
+  "complete": true,
+  "trades": [
+    {
+      "networkId": "eip155:97477",
+      "txHash": "0x6666666666666666666666666666666666666666666666666666666666666666",
+      "eventIndex": 7,
+      "sourceFillId": "example-fill-123",
+      "wallet": "0x1111111111111111111111111111111111111111",
+      "marketAddress": "0x2222222222222222222222222222222222222222",
+      "tokenIn": "0x3333333333333333333333333333333333333333",
+      "tokenOut": "0x4444444444444444444444444444444444444444",
+      "amountIn": "25000000",
+      "amountOut": "817000000000000000000",
+      "executedAt": "2026-09-10T10:31:42.000Z",
+      "usdValue": "25.000000",
+      "valuationSource": "Example only: actual sold-token amount multiplied by its execution-time USD price",
+      "source": "doma_mcp",
+      "tool": "tokens.swap.v1",
+      "executionId": "example-mcp-audit-456",
+      "orderId": null,
+      "strategyId": null,
+      "status": "finalized",
+      "revision": 1,
+      "correctionReason": null
+    }
+  ]
+}

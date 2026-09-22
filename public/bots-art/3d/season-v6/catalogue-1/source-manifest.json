@@ -1,0 +1,2197 @@
+{
+  "version": "mk6-art-1",
+  "status": "authored-candidate",
+  "license": "LicenseRef-ModelKombat-Original",
+  "source": "Original procedural Blender sculpture by the Model Kombat project; no third-party mesh or paid generation.",
+  "rigVersion": "mk6-rig-2",
+  "bodies": {
+    "boiler_knight.t1": {
+      "file": "boiler_knight.t1.glb",
+      "bytes": 1393240,
+      "sha256": "35cde813dc4a1a44f56ad0ee25ce9dba18afc2d5c7ab1eb2ed615077342bbc97",
+      "family": "boiler_knight",
+      "style": "tank",
+      "tier": 1,
+      "url": "boiler_knight.t1.glb",
+      "bounds": [
+        [
+          -0.87295,
+          0.00328,
+          -0.3318
+        ],
+        [
+          0.87295,
+          2.3542,
+          0.42581
+        ]
+      ],
+      "triangles": 58352
+    },
+    "boiler_knight.t2": {
+      "file": "boiler_knight.t2.glb",
+      "bytes": 1403004,
+      "sha256": "0616fe9cfdca495c39b168a5704b92b03bb3f604bd91cfb30940d996c7af69b8",
+      "family": "boiler_knight",
+      "style": "tank",
+      "tier": 2,
+      "url": "boiler_knight.t2.glb",
+      "bounds": [
+        [
+          -0.9945,
+          0.00373,
+          -0.378
+        ],
+        [
+          0.9945,
+          2.682,
+          0.4851
+        ]
+      ],
+      "triangles": 58728
+    },
+    "boiler_knight.t3": {
+      "file": "boiler_knight.t3.glb",
+      "bytes": 1808180,
+      "sha256": "61130cddb0b6ed32801ad912822c5468c73bad26dcce3cf77a17a2f35e9e01e4",
+      "family": "boiler_knight",
+      "style": "tank",
+      "tier": 3,
+      "url": "boiler_knight.t3.glb",
+      "bounds": [
+        [
+          -1.105,
+          0.00415,
+          -0.46
+        ],
+        [
+          1.105,
+          2.98,
+          0.539
+        ]
+      ],
+      "triangles": 75980
+    },
+    "boiler_knight.t4": {
+      "file": "boiler_knight.t4.glb",
+      "bytes": 1938908,
+      "sha256": "840c7bb3f02500d11c476df584d173535a25994146c629e8c00abf9c0fe3abc0",
+      "family": "boiler_knight",
+      "style": "tank",
+      "tier": 4,
+      "url": "boiler_knight.t4.glb",
+      "bounds": [
+        [
+          -1.272,
+          0.0044,
+          -0.67522
+        ],
+        [
+          1.272,
+          3.1588,
+          0.57134
+        ]
+      ],
+      "triangles": 80964
+    },
+    "scrapyard_bruiser.t1": {
+      "file": "scrapyard_bruiser.t1.glb",
+      "bytes": 1527996,
+      "sha256": "27c2acceadf92a13ea41d36e6d1bf14f4d5fd086a259c4ddd3fb91fbdbda14f4",
+      "family": "scrapyard_bruiser",
+      "style": "tank",
+      "tier": 1,
+      "url": "scrapyard_bruiser.t1.glb",
+      "bounds": [
+        [
+          -0.87295,
+          0.00328,
+          -0.41475
+        ],
+        [
+          0.87295,
+          2.37,
+          0.42423
+        ]
+      ],
+      "triangles": 66044
+    },
+    "scrapyard_bruiser.t2": {
+      "file": "scrapyard_bruiser.t2.glb",
+      "bytes": 1542612,
+      "sha256": "7387d96fce2e8f47280fcca74a9ab8642a4ee6b7db9efd6717aa55cb385452bc",
+      "family": "scrapyard_bruiser",
+      "style": "tank",
+      "tier": 2,
+      "url": "scrapyard_bruiser.t2.glb",
+      "bounds": [
+        [
+          -0.9945,
+          0.00373,
+          -0.4725
+        ],
+        [
+          0.9945,
+          2.7,
+          0.4833
+        ]
+      ],
+      "triangles": 66608
+    },
+    "scrapyard_bruiser.t3": {
+      "file": "scrapyard_bruiser.t3.glb",
+      "bytes": 1674668,
+      "sha256": "d95a38d199edc7aec97a5d09d0e963e52e4f8e02e98ff5f8207ea0b23d7a137e",
+      "family": "scrapyard_bruiser",
+      "style": "tank",
+      "tier": 3,
+      "url": "scrapyard_bruiser.t3.glb",
+      "bounds": [
+        [
+          -1.105,
+          0.00415,
+          -0.525
+        ],
+        [
+          1.105,
+          3,
+          0.537
+        ]
+      ],
+      "triangles": 71620
+    },
+    "scrapyard_bruiser.t4": {
+      "file": "scrapyard_bruiser.t4.glb",
+      "bytes": 1804152,
+      "sha256": "1f398b4c4c64c6e9912b7a90dbd7e75747899917dd8fb98a93688ea72428f6e9",
+      "family": "scrapyard_bruiser",
+      "style": "tank",
+      "tier": 4,
+      "url": "scrapyard_bruiser.t4.glb",
+      "bounds": [
+        [
+          -1.272,
+          0.0044,
+          -0.67522
+        ],
+        [
+          1.272,
+          3.18,
+          0.56922
+        ]
+      ],
+      "triangles": 76604
+    },
+    "roller_daredevil.t1": {
+      "file": "roller_daredevil.t1.glb",
+      "bytes": 1243460,
+      "sha256": "2d2129359c3d9288bae9d34a196ecf041b671f99504f4af7038a6c70f1229508",
+      "family": "roller_daredevil",
+      "style": "speed",
+      "tier": 1,
+      "url": "roller_daredevil.t1.glb",
+      "bounds": [
+        [
+          -0.54905,
+          0.00316,
+          -0.24885
+        ],
+        [
+          0.54905,
+          2.1962,
+          0.32545
+        ]
+      ],
+      "triangles": 51216
+    },
+    "roller_daredevil.t2": {
+      "file": "roller_daredevil.t2.glb",
+      "bytes": 1260612,
+      "sha256": "9ef13afd05554e8ff4597e080994e1aacea5e931a3a4493bdb8f825f48bf70b6",
+      "family": "roller_daredevil",
+      "style": "speed",
+      "tier": 2,
+      "url": "roller_daredevil.t2.glb",
+      "bounds": [
+        [
+          -0.6255,
+          0.0036,
+          -0.2835
+        ],
+        [
+          0.6255,
+          2.502,
+          0.37076
+        ]
+      ],
+      "triangles": 51592
+    },
+    "roller_daredevil.t3": {
+      "file": "roller_daredevil.t3.glb",
+      "bytes": 1410784,
+      "sha256": "317eb1e0fb83d9ce92089df56dfa5d2256d5990c679da9ae2367798e67a106ae",
+      "family": "roller_daredevil",
+      "style": "speed",
+      "tier": 3,
+      "url": "roller_daredevil.t3.glb",
+      "bounds": [
+        [
+          -0.695,
+          0.004,
+          -0.375
+        ],
+        [
+          0.695,
+          2.78,
+          0.41196
+        ]
+      ],
+      "triangles": 58112
+    },
+    "roller_daredevil.t4": {
+      "file": "roller_daredevil.t4.glb",
+      "bytes": 1538112,
+      "sha256": "ffe62c4cee7a482fb811467cf448587cbc879a5313a4b229fcad06a51c861b4d",
+      "family": "roller_daredevil",
+      "style": "speed",
+      "tier": 4,
+      "url": "roller_daredevil.t4.glb",
+      "bounds": [
+        [
+          -0.8427,
+          0.00424,
+          -0.67522
+        ],
+        [
+          0.8427,
+          2.9468,
+          0.43667
+        ]
+      ],
+      "triangles": 63096
+    },
+    "spring_duelist.t1": {
+      "file": "spring_duelist.t1.glb",
+      "bytes": 1346900,
+      "sha256": "8ccb9125d893b2107cd762c016762cb7d30925106b32bc91bf4db3cbda992177",
+      "family": "spring_duelist",
+      "style": "speed",
+      "tier": 1,
+      "url": "spring_duelist.t1.glb",
+      "bounds": [
+        [
+          -0.54905,
+          0.00513,
+          -0.23305
+        ],
+        [
+          0.54905,
+          2.3384,
+          0.36735
+        ]
+      ],
+      "triangles": 55936
+    },
+    "spring_duelist.t2": {
+      "file": "spring_duelist.t2.glb",
+      "bytes": 1356668,
+      "sha256": "aa0aa7c7c802d325afeba3274ce9815e45270ebbef483e204c774c6bdf913c88",
+      "family": "spring_duelist",
+      "style": "speed",
+      "tier": 2,
+      "url": "spring_duelist.t2.glb",
+      "bounds": [
+        [
+          -0.6255,
+          0.00585,
+          -0.2655
+        ],
+        [
+          0.6255,
+          2.664,
+          0.4185
+        ]
+      ],
+      "triangles": 56312
+    },
+    "spring_duelist.t3": {
+      "file": "spring_duelist.t3.glb",
+      "bytes": 1496884,
+      "sha256": "dc8a1f4024ceb86001b2c5e57721664f660b532267f3f570f6febdd815089ab0",
+      "family": "spring_duelist",
+      "style": "speed",
+      "tier": 3,
+      "url": "spring_duelist.t3.glb",
+      "bounds": [
+        [
+          -0.695,
+          0.0065,
+          -0.295
+        ],
+        [
+          0.695,
+          2.96,
+          0.465
+        ]
+      ],
+      "triangles": 62456
+    },
+    "spring_duelist.t4": {
+      "file": "spring_duelist.t4.glb",
+      "bytes": 1627668,
+      "sha256": "1b030083759c49413310ed58ca956ba897513453c284b226036689db1012a88e",
+      "family": "spring_duelist",
+      "style": "speed",
+      "tier": 4,
+      "url": "spring_duelist.t4.glb",
+      "bounds": [
+        [
+          -0.8427,
+          0.00689,
+          -0.67522
+        ],
+        [
+          0.8427,
+          3.1376,
+          0.4929
+        ]
+      ],
+      "triangles": 67440
+    },
+    "owl_ranger.t1": {
+      "file": "owl_ranger.t1.glb",
+      "bytes": 1322428,
+      "sha256": "eade5024662cbe08fe77ff7ce2eb67c997f006c698cc43e531e72ae24cc07693",
+      "family": "owl_ranger",
+      "style": "ranged",
+      "tier": 1,
+      "url": "owl_ranger.t1.glb",
+      "bounds": [
+        [
+          -0.66755,
+          0.00119,
+          -0.3713
+        ],
+        [
+          0.66755,
+          2.0935,
+          0.39579
+        ]
+      ],
+      "triangles": 56892
+    },
+    "owl_ranger.t2": {
+      "file": "owl_ranger.t2.glb",
+      "bytes": 1337212,
+      "sha256": "ad43775183c6858b096c68f4b5d70bcaf14035594d15ac9995fe4def16e286f7",
+      "family": "owl_ranger",
+      "style": "ranged",
+      "tier": 2,
+      "url": "owl_ranger.t2.glb",
+      "bounds": [
+        [
+          -0.7605,
+          0.00135,
+          -0.423
+        ],
+        [
+          0.7605,
+          2.385,
+          0.4509
+        ]
+      ],
+      "triangles": 57268
+    },
+    "owl_ranger.t3": {
+      "file": "owl_ranger.t3.glb",
+      "bytes": 1512448,
+      "sha256": "10b53db234735b76c33d5d11dad4bb30a2b03749911d04245e6dac54b456b525",
+      "family": "owl_ranger",
+      "style": "ranged",
+      "tier": 3,
+      "url": "owl_ranger.t3.glb",
+      "bounds": [
+        [
+          -0.845,
+          0.0015,
+          -0.51
+        ],
+        [
+          0.845,
+          2.852,
+          0.501
+        ]
+      ],
+      "triangles": 64700
+    },
+    "owl_ranger.t4": {
+      "file": "owl_ranger.t4.glb",
+      "bytes": 1641144,
+      "sha256": "3f1b932c8231e630494665dc490a53a47744002f83ea6e77318d3fc4b66f0c2d",
+      "family": "owl_ranger",
+      "style": "ranged",
+      "tier": 4,
+      "url": "owl_ranger.t4.glb",
+      "bounds": [
+        [
+          -0.9593,
+          0.00159,
+          -0.67522
+        ],
+        [
+          0.9593,
+          3.02312,
+          0.53106
+        ]
+      ],
+      "triangles": 69684
+    },
+    "clockwork_gunner.t1": {
+      "file": "clockwork_gunner.t1.glb",
+      "bytes": 1945356,
+      "sha256": "5537e50cc714b19f43075b7902f6a801fa55e46e9aef3d2fcb4d985dda190d30",
+      "family": "clockwork_gunner",
+      "style": "ranged",
+      "tier": 1,
+      "url": "clockwork_gunner.t1.glb",
+      "bounds": [
+        [
+          -0.66755,
+          0.00119,
+          -0.43687
+        ],
+        [
+          0.66755,
+          2.3384,
+          0.40606
+        ]
+      ],
+      "triangles": 87904
+    },
+    "clockwork_gunner.t2": {
+      "file": "clockwork_gunner.t2.glb",
+      "bytes": 1955096,
+      "sha256": "31c9906ec66cb7974abbad66630287c7e0bf350cc2cce076ded5913945686f99",
+      "family": "clockwork_gunner",
+      "style": "ranged",
+      "tier": 2,
+      "url": "clockwork_gunner.t2.glb",
+      "bounds": [
+        [
+          -0.7605,
+          0.00135,
+          -0.4977
+        ],
+        [
+          0.7605,
+          2.664,
+          0.4626
+        ]
+      ],
+      "triangles": 88280
+    },
+    "clockwork_gunner.t3": {
+      "file": "clockwork_gunner.t3.glb",
+      "bytes": 2095480,
+      "sha256": "5c85c2e11cad27d6027a779adf053b7ae96050f1398d8964cdf1229c097ecd59",
+      "family": "clockwork_gunner",
+      "style": "ranged",
+      "tier": 3,
+      "url": "clockwork_gunner.t3.glb",
+      "bounds": [
+        [
+          -0.845,
+          0.0015,
+          -0.553
+        ],
+        [
+          0.845,
+          2.96,
+          0.514
+        ]
+      ],
+      "triangles": 94424
+    },
+    "clockwork_gunner.t4": {
+      "file": "clockwork_gunner.t4.glb",
+      "bytes": 2223044,
+      "sha256": "b786c0b0f584304b1f3da89acdb2579daa446469621e716daf420c3f964a7132",
+      "family": "clockwork_gunner",
+      "style": "ranged",
+      "tier": 4,
+      "url": "clockwork_gunner.t4.glb",
+      "bounds": [
+        [
+          -0.9593,
+          0.00159,
+          -0.67522
+        ],
+        [
+          0.9593,
+          3.1376,
+          0.54484
+        ]
+      ],
+      "triangles": 99408
+    }
+  },
+  "weapons": {
+    "hammer.t1": {
+      "file": "hammer.t1.glb",
+      "bytes": 59560,
+      "sha256": "2921449a89f311f0c035fed35b657008b4cb02d297d88e1e6637105065e5ab48",
+      "url": "weapons/hammer.t1.glb",
+      "tier": 1,
+      "kind": "hammer",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        474
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 2196
+    },
+    "sword.t1": {
+      "file": "sword.t1.glb",
+      "bytes": 73868,
+      "sha256": "239e21835212ebf7b57cde1fa5889797e42a8914bb41554fc8e0206d09eed26f",
+      "url": "weapons/sword.t1.glb",
+      "tier": 1,
+      "kind": "sword",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        395
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 2708
+    },
+    "ap_rifle.t1": {
+      "file": "ap_rifle.t1.glb",
+      "bytes": 72828,
+      "sha256": "95c1ae507449703cf07c01d91c63c9325f5fcacbfa53ea38e9c0fd1f449cff74",
+      "url": "weapons/ap_rifle.t1.glb",
+      "tier": 1,
+      "kind": "ap_rifle",
+      "signature": null,
+      "muzzle": [
+        0,
+        31.6,
+        513.5
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 2548
+    },
+    "hammer.t2": {
+      "file": "hammer.t2.glb",
+      "bytes": 83404,
+      "sha256": "070093ee5d4218e876308994f8a61d6e3444d1ecd9a792ec412aab06b974e3cc",
+      "url": "weapons/hammer.t2.glb",
+      "tier": 2,
+      "kind": "hammer",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        540
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 3076
+    },
+    "sword.t2": {
+      "file": "sword.t2.glb",
+      "bytes": 73880,
+      "sha256": "05d3d7afc8c6daa8c47e1324d466ae0b60bd982ea930dc1aa8e0142412e51b34",
+      "url": "weapons/sword.t2.glb",
+      "tier": 2,
+      "kind": "sword",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        450
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 2708
+    },
+    "paired_blades.t2": {
+      "file": "paired_blades.t2.glb",
+      "bytes": 73880,
+      "sha256": "5c91eb9cb7105df241042e636c2c04add3737ebe3fed441c40543626b3549aaa",
+      "url": "weapons/paired_blades.t2.glb",
+      "tier": 2,
+      "kind": "paired_blades",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        450
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": true,
+      "triangles": 2708
+    },
+    "ap_rifle.t2": {
+      "file": "ap_rifle.t2.glb",
+      "bytes": 72836,
+      "sha256": "3bfc4d6c75c1727a10a7a9a11977cce2647b80a090e9ed2d3b57736669cef258",
+      "url": "weapons/ap_rifle.t2.glb",
+      "tier": 2,
+      "kind": "ap_rifle",
+      "signature": null,
+      "muzzle": [
+        0,
+        36,
+        585
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 2548
+    },
+    "shotgun_tight.t2": {
+      "file": "shotgun_tight.t2.glb",
+      "bytes": 52552,
+      "sha256": "cb4dc9abfd767e55999b55c1ab7799d39dc4c943265d10b7f1bb1402e77b8be8",
+      "url": "weapons/shotgun_tight.t2.glb",
+      "tier": 2,
+      "kind": "shotgun_tight",
+      "signature": null,
+      "muzzle": [
+        0,
+        36,
+        396
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 1792
+    },
+    "shotgun_wide.t2": {
+      "file": "shotgun_wide.t2.glb",
+      "bytes": 74812,
+      "sha256": "376581529c8e46e7410e552065791e1cc50f2cb4db364dab7d1c66c1e63d524d",
+      "url": "weapons/shotgun_wide.t2.glb",
+      "tier": 2,
+      "kind": "shotgun_wide",
+      "signature": null,
+      "muzzle": [
+        -51.300000000000004,
+        36,
+        315
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 2644
+    },
+    "shock_blade.t2": {
+      "file": "shock_blade.t2.glb",
+      "bytes": 93332,
+      "sha256": "85b1f4c59d5d0b8e420a86053818515e21d038bdc6f0a488c1da4dbb57acf2df",
+      "url": "weapons/shock_blade.t2.glb",
+      "tier": 2,
+      "kind": "shock_blade",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        450
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 3308
+    },
+    "flame_sword.t2": {
+      "file": "flame_sword.t2.glb",
+      "bytes": 93484,
+      "sha256": "92e265f3d68e04a4b8e7028f4e03e5fa60b3c751707a9d0399cd9487fa06f5c5",
+      "url": "weapons/flame_sword.t2.glb",
+      "tier": 2,
+      "kind": "flame_sword",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        450
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 3308
+    },
+    "flamethrower.t2": {
+      "file": "flamethrower.t2.glb",
+      "bytes": 87720,
+      "sha256": "b4e57aaf8faaa0e186c26b9593facb648fe3ece2e593f5242cf35f17b1f8b5e4",
+      "url": "weapons/flamethrower.t2.glb",
+      "tier": 2,
+      "kind": "flamethrower",
+      "signature": null,
+      "muzzle": [
+        0,
+        36,
+        378
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 2960
+    },
+    "shoulder_cannon.t2": {
+      "file": "shoulder_cannon.t2.glb",
+      "bytes": 130416,
+      "sha256": "f3a5d4f96a096136c793f99800eda1b75b056c8b8357aa65f2ccb8b0465c77cf",
+      "url": "weapons/shoulder_cannon.t2.glb",
+      "tier": 2,
+      "kind": "shoulder_cannon",
+      "signature": null,
+      "muzzle": [
+        0,
+        72,
+        540
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "backupMuzzle": [
+        0,
+        117,
+        531
+      ],
+      "triangles": 4736
+    },
+    "hammer.t3": {
+      "file": "hammer.t3.glb",
+      "bytes": 83400,
+      "sha256": "edc2a3c9401061fd27810f0f20050e5689b09b72f64b1ab7bced5491a15ef862",
+      "url": "weapons/hammer.t3.glb",
+      "tier": 3,
+      "kind": "hammer",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        600
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 3076
+    },
+    "sword.t3": {
+      "file": "sword.t3.glb",
+      "bytes": 73872,
+      "sha256": "f771591af2ac614387f46834818681ebe7941694aecddfde01f22ed46bb02dce",
+      "url": "weapons/sword.t3.glb",
+      "tier": 3,
+      "kind": "sword",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        500
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 2708
+    },
+    "paired_blades.t3": {
+      "file": "paired_blades.t3.glb",
+      "bytes": 73872,
+      "sha256": "e5afe5d71dfe370779595351ffe5ca4cab14a2e824ef0a132a1b60645acba601",
+      "url": "weapons/paired_blades.t3.glb",
+      "tier": 3,
+      "kind": "paired_blades",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        500
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": true,
+      "triangles": 2708
+    },
+    "ap_rifle.t3": {
+      "file": "ap_rifle.t3.glb",
+      "bytes": 95424,
+      "sha256": "4b3075cbe66dc3ff311133ea1b589a8592bef7f2d406d89f9ce517df365a79b8",
+      "url": "weapons/ap_rifle.t3.glb",
+      "tier": 3,
+      "kind": "ap_rifle",
+      "signature": null,
+      "muzzle": [
+        0,
+        40,
+        650
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 3428
+    },
+    "shotgun_tight.t3": {
+      "file": "shotgun_tight.t3.glb",
+      "bytes": 75196,
+      "sha256": "5bb1f1f3cf4d000f55e401f98b25d02a72092a6fa787b4e91f28c4f5d46ee958",
+      "url": "weapons/shotgun_tight.t3.glb",
+      "tier": 3,
+      "kind": "shotgun_tight",
+      "signature": null,
+      "muzzle": [
+        0,
+        40,
+        440
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 2672
+    },
+    "shotgun_wide.t3": {
+      "file": "shotgun_wide.t3.glb",
+      "bytes": 97456,
+      "sha256": "50e998acbb68fbf411396878e10664453c222f38017cda9f3822ab37ec0bde21",
+      "url": "weapons/shotgun_wide.t3.glb",
+      "tier": 3,
+      "kind": "shotgun_wide",
+      "signature": null,
+      "muzzle": [
+        -57,
+        40,
+        350
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 3524
+    },
+    "shock_blade.t3": {
+      "file": "shock_blade.t3.glb",
+      "bytes": 93324,
+      "sha256": "887978d77bb021f483d6000c0056803f19d37db275d91d3a5148da47d4ae4cc4",
+      "url": "weapons/shock_blade.t3.glb",
+      "tier": 3,
+      "kind": "shock_blade",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        500
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 3308
+    },
+    "flame_sword.t3": {
+      "file": "flame_sword.t3.glb",
+      "bytes": 93472,
+      "sha256": "967ad33a984709cfe0d0b500c8beb14282fb59ab8480cb97d3278d2d46f51e25",
+      "url": "weapons/flame_sword.t3.glb",
+      "tier": 3,
+      "kind": "flame_sword",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        500
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 3308
+    },
+    "flamethrower.t3": {
+      "file": "flamethrower.t3.glb",
+      "bytes": 110356,
+      "sha256": "39e66bbf65cfde9930a8cdbab01cba245e003f332594d0300e9c308e375ee2ef",
+      "url": "weapons/flamethrower.t3.glb",
+      "tier": 3,
+      "kind": "flamethrower",
+      "signature": null,
+      "muzzle": [
+        0,
+        40,
+        420
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 3840
+    },
+    "shoulder_cannon.t3": {
+      "file": "shoulder_cannon.t3.glb",
+      "bytes": 175564,
+      "sha256": "1651a787b86a0944dd6f58ad967e3092633181ca86bdfc009599340cdb667c5a",
+      "url": "weapons/shoulder_cannon.t3.glb",
+      "tier": 3,
+      "kind": "shoulder_cannon",
+      "signature": null,
+      "muzzle": [
+        0,
+        80,
+        600
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "backupMuzzle": [
+        0,
+        130,
+        590
+      ],
+      "triangles": 6496
+    },
+    "piledriver.t3": {
+      "file": "piledriver.t3.glb",
+      "bytes": 104156,
+      "sha256": "a70649377484caa9afafdd030fa84454d2a268df3cc4c018e0929f205635f5f4",
+      "url": "weapons/piledriver.t3.glb",
+      "tier": 3,
+      "kind": "hammer",
+      "signature": "piledriver",
+      "muzzle": [
+        0,
+        0,
+        600
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 3832
+    },
+    "powered_twins.t3": {
+      "file": "powered_twins.t3.glb",
+      "bytes": 93360,
+      "sha256": "6a5222394bd348e805f290103a6a9f8c5576ef1ab6f9ccfe35402500703db7e5",
+      "url": "weapons/powered_twins.t3.glb",
+      "tier": 3,
+      "kind": "paired_blades",
+      "signature": "powered_twins",
+      "muzzle": [
+        0,
+        0,
+        500
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": true,
+      "triangles": 3308
+    },
+    "shoulder_battery.t3": {
+      "file": "shoulder_battery.t3.glb",
+      "bytes": 175552,
+      "sha256": "b034899ca5e018970fb237272b29899a6f2eefdd23cb62be13833c5ebf116e9e",
+      "url": "weapons/shoulder_battery.t3.glb",
+      "tier": 3,
+      "kind": "shoulder_cannon",
+      "signature": "shoulder_battery",
+      "muzzle": [
+        0,
+        130,
+        1290
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "backupMuzzle": [
+        0,
+        130,
+        590
+      ],
+      "triangles": 6496
+    },
+    "hammer.t4": {
+      "file": "hammer.t4.glb",
+      "bytes": 88180,
+      "sha256": "e6a514e14ebe9658a3c1834ef4f2b7c1a74e3afaa9390b3afb2ed53a25f0c740",
+      "url": "weapons/hammer.t4.glb",
+      "tier": 4,
+      "kind": "hammer",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        636
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 3264
+    },
+    "sword.t4": {
+      "file": "sword.t4.glb",
+      "bytes": 78680,
+      "sha256": "ef7d5f8e8386eb504ffce31e142184ce60fc31dbfbdcbd92c37ac270fe2f5d86",
+      "url": "weapons/sword.t4.glb",
+      "tier": 4,
+      "kind": "sword",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        530
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 2896
+    },
+    "paired_blades.t4": {
+      "file": "paired_blades.t4.glb",
+      "bytes": 78680,
+      "sha256": "48eb851d817964cb7e9b00dc5158d2cc3dc39137236dc33f5806f7c092a5ae3d",
+      "url": "weapons/paired_blades.t4.glb",
+      "tier": 4,
+      "kind": "paired_blades",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        530
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": true,
+      "triangles": 2896
+    },
+    "ap_rifle.t4": {
+      "file": "ap_rifle.t4.glb",
+      "bytes": 102116,
+      "sha256": "c6e691e949fbc772f3fdcb121362b04b5ecdcd5bbb4184511d77b9590e1585be",
+      "url": "weapons/ap_rifle.t4.glb",
+      "tier": 4,
+      "kind": "ap_rifle",
+      "signature": null,
+      "muzzle": [
+        0,
+        42.400000000000006,
+        689
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 3616
+    },
+    "shotgun_tight.t4": {
+      "file": "shotgun_tight.t4.glb",
+      "bytes": 81312,
+      "sha256": "7660f18cbd8260811325904be23db0adb4366fee07ed16a4aae20911a7c79c7f",
+      "url": "weapons/shotgun_tight.t4.glb",
+      "tier": 4,
+      "kind": "shotgun_tight",
+      "signature": null,
+      "muzzle": [
+        0,
+        42.400000000000006,
+        466.40000000000003
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 2860
+    },
+    "shotgun_wide.t4": {
+      "file": "shotgun_wide.t4.glb",
+      "bytes": 103584,
+      "sha256": "675e8f3ed23cba2b8cf0703e467660dff127c70e547c4e13181b1a94a9905343",
+      "url": "weapons/shotgun_wide.t4.glb",
+      "tier": 4,
+      "kind": "shotgun_wide",
+      "signature": null,
+      "muzzle": [
+        -60.42,
+        42.400000000000006,
+        371
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 3712
+    },
+    "shock_blade.t4": {
+      "file": "shock_blade.t4.glb",
+      "bytes": 98136,
+      "sha256": "116d62009bae33b3be24626759ad8146d1780cc2d3154a6e016b25fe97d07376",
+      "url": "weapons/shock_blade.t4.glb",
+      "tier": 4,
+      "kind": "shock_blade",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        530
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 3496
+    },
+    "flame_sword.t4": {
+      "file": "flame_sword.t4.glb",
+      "bytes": 98280,
+      "sha256": "652d9e1d11d44a29a8563bcbef575619e66665fff69424ff0e6b0a3b76dc7a4d",
+      "url": "weapons/flame_sword.t4.glb",
+      "tier": 4,
+      "kind": "flame_sword",
+      "signature": null,
+      "muzzle": [
+        0,
+        0,
+        530
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 3496
+    },
+    "flamethrower.t4": {
+      "file": "flamethrower.t4.glb",
+      "bytes": 116500,
+      "sha256": "7ec121126b93485821e6d8dd0b78733e9466d2439f1383f67ca3aee765904994",
+      "url": "weapons/flamethrower.t4.glb",
+      "tier": 4,
+      "kind": "flamethrower",
+      "signature": null,
+      "muzzle": [
+        0,
+        42.400000000000006,
+        445.20000000000005
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 4028
+    },
+    "shoulder_cannon.t4": {
+      "file": "shoulder_cannon.t4.glb",
+      "bytes": 186400,
+      "sha256": "c9dd98e4a086d7c2dde98888aa63317dc88449b1baf36237201497656597875f",
+      "url": "weapons/shoulder_cannon.t4.glb",
+      "tier": 4,
+      "kind": "shoulder_cannon",
+      "signature": null,
+      "muzzle": [
+        0,
+        84.80000000000001,
+        636
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "backupMuzzle": [
+        0,
+        137.8,
+        625.4
+      ],
+      "triangles": 6872
+    },
+    "piledriver.t4": {
+      "file": "piledriver.t4.glb",
+      "bytes": 108948,
+      "sha256": "6f8f9a7281902494893853c8021279d61d2472035a110f9cbfa30fdb84fa28a7",
+      "url": "weapons/piledriver.t4.glb",
+      "tier": 4,
+      "kind": "hammer",
+      "signature": "piledriver",
+      "muzzle": [
+        0,
+        0,
+        636
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "triangles": 4020
+    },
+    "powered_twins.t4": {
+      "file": "powered_twins.t4.glb",
+      "bytes": 98168,
+      "sha256": "6b42f1ed531c25841476a475e115572980ac197a4a49891776d20846f4b39651",
+      "url": "weapons/powered_twins.t4.glb",
+      "tier": 4,
+      "kind": "paired_blades",
+      "signature": "powered_twins",
+      "muzzle": [
+        0,
+        0,
+        530
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": true,
+      "triangles": 3496
+    },
+    "shoulder_battery.t4": {
+      "file": "shoulder_battery.t4.glb",
+      "bytes": 186400,
+      "sha256": "eaf2b5c90095d1a8d58d56ad08d1c37412c3a23c37b19f346feea592c883109e",
+      "url": "weapons/shoulder_battery.t4.glb",
+      "tier": 4,
+      "kind": "shoulder_cannon",
+      "signature": "shoulder_battery",
+      "muzzle": [
+        0,
+        137.8,
+        1367.4
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "paired": false,
+      "backupMuzzle": [
+        0,
+        137.8,
+        625.4
+      ],
+      "triangles": 6872
+    }
+  },
+  "cards": {
+    "mk6.t1.boiler_knight.head": {
+      "model": "boiler_knight.t1.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t1.head.png"
+    },
+    "mk6.t1.boiler_knight.torso": {
+      "model": "boiler_knight.t1.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t1.torso.png"
+    },
+    "mk6.t1.boiler_knight.arms": {
+      "model": "boiler_knight.t1.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t1.arms.png"
+    },
+    "mk6.t1.boiler_knight.legs": {
+      "model": "boiler_knight.t1.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t1.legs.png"
+    },
+    "mk6.t2.boiler_knight.head": {
+      "model": "boiler_knight.t2.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t2.head.png"
+    },
+    "mk6.t2.boiler_knight.torso": {
+      "model": "boiler_knight.t2.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t2.torso.png"
+    },
+    "mk6.t2.boiler_knight.arms": {
+      "model": "boiler_knight.t2.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t2.arms.png"
+    },
+    "mk6.t2.boiler_knight.legs": {
+      "model": "boiler_knight.t2.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t2.legs.png"
+    },
+    "mk6.t3.boiler_knight.head": {
+      "model": "boiler_knight.t3.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t3.head.png"
+    },
+    "mk6.t3.boiler_knight.torso": {
+      "model": "boiler_knight.t3.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t3.torso.png"
+    },
+    "mk6.t3.boiler_knight.arms": {
+      "model": "boiler_knight.t3.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t3.arms.png"
+    },
+    "mk6.t3.boiler_knight.legs": {
+      "model": "boiler_knight.t3.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t3.legs.png"
+    },
+    "mk6.t4.boiler_knight.head": {
+      "model": "boiler_knight.t4.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t4.head.png"
+    },
+    "mk6.t4.boiler_knight.torso": {
+      "model": "boiler_knight.t4.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t4.torso.png"
+    },
+    "mk6.t4.boiler_knight.arms": {
+      "model": "boiler_knight.t4.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t4.arms.png"
+    },
+    "mk6.t4.boiler_knight.legs": {
+      "model": "boiler_knight.t4.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t4.legs.png"
+    },
+    "mk6.t1.scrapyard_bruiser.head": {
+      "model": "scrapyard_bruiser.t1.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t1.head.png"
+    },
+    "mk6.t1.scrapyard_bruiser.torso": {
+      "model": "scrapyard_bruiser.t1.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t1.torso.png"
+    },
+    "mk6.t1.scrapyard_bruiser.arms": {
+      "model": "scrapyard_bruiser.t1.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t1.arms.png"
+    },
+    "mk6.t1.scrapyard_bruiser.legs": {
+      "model": "scrapyard_bruiser.t1.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t1.legs.png"
+    },
+    "mk6.t2.scrapyard_bruiser.head": {
+      "model": "scrapyard_bruiser.t2.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t2.head.png"
+    },
+    "mk6.t2.scrapyard_bruiser.torso": {
+      "model": "scrapyard_bruiser.t2.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t2.torso.png"
+    },
+    "mk6.t2.scrapyard_bruiser.arms": {
+      "model": "scrapyard_bruiser.t2.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t2.arms.png"
+    },
+    "mk6.t2.scrapyard_bruiser.legs": {
+      "model": "scrapyard_bruiser.t2.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t2.legs.png"
+    },
+    "mk6.t3.scrapyard_bruiser.head": {
+      "model": "scrapyard_bruiser.t3.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t3.head.png"
+    },
+    "mk6.t3.scrapyard_bruiser.torso": {
+      "model": "scrapyard_bruiser.t3.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t3.torso.png"
+    },
+    "mk6.t3.scrapyard_bruiser.arms": {
+      "model": "scrapyard_bruiser.t3.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t3.arms.png"
+    },
+    "mk6.t3.scrapyard_bruiser.legs": {
+      "model": "scrapyard_bruiser.t3.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t3.legs.png"
+    },
+    "mk6.t4.scrapyard_bruiser.head": {
+      "model": "scrapyard_bruiser.t4.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t4.head.png"
+    },
+    "mk6.t4.scrapyard_bruiser.torso": {
+      "model": "scrapyard_bruiser.t4.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t4.torso.png"
+    },
+    "mk6.t4.scrapyard_bruiser.arms": {
+      "model": "scrapyard_bruiser.t4.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t4.arms.png"
+    },
+    "mk6.t4.scrapyard_bruiser.legs": {
+      "model": "scrapyard_bruiser.t4.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t4.legs.png"
+    },
+    "mk6.t1.roller_daredevil.head": {
+      "model": "roller_daredevil.t1.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t1.head.png"
+    },
+    "mk6.t1.roller_daredevil.torso": {
+      "model": "roller_daredevil.t1.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t1.torso.png"
+    },
+    "mk6.t1.roller_daredevil.arms": {
+      "model": "roller_daredevil.t1.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t1.arms.png"
+    },
+    "mk6.t1.roller_daredevil.legs": {
+      "model": "roller_daredevil.t1.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t1.legs.png"
+    },
+    "mk6.t2.roller_daredevil.head": {
+      "model": "roller_daredevil.t2.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t2.head.png"
+    },
+    "mk6.t2.roller_daredevil.torso": {
+      "model": "roller_daredevil.t2.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t2.torso.png"
+    },
+    "mk6.t2.roller_daredevil.arms": {
+      "model": "roller_daredevil.t2.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t2.arms.png"
+    },
+    "mk6.t2.roller_daredevil.legs": {
+      "model": "roller_daredevil.t2.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t2.legs.png"
+    },
+    "mk6.t3.roller_daredevil.head": {
+      "model": "roller_daredevil.t3.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t3.head.png"
+    },
+    "mk6.t3.roller_daredevil.torso": {
+      "model": "roller_daredevil.t3.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t3.torso.png"
+    },
+    "mk6.t3.roller_daredevil.arms": {
+      "model": "roller_daredevil.t3.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t3.arms.png"
+    },
+    "mk6.t3.roller_daredevil.legs": {
+      "model": "roller_daredevil.t3.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t3.legs.png"
+    },
+    "mk6.t4.roller_daredevil.head": {
+      "model": "roller_daredevil.t4.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t4.head.png"
+    },
+    "mk6.t4.roller_daredevil.torso": {
+      "model": "roller_daredevil.t4.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t4.torso.png"
+    },
+    "mk6.t4.roller_daredevil.arms": {
+      "model": "roller_daredevil.t4.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t4.arms.png"
+    },
+    "mk6.t4.roller_daredevil.legs": {
+      "model": "roller_daredevil.t4.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t4.legs.png"
+    },
+    "mk6.t1.spring_duelist.head": {
+      "model": "spring_duelist.t1.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t1.head.png"
+    },
+    "mk6.t1.spring_duelist.torso": {
+      "model": "spring_duelist.t1.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t1.torso.png"
+    },
+    "mk6.t1.spring_duelist.arms": {
+      "model": "spring_duelist.t1.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t1.arms.png"
+    },
+    "mk6.t1.spring_duelist.legs": {
+      "model": "spring_duelist.t1.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t1.legs.png"
+    },
+    "mk6.t2.spring_duelist.head": {
+      "model": "spring_duelist.t2.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t2.head.png"
+    },
+    "mk6.t2.spring_duelist.torso": {
+      "model": "spring_duelist.t2.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t2.torso.png"
+    },
+    "mk6.t2.spring_duelist.arms": {
+      "model": "spring_duelist.t2.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t2.arms.png"
+    },
+    "mk6.t2.spring_duelist.legs": {
+      "model": "spring_duelist.t2.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t2.legs.png"
+    },
+    "mk6.t3.spring_duelist.head": {
+      "model": "spring_duelist.t3.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t3.head.png"
+    },
+    "mk6.t3.spring_duelist.torso": {
+      "model": "spring_duelist.t3.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t3.torso.png"
+    },
+    "mk6.t3.spring_duelist.arms": {
+      "model": "spring_duelist.t3.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t3.arms.png"
+    },
+    "mk6.t3.spring_duelist.legs": {
+      "model": "spring_duelist.t3.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t3.legs.png"
+    },
+    "mk6.t4.spring_duelist.head": {
+      "model": "spring_duelist.t4.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t4.head.png"
+    },
+    "mk6.t4.spring_duelist.torso": {
+      "model": "spring_duelist.t4.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t4.torso.png"
+    },
+    "mk6.t4.spring_duelist.arms": {
+      "model": "spring_duelist.t4.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t4.arms.png"
+    },
+    "mk6.t4.spring_duelist.legs": {
+      "model": "spring_duelist.t4.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t4.legs.png"
+    },
+    "mk6.t1.owl_ranger.head": {
+      "model": "owl_ranger.t1.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t1.head.png"
+    },
+    "mk6.t1.owl_ranger.torso": {
+      "model": "owl_ranger.t1.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t1.torso.png"
+    },
+    "mk6.t1.owl_ranger.arms": {
+      "model": "owl_ranger.t1.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t1.arms.png"
+    },
+    "mk6.t1.owl_ranger.legs": {
+      "model": "owl_ranger.t1.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t1.legs.png"
+    },
+    "mk6.t2.owl_ranger.head": {
+      "model": "owl_ranger.t2.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t2.head.png"
+    },
+    "mk6.t2.owl_ranger.torso": {
+      "model": "owl_ranger.t2.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t2.torso.png"
+    },
+    "mk6.t2.owl_ranger.arms": {
+      "model": "owl_ranger.t2.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t2.arms.png"
+    },
+    "mk6.t2.owl_ranger.legs": {
+      "model": "owl_ranger.t2.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t2.legs.png"
+    },
+    "mk6.t3.owl_ranger.head": {
+      "model": "owl_ranger.t3.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t3.head.png"
+    },
+    "mk6.t3.owl_ranger.torso": {
+      "model": "owl_ranger.t3.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t3.torso.png"
+    },
+    "mk6.t3.owl_ranger.arms": {
+      "model": "owl_ranger.t3.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t3.arms.png"
+    },
+    "mk6.t3.owl_ranger.legs": {
+      "model": "owl_ranger.t3.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t3.legs.png"
+    },
+    "mk6.t4.owl_ranger.head": {
+      "model": "owl_ranger.t4.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t4.head.png"
+    },
+    "mk6.t4.owl_ranger.torso": {
+      "model": "owl_ranger.t4.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t4.torso.png"
+    },
+    "mk6.t4.owl_ranger.arms": {
+      "model": "owl_ranger.t4.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t4.arms.png"
+    },
+    "mk6.t4.owl_ranger.legs": {
+      "model": "owl_ranger.t4.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t4.legs.png"
+    },
+    "mk6.t1.clockwork_gunner.head": {
+      "model": "clockwork_gunner.t1.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t1.head.png"
+    },
+    "mk6.t1.clockwork_gunner.torso": {
+      "model": "clockwork_gunner.t1.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t1.torso.png"
+    },
+    "mk6.t1.clockwork_gunner.arms": {
+      "model": "clockwork_gunner.t1.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t1.arms.png"
+    },
+    "mk6.t1.clockwork_gunner.legs": {
+      "model": "clockwork_gunner.t1.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t1.legs.png"
+    },
+    "mk6.t2.clockwork_gunner.head": {
+      "model": "clockwork_gunner.t2.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t2.head.png"
+    },
+    "mk6.t2.clockwork_gunner.torso": {
+      "model": "clockwork_gunner.t2.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t2.torso.png"
+    },
+    "mk6.t2.clockwork_gunner.arms": {
+      "model": "clockwork_gunner.t2.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t2.arms.png"
+    },
+    "mk6.t2.clockwork_gunner.legs": {
+      "model": "clockwork_gunner.t2.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t2.legs.png"
+    },
+    "mk6.t3.clockwork_gunner.head": {
+      "model": "clockwork_gunner.t3.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t3.head.png"
+    },
+    "mk6.t3.clockwork_gunner.torso": {
+      "model": "clockwork_gunner.t3.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t3.torso.png"
+    },
+    "mk6.t3.clockwork_gunner.arms": {
+      "model": "clockwork_gunner.t3.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t3.arms.png"
+    },
+    "mk6.t3.clockwork_gunner.legs": {
+      "model": "clockwork_gunner.t3.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t3.legs.png"
+    },
+    "mk6.t4.clockwork_gunner.head": {
+      "model": "clockwork_gunner.t4.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t4.head.png"
+    },
+    "mk6.t4.clockwork_gunner.torso": {
+      "model": "clockwork_gunner.t4.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t4.torso.png"
+    },
+    "mk6.t4.clockwork_gunner.arms": {
+      "model": "clockwork_gunner.t4.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t4.arms.png"
+    },
+    "mk6.t4.clockwork_gunner.legs": {
+      "model": "clockwork_gunner.t4.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t4.legs.png"
+    },
+    "mk6.t1.weapon.hammer": {
+      "model": "weapons/hammer.t1.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/hammer.t1.png"
+    },
+    "mk6.t1.weapon.sword": {
+      "model": "weapons/sword.t1.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/sword.t1.png"
+    },
+    "mk6.t1.weapon.ap_rifle": {
+      "model": "weapons/ap_rifle.t1.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/ap_rifle.t1.png"
+    },
+    "mk6.t2.weapon.hammer": {
+      "model": "weapons/hammer.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/hammer.t2.png"
+    },
+    "mk6.t2.weapon.sword": {
+      "model": "weapons/sword.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/sword.t2.png"
+    },
+    "mk6.t2.weapon.paired_blades": {
+      "model": "weapons/paired_blades.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/paired_blades.t2.png"
+    },
+    "mk6.t2.weapon.ap_rifle": {
+      "model": "weapons/ap_rifle.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/ap_rifle.t2.png"
+    },
+    "mk6.t2.weapon.shotgun_tight": {
+      "model": "weapons/shotgun_tight.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shotgun_tight.t2.png"
+    },
+    "mk6.t2.weapon.shotgun_wide": {
+      "model": "weapons/shotgun_wide.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shotgun_wide.t2.png"
+    },
+    "mk6.t2.weapon.shock_blade": {
+      "model": "weapons/shock_blade.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shock_blade.t2.png"
+    },
+    "mk6.t2.weapon.flame_sword": {
+      "model": "weapons/flame_sword.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/flame_sword.t2.png"
+    },
+    "mk6.t2.weapon.flamethrower": {
+      "model": "weapons/flamethrower.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/flamethrower.t2.png"
+    },
+    "mk6.t3.weapon.hammer": {
+      "model": "weapons/hammer.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/hammer.t3.png"
+    },
+    "mk6.t3.weapon.sword": {
+      "model": "weapons/sword.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/sword.t3.png"
+    },
+    "mk6.t3.weapon.paired_blades": {
+      "model": "weapons/paired_blades.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/paired_blades.t3.png"
+    },
+    "mk6.t3.weapon.ap_rifle": {
+      "model": "weapons/ap_rifle.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/ap_rifle.t3.png"
+    },
+    "mk6.t3.weapon.shotgun_tight": {
+      "model": "weapons/shotgun_tight.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shotgun_tight.t3.png"
+    },
+    "mk6.t3.weapon.shotgun_wide": {
+      "model": "weapons/shotgun_wide.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shotgun_wide.t3.png"
+    },
+    "mk6.t3.weapon.shock_blade": {
+      "model": "weapons/shock_blade.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shock_blade.t3.png"
+    },
+    "mk6.t3.weapon.flame_sword": {
+      "model": "weapons/flame_sword.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/flame_sword.t3.png"
+    },
+    "mk6.t3.weapon.flamethrower": {
+      "model": "weapons/flamethrower.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/flamethrower.t3.png"
+    },
+    "mk6.t3.weapon.shoulder_cannon": {
+      "model": "weapons/shoulder_cannon.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shoulder_cannon.t3.png"
+    },
+    "mk6.t3.signature.piledriver": {
+      "model": "weapons/piledriver.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/piledriver.t3.png"
+    },
+    "mk6.t3.signature.powered_twins": {
+      "model": "weapons/powered_twins.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/powered_twins.t3.png"
+    },
+    "mk6.t3.signature.shoulder_battery": {
+      "model": "weapons/shoulder_battery.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shoulder_battery.t3.png"
+    },
+    "mk6.t4.weapon.hammer": {
+      "model": "weapons/hammer.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/hammer.t4.png"
+    },
+    "mk6.t4.weapon.sword": {
+      "model": "weapons/sword.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/sword.t4.png"
+    },
+    "mk6.t4.weapon.paired_blades": {
+      "model": "weapons/paired_blades.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/paired_blades.t4.png"
+    },
+    "mk6.t4.weapon.ap_rifle": {
+      "model": "weapons/ap_rifle.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/ap_rifle.t4.png"
+    },
+    "mk6.t4.weapon.shotgun_tight": {
+      "model": "weapons/shotgun_tight.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shotgun_tight.t4.png"
+    },
+    "mk6.t4.weapon.shotgun_wide": {
+      "model": "weapons/shotgun_wide.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shotgun_wide.t4.png"
+    },
+    "mk6.t4.weapon.shock_blade": {
+      "model": "weapons/shock_blade.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shock_blade.t4.png"
+    },
+    "mk6.t4.weapon.flame_sword": {
+      "model": "weapons/flame_sword.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/flame_sword.t4.png"
+    },
+    "mk6.t4.weapon.flamethrower": {
+      "model": "weapons/flamethrower.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/flamethrower.t4.png"
+    },
+    "mk6.t4.weapon.shoulder_cannon": {
+      "model": "weapons/shoulder_cannon.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shoulder_cannon.t4.png"
+    },
+    "mk6.t4.signature.piledriver": {
+      "model": "weapons/piledriver.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/piledriver.t4.png"
+    },
+    "mk6.t4.signature.powered_twins": {
+      "model": "weapons/powered_twins.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/powered_twins.t4.png"
+    },
+    "mk6.t4.signature.shoulder_battery": {
+      "model": "weapons/shoulder_battery.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shoulder_battery.t4.png"
+    }
+  },
+  "retiredCards": {
+    "mk6.t2.weapon.shoulder_cannon": {
+      "model": "weapons/shoulder_cannon.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shoulder_cannon.t2.png"
+    }
+  }
+}

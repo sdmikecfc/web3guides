@@ -4,11 +4,66 @@ Everything a new session needs to understand this project and pick up without lo
 
 ---
 
+## ⛔ HOW TO TALK TO MIKE (read first, it costs him money when you don't)
+
+**DO NOT NARRATE.** No "I'm going to...", no "Let me...", no restating the plan
+before doing it, no recapping what you just did step by step, no preamble
+before a tool call and no victory lap after one. Tokens are his credits.
+
+Every reply uses this shape and nothing else:
+
+```
+1. what happened
+2. what I need to do   (things only Mike can do)
+3. things you observed
+4. next steps
+```
+
+Rules on top of that:
+- 1-3 lines per section where possible. Long form ONLY for a document he asked for.
+- No em-dashes in any player-facing copy (announcements, Slack, bot strings, web).
+- Do the MINIMAL thing asked. Never escalate a small ask into structure or a
+  multi-option question.
+- End any turn that changed deployable files with the push block: one `scp` per
+  changed bot file + the canonical restart, and/or
+  `cd C:\Users\Mike\Desktop\web3guides ; vercel --prod --yes`. Full absolute
+  paths, never `&&` (PowerShell), DELTA ONLY (just this turn's files).
+- Every player-facing UI ship comes WITH a copy-paste Discord change-log post,
+  same turn.
+- For economics/payout/copy, READ the canonical game guide in
+  `C:\Users\Mike\Documents\Doma\` — never infer money rules from code.
+
+---
+
 ## Project Overview
 
 **Web3 Guides** is a multi-subdomain crypto education site at `web3guides.com`. Each subdomain is a dedicated knowledge hub (e.g. `eth.web3guides.com`, `defi.web3guides.com`). Built on Next.js 14 App Router with Supabase as the backend. Deployed on Vercel.
 
 **Owner:** Big Mike — in crypto since 2016, full-time since 2018 (community management), former calculus teacher in California, now travelling the world while building in Web3.
+
+---
+
+## ⚙️ Working style + deploy (READ FIRST)
+
+Mike runs EVERY command himself and deploys EACH message as it is sent. Assume the latest code you sent is already live. Do NOT ask "did you deploy this," do NOT re-send a command he already ran. Give exact copy-paste commands with FULL paths, for only what changed this turn.
+
+- **Deploy web:** `cd C:\Users\Mike\Desktop\web3guides` then `vercel --prod --yes` (Vercel builds the whole project; no per-file scp).
+- **Doma bot** lives in a SEPARATE repo `C:\Users\Mike\Desktop\trading-bot\doma-reporter` (droplet `root@143.110.183.157:/root/doma-reporter/`). `scp` each changed file (full Windows path → mirrored droplet path), then restart with:
+  `ssh root@143.110.183.157 "source ~/.nvm/nvm.sh; pm2 restart doma-reporter; pm2 save"`
+  The `source ~/.nvm/nvm.sh` is REQUIRED — without it a non-interactive ssh has no `pm2` on its PATH.
+- **SQL:** give the FULL absolute path to the `.sql` file to paste into the Supabase SQL editor (never a bare name).
+- **Shell:** Mike runs Windows PowerShell. NEVER use `&&`, `||`, `$(...)`, or `<` in a command for him (they parse-error). Chain remote steps with `;` INSIDE the ssh double-quotes; chain PowerShell-local steps with `;`.
+
+---
+
+## 🔍 Preview / verification gotchas (learned the hard way — do NOT repeat)
+
+Verifying web changes in the Browser pane (dev server on :3000):
+
+- **The `/s4/map` screenshot TIMES OUT** (~30s) — it renders a heavy SVG map plus the intro overlay. Do NOT rely on `computer{action:"screenshot"}` for it. Use TEXT-based tools that never hang: `javascript_tool` (a targeted `document.querySelector` / DOM query is the most reliable — check `document.title`, an error-overlay selector, and that expected elements exist), `read_console_messages`, `read_page`, `get_page_text`. Screenshots are fine for LIGHT pages (rules, board) once compiled.
+- **The dev-server log buffer AND the browser console REPLAY stale compile errors.** A red error you see may be from a PRIOR, already-fixed compile. To confirm the CURRENT state, run a `javascript_tool` DOM check (no error overlay + expected elements present + a real `document.title`), not the replayed logs.
+- **`server-only` boundary bugs PASS tsc but FAIL the Next build.** Importing a VALUE (not just a `type`) from a `server-only` module (`lib/s4/data.ts`) into a CLIENT component (`"use client"`, e.g. `HitListMap.tsx`) type-checks clean but breaks `next build` / `vercel`. Client components import runtime constants from `lib/s4/games.ts` (client-safe) and only `import type` from `data.ts`. tsc will not catch this; the preview/build will. Always preview-verify web changes, do not trust tsc alone.
+- **Once you screenshot/zoom the heavy `/s4/map`, the Browser pane's SCREENSHOT PIPELINE WEDGES for the rest of the session** (2026-07-15) — after that, `computer{action:"screenshot"|"zoom"}` times out at 30s even on a LIGHT static page, and even after navigating away + `resize_window` (which still works, proving the pane is otherwise responsive). `javascript_tool` DOM/computed-style queries keep working. So: to eyeball a heavy page's look, do NOT screenshot the map; instead reproduce the exact CSS/markup on a throwaway light page (e.g. `public/_something.html`, delete before deploy) and screenshot THAT *first*, before ever touching the map. Once the map has been captured, raster is gone for the session — fall back to (a) DOM checks that the real component rendered in demo mode with no error overlay + expected elements + correct computed styles/positions, and (b) an isolated harness rendered before the map was opened. There is NO headless browser (playwright/puppeteer) in this repo to rasterize out-of-pane, and `resvg` only handles pure SVG, not HTML/CSS.
 
 ---
 

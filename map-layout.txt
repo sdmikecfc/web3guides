@@ -1,0 +1,106 @@
+# LAUNCH WARS - WORLD LAYOUT (the 2026-08-01 2:1 plate, revision 2)
+#
+# One building per line:   key   x   y
+# x and y are 0..1 (x left->right, y top->bottom) and mark the
+# building's FEET, not its middle. Read them off map-grid.png.
+#
+#   python map-manual.py --grid   redraw the grid with your changes
+#   python map-manual.py          apply this file
+#
+# OR skip the numbers entirely: double-click map-editor.html, drag the
+# buildings on the real plate, hit COPY FILE, paste it over this file,
+# then run  python map-manual.py  once.
+#
+# THE READ (Mike, 2026-08-01: "all your base stuff on one side and domains on
+# the more wasteland looking side"): the LUSH RIVER COUNTRY east of the river
+# is ENTIRELY FRIENDLY - base, command post, arena, muster, and the arcade
+# posts up on the freed golden platforms. ALL TEN STRONGHOLDS stand in the
+# SCORCHED WEST. Week 1 (t0-t4) is the NEAR RANK, marching west along the
+# south field from the bridge; week 2 (t5-t9) is the DEEP RANK across the
+# north wasteland, ending in the far corner. The war starts at your bridge
+# and pushes away from home.
+#
+# fort3 (the tall tower, i%3==2 -> t2/t5/t8) needs feet y >= ~0.23 (more when
+# scaled) or its top clips the board edge.
+#
+# LAUNCH WARS - WORLD LAYOUT (authored in map-editor.html)
+#
+# One building per line:   key   x   y   (0..1, feet of the sprite)
+#   python map-manual.py --grid   redraw the numbered grid
+#   python map-manual.py          apply this file -> world.fit.ts
+#
+# t0..t9 are the strongholds IN LISTING ORDER = LAUNCH ORDER.
+#
+# LAUNCH WARS - WORLD LAYOUT (authored in map-editor.html)
+#
+# One building per line:   key   x   y   (0..1, feet of the sprite)
+#   python map-manual.py --grid   redraw the numbered grid
+#   python map-manual.py          apply this file -> world.fit.ts
+#
+# t0..t9 are the strongholds IN LISTING ORDER = LAUNCH ORDER.
+# `camp` is the PLAYER SAFE AREA ellipse; `road` lines are the tank
+# patrols (exported out-and-back; route i carries vehicle i % 3).
+#
+# LAUNCH WARS - WORLD LAYOUT (authored in map-editor.html)
+#
+# One building per line:   key   x   y   (0..1, feet of the sprite)
+#   python map-manual.py --grid   redraw the numbered grid
+#   python map-manual.py          apply this file -> world.fit.ts
+#
+# t0..t9 are the strongholds IN LISTING ORDER = LAUNCH ORDER.
+# `camp` is the PLAYER SAFE AREA ellipse; `road` lines are the tank
+# patrols (exported out-and-back; route i carries vehicle i % 3).
+#
+# LAUNCH WARS - WORLD LAYOUT (authored in map-editor.html)
+#
+# One building per line:   key   x   y   (0..1, feet of the sprite)
+#   python map-manual.py --grid   redraw the numbered grid
+#   python map-manual.py          apply this file -> world.fit.ts
+#
+# t0..t9 are the strongholds IN LISTING ORDER = LAUNCH ORDER.
+# `camp` is the PLAYER SAFE AREA ellipse; `road` lines are the tank
+# patrols (exported out-and-back; route i carries vehicle i % 3).
+#
+# LAUNCH WARS - WORLD LAYOUT (authored in map-editor.html)
+#
+# One building per line:   key   x   y   (0..1, feet of the sprite)
+#   python map-manual.py --grid   redraw the numbered grid
+#   python map-manual.py          apply this file -> world.fit.ts
+#
+# t0..t9 are the strongholds IN LISTING ORDER = LAUNCH ORDER.
+# `camp` lines are PLAYER SAFE AREA ellipses (as many as you like);
+# `road` lines are the tank
+# patrols (exported out-and-back; route i carries vehicle i % 3).
+#
+camp 0.246 0.677 0.251 0.300
+camp 0.164 0.315 0.166 0.214
+camp 0.415 0.882 0.099 0.118
+
+basecamp       0.882 0.690    # YOUR BASE - the big golden field
+commandpost    0.924 0.338    # Leaderboards - beside the base
+muster         0.861 0.924    # Other Commanders - on the south road
+powerstation   0.931 0.483    # Power Station (locked)
+convoyroad     0.791 0.230    # Mini Game: Warpath - THE BRIDGE
+airfield       0.651 0.223    # Mini Game: Warhawks
+arena          0.790 0.378    # Mini Game: Armorclash
+ridgepass      0.541 0.134    # Mini Game: Breakthrough
+
+t0             0.521 0.788    # stronghold 1  hotcommerce.com  Mon Aug 3
+t1             0.397 0.741    # stronghold 2  FYI.xyz  Tue Aug 4
+t2             0.519 0.523    # stronghold 3  hypnotise.ai  Wed Aug 5
+t3             0.247 0.842    # stronghold 4  Deprogram.com  Thu Aug 6
+t4             0.665 0.863    # stronghold 5  Walletz.xyz  Fri Aug 7
+t5             0.310 0.248    # stronghold 6  NoRules.ai  Mon Aug 10
+t6             0.152 0.239    # stronghold 7  vaultpool.com  Tue Aug 11
+t7             0.129 0.667    # stronghold 8  Applications.com  Wed Aug 12
+t8             0.055 0.452    # stronghold 9  datafinder.ai  Thu Aug 13
+t9             0.274 0.529    # stronghold 10  Geoquest.xyz  Fri Aug 14
+
+# ── ROADS ─ tank patrols (drawn one-way in the editor, folded here) ──
+road 0.508,0.785 0.476,0.998 0.508,0.785
+road 0.223,0.256 0.255,0.118 0.223,0.256
+road 0.702,0.357 0.643,0.480 0.702,0.357
+road 0.839,0.499 0.778,0.599 0.839,0.499
+road 0.768,0.031 0.685,0.143 0.768,0.031
+road 0.246,0.028 0.258,0.131 0.246,0.028
+road 0.002,0.205 0.135,0.345 0.002,0.205

@@ -1,0 +1,1870 @@
+{
+  "version": "toy-rig-v1",
+  "coordinates": {
+    "up": "+Y",
+    "front": "+Z",
+    "units": "metres"
+  },
+  "rest": {
+    "root": [
+      0,
+      0,
+      0
+    ],
+    "torso": [
+      0,
+      1.08,
+      0
+    ],
+    "head": [
+      0,
+      2.53,
+      0
+    ],
+    "armL": [
+      -0.96,
+      2.2224,
+      0
+    ],
+    "elbowL": [
+      -0.96,
+      1.6724,
+      0.015
+    ],
+    "wristL": [
+      -0.96,
+      1.1424,
+      0.055
+    ],
+    "armR": [
+      0.96,
+      2.2224,
+      0
+    ],
+    "elbowR": [
+      0.96,
+      1.6724,
+      0.015
+    ],
+    "wristR": [
+      0.96,
+      1.1424,
+      0.055
+    ],
+    "legL": [
+      -0.44,
+      1.08,
+      0
+    ],
+    "kneeL": [
+      -0.44,
+      0.58,
+      0
+    ],
+    "ankleL": [
+      -0.44,
+      0.16,
+      0.09
+    ],
+    "legR": [
+      0.44,
+      1.08,
+      0
+    ],
+    "kneeR": [
+      0.44,
+      0.58,
+      0
+    ],
+    "ankleR": [
+      0.44,
+      0.16,
+      0.09
+    ],
+    "weapon": [
+      0.96,
+      1.1424,
+      0.4
+    ],
+    "mechanism": [
+      0.96,
+      2.05,
+      0.4
+    ],
+    "wheelL": [
+      -0.44,
+      0.265,
+      0.07
+    ],
+    "wheelR": [
+      0.44,
+      0.265,
+      0.07
+    ]
+  },
+  "parents": {
+    "torso": "root",
+    "head": "torso",
+    "weapon": "wristR",
+    "mechanism": "weapon",
+    "armL": "torso",
+    "elbowL": "armL",
+    "wristL": "elbowL",
+    "legL": "root",
+    "kneeL": "legL",
+    "ankleL": "kneeL",
+    "wheelL": "ankleL",
+    "armR": "torso",
+    "elbowR": "armR",
+    "wristR": "elbowR",
+    "legR": "root",
+    "kneeR": "legR",
+    "ankleR": "kneeR",
+    "wheelR": "ankleR"
+  },
+  "parts": {
+    "head.sprocketCap": {
+      "slot": "head",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "head",
+          "file": "head.sprocketCap.fight.glb",
+          "inspection": "head.sprocketCap.glb",
+          "triangles": 1706,
+          "attachment": {
+            "bone": "head",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "neck": {
+              "bone": "head",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft",
+            "eye"
+          ],
+          "sha256": "100cf7277fd6875787c1f9d4f128e7343105242db517edc284caf3d950897d0e",
+          "inspectionSha256": "f2331d20f43422d715f0c35d56059d61a4b5343ee3192bbdb31316039eb291bd"
+        }
+      ]
+    },
+    "head.lanternLens": {
+      "slot": "head",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "head",
+          "file": "head.lanternLens.fight.glb",
+          "inspection": "head.lanternLens.glb",
+          "triangles": 1766,
+          "attachment": {
+            "bone": "head",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "neck": {
+              "bone": "head",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft",
+            "eye"
+          ],
+          "sha256": "50614db205a650e9640985998c244ef72d9513489845f5410de03e5ee1332a4e",
+          "inspectionSha256": "f695c327137a3952b7ad752d91ac8d9ba3e3d65a08a0eeaf747071b7e6ab82ab"
+        }
+      ]
+    },
+    "head.kettleDome": {
+      "slot": "head",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "head",
+          "file": "head.kettleDome.fight.glb",
+          "inspection": "head.kettleDome.glb",
+          "triangles": 2274,
+          "attachment": {
+            "bone": "head",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "neck": {
+              "bone": "head",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft",
+            "eye"
+          ],
+          "sha256": "5133ea1db748a593c164c325a14d86fc8729949ab30130059f47204a7d92a792",
+          "inspectionSha256": "1d184a76e180431e715b61d6e08ec69ced4754f56c654e1227a42738b87b9ca9"
+        }
+      ]
+    },
+    "head.peeperEye": {
+      "slot": "head",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "head",
+          "file": "head.peeperEye.fight.glb",
+          "inspection": "head.peeperEye.glb",
+          "triangles": 1264,
+          "attachment": {
+            "bone": "head",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "neck": {
+              "bone": "head",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft",
+            "eye"
+          ],
+          "sha256": "32e410ed358171423af7c3dc8315b4dd07a5497a2e5e50baf1a8afbad979042d",
+          "inspectionSha256": "ac00641ff2d5b6c287e7a5e2b457c6b9ed364448b875f1ad8a60bcf7624d4e17"
+        }
+      ]
+    },
+    "head.pistonVisor": {
+      "slot": "head",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "head",
+          "file": "head.pistonVisor.fight.glb",
+          "inspection": "head.pistonVisor.glb",
+          "triangles": 1818,
+          "attachment": {
+            "bone": "head",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "neck": {
+              "bone": "head",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft",
+            "eye"
+          ],
+          "sha256": "478ba04ae23f02980f8621a02fc97ceec4abe4eb3f473388f54cafc5c940ec82",
+          "inspectionSha256": "e8f13ea08d1e7353e7de6bc0b7255d6514f7e3a1f64df1ea7e9062ae1e613072"
+        }
+      ]
+    },
+    "torso.sprocketCan": {
+      "slot": "torso",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "torso",
+          "file": "torso.sprocketCan.fight.glb",
+          "inspection": "torso.sprocketCan.glb",
+          "triangles": 1220,
+          "attachment": {
+            "bone": "torso",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "shoulderL": {
+              "bone": "torso",
+              "point": [
+                -0.96,
+                1.1423999999999999,
+                0
+              ]
+            },
+            "shoulderR": {
+              "bone": "torso",
+              "point": [
+                0.96,
+                1.1423999999999999,
+                0
+              ]
+            },
+            "hipL": {
+              "bone": "torso",
+              "point": [
+                -0.44,
+                0.0,
+                0
+              ]
+            },
+            "hipR": {
+              "bone": "torso",
+              "point": [
+                0.44,
+                0.0,
+                0
+              ]
+            },
+            "neck": {
+              "bone": "torso",
+              "point": [
+                0,
+                1.4499999999999997,
+                0
+              ]
+            },
+            "decal": {
+              "bone": "torso",
+              "point": [
+                0,
+                0.55,
+                0.525
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "630b5d101d196e8d82370dfb17ad2ee3df544b66ca6ebd2d4f0f6f9bbb2a380f",
+          "inspectionSha256": "6b730b8ef7c067464135d12602c5cb4ee2fde2e4f04258dfd6c72fe2be194b16"
+        }
+      ]
+    },
+    "torso.lanternDrum": {
+      "slot": "torso",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "torso",
+          "file": "torso.lanternDrum.fight.glb",
+          "inspection": "torso.lanternDrum.glb",
+          "triangles": 1372,
+          "attachment": {
+            "bone": "torso",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "shoulderL": {
+              "bone": "torso",
+              "point": [
+                -0.96,
+                1.1423999999999999,
+                0
+              ]
+            },
+            "shoulderR": {
+              "bone": "torso",
+              "point": [
+                0.96,
+                1.1423999999999999,
+                0
+              ]
+            },
+            "hipL": {
+              "bone": "torso",
+              "point": [
+                -0.44,
+                0.0,
+                0
+              ]
+            },
+            "hipR": {
+              "bone": "torso",
+              "point": [
+                0.44,
+                0.0,
+                0
+              ]
+            },
+            "neck": {
+              "bone": "torso",
+              "point": [
+                0,
+                1.4499999999999997,
+                0
+              ]
+            },
+            "decal": {
+              "bone": "torso",
+              "point": [
+                0,
+                0.55,
+                0.595
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "3f4e235223ddb2fb3fb817e128d246ace5413d8a38fb89c588a650a2cf28f17d",
+          "inspectionSha256": "b386eef74b311e44d536c95f69233657da619c88682efb30a54b9f402455951c"
+        }
+      ]
+    },
+    "torso.kettleChest": {
+      "slot": "torso",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "torso",
+          "file": "torso.kettleChest.fight.glb",
+          "inspection": "torso.kettleChest.glb",
+          "triangles": 1308,
+          "attachment": {
+            "bone": "torso",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "shoulderL": {
+              "bone": "torso",
+              "point": [
+                -0.96,
+                1.1423999999999999,
+                0
+              ]
+            },
+            "shoulderR": {
+              "bone": "torso",
+              "point": [
+                0.96,
+                1.1423999999999999,
+                0
+              ]
+            },
+            "hipL": {
+              "bone": "torso",
+              "point": [
+                -0.44,
+                0.0,
+                0
+              ]
+            },
+            "hipR": {
+              "bone": "torso",
+              "point": [
+                0.44,
+                0.0,
+                0
+              ]
+            },
+            "neck": {
+              "bone": "torso",
+              "point": [
+                0,
+                1.4499999999999997,
+                0
+              ]
+            },
+            "decal": {
+              "bone": "torso",
+              "point": [
+                0,
+                0.55,
+                0.605
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "7832362d3197bd314af24ec23a29244d870c30910ac6e2fc7949654fd8b65ac4",
+          "inspectionSha256": "9f9e534fdf83acd5939ff1f263214551262720c6739964f5d872b97e4734fe02"
+        }
+      ]
+    },
+    "torso.peeperBox": {
+      "slot": "torso",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "torso",
+          "file": "torso.peeperBox.fight.glb",
+          "inspection": "torso.peeperBox.glb",
+          "triangles": 1220,
+          "attachment": {
+            "bone": "torso",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "shoulderL": {
+              "bone": "torso",
+              "point": [
+                -0.96,
+                1.1423999999999999,
+                0
+              ]
+            },
+            "shoulderR": {
+              "bone": "torso",
+              "point": [
+                0.96,
+                1.1423999999999999,
+                0
+              ]
+            },
+            "hipL": {
+              "bone": "torso",
+              "point": [
+                -0.44,
+                0.0,
+                0
+              ]
+            },
+            "hipR": {
+              "bone": "torso",
+              "point": [
+                0.44,
+                0.0,
+                0
+              ]
+            },
+            "neck": {
+              "bone": "torso",
+              "point": [
+                0,
+                1.4499999999999997,
+                0
+              ]
+            },
+            "decal": {
+              "bone": "torso",
+              "point": [
+                0,
+                0.55,
+                0.585
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "939521d8956b0e9d8062e80dde211fcf8a04f05f8a95da4f744d453e0a11839a",
+          "inspectionSha256": "ae1ca6746b95a8ec661b1cad8d3ce20333dab08b6eb37d6b677afdf245656af7"
+        }
+      ]
+    },
+    "arms.sprocketMitts": {
+      "slot": "arms",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "armL",
+          "file": "arms.sprocketMittsL.fight.glb",
+          "inspection": "arms.sprocketMittsL.glb",
+          "triangles": 1358,
+          "grip": [
+            0,
+            0,
+            0.345
+          ],
+          "handKind": "mitten",
+          "gripBone": "wristL",
+          "attachment": {
+            "bone": "armL",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "shoulder": {
+              "bone": "armL",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "hand": {
+              "bone": "wristL",
+              "point": [
+                0,
+                0,
+                0.345
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "c839e20728e2ad571c457c33fa3ea88a47e60f39e3332ad1abc95e8fe8eaa876",
+          "inspectionSha256": "094fdd52181d60339d4dbcacd7f336a28b48224849c808ad937ac338c805bd23"
+        },
+        {
+          "socket": "armR",
+          "file": "arms.sprocketMittsR.fight.glb",
+          "inspection": "arms.sprocketMittsR.glb",
+          "triangles": 1358,
+          "grip": [
+            0,
+            0,
+            0.345
+          ],
+          "handKind": "mitten",
+          "gripBone": "wristR",
+          "attachment": {
+            "bone": "armR",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "shoulder": {
+              "bone": "armR",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "hand": {
+              "bone": "wristR",
+              "point": [
+                0,
+                0,
+                0.345
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "1568cb3fb88b29f771f9a30e0def5c8a26c2ba8ee3c717ec0ddf1f9f23ea01d4",
+          "inspectionSha256": "aac66a3347152aa9f4a769c1f8333efae5aebf490b8a05eab62fcda93b6a9556"
+        }
+      ]
+    },
+    "arms.lanternClamps": {
+      "slot": "arms",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "armL",
+          "file": "arms.lanternClampsL.fight.glb",
+          "inspection": "arms.lanternClampsL.glb",
+          "triangles": 1152,
+          "grip": [
+            0,
+            0,
+            0.345
+          ],
+          "handKind": "claw",
+          "gripBone": "wristL",
+          "attachment": {
+            "bone": "armL",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "shoulder": {
+              "bone": "armL",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "hand": {
+              "bone": "wristL",
+              "point": [
+                0,
+                0,
+                0.345
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "34703f5cd42f406b2648d509d7935f7deb299b3589553b2cc6625ffa7090d2c6",
+          "inspectionSha256": "690abe4fb833c08004c043bcb4a5aa6714a8bd2a9b024ea36c93abc2ab41cffd"
+        },
+        {
+          "socket": "armR",
+          "file": "arms.lanternClampsR.fight.glb",
+          "inspection": "arms.lanternClampsR.glb",
+          "triangles": 1152,
+          "grip": [
+            0,
+            0,
+            0.345
+          ],
+          "handKind": "claw",
+          "gripBone": "wristR",
+          "attachment": {
+            "bone": "armR",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "shoulder": {
+              "bone": "armR",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "hand": {
+              "bone": "wristR",
+              "point": [
+                0,
+                0,
+                0.345
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "d737cf0f8fa9a80fcee047d5eedb3bb88c8f8e2c108d569627ad8dacf46cf0c2",
+          "inspectionSha256": "945f5fe8af8b7ca7cc0f4d9c4680c53fcf2b0d3aeae31f443b7b37758115bdf9"
+        }
+      ]
+    },
+    "arms.kettleGrips": {
+      "slot": "arms",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "armL",
+          "file": "arms.kettleGripsL.fight.glb",
+          "inspection": "arms.kettleGripsL.glb",
+          "triangles": 1584,
+          "grip": [
+            0,
+            0,
+            0.345
+          ],
+          "handKind": "boxer",
+          "gripBone": "wristL",
+          "attachment": {
+            "bone": "armL",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "shoulder": {
+              "bone": "armL",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "hand": {
+              "bone": "wristL",
+              "point": [
+                0,
+                0,
+                0.345
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "808fc70a9409da1bcb8c4311155a0619c8eddab90eecd812b6196e8d36f5734b",
+          "inspectionSha256": "a1850baa9d77a197f858a120c0b650c345e6ff8a574a20a00138bb0ffb8d1b31"
+        },
+        {
+          "socket": "armR",
+          "file": "arms.kettleGripsR.fight.glb",
+          "inspection": "arms.kettleGripsR.glb",
+          "triangles": 1584,
+          "grip": [
+            0,
+            0,
+            0.345
+          ],
+          "handKind": "boxer",
+          "gripBone": "wristR",
+          "attachment": {
+            "bone": "armR",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "shoulder": {
+              "bone": "armR",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "hand": {
+              "bone": "wristR",
+              "point": [
+                0,
+                0,
+                0.345
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "4cb648d5c0c0eb9915bbf1e9b235b4999f3f1644ee244ec83506a1021fecb89f",
+          "inspectionSha256": "bf8c31c36fa268bee1669e949bfd4f35028115afafee08f572b67bbbe61238f3"
+        }
+      ]
+    },
+    "arms.peeperHooks": {
+      "slot": "arms",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "armL",
+          "file": "arms.peeperHooksL.fight.glb",
+          "inspection": "arms.peeperHooksL.glb",
+          "triangles": 1152,
+          "grip": [
+            0,
+            0,
+            0.345
+          ],
+          "handKind": "hook",
+          "gripBone": "wristL",
+          "attachment": {
+            "bone": "armL",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "shoulder": {
+              "bone": "armL",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "hand": {
+              "bone": "wristL",
+              "point": [
+                0,
+                0,
+                0.345
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "91fb6c33e953e7ab884a526000f059c8348bb4b01cc1b5c59ce60a1148c9bed9",
+          "inspectionSha256": "1b621b690e0b2724d4b0941e0047b2f5a26e528009d04519e08ebbe9f6a393e3"
+        },
+        {
+          "socket": "armR",
+          "file": "arms.peeperHooksR.fight.glb",
+          "inspection": "arms.peeperHooksR.glb",
+          "triangles": 1152,
+          "grip": [
+            0,
+            0,
+            0.345
+          ],
+          "handKind": "hook",
+          "gripBone": "wristR",
+          "attachment": {
+            "bone": "armR",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "shoulder": {
+              "bone": "armR",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "hand": {
+              "bone": "wristR",
+              "point": [
+                0,
+                0,
+                0.345
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "8c5ac09ed9e3fe9328b4134930db14f8e33fb97045658acbcfcda9ae347438b0",
+          "inspectionSha256": "b289956a6cf9c58a1b97182754cfb144f1923aa45670112252166b6d8ef44dd5"
+        }
+      ]
+    },
+    "legs.sprocketPegs": {
+      "slot": "legs",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "legL",
+          "file": "legs.sprocketPegsL.fight.glb",
+          "inspection": "legs.sprocketPegsL.glb",
+          "triangles": 756,
+          "foot": [
+            -0.44,
+            0.025,
+            0.14
+          ],
+          "movement": "boot",
+          "attachment": {
+            "bone": "legL",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "hip": {
+              "bone": "legL",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "foot": {
+              "bone": "ankleL",
+              "point": [
+                0,
+                -0.16,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "546c1c56866b8f16ce1f34bc898cc2a90ccda1489c7998ab7020388a557242a5",
+          "inspectionSha256": "2aa8a3d5f49e13f6748ef5fb1f529dee703c43ea801d7cf08b5223f1d815f079"
+        },
+        {
+          "socket": "legR",
+          "file": "legs.sprocketPegsR.fight.glb",
+          "inspection": "legs.sprocketPegsR.glb",
+          "triangles": 756,
+          "foot": [
+            0.44,
+            0.025,
+            0.14
+          ],
+          "movement": "boot",
+          "attachment": {
+            "bone": "legR",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "hip": {
+              "bone": "legR",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "foot": {
+              "bone": "ankleR",
+              "point": [
+                0,
+                -0.16,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "e225dca78523f2f1c8b24ae5f1c14fd8bec8e92412330d840b766a04f3c93549",
+          "inspectionSha256": "85efeacc9aa61af9aeff17a74fbfd1bfb4be5e2d714897d865e871dbb5016c47"
+        }
+      ]
+    },
+    "legs.peeperStilts": {
+      "slot": "legs",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "legL",
+          "file": "legs.peeperStiltsL.fight.glb",
+          "inspection": "legs.peeperStiltsL.glb",
+          "triangles": 894,
+          "foot": [
+            -0.44,
+            0.025,
+            0.14
+          ],
+          "movement": "wheel",
+          "attachment": {
+            "bone": "legL",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "hip": {
+              "bone": "legL",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "foot": {
+              "bone": "ankleL",
+              "point": [
+                0,
+                -0.16,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "9d2c9f12dea294bea690def5eaefd5b101afb99a39c13d43129fc89d47464bc8",
+          "inspectionSha256": "ad810fea10ad662d045490e10b66309cd168695a5048fb9a459a10a9f0c5eb3e"
+        },
+        {
+          "socket": "legR",
+          "file": "legs.peeperStiltsR.fight.glb",
+          "inspection": "legs.peeperStiltsR.glb",
+          "triangles": 894,
+          "foot": [
+            0.44,
+            0.025,
+            0.14
+          ],
+          "movement": "wheel",
+          "attachment": {
+            "bone": "legR",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "hip": {
+              "bone": "legR",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "foot": {
+              "bone": "ankleR",
+              "point": [
+                0,
+                -0.16,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "5fff33c63121d58b16147092ad69f2de6cbb49da2f2587e42d4316511977385f",
+          "inspectionSha256": "66214262884a7283174604e066120724fa3406c1ccf0d1fe325c51d0dff2cd99"
+        }
+      ]
+    },
+    "legs.kettleShins": {
+      "slot": "legs",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "legL",
+          "file": "legs.kettleShinsL.fight.glb",
+          "inspection": "legs.kettleShinsL.glb",
+          "triangles": 1284,
+          "foot": [
+            -0.44,
+            0.025,
+            0.14
+          ],
+          "movement": "spring",
+          "attachment": {
+            "bone": "legL",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "hip": {
+              "bone": "legL",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "foot": {
+              "bone": "ankleL",
+              "point": [
+                0,
+                -0.16,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "f135cfb80eb67b5c16b58b0b5855c817114285b6e369ba5bd56d5ffa3c419637",
+          "inspectionSha256": "dd1095aa32ea0dd18305fc11c108186f1f6bdde5d15dda02fd58a7e9506ae7d5"
+        },
+        {
+          "socket": "legR",
+          "file": "legs.kettleShinsR.fight.glb",
+          "inspection": "legs.kettleShinsR.glb",
+          "triangles": 1284,
+          "foot": [
+            0.44,
+            0.025,
+            0.14
+          ],
+          "movement": "spring",
+          "attachment": {
+            "bone": "legR",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "hip": {
+              "bone": "legR",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "foot": {
+              "bone": "ankleR",
+              "point": [
+                0,
+                -0.16,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "d8c5c7aff4fecd83d883b66ca0dda39010efd703eecba34338db234df2c229dc",
+          "inspectionSha256": "317a30b294598b2f153ea56c3c33ada4e672e35849561adc567e37ff3fc9a5a9"
+        }
+      ]
+    },
+    "legs.lanternStruts": {
+      "slot": "legs",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "legL",
+          "file": "legs.lanternStrutsL.fight.glb",
+          "inspection": "legs.lanternStrutsL.glb",
+          "triangles": 756,
+          "foot": [
+            -0.44,
+            0.025,
+            0.14
+          ],
+          "movement": "piston",
+          "attachment": {
+            "bone": "legL",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "hip": {
+              "bone": "legL",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "foot": {
+              "bone": "ankleL",
+              "point": [
+                0,
+                -0.16,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "dba2865c0eeab3f5fe174df4e713a1732f96cbea48d3605638ffd6bc43da4efa",
+          "inspectionSha256": "579f677615e57265c8b8c4578117f423d5ef8e15b574480bce6d042dfa7096df"
+        },
+        {
+          "socket": "legR",
+          "file": "legs.lanternStrutsR.fight.glb",
+          "inspection": "legs.lanternStrutsR.glb",
+          "triangles": 756,
+          "foot": [
+            0.44,
+            0.025,
+            0.14
+          ],
+          "movement": "piston",
+          "attachment": {
+            "bone": "legR",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "hip": {
+              "bone": "legR",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "foot": {
+              "bone": "ankleR",
+              "point": [
+                0,
+                -0.16,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "2d213461ad9be2d58dbc1c3dfc67e5d724bed688b7751a28b4e60e45143a3696",
+          "inspectionSha256": "de04eeddbe155d6a527021fa269b50a8cb7cc7d5432a682542795a7bb0f873bd"
+        }
+      ]
+    },
+    "weapon.rustySpanner": {
+      "slot": "weapon",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "weapon",
+          "file": "weapon.rustySpanner.fight.glb",
+          "inspection": "weapon.rustySpanner.glb",
+          "triangles": 686,
+          "grip": [
+            0,
+            0,
+            0
+          ],
+          "contact": [
+            0,
+            1.08,
+            0
+          ],
+          "attackFamily": "blunt",
+          "attachment": {
+            "bone": "weapon",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "grip": {
+              "bone": "weapon",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "workingSurface": {
+              "bone": "weapon",
+              "point": [
+                0,
+                1.08,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "metal",
+            "soft"
+          ],
+          "sha256": "697edeaf25961be26f16ffefbb2a04345e6072b00f274429a3e9289ce06e7807",
+          "inspectionSha256": "bd60586566949334fc677ec32d6d3b8d2c99e8b4e2c2650e8efc11400d7a2f1c"
+        }
+      ]
+    },
+    "weapon.tinMallet": {
+      "slot": "weapon",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "weapon",
+          "file": "weapon.tinMallet.fight.glb",
+          "inspection": "weapon.tinMallet.glb",
+          "triangles": 712,
+          "grip": [
+            0,
+            0,
+            0
+          ],
+          "contact": [
+            0,
+            1.03,
+            0
+          ],
+          "attackFamily": "blunt",
+          "attachment": {
+            "bone": "weapon",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "grip": {
+              "bone": "weapon",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "workingSurface": {
+              "bone": "weapon",
+              "point": [
+                0,
+                1.03,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "9e0f6432f24553d7b2bc1d39b695a2af657c09f1db2a9e146c6b785050a4adfc",
+          "inspectionSha256": "e2c716883f275a09f84c2c59dd2621fc4a564debe7988368052f7e7698a97199"
+        }
+      ]
+    },
+    "weapon.sparkDrill": {
+      "slot": "weapon",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "weapon",
+          "file": "weapon.sparkDrill.fight.glb",
+          "inspection": "weapon.sparkDrill.glb",
+          "triangles": 1448,
+          "grip": [
+            0,
+            0,
+            0
+          ],
+          "contact": [
+            0,
+            1.16,
+            0
+          ],
+          "attackFamily": "thrust",
+          "attachment": {
+            "bone": "weapon",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "grip": {
+              "bone": "weapon",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "workingSurface": {
+              "bone": "weapon",
+              "point": [
+                0,
+                1.16,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "3959013e95e4279f54c9871c7cd1a2371f4297e4623c836acd9dd08a253ab189",
+          "inspectionSha256": "d9667a7f6b273824ec48ce143706757d2b93cc426edc75af8b0bc7f089eca936"
+        }
+      ]
+    },
+    "weapon.pistonHammer": {
+      "slot": "weapon",
+      "rigVersion": "toy-rig-v1",
+      "variants": [
+        {
+          "socket": "weapon",
+          "file": "weapon.pistonHammer.fight.glb",
+          "inspection": "weapon.pistonHammer.glb",
+          "triangles": 894,
+          "grip": [
+            0,
+            0,
+            0
+          ],
+          "contact": [
+            0.42,
+            0.86,
+            0
+          ],
+          "attackFamily": "blunt",
+          "attachment": {
+            "bone": "weapon",
+            "point": [
+              0,
+              0,
+              0
+            ]
+          },
+          "markers": {
+            "grip": {
+              "bone": "weapon",
+              "point": [
+                0,
+                0,
+                0
+              ]
+            },
+            "workingSurface": {
+              "bone": "weapon",
+              "point": [
+                0.42,
+                0.86,
+                0
+              ]
+            }
+          },
+          "materialRegions": [
+            "paint",
+            "metal",
+            "soft"
+          ],
+          "sha256": "c7badb7245bcb33888bd3122f026a187fba6df2fb58bb6b6eaf2ba6313824455",
+          "inspectionSha256": "b3a2924fcc623204f5cb1285a7cd60c58e90e3266ea68115f1c8a3a4124a2c9e"
+        }
+      ]
+    }
+  },
+  "clips": {
+    "guard": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "advance": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "lateral": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "thrust": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [
+        "armR"
+      ],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "rising-thrust": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [
+        "armR"
+      ],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "braced-thrust": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [
+        "armR"
+      ],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "overhead": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [
+        "armR"
+      ],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "horizontal": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [
+        "armR"
+      ],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "backhand": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [
+        "armR"
+      ],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "diagonal-cut": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [
+        "armR"
+      ],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "rising-cut": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [
+        "armR"
+      ],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "low-cut": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [
+        "armR"
+      ],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "punch": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [
+        "armL"
+      ],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "kick": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [
+        "legL",
+        "legR"
+      ],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "slip": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "block": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [
+        "armL"
+      ],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "recoil": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "one-leg": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    },
+    "knockout": {
+      "duration": 1,
+      "contact": 0.5,
+      "prepare": 0,
+      "recover": 1,
+      "requires": [],
+      "rate": [
+        0.65,
+        1.8
+      ]
+    }
+  },
+  "motion": "toy-motion-v1.glb",
+  "source": "art-src/bots/blender/build_pilot.py",
+  "provider": "none",
+  "bake": "neutral form; runtime lighting",
+  "budgets": {
+    "fightTrianglesPerRobot": 12000,
+    "drawsPerRobot": 28,
+    "bonesPerRobot": 32
+  },
+  "motionSha256": "63b2a69f1f221c0093b5c050238402cdf91320db3be0ccd5161178e84a1a87c2"
+}

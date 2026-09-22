@@ -1,0 +1,13 @@
+{
+  "source": "Actual browser result packets captured from local port 3147 using frozen mk7-proof-3",
+  "check": "scripts/bots-v7-domain-check.cjs bots-v7-replay-check.ts",
+  "exitCode": 0,
+  "packets": [
+    { "name": "speed-ranged-seed75.result.json", "rules": "mk7-proof-3", "frames": 1979, "hash": "e956749b", "events": 364, "exactReplay": true },
+    { "name": "tank-ranged-seed75.result.json", "rules": "mk7-proof-3", "frames": 2844, "hash": "a7f556c9", "events": 871, "exactReplay": true },
+    { "name": "tank-speed-seed75.result.json", "rules": "mk7-proof-3", "frames": 2777, "hash": "9afc0287", "events": 408, "exactReplay": true }
+  ],
+  "fullResultDeepEquality": true,
+  "tamperingChecks": 2,
+  "sourcePacketsUnchanged": true
+}

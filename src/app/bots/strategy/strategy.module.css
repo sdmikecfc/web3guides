@@ -1,0 +1,10 @@
+
+.bench { position:relative; overflow:hidden; border:1px solid #938063; border-radius:20px; padding:32px 24px; margin:0 0 24px; background:linear-gradient(#322c23cf,#20271deb),url('/bots-art/plates/workshop-interior.png') center 62% / cover; box-shadow:0 14px 30px #0002,inset 0 1px #fff2; }
+.cycle { display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:20px; align-items:center; }
+.cycle > div { display:flex; align-items:center; flex-direction:column; text-align:center; gap:10px; color:#e5bd79; }
+.cycle strong { font-family:var(--font-bots-toy),system-ui,sans-serif; color:#f4ecd8; font-size:24px; line-height:1.1; }
+.cycle span { color:#cbc5b2; font-size:12px; line-height:1.5; }
+.cycle .arrow { color:#baaa89; font-size:22px; }
+.setup { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:20px; align-items:stretch; }
+.setup > section { min-width:0; }
+@media(max-width:700px) { .bench { padding:24px 14px; } .cycle { gap:7px; } .cycle strong { font-size:18px; } .cycle span { font-size:10px; } .cycle .arrow { font-size:17px; } .setup { grid-template-columns:minmax(0,1fr); gap:16px; } }

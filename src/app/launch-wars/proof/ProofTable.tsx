@@ -44,7 +44,9 @@ function statusStyle(s: string): { color: string; bg: string } {
 
 type SortKey = "contribution" | "name" | "fleetPoints" | "boss" | "status";
 
-export default function ProofTable({ rows }: { rows: ProofRow[] }) {
+export default function ProofTable({ rows, labels }: { rows: ProofRow[]; labels?: { points?: string; secondary?: string } }) {
+  const pointsLabel = labels?.points ?? "Fleet points";
+  const secondaryLabel = labels?.secondary ?? "Boss contribution";
   const [key, setKey] = useState<SortKey>("contribution");
   const [dir, setDir] = useState<1 | -1>(-1);
   const [q, setQ] = useState("");
@@ -91,8 +93,8 @@ export default function ProofTable({ rows }: { rows: ProofRow[] }) {
             <tr>
               <th style={th} onClick={() => sortBy("name")}>Captain{arrow("name")}</th>
               <th style={th} onClick={() => sortBy("status")}>Result{arrow("status")}</th>
-              <th style={thNum} onClick={() => sortBy("fleetPoints")}>Fleet points{arrow("fleetPoints")}</th>
-              <th style={thNum} onClick={() => sortBy("boss")}>Boss contribution{arrow("boss")}</th>
+              <th style={thNum} onClick={() => sortBy("fleetPoints")}>{pointsLabel}{arrow("fleetPoints")}</th>
+              <th style={thNum} onClick={() => sortBy("boss")}>{secondaryLabel}{arrow("boss")}</th>
             </tr>
           </thead>
           <tbody>

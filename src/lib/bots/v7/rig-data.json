@@ -1,0 +1,2562 @@
+{
+  "version": "mk7-rig-pilot-1",
+  "assetVersion": "mk7-art-pilot-1",
+  "motionVersion": "mk7-motion-pilot-1",
+  "collisionVersion": "mk7-collision-pilot-1",
+  "presentationVersion": "mk7-presentation-pilot-1",
+  "units": "millimetres",
+  "glbUnits": "metres",
+  "up": "+Y",
+  "front": "+Z",
+  "status": "human-visual-review-pending",
+  "heroes": {
+    "tank": {
+      "id": "boiler-knight",
+      "style": "tank",
+      "label": "Boiler Knight",
+      "modelUrl": "/bots-art/3d/remaster-v7/boiler-knight.t3.glb",
+      "sha256": "c185906da7f767a7d8ed0c30bda198a4195e2cf5097e82954a2531e2aec1fbe7",
+      "bytes": 4979992,
+      "triangles": 84396,
+      "boundsMetres": {
+        "min": [
+          -0.9535998106002808,
+          0.0,
+          -0.4350000023841858
+        ],
+        "max": [
+          1.1050000190734863,
+          2.638399839401245,
+          0.49900001287460327
+        ]
+      },
+      "nodes": {
+        "root": {
+          "parent": null,
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "pelvis": {
+          "parent": "root",
+          "position": [
+            0.0,
+            889.99999,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "chest": {
+          "parent": "pelvis",
+          "position": [
+            0.0,
+            389.99999,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "head": {
+          "parent": "chest",
+          "position": [
+            0.0,
+            600.00002,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "shoulderL": {
+          "parent": "chest",
+          "position": [
+            -660.00003,
+            340.00003,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "elbowL": {
+          "parent": "shoulderL",
+          "position": [
+            -89.99997,
+            -380.0,
+            35.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "wristL": {
+          "parent": "elbowL",
+          "position": [
+            -29.99997,
+            -280.00003,
+            84.99999
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "handL": {
+          "parent": "wristL",
+          "position": [
+            0.0,
+            -74.99999,
+            45.00002
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "hipL": {
+          "parent": "pelvis",
+          "position": [
+            -300.00001,
+            -9.99999,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "kneeL": {
+          "parent": "hipL",
+          "position": [
+            -17.99998,
+            -350.00002,
+            15.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "ankleL": {
+          "parent": "kneeL",
+          "position": [
+            -12.00002,
+            -339.99997,
+            30.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "wheelL": {
+          "parent": "ankleL",
+          "position": [
+            0.0,
+            -70.0,
+            10.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "shoulderR": {
+          "parent": "chest",
+          "position": [
+            660.00003,
+            340.00003,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "elbowR": {
+          "parent": "shoulderR",
+          "position": [
+            89.99997,
+            -380.0,
+            35.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "wristR": {
+          "parent": "elbowR",
+          "position": [
+            29.99997,
+            -280.00003,
+            84.99999
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "handR": {
+          "parent": "wristR",
+          "position": [
+            0.0,
+            -74.99999,
+            45.00002
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "hipR": {
+          "parent": "pelvis",
+          "position": [
+            300.00001,
+            -9.99999,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "kneeR": {
+          "parent": "hipR",
+          "position": [
+            17.99998,
+            -350.00002,
+            15.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "ankleR": {
+          "parent": "kneeR",
+          "position": [
+            12.00002,
+            -339.99997,
+            30.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "wheelR": {
+          "parent": "ankleR",
+          "position": [
+            0.0,
+            -70.0,
+            10.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "pupilL": {
+          "parent": "head",
+          "position": [
+            -194.99999,
+            229.9999,
+            463.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "lidL": {
+          "parent": "head",
+          "position": [
+            -194.99999,
+            337.29994,
+            418.00001
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "pupilR": {
+          "parent": "head",
+          "position": [
+            194.99999,
+            229.9999,
+            463.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "lidR": {
+          "parent": "head",
+          "position": [
+            194.99999,
+            337.29994,
+            418.00001
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "weaponR": {
+          "parent": "handR",
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      },
+      "proxies": [
+        {
+          "slot": "torso",
+          "node": "pelvis",
+          "shape": "box",
+          "center": [
+            0.0001,
+            53.5,
+            28.4983
+          ],
+          "half": [
+            319.9998,
+            171.5,
+            198.4981
+          ]
+        },
+        {
+          "slot": "torso",
+          "node": "chest",
+          "shape": "box",
+          "center": [
+            0.0,
+            127.7056,
+            18.5
+          ],
+          "half": [
+            558.6108,
+            407.2945,
+            453.5
+          ]
+        },
+        {
+          "slot": "head",
+          "node": "head",
+          "shape": "box",
+          "center": [
+            0.0,
+            276.6999,
+            64.5
+          ],
+          "half": [
+            564.9999,
+            481.6999,
+            434.5
+          ]
+        },
+        {
+          "slot": "armL",
+          "node": "shoulderL",
+          "shape": "box",
+          "center": [
+            0.0001,
+            -73.9599,
+            0.0001
+          ],
+          "half": [
+            278.9998,
+            326.9599,
+            256.9998
+          ]
+        },
+        {
+          "slot": "armL",
+          "node": "elbowL",
+          "shape": "box",
+          "center": [
+            -18.5999,
+            -134.3,
+            51.3499
+          ],
+          "half": [
+            184.9999,
+            244.3,
+            161.3499
+          ]
+        },
+        {
+          "slot": "armL",
+          "node": "wristL",
+          "shape": "box",
+          "center": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "half": [
+            142.0,
+            27.0,
+            142.0
+          ]
+        },
+        {
+          "slot": "armL",
+          "node": "handL",
+          "shape": "box",
+          "center": [
+            3.0001,
+            0.0,
+            -4.0
+          ],
+          "half": [
+            121.0,
+            105.0,
+            88.0
+          ]
+        },
+        {
+          "slot": "legL",
+          "node": "hipL",
+          "shape": "box",
+          "center": [
+            -8.4599,
+            -122.25,
+            7.05
+          ],
+          "half": [
+            157.9999,
+            232.25,
+            138.9999
+          ]
+        },
+        {
+          "slot": "legL",
+          "node": "kneeL",
+          "shape": "box",
+          "center": [
+            -6.4799,
+            -128.3,
+            16.2
+          ],
+          "half": [
+            164.9999,
+            230.3,
+            129.9999
+          ]
+        },
+        {
+          "slot": "legL",
+          "node": "ankleL",
+          "shape": "box",
+          "center": [
+            0.0001,
+            -58.0,
+            87.0001
+          ],
+          "half": [
+            229.9999,
+            132.0,
+            299.9997
+          ]
+        },
+        {
+          "slot": "armR",
+          "node": "shoulderR",
+          "shape": "box",
+          "center": [
+            0.0001,
+            -73.9599,
+            0.0001
+          ],
+          "half": [
+            278.9998,
+            326.9599,
+            256.9998
+          ]
+        },
+        {
+          "slot": "armR",
+          "node": "elbowR",
+          "shape": "box",
+          "center": [
+            18.6,
+            -134.3,
+            51.3499
+          ],
+          "half": [
+            184.9999,
+            244.3,
+            161.3499
+          ]
+        },
+        {
+          "slot": "armR",
+          "node": "wristR",
+          "shape": "box",
+          "center": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "half": [
+            142.0,
+            27.0,
+            142.0
+          ]
+        },
+        {
+          "slot": "armR",
+          "node": "handR",
+          "shape": "box",
+          "center": [
+            -3.0,
+            0.0,
+            -4.0
+          ],
+          "half": [
+            121.0,
+            105.0,
+            88.0
+          ]
+        },
+        {
+          "slot": "legR",
+          "node": "hipR",
+          "shape": "box",
+          "center": [
+            8.46,
+            -122.25,
+            7.05
+          ],
+          "half": [
+            157.9999,
+            232.25,
+            138.9999
+          ]
+        },
+        {
+          "slot": "legR",
+          "node": "kneeR",
+          "shape": "box",
+          "center": [
+            6.4801,
+            -128.3,
+            16.2
+          ],
+          "half": [
+            164.9999,
+            230.3,
+            129.9999
+          ]
+        },
+        {
+          "slot": "legR",
+          "node": "ankleR",
+          "shape": "box",
+          "center": [
+            0.0001,
+            -58.0,
+            87.0001
+          ],
+          "half": [
+            229.9999,
+            132.0,
+            299.9997
+          ]
+        }
+      ],
+      "markers": {
+        "gripL": {
+          "node": "handL",
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        "soleL": {
+          "node": "ankleL",
+          "position": [
+            0.0,
+            -182.0,
+            84.99999
+          ]
+        },
+        "gripR": {
+          "node": "handR",
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        "soleR": {
+          "node": "ankleR",
+          "position": [
+            0.0,
+            -182.0,
+            84.99999
+          ]
+        },
+        "weaponStrikeR": {
+          "node": "weaponR",
+          "position": [
+            0.0,
+            549.99995,
+            193.99999
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        "weaponHeelR": {
+          "node": "weaponR",
+          "position": [
+            0.0,
+            424.99995,
+            193.99999
+          ]
+        },
+        "weaponTipR": {
+          "node": "weaponR",
+          "position": [
+            0.0,
+            674.99995,
+            193.99999
+          ]
+        },
+        "hammerFace-1_-1": {
+          "node": "weaponR",
+          "position": [
+            -269.99998,
+            422.50001,
+            193.99999
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        "hammerFace-1_1": {
+          "node": "weaponR",
+          "position": [
+            -269.99998,
+            677.50001,
+            193.99999
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        "hammerFace1_-1": {
+          "node": "weaponR",
+          "position": [
+            269.99998,
+            422.50001,
+            193.99999
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        "hammerFace1_1": {
+          "node": "weaponR",
+          "position": [
+            269.99998,
+            677.50001,
+            193.99999
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        }
+      },
+      "legKind": {
+        "left": "foot",
+        "right": "foot"
+      },
+      "weapon": {
+        "kind": "hammer",
+        "node": "weaponR",
+        "strikeMarkers": [
+          "weaponStrikeR"
+        ],
+        "strikeRadius": 130,
+        "strikeHalf": [
+          270,
+          127.5,
+          32.5
+        ]
+      },
+      "materialMaps": {
+        "normal": "textures/clay-normal.png",
+        "roughness": "textures/clay-roughness.png"
+      }
+    },
+    "speed": {
+      "id": "roller-daredevil",
+      "style": "speed",
+      "label": "Roller Daredevil",
+      "modelUrl": "/bots-art/3d/remaster-v7/roller-daredevil.t3.glb",
+      "sha256": "0573b71f4f1d808fdefec7c675a5c75cea1f7f8efdaab43c316ade794e8d7ef6",
+      "bytes": 4370396,
+      "triangles": 64812,
+      "boundsMetres": {
+        "min": [
+          -0.7639999985694885,
+          0.0,
+          -0.3600004315376282
+        ],
+        "max": [
+          0.7639999985694885,
+          2.5531201362609863,
+          0.4729999899864197
+        ]
+      },
+      "nodes": {
+        "root": {
+          "parent": null,
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "pelvis": {
+          "parent": "root",
+          "position": [
+            0.0,
+            889.99999,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "chest": {
+          "parent": "pelvis",
+          "position": [
+            0.0,
+            389.99999,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "head": {
+          "parent": "chest",
+          "position": [
+            0.0,
+            600.00002,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "shoulderL": {
+          "parent": "chest",
+          "position": [
+            -470.0,
+            279.99997,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "elbowL": {
+          "parent": "shoulderL",
+          "position": [
+            -99.99999,
+            -339.99991,
+            10.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "wristL": {
+          "parent": "elbowL",
+          "position": [
+            -50.00001,
+            -250.0,
+            110.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "handL": {
+          "parent": "wristL",
+          "position": [
+            0.0,
+            -75.00005,
+            45.00001
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "hipL": {
+          "parent": "pelvis",
+          "position": [
+            -235.0,
+            -9.99999,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "kneeL": {
+          "parent": "hipL",
+          "position": [
+            -17.99999,
+            -350.00002,
+            15.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "ankleL": {
+          "parent": "kneeL",
+          "position": [
+            -11.99999,
+            -339.99997,
+            30.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "wheelL": {
+          "parent": "ankleL",
+          "position": [
+            0.0,
+            -70.0,
+            10.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "shoulderR": {
+          "parent": "chest",
+          "position": [
+            470.0,
+            279.99997,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "elbowR": {
+          "parent": "shoulderR",
+          "position": [
+            99.99999,
+            -339.99991,
+            10.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "wristR": {
+          "parent": "elbowR",
+          "position": [
+            50.00001,
+            -250.0,
+            110.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "handR": {
+          "parent": "wristR",
+          "position": [
+            0.0,
+            -75.00005,
+            45.00001
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "hipR": {
+          "parent": "pelvis",
+          "position": [
+            235.0,
+            -9.99999,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "kneeR": {
+          "parent": "hipR",
+          "position": [
+            17.99999,
+            -350.00002,
+            15.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "ankleR": {
+          "parent": "kneeR",
+          "position": [
+            11.99999,
+            -339.99997,
+            30.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "wheelR": {
+          "parent": "ankleR",
+          "position": [
+            0.0,
+            -70.0,
+            10.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "pupilL": {
+          "parent": "head",
+          "position": [
+            -175.0,
+            166.00001,
+            437.00001
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "lidL": {
+          "parent": "head",
+          "position": [
+            -175.0,
+            287.29999,
+            391.99999
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.08987857,
+            0.99595273
+          ]
+        },
+        "pupilR": {
+          "parent": "head",
+          "position": [
+            175.0,
+            166.00001,
+            437.00001
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "lidR": {
+          "parent": "head",
+          "position": [
+            175.0,
+            287.29999,
+            391.99999
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            -0.05996396,
+            0.99820054
+          ]
+        },
+        "wheelBackL": {
+          "parent": "wheelL",
+          "position": [
+            0.0,
+            -25.0,
+            -75.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "wheelFrontL": {
+          "parent": "wheelL",
+          "position": [
+            0.0,
+            -25.0,
+            180.00001
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "wheelBackR": {
+          "parent": "wheelR",
+          "position": [
+            0.0,
+            -25.0,
+            -75.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "wheelFrontR": {
+          "parent": "wheelR",
+          "position": [
+            0.0,
+            -25.0,
+            180.00001
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "weaponL": {
+          "parent": "handL",
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "weaponR": {
+          "parent": "handR",
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      },
+      "proxies": [
+        {
+          "slot": "torso",
+          "node": "pelvis",
+          "shape": "box",
+          "center": [
+            0.0001,
+            53.5,
+            28.4983
+          ],
+          "half": [
+            254.9998,
+            171.5,
+            198.4981
+          ]
+        },
+        {
+          "slot": "torso",
+          "node": "chest",
+          "shape": "box",
+          "center": [
+            0.0,
+            80.1386,
+            43.6751
+          ],
+          "half": [
+            337.5762,
+            339.4565,
+            263.0996
+          ]
+        },
+        {
+          "slot": "head",
+          "node": "head",
+          "shape": "box",
+          "center": [
+            0.0,
+            209.0601,
+            56.4998
+          ],
+          "half": [
+            479.0,
+            464.06,
+            416.5002
+          ]
+        },
+        {
+          "slot": "armL",
+          "node": "shoulderL",
+          "shape": "box",
+          "center": [
+            0.0,
+            -103.5435,
+            0.0
+          ],
+          "half": [
+            155.9999,
+            254.1435,
+            148.1999
+          ]
+        },
+        {
+          "slot": "armL",
+          "node": "elbowL",
+          "shape": "box",
+          "center": [
+            -30.5,
+            -120.0,
+            49.6
+          ],
+          "half": [
+            113.5,
+            202.9999,
+            132.6
+          ]
+        },
+        {
+          "slot": "armL",
+          "node": "wristL",
+          "shape": "box",
+          "center": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "half": [
+            108.0,
+            27.0,
+            108.0
+          ]
+        },
+        {
+          "slot": "armL",
+          "node": "handL",
+          "shape": "box",
+          "center": [
+            16.0,
+            0.0,
+            -4.0
+          ],
+          "half": [
+            107.9999,
+            105.0,
+            88.0
+          ]
+        },
+        {
+          "slot": "legL",
+          "node": "hipL",
+          "shape": "box",
+          "center": [
+            0.0,
+            -122.25,
+            -0.0
+          ],
+          "half": [
+            110.0,
+            232.25,
+            110.0
+          ]
+        },
+        {
+          "slot": "legL",
+          "node": "kneeL",
+          "shape": "box",
+          "center": [
+            -6.48,
+            -128.3,
+            26.6
+          ],
+          "half": [
+            104.9999,
+            230.3,
+            106.3999
+          ]
+        },
+        {
+          "slot": "legL",
+          "node": "ankleL",
+          "shape": "box",
+          "center": [
+            0.0001,
+            -58.0,
+            87.0
+          ],
+          "half": [
+            150.9999,
+            132.0,
+            251.9998
+          ]
+        },
+        {
+          "slot": "legL",
+          "node": "wheelBackL",
+          "shape": "box",
+          "center": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "half": [
+            172.0,
+            91.0,
+            91.0
+          ]
+        },
+        {
+          "slot": "legL",
+          "node": "wheelFrontL",
+          "shape": "box",
+          "center": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "half": [
+            172.0,
+            91.0,
+            91.0
+          ]
+        },
+        {
+          "slot": "armR",
+          "node": "shoulderR",
+          "shape": "box",
+          "center": [
+            0.0,
+            -103.5435,
+            0.0
+          ],
+          "half": [
+            155.9999,
+            254.1435,
+            148.1999
+          ]
+        },
+        {
+          "slot": "armR",
+          "node": "elbowR",
+          "shape": "box",
+          "center": [
+            30.5,
+            -120.0,
+            49.6
+          ],
+          "half": [
+            113.5,
+            202.9999,
+            132.6
+          ]
+        },
+        {
+          "slot": "armR",
+          "node": "wristR",
+          "shape": "box",
+          "center": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "half": [
+            108.0,
+            27.0,
+            108.0
+          ]
+        },
+        {
+          "slot": "armR",
+          "node": "handR",
+          "shape": "box",
+          "center": [
+            -16.0,
+            0.0,
+            -4.0
+          ],
+          "half": [
+            108.0,
+            105.0,
+            88.0
+          ]
+        },
+        {
+          "slot": "legR",
+          "node": "hipR",
+          "shape": "box",
+          "center": [
+            0.0,
+            -122.25,
+            -0.0
+          ],
+          "half": [
+            110.0,
+            232.25,
+            110.0
+          ]
+        },
+        {
+          "slot": "legR",
+          "node": "kneeR",
+          "shape": "box",
+          "center": [
+            6.48,
+            -128.3,
+            26.6
+          ],
+          "half": [
+            104.9999,
+            230.3,
+            106.3999
+          ]
+        },
+        {
+          "slot": "legR",
+          "node": "ankleR",
+          "shape": "box",
+          "center": [
+            0.0001,
+            -58.0,
+            87.0
+          ],
+          "half": [
+            150.9999,
+            132.0,
+            251.9998
+          ]
+        },
+        {
+          "slot": "legR",
+          "node": "wheelBackR",
+          "shape": "box",
+          "center": [
+            -0.0,
+            0.0,
+            0.0
+          ],
+          "half": [
+            172.0,
+            91.0,
+            91.0
+          ]
+        },
+        {
+          "slot": "legR",
+          "node": "wheelFrontR",
+          "shape": "box",
+          "center": [
+            -0.0,
+            0.0,
+            -0.0
+          ],
+          "half": [
+            172.0,
+            91.0,
+            91.0
+          ]
+        }
+      ],
+      "markers": {
+        "gripL": {
+          "node": "handL",
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        "soleL": {
+          "node": "ankleL",
+          "position": [
+            0.0,
+            -182.0,
+            84.99999
+          ]
+        },
+        "gripR": {
+          "node": "handR",
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        "soleR": {
+          "node": "ankleR",
+          "position": [
+            0.0,
+            -182.0,
+            84.99999
+          ]
+        },
+        "weaponStrikeL": {
+          "node": "weaponL",
+          "position": [
+            0.0,
+            659.99997,
+            32.00001
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        "weaponHeelL": {
+          "node": "weaponL",
+          "position": [
+            0.0,
+            200.00005,
+            -0.0
+          ]
+        },
+        "weaponTipL": {
+          "node": "weaponL",
+          "position": [
+            0.0,
+            950.00005,
+            -0.0
+          ]
+        },
+        "weaponStrikeR": {
+          "node": "weaponR",
+          "position": [
+            0.0,
+            659.99997,
+            32.00001
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        "weaponHeelR": {
+          "node": "weaponR",
+          "position": [
+            0.0,
+            200.00005,
+            -0.0
+          ]
+        },
+        "weaponTipR": {
+          "node": "weaponR",
+          "position": [
+            0.0,
+            950.00005,
+            -0.0
+          ]
+        }
+      },
+      "legKind": {
+        "left": "wheel",
+        "right": "wheel"
+      },
+      "weapon": {
+        "kind": "paired_blades",
+        "node": "weaponR",
+        "leftNode": "weaponL",
+        "strikeMarkers": [
+          "weaponStrikeL",
+          "weaponStrikeR"
+        ],
+        "strikeRadius": 26
+      },
+      "materialMaps": {
+        "normal": "textures/clay-normal.png",
+        "roughness": "textures/clay-roughness.png"
+      }
+    },
+    "ranged": {
+      "id": "owl-ranger",
+      "style": "ranged",
+      "label": "Owl Ranger",
+      "modelUrl": "/bots-art/3d/remaster-v7/owl-ranger.t3.glb",
+      "sha256": "834c2a8bc472b75b7dbd2adefca83edde9ba4681f65133be4d10857db315bf9a",
+      "bytes": 4616636,
+      "triangles": 72448,
+      "boundsMetres": {
+        "min": [
+          -0.7979999780654907,
+          0.0,
+          -0.5839170813560486
+        ],
+        "max": [
+          0.9769999980926514,
+          2.5671799182891846,
+          0.4729999899864197
+        ]
+      },
+      "nodes": {
+        "root": {
+          "parent": null,
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "pelvis": {
+          "parent": "root",
+          "position": [
+            0.0,
+            889.99999,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "chest": {
+          "parent": "pelvis",
+          "position": [
+            0.0,
+            389.99999,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "head": {
+          "parent": "chest",
+          "position": [
+            0.0,
+            600.00002,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "shoulderL": {
+          "parent": "chest",
+          "position": [
+            -560.0,
+            259.99999,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "elbowL": {
+          "parent": "shoulderL",
+          "position": [
+            -110.00001,
+            -319.99993,
+            25.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "wristL": {
+          "parent": "elbowL",
+          "position": [
+            -19.99998,
+            -240.00001,
+            105.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "handL": {
+          "parent": "wristL",
+          "position": [
+            0.0,
+            -75.00005,
+            45.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "hipL": {
+          "parent": "pelvis",
+          "position": [
+            -275.00001,
+            -9.99999,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "kneeL": {
+          "parent": "hipL",
+          "position": [
+            -18.00001,
+            -350.00002,
+            15.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "ankleL": {
+          "parent": "kneeL",
+          "position": [
+            -11.99999,
+            -339.99997,
+            30.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "wheelL": {
+          "parent": "ankleL",
+          "position": [
+            0.0,
+            -70.0,
+            10.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "shoulderR": {
+          "parent": "chest",
+          "position": [
+            560.0,
+            259.99999,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "elbowR": {
+          "parent": "shoulderR",
+          "position": [
+            110.00001,
+            -319.99993,
+            25.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "wristR": {
+          "parent": "elbowR",
+          "position": [
+            19.99998,
+            -240.00001,
+            105.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "handR": {
+          "parent": "wristR",
+          "position": [
+            0.0,
+            -75.00005,
+            45.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "hipR": {
+          "parent": "pelvis",
+          "position": [
+            275.00001,
+            -9.99999,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "kneeR": {
+          "parent": "hipR",
+          "position": [
+            18.00001,
+            -350.00002,
+            15.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "ankleR": {
+          "parent": "kneeR",
+          "position": [
+            11.99999,
+            -339.99997,
+            30.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "wheelR": {
+          "parent": "ankleR",
+          "position": [
+            0.0,
+            -70.0,
+            10.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "pupilL": {
+          "parent": "head",
+          "position": [
+            -238.00001,
+            225.00002,
+            437.00001
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "lidL": {
+          "parent": "head",
+          "position": [
+            -238.00001,
+            384.10008,
+            391.99999
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "pupilR": {
+          "parent": "head",
+          "position": [
+            238.00001,
+            225.00002,
+            437.00001
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "lidR": {
+          "parent": "head",
+          "position": [
+            238.00001,
+            384.10008,
+            391.99999
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "backpack": {
+          "parent": "chest",
+          "position": [
+            0.0,
+            180.00007,
+            -259.99999
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "cannonDeploy": {
+          "parent": "backpack",
+          "position": [
+            790.00002,
+            130.0,
+            20.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "cannonYaw": {
+          "parent": "cannonDeploy",
+          "position": [
+            0.0,
+            179.99995,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "cannonPitch": {
+          "parent": "cannonYaw",
+          "position": [
+            0.0,
+            65.00006,
+            -0.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "cannonRecoil": {
+          "parent": "cannonPitch",
+          "position": [
+            0.0,
+            14.99999,
+            50.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "cannonMuzzle": {
+          "parent": "cannonRecoil",
+          "position": [
+            0.0,
+            0.0,
+            546.99999
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "backupHolsterL": {
+          "parent": "pelvis",
+          "position": [
+            -442.0,
+            144.99998,
+            -100.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "backupGunL": {
+          "parent": "root",
+          "position": [
+            -442.0,
+            1034.99997,
+            -100.0
+          ],
+          "quaternion": [
+            0.70710689,
+            0.0,
+            0.0,
+            0.70710665
+          ]
+        },
+        "backupHolster": {
+          "parent": "pelvis",
+          "position": [
+            442.0,
+            144.99998,
+            -100.0
+          ],
+          "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "backupGun": {
+          "parent": "root",
+          "position": [
+            442.0,
+            1034.99997,
+            -100.0
+          ],
+          "quaternion": [
+            0.70710689,
+            0.0,
+            0.0,
+            0.70710665
+          ]
+        }
+      },
+      "proxies": [
+        {
+          "slot": "torso",
+          "node": "pelvis",
+          "shape": "box",
+          "center": [
+            0.0001,
+            53.5,
+            28.4983
+          ],
+          "half": [
+            254.9998,
+            171.5,
+            198.4981
+          ]
+        },
+        {
+          "slot": "torso",
+          "node": "chest",
+          "shape": "box",
+          "center": [
+            0.0,
+            99.9002,
+            33.2935
+          ],
+          "half": [
+            407.6883,
+            339.2839,
+            318.6753
+          ]
+        },
+        {
+          "slot": "head",
+          "node": "head",
+          "shape": "box",
+          "center": [
+            -0.0002,
+            255.09,
+            66.4998
+          ],
+          "half": [
+            515.0003,
+            432.0899,
+            406.5002
+          ]
+        },
+        {
+          "slot": "armL",
+          "node": "shoulderL",
+          "shape": "box",
+          "center": [
+            0.0001,
+            -83.4292,
+            0.0
+          ],
+          "half": [
+            183.9999,
+            257.8292,
+            174.7998
+          ]
+        },
+        {
+          "slot": "armL",
+          "node": "elbowL",
+          "shape": "box",
+          "center": [
+            -12.3999,
+            -116.9,
+            48.05
+          ],
+          "half": [
+            112.9999,
+            199.9,
+            131.05
+          ]
+        },
+        {
+          "slot": "armL",
+          "node": "wristL",
+          "shape": "box",
+          "center": [
+            0.0,
+            -0.0,
+            0.0
+          ],
+          "half": [
+            108.0,
+            27.0,
+            108.0
+          ]
+        },
+        {
+          "slot": "armL",
+          "node": "handL",
+          "shape": "box",
+          "center": [
+            16.0001,
+            0.0,
+            -4.0
+          ],
+          "half": [
+            108.0,
+            105.0,
+            88.0
+          ]
+        },
+        {
+          "slot": "legL",
+          "node": "hipL",
+          "shape": "box",
+          "center": [
+            0.0,
+            -122.25,
+            -0.0
+          ],
+          "half": [
+            110.0,
+            232.25,
+            110.0
+          ]
+        },
+        {
+          "slot": "legL",
+          "node": "kneeL",
+          "shape": "box",
+          "center": [
+            -6.48,
+            -128.3,
+            26.6
+          ],
+          "half": [
+            104.9999,
+            230.3,
+            106.3999
+          ]
+        },
+        {
+          "slot": "legL",
+          "node": "ankleL",
+          "shape": "box",
+          "center": [
+            0.0001,
+            -58.0,
+            87.0
+          ],
+          "half": [
+            189.9999,
+            132.0,
+            251.9998
+          ]
+        },
+        {
+          "slot": "armR",
+          "node": "shoulderR",
+          "shape": "box",
+          "center": [
+            0.0001,
+            -83.4292,
+            0.0
+          ],
+          "half": [
+            183.9999,
+            257.8292,
+            174.7998
+          ]
+        },
+        {
+          "slot": "armR",
+          "node": "elbowR",
+          "shape": "box",
+          "center": [
+            12.4,
+            -116.9,
+            48.05
+          ],
+          "half": [
+            112.9999,
+            199.9,
+            131.05
+          ]
+        },
+        {
+          "slot": "armR",
+          "node": "wristR",
+          "shape": "box",
+          "center": [
+            0.0,
+            -0.0,
+            0.0
+          ],
+          "half": [
+            108.0,
+            27.0,
+            108.0
+          ]
+        },
+        {
+          "slot": "armR",
+          "node": "handR",
+          "shape": "box",
+          "center": [
+            -16.0,
+            0.0,
+            -4.0
+          ],
+          "half": [
+            108.0,
+            105.0,
+            88.0
+          ]
+        },
+        {
+          "slot": "legR",
+          "node": "hipR",
+          "shape": "box",
+          "center": [
+            0.0,
+            -122.25,
+            -0.0
+          ],
+          "half": [
+            110.0,
+            232.25,
+            110.0
+          ]
+        },
+        {
+          "slot": "legR",
+          "node": "kneeR",
+          "shape": "box",
+          "center": [
+            6.48,
+            -128.3,
+            26.6
+          ],
+          "half": [
+            104.9999,
+            230.3,
+            106.3999
+          ]
+        },
+        {
+          "slot": "legR",
+          "node": "ankleR",
+          "shape": "box",
+          "center": [
+            0.0001,
+            -58.0,
+            87.0
+          ],
+          "half": [
+            189.9999,
+            132.0,
+            251.9998
+          ]
+        },
+        {
+          "slot": "torso",
+          "node": "backpack",
+          "shape": "box",
+          "center": [
+            203.3851,
+            28.7498,
+            -9.6018
+          ],
+          "half": [
+            609.9647,
+            316.126,
+            314.3152
+          ]
+        },
+        {
+          "slot": "torso",
+          "node": "backupHolsterL",
+          "shape": "box",
+          "center": [
+            0.0,
+            -43.0,
+            -29.0
+          ],
+          "half": [
+            77.5,
+            107.5,
+            75.0
+          ]
+        },
+        {
+          "slot": "torso",
+          "node": "backupHolster",
+          "shape": "box",
+          "center": [
+            0.0,
+            -43.0,
+            -29.0
+          ],
+          "half": [
+            77.5,
+            107.5,
+            75.0
+          ]
+        }
+      ],
+      "markers": {
+        "gripL": {
+          "node": "handL",
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        "soleL": {
+          "node": "ankleL",
+          "position": [
+            0.0,
+            -182.0,
+            84.99999
+          ]
+        },
+        "gripR": {
+          "node": "handR",
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        "soleR": {
+          "node": "ankleR",
+          "position": [
+            0.0,
+            -182.0,
+            84.99999
+          ]
+        },
+        "cannonMuzzle": {
+          "node": "cannonMuzzle",
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        "backupMuzzleL": {
+          "node": "backupGunL",
+          "position": [
+            0.0,
+            37.00006,
+            224.00001
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        "backupGripL": {
+          "node": "backupGunL",
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        },
+        "backupMuzzle": {
+          "node": "backupGun",
+          "position": [
+            0.0,
+            37.00006,
+            224.00001
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        "backupGrip": {
+          "node": "backupGun",
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ]
+        }
+      },
+      "legKind": {
+        "left": "foot",
+        "right": "foot"
+      },
+      "weapon": {
+        "kind": "shoulder_cannon",
+        "node": "cannonPitch",
+        "muzzleMarker": "cannonMuzzle",
+        "backupNode": "backupGun",
+        "backupMuzzleMarker": "backupMuzzle",
+        "leftBackupNode": "backupGunL",
+        "leftBackupMuzzleMarker": "backupMuzzleL"
+      },
+      "materialMaps": {
+        "normal": "textures/clay-normal.png",
+        "roughness": "textures/clay-roughness.png"
+      }
+    }
+  },
+  "sourceSha256": "35d75a945ebe3410b3c26aba43874318649f982e0911b361b3d92dc3cf2b9071",
+  "textureHashes": {
+    "clay-normal.png": "a4d18ec1b8667737b2ef40c343db5283b79cd74cae72873f39ed8c7600fa29b3",
+    "clay-roughness.png": "b08472b703d2a17a4fc5e18146cb1891c821594521c6aaed2be767e6dfab97e1"
+  }
+}

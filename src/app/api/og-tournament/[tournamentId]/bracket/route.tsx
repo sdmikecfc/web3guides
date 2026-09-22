@@ -98,6 +98,45 @@ export async function GET(
     .maybeSingle();
   if (!t) return new Response("Tournament not found", { status: 404 });
 
+  // CN edition renders Chinese chrome (labels only — the bracket data + layout are
+  // identical). EN stays byte-identical. The CJK font (Noto Sans SC) loads below.
+  const cn = t.edition === "cn";
+  const L = cn
+    ? {
+        suffix:         " OG锦标赛",
+        title:          "对阵表",
+        titlePreview:   "对阵表 · 预览",
+        statusPreview:  "随机对阵 · 未确定",
+        statusPending:  "待开始",
+        statusR16:      "16强 · 进行中",
+        statusQF:       "八强 · 进行中",
+        statusSF:       "四强 · 进行中",
+        statusComplete: "已结束",
+        r16:            "16强",
+        qf:             "八强",
+        sf:             "四强",
+        newOgs:         "新晋 OG",
+        footL:          "在帖子里点击 投票 按钮即可投票",
+        footR:          "高亮 = 本轮胜者",
+      }
+    : {
+        suffix:         " OG Tournament",
+        title:          "Bracket",
+        titlePreview:   "Bracket · Preview",
+        statusPreview:  "Random matchups · not committed",
+        statusPending:  "Pending",
+        statusR16:      "Round of 16 · LIVE",
+        statusQF:       "Quarter Finals · LIVE",
+        statusSF:       "Semi Finals · LIVE",
+        statusComplete: "Complete",
+        r16:            "Round of 16",
+        qf:             "Quarter Finals",
+        sf:             "Semi Finals",
+        newOgs:         "New OGs",
+        footL:          "React 🅰️ / 🅱️ on each match card to vote",
+        footR:          "Highlighted name = round winner",
+      };
+
   // Two data sources:
   //   - Normal mode: pull committed matches from og_bracket_matches (the live bracket)
   //   - Preview mode: synthesize R16 matches from current standings + the same
@@ -273,19 +312,19 @@ export async function GET(
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 18 }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <span style={{ fontSize: 12, color: C.amber, letterSpacing: 4, textTransform: "uppercase", fontWeight: 700 }}>
-              {t.display_name} OG Tournament
+              {t.display_name}{L.suffix}
             </span>
             <span style={{ fontSize: 32, fontWeight: 900, color: C.white, marginTop: 4 }}>
-              {preview ? "Bracket · Preview" : "Bracket"}
+              {preview ? L.titlePreview : L.title}
             </span>
           </div>
           <span style={{ fontSize: 13, color: preview ? C.amber : C.violetLight, letterSpacing: 3, textTransform: "uppercase", fontWeight: 700 }}>
-            {preview ? "Random matchups · not committed" :
-             liveRound === "RECOMMEND" ? "Pending" :
-             liveRound === "ROUND_16" ? "Round of 16 · LIVE" :
-             liveRound === "QUARTERS" ? "Quarter Finals · LIVE" :
-             liveRound === "SEMIS" ? "Semi Finals · LIVE" :
-             "Complete"}
+            {preview ? L.statusPreview :
+             liveRound === "RECOMMEND" ? L.statusPending :
+             liveRound === "ROUND_16" ? L.statusR16 :
+             liveRound === "QUARTERS" ? L.statusQF :
+             liveRound === "SEMIS" ? L.statusSF :
+             L.statusComplete}
           </span>
         </div>
 
@@ -294,7 +333,7 @@ export async function GET(
           {/* R16 */}
           <div style={{ display: "flex", flexDirection: "column", flex: 1, gap: 6 }}>
             <div style={{ display: "flex", justifyContent: "center", fontSize: 12, color: roundColor("ROUND_16"), letterSpacing: 3, textTransform: "uppercase", fontWeight: 700, marginBottom: 4 }}>
-              Round of 16
+              {L.r16}
             </div>
             {r16Cells.map((cell, i) => (
               <MatchBox key={i} cell={cell} round="ROUND_16" columnHeight={columnHeight} />
@@ -304,7 +343,7 @@ export async function GET(
           {/* QF */}
           <div style={{ display: "flex", flexDirection: "column", flex: 1, gap: 6, justifyContent: "space-around" }}>
             <div style={{ display: "flex", justifyContent: "center", fontSize: 12, color: roundColor("QUARTERS"), letterSpacing: 3, textTransform: "uppercase", fontWeight: 700, marginBottom: 4 }}>
-              Quarter Finals
+              {L.qf}
             </div>
             {qfCells.map((cell, i) => (
               <MatchBox key={i} cell={cell} round="QUARTERS" columnHeight={columnHeight} />
@@ -314,7 +353,7 @@ export async function GET(
           {/* SF */}
           <div style={{ display: "flex", flexDirection: "column", flex: 1, gap: 6, justifyContent: "space-around" }}>
             <div style={{ display: "flex", justifyContent: "center", fontSize: 12, color: roundColor("SEMIS"), letterSpacing: 3, textTransform: "uppercase", fontWeight: 700, marginBottom: 4 }}>
-              Semi Finals
+              {L.sf}
             </div>
             {sfCells.map((cell, i) => (
               <MatchBox key={i} cell={cell} round="SEMIS" columnHeight={columnHeight} />
@@ -324,7 +363,7 @@ export async function GET(
           {/* Winners column (post-SF) */}
           <div style={{ display: "flex", flexDirection: "column", width: 220, justifyContent: "space-around", gap: 6 }}>
             <div style={{ display: "flex", justifyContent: "center", fontSize: 12, color: C.amber, letterSpacing: 3, textTransform: "uppercase", fontWeight: 700, marginBottom: 4 }}>
-              New OGs
+              {L.newOgs}
             </div>
             {sfCells.map((sfMatch, i) => {
               const winnerId = sfMatch.winner_id;
@@ -355,8 +394,8 @@ export async function GET(
 
         {/* Footer */}
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "auto", paddingTop: 16, fontSize: 12, color: C.muted, letterSpacing: 1 }}>
-          <span style={{ display: "flex" }}>React 🅰️ / 🅱️ on each match card to vote</span>
-          <span style={{ display: "flex" }}>Highlighted name = round winner</span>
+          <span style={{ display: "flex" }}>{L.footL}</span>
+          <span style={{ display: "flex" }}>{L.footR}</span>
         </div>
       </div>
     ),

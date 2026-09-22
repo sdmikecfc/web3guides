@@ -40,7 +40,20 @@ function slugify(title: string): string {
 
 /** Subdomain-specific factual context injected into the generation prompt */
 const SUBDOMAIN_CONTEXT: Partial<Record<string, string>> = {
-  doma: `
+  /**
+   * ⚠️ KEYED "domainfi", NOT "doma" (fixed M10, 2026-08-10).
+   *
+   * This block was keyed `doma` since it was written, and `doma` is NOT a
+   * valid subdomain — `src/lib/subdomains.ts` has `domainfi` and `domains`.
+   * Line ~288 skips any subdomain not in VALID_SUBDOMAINS, so this entire
+   * fact sheet was unreachable and **had never been applied to a single
+   * generated article**. That means the hard guardrails below, including
+   * "There is NO '$DOMA token' … NEVER mention $DOMA", were never in force.
+   *
+   * If a Doma article is ever generated for another subdomain, add that key
+   * here too rather than renaming this one.
+   */
+  domainfi: `
 CRITICAL CONTEXT — use these facts exactly. Do NOT invent details or contradict them.
 
 Doma Protocol (built by D3 Global) is the world's first DNS-compliant blockchain for tokenizing traditional internet domains (.com, .ai, .xyz, etc.) as programmable real-world assets. It is an EVM-compatible Layer 2 built on the OP Stack.
@@ -513,7 +526,9 @@ function buildTopic(subdomain: string, label: string, difficulty: Difficulty, ar
       "Airdrops in 2025: how to qualify legitimately",
       "The most important crypto metrics to track",
     ],
-    doma: [
+    // keyed "domainfi" for the same reason as SUBDOMAIN_CONTEXT above: "doma"
+    // is not a valid subdomain, so these ten topics were unreachable
+    domainfi: [
       "What is Doma Protocol? How internet domains become tradeable blockchain assets",
       "DOTs vs DSTs: Doma Protocol's dual-token system explained",
       "DomainFi explained: using premium domains as DeFi collateral and yield assets",

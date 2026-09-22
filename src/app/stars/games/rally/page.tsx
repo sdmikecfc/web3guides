@@ -13,7 +13,9 @@
  */
 "use client";
 
+import { useEffect, useRef } from "react";
 import { GameShell, type GameHandle } from "../engine";
+import { MAGMA_PATH, LUNA_PATH, CRYO_PATH, ASTEROID_PATH } from "./tracks";
 
 // ---- tuning ---------------------------------------------------------------
 const LAPS = 3;
@@ -41,7 +43,7 @@ const BUMP_V = 360;
 const JUMP_G = 1885;
 const LAUNCH_LO = BASE_MAX * 0.96;
 const LAUNCH_HI = BASE_MAX * 1.15;
-const RAMP_GATE = 0.55; // ramp fires if eng > BASE_MAX*RAMP_GATE (low = easy to hit)
+const RAMP_GATE = 0.35; // ramp fires if eng > BASE_MAX*RAMP_GATE (lowered 0.55->0.35: threshold 126 < off-road cap 180, so a slightly-wide approach still launches — hittable at normal speed)
 const LIFT_K = 0.5;
 const AIR_K = 0.005;
 const AIR_MAX = 2.2;
@@ -97,50 +99,63 @@ type HazardKind = "lava" | "pit" | "crevasse" | "void";
 type PatchKind = "gas" | "oil" | "slush";
 type ObstacleKind = "rock" | "crystal";
 type FeatKind = ObstacleKind | "boost" | "bump" | "ramp" | PatchKind;
-interface Corner { x: number; y: number; w: number }
+interface Corner { x: number; y: number; w: number; t?: number } // t = optional tightness 0..1 (sharper approach = hairpin); omit for the default gentle fillet
 interface World {
   name: string; vehicle: Vehicle; surface: Surface; slick: boolean; bg: string; hazard: HazardKind;
   ground: string; ground2: string; dot: string; road: string; road2: string; rail: string; accent: string; seam: string;
-  corners: Corner[]; baseW: number;
+  corners?: Corner[]; path?: { x: number; y: number }[]; baseW: number;
   // feature KIT — positions are auto-placed onto the track geometry in init (boosts on
   // straights, obstacles on corner apexes), so nothing lands on a corner and flings you off.
   obstacle: ObstacleKind; patch: PatchKind; boosts: number; obstacles: number; patches: number;
   tunnels?: [number, number][]; snow?: boolean; portals?: boolean;
+  // world-placed rolling hazard (the signature dynamic hazard): fixed lanes, rolls across the
+  // road, fair to every car. "snowball" = Cryo, "lavabomb" = Magma (glowing molten bombs).
+  roller?: "snowball" | "lavabomb";
 }
 const CENTERED = new Set<FeatKind>(["ramp", "bump"]);
 const PATCH = new Set<FeatKind>(["gas", "oil", "slush"]);
 const WORLDS: World[] = [
   {
-    // "Inferno GP" — long bottom straight + a concave LEFT dent (kidney), a right hairpin.
+    // "Inferno GP" — a TALL portrait winding loop (matches the Magma Rim mockup): a long LEFT
+    // jump straight, twin top lobes with a concave center DIP, a right WAIST pinch + bulge, a
+    // lower-right lobe, and a wide bottom return. Hand-authored, clean closed non-self-crossing
+    // ring (sim-verified: 0 self-cross, ~200px min strand clearance at baseW 95). Thin road so
+    // it can wind tightly. `t` marks the three tight bends (dip / waist / lower hairpin).
     name: "Magma Rim", vehicle: "rover", surface: "rock", slick: false, bg: "magma", hazard: "lava",
     ground: "#241210", ground2: "#311713", dot: "#160a08", road: "#2a2320", road2: "#161010", rail: "#ff8c4a", accent: "#ff8c4a", seam: "#ff7a2a",
-    baseW: 150, obstacle: "rock", patch: "oil", boosts: 3, obstacles: 4, patches: 2,
-    corners: [{ x: -1050, y: 880, w: 1.05 }, { x: 1050, y: 880, w: 1.05 }, { x: 1320, y: 380, w: 0.95 }, { x: 1320, y: -280, w: 0.95 }, { x: 1000, y: -820, w: 1 }, { x: 400, y: -300, w: 0.9 }, { x: -400, y: -300, w: 0.9 }, { x: -1000, y: -820, w: 1 }, { x: -1320, y: -280, w: 0.95 }, { x: -1320, y: 380, w: 0.95 }],
-    tunnels: [[0.4, 0.47]],
+    baseW: 124, obstacle: "rock", patch: "oil", boosts: 3, obstacles: 4, patches: 2,
+    // Centerline derived directly from the approved Magma Rim mockup's OWN vector path (no
+    // hand-typed corners, no corner-rounding -> the rendered road matches the mockup). A tall
+    // winding loop: long left jump straight, twin top lobes + center chicane, flowing right
+    // S-curves, bottom boost run. Sim-verified: 0 self-cross, ~164u min strand clearance.
+    // Tool: scratchpad/rally_convert.mjs + memory project_rally_rebuild.
+    path: MAGMA_PATH,
+    // drive-under tunnel on the right-side descent (terrain roof closes over the road)
+    tunnels: [[0.62, 0.70]],
+    roller: "lavabomb",
   },
   {
-    // "Delta GP" — a clear triangle/delta with a tight hairpin notch at the bottom-right.
+    // "Crater 8" — a figure-8 hourglass: two crater lobes joined by a pinched waist (non-crossing).
     name: "Luna 7", vehicle: "rover", surface: "dirt", slick: false, bg: "luna", hazard: "pit",
     ground: "#4f4a42", ground2: "#5d574d", dot: "#36322c", road: "#9a8262", road2: "#7e6a50", rail: "#d8c198", accent: "#f0d8a4", seam: "#5f5038",
-    baseW: 158, obstacle: "rock", patch: "oil", boosts: 3, obstacles: 4, patches: 2,
-    corners: [{ x: -1000, y: 950, w: 1.05 }, { x: 1000, y: 950, w: 1.05 }, { x: 1320, y: 420, w: 0.95 }, { x: 680, y: 140, w: 0.9 }, { x: 680, y: -140, w: 0.9 }, { x: 1320, y: -420, w: 0.95 }, { x: 1000, y: -950, w: 1 }, { x: -1000, y: -950, w: 1 }, { x: -1320, y: -350, w: 1 }, { x: -1320, y: 350, w: 1 }],
+    baseW: 124, obstacle: "rock", patch: "oil", boosts: 3, obstacles: 4, patches: 2,
+    path: LUNA_PATH, tunnels: [[0.70, 0.77]],
   },
   {
     // "Glacier Esses" — flowing technical esses down the right, a hairpin bay bottom-left,
     // and a glacier tunnel through the back section.
     name: "Cryo Drift", vehicle: "rover", surface: "ice", slick: true, bg: "cryo", hazard: "crevasse",
     ground: "#141f2c", ground2: "#1b2a3c", dot: "#0e1722", road: "#9fc4dc", road2: "#bcdcef", rail: "#8fd3ff", accent: "#8fd3ff", seam: "#ffffff",
-    baseW: 152, obstacle: "crystal", patch: "slush", boosts: 3, obstacles: 4, patches: 2,
-    corners: [{ x: -1250, y: 780, w: 1 }, { x: -150, y: 1080, w: 1.02 }, { x: 760, y: 880, w: 0.95 }, { x: 1200, y: 430, w: 0.92 }, { x: 700, y: 80, w: 0.9 }, { x: 1080, y: -330, w: 0.92 }, { x: 1200, y: -820, w: 0.95 }, { x: 150, y: -1060, w: 1 }, { x: -940, y: -840, w: 0.98 }, { x: -700, y: -260, w: 0.9 }, { x: -1180, y: 30, w: 0.95 }, { x: -1330, y: 420, w: 1 }],
-    tunnels: [[0.31, 0.37]], snow: true,
+    baseW: 124, obstacle: "crystal", patch: "slush", boosts: 3, obstacles: 4, patches: 2,
+    path: CRYO_PATH,
+    tunnels: [[0.42, 0.49]], snow: true, roller: "snowball",
   },
   {
-    // "The Belt" — an elongated horseshoe (top-middle notch), straight side-walls, portals
-    // that warp across the horseshoe gap.
+    // "The Belt" — a tall winding circuit with a central debris scroll; warp portals across the field.
     name: "Asteroid Run", vehicle: "ship", surface: "stars", slick: false, bg: "asteroid", hazard: "void",
     ground: "#070b16", ground2: "#0c1224", dot: "#1a2238", road: "#10162b", road2: "#1b2440", rail: "#5eead4", accent: "#5eead4", seam: "#5eead4",
-    baseW: 165, obstacle: "rock", patch: "gas", boosts: 3, obstacles: 3, patches: 2,
-    corners: [{ x: -950, y: 980, w: 1.05 }, { x: 950, y: 980, w: 1.05 }, { x: 1300, y: 600, w: 0.95 }, { x: 760, y: 230, w: 0.9 }, { x: 1180, y: -150, w: 0.92 }, { x: 950, y: -820, w: 0.98 }, { x: -950, y: -820, w: 0.98 }, { x: -1180, y: -150, w: 0.92 }, { x: -760, y: 230, w: 0.9 }, { x: -1300, y: 600, w: 0.95 }],
+    baseW: 124, obstacle: "rock", patch: "gas", boosts: 3, obstacles: 3, patches: 2,
+    path: ASTEROID_PATH, tunnels: [[0.30, 0.37]],
     portals: true,
   },
 ];
@@ -150,7 +165,7 @@ function featR(k: FeatKind): number {
   if (k === "ramp") return 56;
   if (k === "bump") return 46;
   if (k === "boost") return 52;
-  return 32; // rock / crystal
+  return 19; // rock / crystal — shrunk ~40% (was 32) so obstacles are smaller, easier to thread
 }
 // build a feature at centerline index i with a lateral offset (fraction of half-width)
 function mkFeat(kind: FeatKind, i: number, offFrac: number, cl: V[], nrm: V[], tan: V[], width: number[]): Feat {
@@ -177,8 +192,13 @@ function expandCorners(corners: Corner[]): Corner[] {
   const wp: Corner[] = [];
   for (let i = 0; i < corners.length; i++) {
     const a = corners[i], b = corners[(i + 1) % corners.length];
+    // optional per-corner tightness: t=0 keeps the legacy 0.34/0.67 gentle fillet (all
+    // existing worlds), t->1 pulls the interior waypoints in toward the corner so the
+    // Catmull-Rom turn is much sharper (a hairpin). Backward-compatible: t undefined => 0.
+    const t = a.t ?? 0;
+    const f0 = 0.34 * (1 - t) + 0.04 * t, f1 = 0.67 * (1 - t) + 0.10 * t;
     wp.push({ x: a.x, y: a.y, w: a.w });
-    for (const f of [0.34, 0.67]) wp.push({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, w: a.w + (b.w - a.w) * f });
+    for (const f of [f0, f1]) wp.push({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, w: a.w + (b.w - a.w) * f });
   }
   return wp;
 }
@@ -187,11 +207,11 @@ function expandCorners(corners: Corner[]): Corner[] {
 interface Feat { x: number; y: number; ang: number; kind: FeatKind; r: number; i: number; off: number }
 interface Hazard { kind: HazardKind; i0: number; i1: number; cx: number; cy: number }
 interface Portal { ax: number; ay: number; ai: number; bx: number; by: number; bi: number } // enter A -> exit B
-interface Ball { x: number; y: number; vx: number; vy: number; r: number; spin: number; life: number }
+interface Ball { x: number; y: number; vx: number; vy: number; r: number; spin: number; life: number; kind: "snowball" | "lavabomb" }
 interface Car {
   x: number; y: number; heading: number; vx: number; vy: number; eng: number;
   idx: number; lap: number; nextCp: number; z: number; zv: number; rampCd: number; portalCd: number;
-  boostT: number; spinT: number; sinkT: number; isPlayer: boolean; color: string; skill: number;
+  boostT: number; spinT: number; sinkT: number; obsCd: number; isPlayer: boolean; color: string; skill: number;
   finished: boolean; finishT: number;
 }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; c: string; r: number }
@@ -205,15 +225,23 @@ interface S {
 }
 
 function buildTrack(wd: World) {
-  // dense Catmull-Rom, then RESAMPLE to uniform arc-length spacing so every sample is
-  // ~the same world distance (long straights aren't under-sampled). This keeps the
-  // jump/hazard placement (sample-based) physically correct — verified in a sim.
-  const wp = expandCorners(wd.corners), M = wp.length, D = N * 6;
-  const dense: V[] = [], dw: number[] = [];
-  for (let i = 0; i < D; i++) {
-    const u = (i / D) * M, k = Math.floor(u), f = u - k;
-    dense.push({ x: cr(wp[(k - 1 + M) % M].x, wp[k % M].x, wp[(k + 1) % M].x, wp[(k + 2) % M].x, f), y: cr(wp[(k - 1 + M) % M].y, wp[k % M].y, wp[(k + 1) % M].y, wp[(k + 2) % M].y, f) });
-    dw.push(wd.baseW * cr(wp[(k - 1 + M) % M].w, wp[k % M].w, wp[(k + 1) % M].w, wp[(k + 2) % M].w, f));
+  // RESAMPLE the centerline to uniform arc-length spacing (so the sample-based jump/hazard
+  // placement stays physically correct). Two sources for the pre-resample dense line:
+  //  A) wd.path  — a dense pre-wound centerline taken straight from the approved mockup's own
+  //     vector path (no corner-rounding, so the rendered road matches the mockup). Uniform width.
+  //  B) wd.corners — the legacy corner ring -> expandCorners -> Catmull-Rom (Luna/Cryo/Asteroid).
+  let dense: V[], dw: number[], D: number;
+  if (wd.path) {
+    dense = wd.path.map((p) => ({ x: p.x, y: p.y })); D = dense.length;
+    dw = dense.map(() => wd.baseW);
+  } else {
+    const wp = expandCorners(wd.corners!), M = wp.length; D = N * 6;
+    dense = []; dw = [];
+    for (let i = 0; i < D; i++) {
+      const u = (i / D) * M, k = Math.floor(u), f = u - k;
+      dense.push({ x: cr(wp[(k - 1 + M) % M].x, wp[k % M].x, wp[(k + 1) % M].x, wp[(k + 2) % M].x, f), y: cr(wp[(k - 1 + M) % M].y, wp[k % M].y, wp[(k + 1) % M].y, wp[(k + 2) % M].y, f) });
+      dw.push(wd.baseW * cr(wp[(k - 1 + M) % M].w, wp[k % M].w, wp[(k + 1) % M].w, wp[(k + 2) % M].w, f));
+    }
   }
   const cum = [0]; for (let i = 1; i <= D; i++) cum.push(cum[i - 1] + Math.hypot(dense[i % D].x - dense[i - 1].x, dense[i % D].y - dense[i - 1].y));
   const L = cum[D];
@@ -265,7 +293,7 @@ function makeCar(isPlayer: boolean, color: string, lane: number, cl: V[], nrm: V
   const b = cl[idx], p = nrm[idx];
   return {
     x: b.x + p.x * off, y: b.y + p.y * off, heading: tangAngle(tan[idx]),
-    vx: 0, vy: 0, eng: 0, idx, lap: 0, nextCp: 1, z: 0, zv: 0, rampCd: 0, portalCd: 0, boostT: 0, spinT: 0, sinkT: 0,
+    vx: 0, vy: 0, eng: 0, idx, lap: 0, nextCp: 1, z: 0, zv: 0, rampCd: 0, portalCd: 0, boostT: 0, spinT: 0, sinkT: 0, obsCd: 0,
     isPlayer, color, skill, finished: false, finishT: 0,
   };
 }
@@ -282,9 +310,13 @@ function nearestIdx(car: Car, cl: V[]): number {
 }
 const progress = (c: Car) => c.lap * N + c.idx;
 
+// TEMP DEBUG OVERVIEW — remove after proof. When set (by the ?overview= debug mode), init
+// forces this world instead of a random pick so the overview always renders the chosen track.
+let FORCE_WORLD: number | null = null;
+
 const handle: GameHandle<S> = {
   init: (w, h) => {
-    const wd = WORLDS[Math.floor(Math.random() * WORLDS.length)];
+    const wd = FORCE_WORLD != null ? WORLDS[FORCE_WORLD] : WORLDS[Math.floor(Math.random() * WORLDS.length)];
     const { cl, width, tan, nrm, curv, turn, cps, bbox } = buildTrack(wd);
     const START = 6;
     const feats: Feat[] = [];
@@ -334,9 +366,10 @@ const handle: GameHandle<S> = {
       feats.push(mkFeat(wd.patch, i, p % 2 ? -0.42 : 0.42, cl, nrm, tan, width));
     }
 
-    // world-placed snowball lanes (Cryo) — fixed track positions, fair to every car
+    // world-placed roller lanes (Cryo snowballs / Magma lava bombs) — fixed track positions,
+    // fair to every car (the AI gets hit on the same lanes you do).
     const ballZones: number[] = [];
-    if (wd.snow) for (let z = 0; z < 6; z++) ballZones.push((Math.round((z / 6) * N) + 14) % N);
+    if (wd.roller) for (let z = 0; z < 6; z++) ballZones.push((Math.round((z / 6) * N) + 14) % N);
 
     // portals (Asteroid) — warp across the horseshoe gap; everyone takes it, so it's fair
     const portals: Portal[] = [];
@@ -366,9 +399,9 @@ const handle: GameHandle<S> = {
       if (s.ghost.idx >= N) { s.ghost.idx -= N; s.ghost.lap++; }
     }
 
-    // snowballs (Cryo): roll across FIXED track lanes (world-placed, not player-targeted),
-    // so they're fair to every car — the AI gets hit on the same lanes you do.
-    if (racing && s.w.snow && s.ballZones.length) {
+    // ROLLERS (Cryo snowballs / Magma lava bombs): roll across FIXED track lanes (world-placed,
+    // not player-targeted), so they're fair to every car — the AI gets hit on the same lanes you do.
+    if (racing && s.w.roller && s.ballZones.length) {
       s.ballCd -= dt;
       if (s.ballCd <= 0 && s.balls.length < 3) {
         s.ballCd = 1.6 + Math.random() * 1.4;
@@ -376,7 +409,7 @@ const handle: GameHandle<S> = {
         const c = s.cl[i], n = s.nrm[i], tg = s.tan[i], hw = s.width[i] * 0.5;
         const side = (s.ballZ % 2) ? 1 : -1;
         const sp = 120 + Math.random() * 50;
-        s.balls.push({ x: c.x + n.x * (hw + 34) * side, y: c.y + n.y * (hw + 34) * side, vx: -n.x * sp * side + tg.x * 20, vy: -n.y * sp * side + tg.y * 20, r: 24 + Math.random() * 12, spin: 0, life: 7 });
+        s.balls.push({ x: c.x + n.x * (hw + 34) * side, y: c.y + n.y * (hw + 34) * side, vx: -n.x * sp * side + tg.x * 20, vy: -n.y * sp * side + tg.y * 20, r: 24 + Math.random() * 12, spin: 0, life: 7, kind: s.w.roller });
       }
     }
     for (const b of s.balls) { b.x += b.vx * dt; b.y += b.vy * dt; b.spin += dt * 5; b.life -= dt; }
@@ -408,6 +441,7 @@ const handle: GameHandle<S> = {
       if (car.boostT > 0) car.boostT -= dt;
       if (car.spinT > 0) car.spinT -= dt;
       if (car.sinkT > 0) car.sinkT -= dt;
+      if (car.obsCd > 0) car.obsCd -= dt;
 
       if (!airborne) {
         for (const f of s.feats) {
@@ -429,7 +463,12 @@ const handle: GameHandle<S> = {
               if (car.isPlayer && s.parts.length < 150) for (let p = 0; p < 12; p++) s.parts.push({ x: car.x, y: car.y, vx: Math.cos(car.heading) * 220 + (Math.random() - 0.5) * 70, vy: Math.sin(car.heading) * 220 + (Math.random() - 0.5) * 70, life: 0.4, c: s.w.accent, r: 3 });
             }
           } else if (f.kind === "rock" || f.kind === "crystal") {
-            if (Math.hypot(f.x - car.x, f.y - car.y) < f.r + CAR_R) { car.eng *= 0.62; if (car.isPlayer && s.msgT <= 0) { s.msg = "Scrape!"; s.msgT = 0.5; } }
+            // BRIEF speed-scrub on hit: lose ~30% once, short cooldown so you can't get
+            // pinned re-applying the penalty every frame (no long spin/stop — just a tap).
+            if (car.obsCd <= 0 && Math.hypot(f.x - car.x, f.y - car.y) < f.r + CAR_R) {
+              car.eng *= 0.7; car.obsCd = 0.45;
+              if (car.isPlayer && s.msgT <= 0) { s.msg = "Scrape!"; s.msgT = 0.4; }
+            }
           }
         }
         if (surface === "oil" && car.spinT <= 0) car.spinT = 0.45;
@@ -442,10 +481,18 @@ const handle: GameHandle<S> = {
         }
         for (const b of s.balls) {
           if (Math.hypot(b.x - car.x, b.y - car.y) < b.r + CAR_R * 0.85) {
-            car.eng *= 0.78; // knock SIDEWAYS, don't spin you around
             const n = s.nrm[car.idx], push = (b.x - car.x) * n.x + (b.y - car.y) * n.y > 0 ? -1 : 1;
-            car.vx += n.x * push * 130; car.vy += n.y * push * 130; b.vx *= 0.3; b.vy *= 0.3;
-            if (car.isPlayer && s.msgT <= 0) { s.msg = "Snowball!"; s.msgT = 0.55; }
+            if (b.kind === "lavabomb") {
+              // molten heat: a sharper speed scrub + a brief sink (like grazing lava), plus a
+              // small shove so it reads as a hit. No spin.
+              car.eng *= 0.6; if (car.sinkT <= 0) car.sinkT = 0.35;
+              car.vx += n.x * push * 90; car.vy += n.y * push * 90; b.vx *= 0.3; b.vy *= 0.3;
+              if (car.isPlayer && s.msgT <= 0) { s.msg = "Lava bomb!"; s.msgT = 0.55; }
+            } else {
+              car.eng *= 0.78; // knock SIDEWAYS, don't spin you around
+              car.vx += n.x * push * 130; car.vy += n.y * push * 130; b.vx *= 0.3; b.vy *= 0.3;
+              if (car.isPlayer && s.msgT <= 0) { s.msg = "Snowball!"; s.msgT = 0.55; }
+            }
           }
         }
         // PORTAL: enter A -> warp to B (across the horseshoe), keep speed, catch up checkpoints
@@ -554,7 +601,10 @@ const handle: GameHandle<S> = {
     const bgIm = BG[wd.bg];
     const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, wd.ground2); g.addColorStop(1, wd.ground); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
     const M = 600, bx0 = s.bbox.x0 - M, by0 = s.bbox.y0 - M, bw = s.bbox.x1 - s.bbox.x0 + 2 * M, bh = s.bbox.y1 - s.bbox.y0 + 2 * M;
-    if (ready(bgIm)) ctx.drawImage(bgIm, SX(bx0), SY(by0), bw * ZOOM, bh * ZOOM);
+    // Magma uses a PROCEDURAL world-space lava field (crisp at the close zoom); the other worlds
+    // keep their painted bitmap. Drawn over the bbox+margin, BEHIND the road, so the road pops.
+    if (wd.bg === "magma") drawMagmaBg(ctx, s, bx0, by0, bw, bh, SX, SY);
+    else if (ready(bgIm)) ctx.drawImage(bgIm, SX(bx0), SY(by0), bw * ZOOM, bh * ZOOM);
 
     const left: V[] = [], right: V[] = [];
     for (let i = 0; i < N; i++) { const c = s.cl[i], n = s.nrm[i], hw = s.width[i] * 0.5; left.push({ x: c.x + n.x * hw, y: c.y + n.y * hw }); right.push({ x: c.x - n.x * hw, y: c.y - n.y * hw }); }
@@ -614,6 +664,78 @@ function strokeOffset(ctx: CanvasRenderingContext2D, s: S, frac: number, SX: (x:
   ctx.beginPath();
   for (let i = 0; i <= N; i++) { const j = i % N, c = s.cl[j], n = s.nrm[j], o = frac * s.width[j]; (i === 0 ? ctx.moveTo : ctx.lineTo).call(ctx, SX(c.x + n.x * o), SY(c.y + n.y * o)); }
   ctx.stroke();
+}
+// PROCEDURAL Magma background — drawn in WORLD space (pans/zooms with the camera, so it's
+// crisp at the close race zoom). Dark warm basalt plates + glowing molten lava veins/cracks
+// + embers, on a warm radial tint. Deterministic via hash2 so nothing flickers frame-to-frame.
+function drawMagmaBg(ctx: CanvasRenderingContext2D, s: S, bx0: number, by0: number, bw: number, bh: number, SX: (x: number) => number, SY: (y: number) => number) {
+  const x0 = SX(bx0), y0 = SY(by0), W = bw * ZOOM, H = bh * ZOOM, cx = x0 + W / 2, cy = y0 + H * 0.4;
+  // 1) warm radial base over the whole field
+  ctx.save();
+  const base = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.62);
+  base.addColorStop(0, "#3a1c17"); base.addColorStop(0.52, "#281310"); base.addColorStop(1, "#130908");
+  ctx.fillStyle = base; ctx.fillRect(x0, y0, W, H);
+  ctx.restore();
+
+  // 2) basalt rock PLATES — coarse hash-jittered grid of dark rounded quads with thin warm seams
+  const PLATE = 360;
+  const wx0 = bx0, wy0 = by0, wx1 = bx0 + bw, wy1 = by0 + bh;
+  for (let gx = Math.floor(wx0 / PLATE) * PLATE; gx < wx1; gx += PLATE) {
+    for (let gy = Math.floor(wy0 / PLATE) * PLATE; gy < wy1; gy += PLATE) {
+      const hsh = hash2(gx * 5 + 11, gy * 5 + 3);
+      const ox = (hsh % 120) - 60, oy = ((hsh >> 7) % 120) - 60;
+      const X = SX(gx + ox), Y = SY(gy + oy), rad = (118 + (hsh % 90)) * ZOOM;
+      const pg = ctx.createRadialGradient(X - rad * 0.3, Y - rad * 0.34, rad * 0.1, X, Y, rad);
+      const lit = (hsh & 1) ? "#301913" : "#3a241b";
+      pg.addColorStop(0, lit); pg.addColorStop(1, "#160b08");
+      ctx.fillStyle = pg; ctx.globalAlpha = 0.9;
+      ctx.beginPath(); ctx.ellipse(X, Y, rad, rad * (0.78 + (hsh % 30) / 100), (hsh % 31) / 31 * Math.PI, 0, Math.PI * 2); ctx.fill();
+      // a faint warm seam crack across the plate
+      ctx.globalAlpha = 0.4; ctx.strokeStyle = "#7a4326"; ctx.lineWidth = Math.max(0.8, 1.1 * ZOOM);
+      ctx.beginPath(); ctx.moveTo(X - rad * 0.5, Y - rad * 0.2); ctx.lineTo(X + rad * 0.1, Y + rad * 0.1); ctx.lineTo(X + rad * 0.5, Y - rad * 0.05); ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // 3) glowing molten LAVA VEINS — long hot cracks snaking across the field (hash-seeded
+  // polylines), drawn with a hot glow then a bright core, so the basalt looks cracked open.
+  const VEINS = 9;
+  for (let v = 0; v < VEINS; v++) {
+    const h0 = hash2(v * 97 + 5, v * 13 + 41);
+    let px = bx0 + (h0 % 1000) / 1000 * bw, py = by0 + ((h0 >> 9) % 1000) / 1000 * bh;
+    const segs = 5 + (h0 % 4), pts: V[] = [{ x: px, y: py }];
+    let ang = (h0 % 628) / 100;
+    for (let k = 0; k < segs; k++) {
+      const hk = hash2(v * 31 + k * 7, k * 19 + 2);
+      ang += ((hk % 120) - 60) / 100; // wander
+      const step = 240 + (hk % 220);
+      px += Math.cos(ang) * step; py += Math.sin(ang) * step; pts.push({ x: px, y: py });
+    }
+    // outer glow pass
+    ctx.save(); ctx.shadowColor = "rgba(231,70,26,0.9)"; ctx.shadowBlur = 16 * ZOOM;
+    ctx.strokeStyle = "rgba(231,70,26,0.55)"; ctx.lineWidth = Math.max(3, 7 * ZOOM); ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath(); ctx.moveTo(SX(pts[0].x), SY(pts[0].y)); for (let k = 1; k < pts.length; k++) ctx.lineTo(SX(pts[k].x), SY(pts[k].y)); ctx.stroke();
+    ctx.restore();
+    // bright molten core
+    const cg = ctx.createLinearGradient(SX(pts[0].x), SY(pts[0].y), SX(pts[pts.length - 1].x), SY(pts[pts.length - 1].y));
+    cg.addColorStop(0, "#ff8a26"); cg.addColorStop(0.5, "#ffe6a0"); cg.addColorStop(1, "#ff7a26");
+    ctx.strokeStyle = cg; ctx.lineWidth = Math.max(1.4, 2.6 * ZOOM); ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath(); ctx.moveTo(SX(pts[0].x), SY(pts[0].y)); for (let k = 1; k < pts.length; k++) ctx.lineTo(SX(pts[k].x), SY(pts[k].y)); ctx.stroke();
+  }
+
+  // 4) embers — scattered hot flecks, gently pulsing
+  const ESTEP = 300;
+  for (let gx = Math.floor(wx0 / ESTEP) * ESTEP; gx < wx1; gx += ESTEP) {
+    for (let gy = Math.floor(wy0 / ESTEP) * ESTEP; gy < wy1; gy += ESTEP) {
+      const hsh = hash2(gx * 7 + 19, gy * 7 + 23);
+      if (hsh % 3 !== 0) continue;
+      const X = SX(gx + (hsh % 200) - 100), Y = SY(gy + ((hsh >> 8) % 200) - 100);
+      const tw = 0.5 + 0.5 * Math.sin(s.t * 2 + (hsh % 100) / 16);
+      ctx.globalAlpha = 0.35 + 0.4 * tw; ctx.fillStyle = (hsh & 1) ? "#ff7a2a" : "#ffd680";
+      ctx.beginPath(); ctx.arc(X, Y, (0.8 + (hsh % 2)) * ZOOM + 0.5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
 }
 function drawRoadSurface(ctx: CanvasRenderingContext2D, s: S, SX: (x: number) => number, SY: (y: number) => number) {
   const wd = s.w, STEP = 92;
@@ -779,6 +901,18 @@ function drawBump(ctx: CanvasRenderingContext2D, f: Feat, SX: (x: number) => num
 function drawBall(ctx: CanvasRenderingContext2D, b: Ball, SX: (x: number) => number, SY: (y: number) => number) {
   const x = SX(b.x), y = SY(b.y), r = b.r * ZOOM;
   ctx.globalAlpha = 0.35; ctx.fillStyle = "#000"; ctx.beginPath(); ctx.ellipse(x, y + r * 0.4, r, r * 0.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+  if (b.kind === "lavabomb") {
+    // glowing molten lava bomb: hot outer halo, white-hot core, dark crust flecks
+    ctx.save(); ctx.shadowColor = "rgba(255,140,40,0.9)"; ctx.shadowBlur = 14 * ZOOM;
+    const g = ctx.createRadialGradient(x - r * 0.28, y - r * 0.28, r * 0.15, x, y, r);
+    g.addColorStop(0, "#fff3c8"); g.addColorStop(0.4, "#ff9a2a"); g.addColorStop(0.78, "#e7461a"); g.addColorStop(1, "#6a1808");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    // dark crust patches that rotate with the roll
+    ctx.fillStyle = "rgba(26,12,8,0.55)";
+    for (let k = 0; k < 3; k++) { const a = b.spin + k * 2.1, rr = r * 0.5; ctx.beginPath(); ctx.arc(x + Math.cos(a) * rr, y + Math.sin(a) * rr, r * 0.2, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = "#fff6d6"; ctx.beginPath(); ctx.arc(x - r * 0.22, y - r * 0.22, r * 0.22, 0, Math.PI * 2); ctx.fill();
+    return;
+  }
   const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.2, x, y, r); g.addColorStop(0, "#ffffff"); g.addColorStop(1, "#bcd6e8"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = "rgba(120,150,180,0.6)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r * 0.6, b.spin, b.spin + 2.2); ctx.stroke();
 }
@@ -860,7 +994,75 @@ function drawHUD(ctx: CanvasRenderingContext2D, s: S, w: number, h: number) {
   }
 }
 
+// TEMP DEBUG OVERVIEW — remove after proof.
+// Standalone, session-gate-bypassing render of a whole track fitted to its bbox, for
+// screenshotting the Magma redesign. Forces the world, builds the track via handle.init,
+// parks the camera at the bbox centre, drops a few car markers along the centerline, and
+// draws ONE static frame (no rAF, no camera-follow, no run/score). URL: ?overview=magma.
+function OverviewDebug({ worldIndex }: { worldIndex: number }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    const cv = canvasRef.current;
+    if (!cv) return;
+    FORCE_WORLD = worldIndex;
+    // build a temp state at a throwaway size, then fit the canvas to the track bbox.
+    const tmp = handle.init(1000, 1000);
+    FORCE_WORLD = null;
+    const bb = tmp.bbox, bw = bb.x1 - bb.x0, bh = bb.y1 - bb.y0;
+    const MARGIN = 360; // world units of breathing room around the track
+    // logical canvas size so (track + margin) * ZOOM fits exactly; cam at bbox centre.
+    const W = Math.round((bw + 2 * MARGIN) * ZOOM), H = Math.round((bh + 2 * MARGIN) * ZOOM);
+    const dpr = Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, 2);
+    cv.style.width = `${Math.min(W, 760)}px`; cv.style.height = `${Math.round(Math.min(W, 760) * (H / W))}px`;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    const ctx = cv.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // rebuild state with the now-known logical size so the screen-space gradient/vignette fill it
+    FORCE_WORLD = worldIndex;
+    const s = handle.init(W, H);
+    FORCE_WORLD = null;
+    s.cam = { x: (bb.x0 + bb.x1) / 2, y: (bb.y0 + bb.y1) / 2 };
+    s.phase = "race"; s.t = 0.4; // race phase = no countdown overlay; small t so embers/seam have a value
+    // park a few car markers spread around the loop so the overview shows cars on track
+    const N0 = s.cl.length;
+    s.cars.forEach((c, i) => {
+      const idx = Math.round((i / s.cars.length) * N0) % N0;
+      const p = s.cl[idx], tg = s.tan[idx];
+      c.idx = idx; c.x = p.x; c.y = p.y; c.heading = Math.atan2(tg.y, tg.x); c.z = 0;
+    });
+    // seed a couple of static rollers on the placed lanes so the signature hazard is visible
+    if (s.w.roller && s.ballZones.length) {
+      for (const li of [1, 3, 5]) {
+        const i = s.ballZones[li % s.ballZones.length], c = s.cl[i], n = s.nrm[i], hw = s.width[i] * 0.5;
+        s.balls.push({ x: c.x + n.x * (hw - 6), y: c.y + n.y * (hw - 6), vx: 0, vy: 0, r: 30, spin: 0.6, life: 9, kind: s.w.roller });
+      }
+    }
+    // ONE static frame (no requestAnimationFrame, no step) — just render and stop.
+    ctx.clearRect(0, 0, W, H);
+    handle.draw(ctx, s, W, H);
+  }, [worldIndex]);
+  return (
+    <main style={{ minHeight: "100dvh", background: "#05070f", color: "#e8ecf5", display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: 20, fontFamily: "ui-sans-serif, system-ui, sans-serif" }}>
+      <div style={{ fontSize: 13, letterSpacing: 2, color: "#f0b340", textTransform: "uppercase", fontWeight: 700 }}>
+        TEMP DEBUG OVERVIEW · {WORLDS[worldIndex]?.name ?? "?"}
+      </div>
+      <canvas ref={canvasRef} style={{ border: "1px solid #1c2236", borderRadius: 12, background: "#05070f" }} />
+      <div style={{ fontSize: 12, color: "#5b6478" }}>Static fit-to-bbox render. Remove after proof.</div>
+    </main>
+  );
+}
+
 export default function RallyGame() {
+  // TEMP DEBUG OVERVIEW — remove after proof. ?overview=magma renders a standalone, session-
+  // gate-bypassing static overview of the Magma track (or any world name) for screenshotting.
+  if (typeof window !== "undefined") {
+    const ov = new URLSearchParams(window.location.search).get("overview");
+    if (ov) {
+      const idx = WORLDS.findIndex((w) => w.name.toLowerCase().replace(/[^a-z]/g, "").startsWith(ov.toLowerCase().replace(/[^a-z]/g, "")));
+      return <OverviewDebug worldIndex={idx >= 0 ? idx : 0} />;
+    }
+  }
   return (
     <GameShell
       game="rally"
