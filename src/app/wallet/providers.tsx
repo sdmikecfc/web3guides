@@ -15,6 +15,7 @@ import {
   walletConnectWallet,
   injectedWallet,
   rabbyWallet,
+  braveWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import { WagmiProvider, createConfig, createConnector, http, type CreateConnectorFn } from "wagmi";
 import { injected } from "wagmi/connectors";
@@ -36,6 +37,7 @@ type BrowserProvider = EIP1193Provider & {
   isRabby?: boolean;
   isCoinbaseWallet?: boolean;
   isPhantom?: boolean;
+  isBraveWallet?: boolean;
 };
 
 function browserProviders(): BrowserProvider[] {
@@ -75,11 +77,12 @@ export function useLegacyBrowserWalletConnector() {
 }
 
 const browserMetaMaskWallet = (): Wallet => {
-  const provider = browserProviders().find(wallet => wallet.isMetaMask && !wallet.isRabby && !wallet.isCoinbaseWallet && !wallet.isPhantom);
+  const provider = browserProviders().find(wallet => wallet.isMetaMask && !wallet.isBraveWallet && !wallet.isRabby && !wallet.isCoinbaseWallet && !wallet.isPhantom);
   return {
     ...injectedWallet(),
     id: "metaMask",
     name: "MetaMask",
+    iconUrl: "/wallet-icons/metamask.svg",
     rdns: "io.metamask",
     iconBackground: "#f6851a",
     installed: Boolean(provider),
@@ -93,6 +96,11 @@ const browserMetaMaskWallet = (): Wallet => {
 
 const installedRabbyWallet = (): Wallet => {
   const wallet = rabbyWallet();
+  return { ...wallet, hidden: () => !wallet.installed };
+};
+
+const installedBraveWallet = (): Wallet => {
+  const wallet = braveWallet();
   return { ...wallet, hidden: () => !wallet.installed };
 };
 
@@ -121,7 +129,7 @@ const connectorsForApp = (appName: string, connectionMode: ConnectionMode) => co
       groupName: "Wallets",
       wallets: [
         ...(connectionMode === "wallet-browser"
-          ? [browserMetaMaskWallet, installedRabbyWallet, installedBrowserWallet]
+          ? [browserMetaMaskWallet, installedBraveWallet, installedRabbyWallet, installedBrowserWallet]
           : [installedBrowserWallet, defaultMetaMaskWallet, rabbyWallet, coinbaseWallet]),
         ...(wcProjectId ? [rainbowWallet, walletConnectWallet] : []),
       ],

@@ -220,6 +220,9 @@ export function middleware(request: NextRequest) {
     hostClean === "domainkitchen.xyz" ||
     hostClean === "www.domainkitchen.xyz"
   ) {
+    // The soundtrack manifest and recordings live in public/, outside /chef.
+    // Do not turn /diner-audio/*.mp3 into a missing /chef/diner-audio route.
+    if (pathname.startsWith("/diner-audio/")) return withRef(NextResponse.next());
     const chefUrl = request.nextUrl.clone();
     // The standalone domain opens the new diner. Keep explicit legacy routes
     // and the older chef.* entrance available without moving player saves.

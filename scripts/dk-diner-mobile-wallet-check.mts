@@ -225,6 +225,7 @@ async function main() {
     let connection: Promise<unknown> | undefined;
     const fakeReact = {
       useState(value: unknown) { const index = cursor++; if (!(index in state)) state[index] = value; return [state[index], (next: unknown) => { state[index] = next; }]; },
+      useRef(value: unknown) { const index = cursor++; if (!(index in state)) state[index] = { current: value }; return state[index]; },
       useEffect(effect: () => void) { if (!mounted) effects.push(effect); },
     };
     const { DinerWalletConnect } = evaluate('src/app/chef/diner-preview/DinerWalletConnect.tsx', {
@@ -260,7 +261,7 @@ async function main() {
     browser('Mozilla/5.0 (iPhone)', new FakeWallet(`0x${'55'.repeat(20)}`, { isMetaMask: true }));
     const client = renderConnection(loadProviders().config());
     assert.equal(client.render(), server);
-    assert.match(client.mount(), /Connect wallet/);
+    assert.match(client.mount(), /Connect MetaMask/);
   });
 
   await check('phone and desktop help routes are actionable after mount', () => {
@@ -291,9 +292,11 @@ async function main() {
     const view = renderConnection(config, { legacyConnector }); view.render();
     const ready = view.mount();
     assert.match(ready, /Connect wallet/);
-    assert.equal(ready.includes('Open game in MetaMask'), false);
+    assert.equal(ready.includes('Open game in MetaMask'), true, 'An injected wallet must not hide the alternative MetaMask app entry on phones.');
     const pending = renderConnection(config, { legacyConnector, pending: true }); pending.render();
-    assert.match(pending.mount(), /disabled=""[^>]*>Check your wallet/);
+    const pendingHtml = pending.mount();
+    assert.match(pendingHtml, /disabled=""/);
+    assert.match(pendingHtml, /role="status">Check your wallet for the connection request/);
     const retry = renderConnection(config, { legacyConnector, error: new Error('Rejected') }); retry.render();
     assert.match(retry.mount(), /role="alert"/);
     await view.clickDirect();
