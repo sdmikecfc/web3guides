@@ -15,7 +15,7 @@ export default function WorkshopBuilder({state,busy,act,choose,finish,inspect,jo
 }) {
  const draft=state.draft;
  const [name,setName]=useState(draft?.name??'');const editingName=useRef(false);useEffect(()=>{if(!editingName.current)setName(draft?.name??'')},[draft?.name]);
- const [step,setStep]=useState<"style"|"parts"|"personalize"|"review">(draft?.step??(draft?.choices.torso?"parts":"style"));
+ const [step,setStep]=useState<"style"|"parts"|"personalize"|"review">(draft?.step??(draft?.choices.torso?(journeyPreview&&legalChoices(draft.choices)?"personalize":"parts"):"style"));
  const [slot,setSlot]=useState<Slot>(draft?.slot??SLOTS.find(s=>!draft?.choices[s])??"torso");
  const savedStep=useRef(`${step}:${slot}`);useEffect(()=>{const next=`${step}:${slot}`;if(journeyPreview&&draft&&savedStep.current!==next){savedStep.current=next;void act({kind:'builderStep',step,slot})}},[step,slot,journeyPreview]);
  const [style,setStyle]=useState("all"),[tier,setTier]=useState(state.robots.length?"all":"1");

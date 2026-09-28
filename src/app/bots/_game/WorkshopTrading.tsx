@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { STRATEGY_LINKS } from '@/lib/bots/strings';
 import type { useWorkshopCompetition } from './WorkshopCompetition';
 import css from './workshop-trading.module.css';
+import WalletTrackingStatus from './WalletTrackingStatus';
 
 type Model=ReturnType<typeof useWorkshopCompetition>;
 const money=(n:number|null)=>n===null?'Not available':new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(n);
@@ -34,7 +35,7 @@ export default function WorkshopTrading({model,onConnect,onPlay,onRules}:{model:
    <article><span>Battle points</span><strong>{draft?'Not started':known&&v.points!==null?v.points:'Not available'}</strong><small>{rank(known?v.categories.battles.rank:null)} · $400 category</small></article>
   </div>
   <div className={css.setup}>
-   <section><span className={css.step}>01 · LINK YOUR RESULTS</span><h2>{v.connected?'Wallet connected':'Connect your wallet'}</h2><p>Use the same wallet here and on Doma so your trading results can be matched.</p><button onClick={onConnect}>{v.connected?'Wallet & saved garages':'Connect wallet'}</button><small>Wallet connection, trading setup and competition entry are separate.</small></section>
+   <section><span className={css.step}>01 · LINK YOUR RESULTS</span><h2>{v.connected?'Wallet connected':'Connect your wallet'}</h2><p>Connect your Doma wallet. We look up the MCP wallet attached to your Doma account every four hours.</p><button onClick={onConnect}>{v.connected?'Wallet & saved garages':'Connect wallet'}</button><WalletTrackingStatus connected={v.connected}/><small>Wallet connection, trading setup and competition entry are separate.</small></section>
    <section ref={setupRef}><span className={css.step}>02 · SET UP TRADING</span><div className={css.methods} aria-label="Trading setup method"><button aria-pressed={method==='strategy'} onClick={()=>setMethod('strategy')}>Strategies</button><button aria-pressed={method==='mcp'} onClick={()=>setMethod('mcp')}>AI / MCP</button></div>
     {method==='strategy'?<><h2>Let a Strategy follow your rules.</h2><p>Choose the tokens, budget and buy/sell rules on Doma. Return here to check your verified results.</p><a className={css.primary} href={STRATEGY_LINKS.doma} target="_blank" rel="noopener noreferrer">Set up a Doma Strategy ↗</a></>:<><h2>Use Doma tools in your AI app.</h2><p>MCP connects your AI app to Doma. Add this address in the app’s MCP settings, then review its trading setup and permissions.</p><label>MCP server address<input readOnly value={STRATEGY_LINKS.mcp} onFocus={e=>e.target.select()}/></label><button onClick={()=>void copy()}>{copied?'Address copied':'Copy MCP address'}</button>{copyError&&<small role="status">Select and copy the address above.</small>}<strong className={css.pending}>Direct MCP trade scoring: not available yet.</strong><small>The current cash-prize rules require verified Strategy activity. Connecting MCP alone does not qualify.</small></>}
     <small>Trading uses real funds and can lose money. Opening setup does not turn trading on.</small>

@@ -14,7 +14,7 @@ const styles = [
 ] as const;
 const demo = { id: "welcome-demo-2", name: "Warden", choices: preset("tank", 3), appearance: defaultAppearance("warden"), rival: preset("speed", 3), seed: 75, arena: "colosseum", replay: true, inputs: [], startedAt: 0 };
 
-export default function WorkshopWelcome({ hasRobots, hasDraft, coins, newPlayer, onBuild, onExplore, onTrading, music, connected=false, journeyPreview=false, competition }: { competition?:ReturnType<typeof useWorkshopCompetition>; journeyPreview?:boolean; newPlayer: boolean; hasRobots: boolean; hasDraft: boolean; coins: number; onBuild(style?:'tank'|'speed'|'ranged'): void; onExplore(): void; onTrading(): void; music?:ReactNode; connected?:boolean }) {
+export default function WorkshopWelcome({ gameEntry=false, hasRobots, hasDraft, coins, newPlayer, onBuild, onExplore, onTrading, music, connected=false, journeyPreview=false, competition }: { gameEntry?:boolean; competition?:ReturnType<typeof useWorkshopCompetition>; journeyPreview?:boolean; newPlayer: boolean; hasRobots: boolean; hasDraft: boolean; coins: number; onBuild(style?:'tank'|'speed'|'ranged'): void; onExplore(): void; onTrading(): void; music?:ReactNode; connected?:boolean }) {
   const dialog = useRef<HTMLDialogElement>(null), [style, setStyle] = useState(0), [watching, setWatching] = useState(false),[prizes,setPrizes]=useState(false),[motionPaused,setMotionPaused]=useState(false);
   const fighter = styles[style];
   const example=journeyPreview?{...demo,id:`welcome-${fighter.id}`,demo:true,replay:false,choices:preset(fighter.id as 'tank'|'speed'|'ranged'),appearance:defaultAppearance(ENTRY_MAP.get(preset(fighter.id as 'tank'|'speed'|'ranged').torso)!.family),rival:preset(fighter.id==='tank'?'ranged':'tank')}:demo;
@@ -35,16 +35,20 @@ export default function WorkshopWelcome({ hasRobots, hasDraft, coins, newPlayer,
       </section>
       <section className={css.copy}>
         <span className={css.eyebrow}>WELCOME TO MODEL KOMBAT</span>
-        <h1 id="welcome-title" tabIndex={-1}>Trade with Doma.<br/><em>Battle for fun.</em></h1>
-        <p className={css.pitch}>$2,000 in cash prizes. Set up trading, follow your rank, and take your robot into the ring between trades.</p>{competition&&<button className={css.competitionEntry} onClick={()=>setPrizes(true)}>$2,000 competition · {competition.value.state==='draft'?'Coming soon':'See status'}</button>}
-        <ol className={css.steps}>
+        <h1 id="welcome-title" tabIndex={-1}>{gameEntry?<>Build your first robot.<br/><em>Make it yours.</em></>:<>Trade with Doma.<br/><em>Battle for fun.</em></>}</h1>
+        <p className={css.pitch}>{gameEntry?"Pick Tank, Speed or Ranged. Start with a complete build, choose your name and colours, then try your first fight.":"$2,000 in cash prizes. Set up trading, follow your rank, and take your robot into the ring between trades."}</p>{competition&&<button className={css.competitionEntry} onClick={()=>setPrizes(true)}>$2,000 competition · {competition.value.state==='draft'?'Coming soon':'See status'}</button>}
+        <ol className={css.steps}>{gameEntry?<>
+          <li><span>01</span><div><strong>Choose your fighter.</strong><p>Tank takes the hits. Speed fights up close. Ranged needs room to shoot.</p></div></li>
+          <li><span>02</span><div><strong>Name it. Paint it. Make it yours.</strong><p>Your 250 starter coins cover all seven parts. Review every choice before Finish.</p></div></li>
+          <li><span>03</span><div><strong>Pick the moment for your Special.</strong><p>Your robot moves and attacks. You choose when to activate its special ability.</p></div></li>
+        </>:<>
           <li><span>01</span><div><strong>Set up your trading.</strong><p>Use Doma Strategies or connect Doma tools to your AI app through MCP.</p></div></li>
           <li><span>02</span><div><strong>Track your results here.</strong><p>Cash categories: $800 ROI · $800 realized profit · $400 battle points.</p></div></li>
           <li><span>03</span><div><strong>Build free. Battle between trades.</strong><p>Fights earn game coins for robot parts. Game coins are not cash.</p></div></li>
-        </ol>
+        </>}</ol>
         <div className={css.starter}><span aria-hidden>✦</span><div><strong>{hasRobots?"Your garage is waiting.":hasDraft?"Your build is saved. Pick up where you left off.":newPlayer?"Your first robot is on us.":"Ready for your next fighter?"}</strong><p>{hasRobots?"Keep building your crew, or take a robot back into the ring.":hasDraft?`${coins.toLocaleString()} game coins available. Your choices are still here.`:newPlayer?"Start with 250 game coins—enough to build your first robot.":`${coins.toLocaleString()} game coins available. Play more fights to earn parts for your next build.`}</p></div></div>
         <p className={css.requirement}><strong>Cash prizes require trading.</strong> Three verified Strategy trading days each week; both weeks for final prizes. Direct MCP trade scoring is coming later.</p>
-        <div className={css.actions}><button className={css.primary} onClick={onTrading}>Set up trading & rewards →</button><button data-build-action className={css.secondary} onClick={()=>onBuild(fighter.id)}>{hasDraft?"Continue my build":hasRobots?"Open my garage":"Build a free robot"}</button></div>
+        <div className={css.actions}>{gameEntry?<><button data-build-action className={css.primary} onClick={()=>onBuild(fighter.id)}>{hasDraft?"Continue my build":hasRobots?"Open my garage":"Build my robot"} →</button><button className={css.secondary} onClick={onTrading}>Trading & rewards</button></>:<><button className={css.primary} onClick={onTrading}>Set up trading & rewards →</button><button data-build-action className={css.secondary} onClick={()=>onBuild(fighter.id)}>{hasDraft?"Continue my build":hasRobots?"Open my garage":"Build a free robot"}</button></>}</div>
         <p className={css.trust}>{competition?.value.state==='draft'?'Coming soon. No start date. Prelaunch activity will not count.':'Check competition status before entering. Setup alone does not start scoring.'}</p>
         <p className={css.risk}>Trading uses real funds and can lose money. You can play free without trading.</p>
         <div className={css.faq}>

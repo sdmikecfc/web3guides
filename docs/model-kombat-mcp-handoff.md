@@ -1,5 +1,12 @@
 # Model Kombat MCP trade feed v1
 
+> **28 September integration correction:** This is the historical wallet-keyed
+> v1 contract. Do not activate it unchanged for linked Privy/external-wallet
+> participants. Use `model-kombat-wallet-link-setup.md` for the current four-hour
+> wallet discovery job. It reuses this feed's existing `MK_MCP_INGEST_TOKEN`;
+> no second credential is required. The existing workshop migration does not install this
+> intake, establish user-level identity, or connect it to workshop rewards.
+
 ## What this delivers
 
 An isolated intake API and additive SQL migration for source-reported MCP fills. The collector can read registered wallets and approved markets, then submit finalized economic fills with MCP attribution. Decimal values are preserved exactly; repeats cannot add volume twice; corrections retain revision history.
