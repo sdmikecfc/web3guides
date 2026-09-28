@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-/** Public practice only. The existing game, accounts and rewards keep their own routes. */
+/** Old links now open the connected browser workshop, including garage and shop. */
 export function GET(request: NextRequest) {
   const target = request.nextUrl.clone();
-  target.pathname = "/bots-playtest/index.html";
-  if (!target.searchParams.has("view")) target.searchParams.set("view", "practice");
+  target.pathname = "/bots/workshop";
+  if (target.searchParams.get("view") === "practice") target.searchParams.set("view", "fight");
   return NextResponse.redirect(target);
 }

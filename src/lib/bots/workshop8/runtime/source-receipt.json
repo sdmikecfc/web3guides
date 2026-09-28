@@ -1,0 +1,11 @@
+{
+  "source": "art-src/bots/personal-v8",
+  "files": {
+    "v8-engine.ts": "98201f9261c9e55088efaa2447a13596dd393f82598bda6cef3e8ad43eebe8ed",
+    "parts-assembly.ts": "aa413ae7608d7ba4b9c0e6739eac5229852d1676ad02d84d7932c3c2867e06b2",
+    "equipment-pose.ts": "54532c08a5679017b91c156f98c3549c67a562bd1fc3b0fac6898ce7e1cecc5d",
+    "weapon-actions.ts": "f97b3159a6ddaee6b2bb9859f1e143685e70bdfb706a8cbc1bbb4adca4aea936",
+    "special-equipment.ts": "ba078fb1a05c3dd2c6ef584bf79cf6f0c956c0fb1f5f9d5688e35deece274ba4",
+    "asset-versions.ts": "857818ff478c01afd52ce9b94b236042f4fe865274ab5dcc79ab3bde6fe6fe6b"
+  }
+}

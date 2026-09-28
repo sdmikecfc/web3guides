@@ -2,6 +2,8 @@
 
 Status: **first visual proof ready for review; visual approval pending**. This is not a completed spectator-quality release. The next catalogue expansion requires the user's review of ordinary uninterrupted fights, as specified in the implementation plan.
 
+Crowd correction after review: the user rejected the added foreground spectators. The live v7 preview now uses the original Higgsfield crowd loop without those figures; its backdrop extends behind the ring to cover moving-camera angles. Existing MP4s and screenshots below document the earlier proof and still contain the rejected crowd. They have not been silently replaced or represented as footage of this correction.
+
 ## Watch the actual browser footage
 
 The local review gallery is `.bots-preview/remaster-v7/review/proof3/index.html`. Videos are saved locally; they are not uploaded or publicly published. Open the live preview at `http://127.0.0.1:3147/bots?view=fight&combat=7&style=speed&rival=ranged&seed=75`.

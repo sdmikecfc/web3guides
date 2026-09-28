@@ -1,0 +1,17 @@
+{
+  "version": "selection-idle-1",
+  "date": "2026-09-28",
+  "provider": "Higgsfield",
+  "model": "seedance_2_5",
+  "projectId": "38d42220-3e9d-4396-99e9-3f096cdf8ae4",
+  "settings": { "duration": 5, "resolution": "720p", "aspectRatio": "3:4", "audio": false },
+  "creditsApproved": 105,
+  "creditsSpent": 105,
+  "retakes": 0,
+  "purpose": "Decorative upgraded-style previews only. Actual starter equipment and gameplay use the existing canonical renderer.",
+  "shots": [
+    { "style": "tank", "jobId": "7f37a653-7b2d-4897-87a8-05009d85322c", "reference": "/bots-playtest/intro/tank.png", "file": "tank.mp4", "motion": "Mechanical settling, helmet glance, small supported hammer grip adjustment" },
+    { "style": "speed", "jobId": "0e9ea2dd-099d-4f3c-82cf-dbc129c68a99", "reference": "/bots-playtest/intro/speed.png", "file": "speed.mp4", "motion": "Athletic weight shift, head glance, sword and shield adjustment" },
+    { "style": "ranged", "jobId": "73d52912-2402-44a6-9899-7e4efbb60244", "reference": "/bots-playtest/intro/ranged.png", "file": "ranged.mp4", "motion": "Optics scan, supported rifle aim adjustment, shoulder settling" }
+  ]
+}

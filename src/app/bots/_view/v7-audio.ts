@@ -65,8 +65,11 @@ export function createRemasterAudio() {
       layer(160, 60, .08, .15, side); layer(900, 250, .09, .06, side, "noise");
     } else if (e.kind === "dodge" || e.kind === "flank") {
       layer(2000, 400, .18, .18, side, "noise");
-    } else if (e.kind === "shock" || e.kind === "stun") {
+    } else if (e.kind === "shock" || e.kind === "stun" && /shock|baton/.test(weapon)) {
       layer(920, 310, .24, .1, side, "sawtooth");
+    } else if (e.kind === "stun") {
+      // A heavy physical stagger is not an electrical status effect.
+      layer(420, 110, .16, .08, side, "noise");
     }
   }
   function stop() { voices.forEach(v => { try { v.stop(); } catch { /* already stopped */ } }); seen.clear(); }

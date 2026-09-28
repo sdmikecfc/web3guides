@@ -74,6 +74,13 @@ export function middleware(request: NextRequest) {
   // root paths such as /rules and /privacy stay inside the game on this host.
   if (hostClean === "modelkombat.xyz" || hostClean === "www.modelkombat.xyz") {
     const gameUrl = request.nextUrl.clone();
+    // The domain entrance opens the connected workshop. Old wallet collections
+    // keep their explicit link and their existing saves and server rules.
+    if ((pathname === "/" || pathname === "/bots" || pathname === "/bots/") && gameUrl.searchParams.get("collection") !== "classic") {
+      gameUrl.pathname = gameUrl.searchParams.has('view') ? "/bots/workshop" : "/bots/start";
+      if (gameUrl.searchParams.get("view") === "practice") gameUrl.searchParams.set("view", "fight");
+      return withRef(NextResponse.redirect(gameUrl));
+    }
     gameUrl.pathname = pathname.startsWith("/bots")
       ? pathname
       : `/bots${pathname === "/" ? "" : pathname}`;

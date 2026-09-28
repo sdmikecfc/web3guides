@@ -14,3 +14,8 @@
 /* Replay invitation owns the curb below the projected robot nameplates. */
 @media(min-width:621px){.scene,.streetControls{bottom:68px}}
 @media(max-width:620px) and (min-height:541px){.scene,.streetControls{bottom:60px}}
+
+/* Unified workshop palette */
+
+.fightBoard{background:var(--mk-chrome,#2e261d);border-color:var(--mk-edge,#85623e)}.ticket,.practiceTicket{background:var(--mk-surface,#d9c6a3);color:var(--mk-text,#342718);border-color:var(--mk-edge,#bba175)}.ticketStamp,.ticketResult,.practiceTicket .ticketStamp,.practiceTicket .ticketResult{color:var(--mk-muted,#806744)}.ticketResult b{color:var(--mk-metal,#846333)}.scoreboard{border-color:var(--mk-edge,#85623e)}.visitorLabel,.visitor[data-helper=true] .visitorLabel{background:var(--mk-surface,#34352b);border-color:var(--mk-edge,#85623e)}
+

@@ -1,0 +1,1641 @@
+{
+  "method": "Existing GLB parts isolated and rendered by partsStudio.capture",
+  "background": "transparent",
+  "size": 480,
+  "sourceRenderer": [
+    {
+      "url": "/bots-playtest/chunk-751.js",
+      "sha256": "338b2cce2d3aef8c38b56b82a7fd07266075af2099382967e90d04dfac951bd7"
+    },
+    {
+      "url": "/bots-playtest/chunk-751.js",
+      "sha256": "338b2cce2d3aef8c38b56b82a7fd07266075af2099382967e90d04dfac951bd7"
+    },
+    {
+      "url": "/bots-playtest/chunk-751.js",
+      "sha256": "338b2cce2d3aef8c38b56b82a7fd07266075af2099382967e90d04dfac951bd7"
+    },
+    {
+      "url": "/bots-playtest/chunk-751.js",
+      "sha256": "338b2cce2d3aef8c38b56b82a7fd07266075af2099382967e90d04dfac951bd7"
+    },
+    {
+      "url": "/bots-playtest/chunk-751.js",
+      "sha256": "338b2cce2d3aef8c38b56b82a7fd07266075af2099382967e90d04dfac951bd7"
+    },
+    {
+      "url": "/bots-playtest/chunk-751.js",
+      "sha256": "338b2cce2d3aef8c38b56b82a7fd07266075af2099382967e90d04dfac951bd7"
+    },
+    {
+      "url": "/bots-playtest/chunk-751.js",
+      "sha256": "338b2cce2d3aef8c38b56b82a7fd07266075af2099382967e90d04dfac951bd7"
+    },
+    {
+      "url": "/bots-playtest/chunk-751.js",
+      "sha256": "338b2cce2d3aef8c38b56b82a7fd07266075af2099382967e90d04dfac951bd7"
+    },
+    {
+      "url": "/bots-playtest/chunk-751.js",
+      "sha256": "338b2cce2d3aef8c38b56b82a7fd07266075af2099382967e90d04dfac951bd7"
+    },
+    {
+      "url": "/bots-playtest/chunk-751.js",
+      "sha256": "338b2cce2d3aef8c38b56b82a7fd07266075af2099382967e90d04dfac951bd7"
+    },
+    {
+      "url": "/bots-playtest/chunk-751.js",
+      "sha256": "338b2cce2d3aef8c38b56b82a7fd07266075af2099382967e90d04dfac951bd7"
+    },
+    {
+      "url": "/bots-playtest/chunk-751.js",
+      "sha256": "338b2cce2d3aef8c38b56b82a7fd07266075af2099382967e90d04dfac951bd7"
+    }
+  ],
+  "assets": [
+    {
+      "file": "bible2.tank.t1.warden.head.png",
+      "sha256": "37f34025f3fc1f892818374d632161862068240663c80712cd528feb4ccc8a89",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-warden.glb",
+      "sourceSha256": "105c609826c00e39f46a744a35dc8b82c5801ad4e427d149590ec283df214181"
+    },
+    {
+      "file": "bible2.tank.t1.warden.torso.png",
+      "sha256": "fffc592ae1fbfa0c979bf8a6bf7a2eef150147aa64e2fd8fb13f3e6083b7ff25",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-warden.glb",
+      "sourceSha256": "105c609826c00e39f46a744a35dc8b82c5801ad4e427d149590ec283df214181"
+    },
+    {
+      "file": "bible2.tank.t1.warden.armL.png",
+      "sha256": "06470636a7bd458f7552d28059ec7d24bd1dce645e00f063943fbcb0694b40c0",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-warden.glb",
+      "sourceSha256": "105c609826c00e39f46a744a35dc8b82c5801ad4e427d149590ec283df214181"
+    },
+    {
+      "file": "bible2.tank.t1.warden.armR.png",
+      "sha256": "64792ddaa6d1cd69812dad9729f58dcc4d242468816acefd32dcca696a98ed94",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-warden.glb",
+      "sourceSha256": "105c609826c00e39f46a744a35dc8b82c5801ad4e427d149590ec283df214181"
+    },
+    {
+      "file": "bible2.tank.t1.warden.legL.png",
+      "sha256": "dedac63a83afe1e7c61df09ab94cf7203a1b8c774e821934618206343237e111",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-warden.glb",
+      "sourceSha256": "105c609826c00e39f46a744a35dc8b82c5801ad4e427d149590ec283df214181"
+    },
+    {
+      "file": "bible2.tank.t1.warden.legR.png",
+      "sha256": "2d524d1a0ccf1af4410ccc15bfbc1ab741d9d05e28be3cd8e13f015bd5bd1ae0",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-warden.glb",
+      "sourceSha256": "105c609826c00e39f46a744a35dc8b82c5801ad4e427d149590ec283df214181"
+    },
+    {
+      "file": "bible2.tank.t2.warden.head.png",
+      "sha256": "630677c16e25dafc4c69477f9e0175bab2798fafbbe917b6eaef384cfafb4f84",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-warden.glb",
+      "sourceSha256": "461c5adc5be0922dcdae3231a35e166ebdc39c1c4fa0cd2d675cf95ceec151c1"
+    },
+    {
+      "file": "bible2.tank.t2.warden.torso.png",
+      "sha256": "a766fd2727b12181f12bf5e3fe78c3c6c45fd9d87e6b37f6ebc79a84cfafc2fe",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-warden.glb",
+      "sourceSha256": "461c5adc5be0922dcdae3231a35e166ebdc39c1c4fa0cd2d675cf95ceec151c1"
+    },
+    {
+      "file": "bible2.tank.t2.warden.armL.png",
+      "sha256": "1142747945eaf24bb57c184fc6453485306347441cc32296b831dabdc25db235",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-warden.glb",
+      "sourceSha256": "461c5adc5be0922dcdae3231a35e166ebdc39c1c4fa0cd2d675cf95ceec151c1"
+    },
+    {
+      "file": "bible2.tank.t2.warden.armR.png",
+      "sha256": "7eef0bcfde825e3c4e4a9f1e769aa2cf6e078689c9f3347fb8735ba3de2fb212",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-warden.glb",
+      "sourceSha256": "461c5adc5be0922dcdae3231a35e166ebdc39c1c4fa0cd2d675cf95ceec151c1"
+    },
+    {
+      "file": "bible2.tank.t2.warden.legL.png",
+      "sha256": "f12342fb977f8d289aaa3d5eac5861092a170408f55dbe2c73eddd3243e2f493",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-warden.glb",
+      "sourceSha256": "461c5adc5be0922dcdae3231a35e166ebdc39c1c4fa0cd2d675cf95ceec151c1"
+    },
+    {
+      "file": "bible2.tank.t2.warden.legR.png",
+      "sha256": "664dec89890f697160ca1d385b0b60c5c006fd2ba4afda5ab865d8eb59bf7092",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-warden.glb",
+      "sourceSha256": "461c5adc5be0922dcdae3231a35e166ebdc39c1c4fa0cd2d675cf95ceec151c1"
+    },
+    {
+      "file": "bible2.tank.t3.warden.head.png",
+      "sha256": "5935af962198ba7a68095c5bb25ff6680e012bf408159cc631ffccfa297d7ed9",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-warden.glb",
+      "sourceSha256": "ac35eb0594516cb912d6fdacecdfb51efa6f6c91aed835c4001516ed5f8e9027"
+    },
+    {
+      "file": "bible2.tank.t3.warden.torso.png",
+      "sha256": "f1d123aed855563cd5b25c2e3a84731fb84d62ed747d69757140581fc5a4e966",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-warden.glb",
+      "sourceSha256": "ac35eb0594516cb912d6fdacecdfb51efa6f6c91aed835c4001516ed5f8e9027"
+    },
+    {
+      "file": "bible2.tank.t3.warden.armL.png",
+      "sha256": "57c6d2127b4654f04b168fdba054ccae40199c0baaf030447814bff9cbd8ba14",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-warden.glb",
+      "sourceSha256": "ac35eb0594516cb912d6fdacecdfb51efa6f6c91aed835c4001516ed5f8e9027"
+    },
+    {
+      "file": "bible2.tank.t3.warden.armR.png",
+      "sha256": "f86eb1791e1b390fec32918f9a3f944788be7b29f0ebd33c6f722430131b6197",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-warden.glb",
+      "sourceSha256": "ac35eb0594516cb912d6fdacecdfb51efa6f6c91aed835c4001516ed5f8e9027"
+    },
+    {
+      "file": "bible2.tank.t3.warden.legL.png",
+      "sha256": "617ae9e06c60f4edd13e5a7bf8555017ba4fb857ca8ebc0a6b569450b589e1ce",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-warden.glb",
+      "sourceSha256": "ac35eb0594516cb912d6fdacecdfb51efa6f6c91aed835c4001516ed5f8e9027"
+    },
+    {
+      "file": "bible2.tank.t3.warden.legR.png",
+      "sha256": "1eed6f58abd643ec87ad0fb65c69933fbd2094a41128fef2486275a34799eff4",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-warden.glb",
+      "sourceSha256": "ac35eb0594516cb912d6fdacecdfb51efa6f6c91aed835c4001516ed5f8e9027"
+    },
+    {
+      "file": "bible2.tank.t4.warden.head.png",
+      "sha256": "b45fb9b5317968b7ba2b41de42c1e9f89b70c380c4cb864da5c352aca854c5be",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-warden.glb",
+      "sourceSha256": "7212d4c71affbac7d2baf1012c8a9d604cadd1cda0c45dd0b8d2563f5310a0c1"
+    },
+    {
+      "file": "bible2.tank.t4.warden.torso.png",
+      "sha256": "32a39cbc4198f620b9064f96ee70091962f7baf84ccc1262526e6c1bcc71a8e8",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-warden.glb",
+      "sourceSha256": "7212d4c71affbac7d2baf1012c8a9d604cadd1cda0c45dd0b8d2563f5310a0c1"
+    },
+    {
+      "file": "bible2.tank.t4.warden.armL.png",
+      "sha256": "1834f37d7980603dc527f0f07eeecbc0fda9c7f5f460f221905012371dae84a3",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-warden.glb",
+      "sourceSha256": "7212d4c71affbac7d2baf1012c8a9d604cadd1cda0c45dd0b8d2563f5310a0c1"
+    },
+    {
+      "file": "bible2.tank.t4.warden.armR.png",
+      "sha256": "7d540f737148388bb83e9e8a44db38a03ecf854ecb01dfbe9a68e4e8a3b8e3f4",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-warden.glb",
+      "sourceSha256": "7212d4c71affbac7d2baf1012c8a9d604cadd1cda0c45dd0b8d2563f5310a0c1"
+    },
+    {
+      "file": "bible2.tank.t4.warden.legL.png",
+      "sha256": "d0f0db38004fce75f811a855d3661114821d847ad33043f0d3992e6fe3a39a6a",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-warden.glb",
+      "sourceSha256": "7212d4c71affbac7d2baf1012c8a9d604cadd1cda0c45dd0b8d2563f5310a0c1"
+    },
+    {
+      "file": "bible2.tank.t4.warden.legR.png",
+      "sha256": "b27f9bf792c4e79e6167c2aa3edb4b21d592f3037e7403754eb501d0f8bea84e",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-warden.glb",
+      "sourceSha256": "7212d4c71affbac7d2baf1012c8a9d604cadd1cda0c45dd0b8d2563f5310a0c1"
+    },
+    {
+      "file": "bible2.tank.t1.revenant.head.png",
+      "sha256": "042e301d52788e1b5dc4b0e468d202863f1d208b81606d0b808b35a762664a5f",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-revenant.glb",
+      "sourceSha256": "cf42fde86dd9310a8c8c78c2cd54fa65a6d0fd79a6cf6e0764d89d18a7d22dfc"
+    },
+    {
+      "file": "bible2.tank.t1.revenant.torso.png",
+      "sha256": "5c80a450ec7c95fec26593430da4e80171cc09533f4d4b4cb10a0cb6b416f37b",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-revenant.glb",
+      "sourceSha256": "cf42fde86dd9310a8c8c78c2cd54fa65a6d0fd79a6cf6e0764d89d18a7d22dfc"
+    },
+    {
+      "file": "bible2.tank.t1.revenant.armL.png",
+      "sha256": "15d52e785e933e504e12c50ba7d9345f3843323252d78c97c7ceb6a63a304022",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-revenant.glb",
+      "sourceSha256": "cf42fde86dd9310a8c8c78c2cd54fa65a6d0fd79a6cf6e0764d89d18a7d22dfc"
+    },
+    {
+      "file": "bible2.tank.t1.revenant.armR.png",
+      "sha256": "f37c4a8bb9f2a24543867bf484d26715c5a5d768f18c5a0404be569af327da22",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-revenant.glb",
+      "sourceSha256": "cf42fde86dd9310a8c8c78c2cd54fa65a6d0fd79a6cf6e0764d89d18a7d22dfc"
+    },
+    {
+      "file": "bible2.tank.t1.revenant.legL.png",
+      "sha256": "451deb4b9e3c8cadaedabdbe81e391419e71f599f78cd3da51917b0f46862ece",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-revenant.glb",
+      "sourceSha256": "cf42fde86dd9310a8c8c78c2cd54fa65a6d0fd79a6cf6e0764d89d18a7d22dfc"
+    },
+    {
+      "file": "bible2.tank.t1.revenant.legR.png",
+      "sha256": "7b3e7da2657d5ab36e21353168f8b3633e011a0827fa52595e74495de9c85d4b",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-revenant.glb",
+      "sourceSha256": "cf42fde86dd9310a8c8c78c2cd54fa65a6d0fd79a6cf6e0764d89d18a7d22dfc"
+    },
+    {
+      "file": "bible2.tank.t2.revenant.head.png",
+      "sha256": "e47ea45df604994b10e95971c60814ca4996a3c8f0e53b515cc0e87913bb2ae0",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-revenant.glb",
+      "sourceSha256": "246ce146b51fd60298198fdbf30a456cfc77d4f57e30ac843d58a24f2551cb21"
+    },
+    {
+      "file": "bible2.tank.t2.revenant.torso.png",
+      "sha256": "01e5bd92fcb126a48cee2085f6a59ef68bb89d210992898776f0d0d954618c31",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-revenant.glb",
+      "sourceSha256": "246ce146b51fd60298198fdbf30a456cfc77d4f57e30ac843d58a24f2551cb21"
+    },
+    {
+      "file": "bible2.tank.t2.revenant.armL.png",
+      "sha256": "e36796808f178eaa760de05f526ec73fa93cbf4cf083bdff57e75adec8aa9720",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-revenant.glb",
+      "sourceSha256": "246ce146b51fd60298198fdbf30a456cfc77d4f57e30ac843d58a24f2551cb21"
+    },
+    {
+      "file": "bible2.tank.t2.revenant.armR.png",
+      "sha256": "8b2e0378dde64606e4ee8cde97416fc25ad2ccb4e21f7355f94a43cbeb8505f1",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-revenant.glb",
+      "sourceSha256": "246ce146b51fd60298198fdbf30a456cfc77d4f57e30ac843d58a24f2551cb21"
+    },
+    {
+      "file": "bible2.tank.t2.revenant.legL.png",
+      "sha256": "a287b88c9a4e673966b65bf2d1b0eba9622e6e60bb0110a7c9ed983355823a82",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-revenant.glb",
+      "sourceSha256": "246ce146b51fd60298198fdbf30a456cfc77d4f57e30ac843d58a24f2551cb21"
+    },
+    {
+      "file": "bible2.tank.t2.revenant.legR.png",
+      "sha256": "7cb3655264a559ba6501b1587a83db75af125166e2e48c947b903ce29e006742",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-revenant.glb",
+      "sourceSha256": "246ce146b51fd60298198fdbf30a456cfc77d4f57e30ac843d58a24f2551cb21"
+    },
+    {
+      "file": "bible2.tank.t3.revenant.head.png",
+      "sha256": "3190e504422542189fe58927a6e6c7e558de9aff8ac8fa3df7d773946642ebc4",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-revenant.glb",
+      "sourceSha256": "66eb7e70390adc89c4edd5b1d450b0e6b1468d398b82d4c83e3ab011fbc60755"
+    },
+    {
+      "file": "bible2.tank.t3.revenant.torso.png",
+      "sha256": "8415f194417a7b71fcc5518aedff04879fe858f7a7632815a6a1f2501bc1637c",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-revenant.glb",
+      "sourceSha256": "66eb7e70390adc89c4edd5b1d450b0e6b1468d398b82d4c83e3ab011fbc60755"
+    },
+    {
+      "file": "bible2.tank.t3.revenant.armL.png",
+      "sha256": "bd2d4d1bc0b120f2e5a8a2e893b6552ff90e55aac029fa8ad62ac16f1b385504",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-revenant.glb",
+      "sourceSha256": "66eb7e70390adc89c4edd5b1d450b0e6b1468d398b82d4c83e3ab011fbc60755"
+    },
+    {
+      "file": "bible2.tank.t3.revenant.armR.png",
+      "sha256": "20d44fc277d8bc40bba0566c63978b546556d8b1d0821e968fff2f7e65be4974",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-revenant.glb",
+      "sourceSha256": "66eb7e70390adc89c4edd5b1d450b0e6b1468d398b82d4c83e3ab011fbc60755"
+    },
+    {
+      "file": "bible2.tank.t3.revenant.legL.png",
+      "sha256": "99d33abcec407aedcce4e28c1db99f789b20be12859c5995fd4e7038bfbac49c",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-revenant.glb",
+      "sourceSha256": "66eb7e70390adc89c4edd5b1d450b0e6b1468d398b82d4c83e3ab011fbc60755"
+    },
+    {
+      "file": "bible2.tank.t3.revenant.legR.png",
+      "sha256": "d211d08e8112409c4cd1581fc7ff6af29e5b95397922b3e462ac2303fd47744a",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-revenant.glb",
+      "sourceSha256": "66eb7e70390adc89c4edd5b1d450b0e6b1468d398b82d4c83e3ab011fbc60755"
+    },
+    {
+      "file": "bible2.tank.t4.revenant.head.png",
+      "sha256": "55f8e11204273f7b7595e7b9df32a3f6072069e8d5ea2a8513f944fbfe2de13a",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-revenant.glb",
+      "sourceSha256": "5a8bd4441606be213339d82a913277a3838e5c29941bbf8f6a296bd66d6f995b"
+    },
+    {
+      "file": "bible2.tank.t4.revenant.torso.png",
+      "sha256": "f5e866ec5438a109abbf210234f83b1e3510dbc2c95e0aef011df277a18741b9",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-revenant.glb",
+      "sourceSha256": "5a8bd4441606be213339d82a913277a3838e5c29941bbf8f6a296bd66d6f995b"
+    },
+    {
+      "file": "bible2.tank.t4.revenant.armL.png",
+      "sha256": "481d2c2ab28c233a8dab580ab99fe0febab96e589fcb9a8e078678ec8cf49e47",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-revenant.glb",
+      "sourceSha256": "5a8bd4441606be213339d82a913277a3838e5c29941bbf8f6a296bd66d6f995b"
+    },
+    {
+      "file": "bible2.tank.t4.revenant.armR.png",
+      "sha256": "f6f49c0390209923d6a43ef802c437a5e0e1b3f22576b8335e62039daf5f3f95",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-revenant.glb",
+      "sourceSha256": "5a8bd4441606be213339d82a913277a3838e5c29941bbf8f6a296bd66d6f995b"
+    },
+    {
+      "file": "bible2.tank.t4.revenant.legL.png",
+      "sha256": "19cfe502f5c88f2aef1e1982fc66588705cbe2d4aa61a1fab05e5fa0e3f3b03f",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-revenant.glb",
+      "sourceSha256": "5a8bd4441606be213339d82a913277a3838e5c29941bbf8f6a296bd66d6f995b"
+    },
+    {
+      "file": "bible2.tank.t4.revenant.legR.png",
+      "sha256": "4cb6ac310639c1ae96d9ef50b99f9dee15cdcc4aadc9460d77e55fe1f809c5f5",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-revenant.glb",
+      "sourceSha256": "5a8bd4441606be213339d82a913277a3838e5c29941bbf8f6a296bd66d6f995b"
+    },
+    {
+      "file": "bible2.tank.t1.harrow.head.png",
+      "sha256": "2fdc61ce3053afcbbb0650567a926546bfd998e0c54b87c84fc5f9153252fc62",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-harrow.glb",
+      "sourceSha256": "e9c3859825882b32bd2671835aa7cb6b272cd6b6f7bc99ce64bc0ab7b5f34cbe"
+    },
+    {
+      "file": "bible2.tank.t1.harrow.torso.png",
+      "sha256": "06779c4508df9d852ae0f61ae9bf6ff2e64cd1b2c85e707f14420ba9ac91db17",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-harrow.glb",
+      "sourceSha256": "e9c3859825882b32bd2671835aa7cb6b272cd6b6f7bc99ce64bc0ab7b5f34cbe"
+    },
+    {
+      "file": "bible2.tank.t1.harrow.armL.png",
+      "sha256": "a6018ef7c63085eb56bd65cec8eea0490167d07fb843bb2e57c2083a533d260e",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-harrow.glb",
+      "sourceSha256": "e9c3859825882b32bd2671835aa7cb6b272cd6b6f7bc99ce64bc0ab7b5f34cbe"
+    },
+    {
+      "file": "bible2.tank.t1.harrow.armR.png",
+      "sha256": "924a05e9910bf785885e73da7d26f15e037d25e5c5d42290d37eb0c8710f2d52",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-harrow.glb",
+      "sourceSha256": "e9c3859825882b32bd2671835aa7cb6b272cd6b6f7bc99ce64bc0ab7b5f34cbe"
+    },
+    {
+      "file": "bible2.tank.t1.harrow.legL.png",
+      "sha256": "e6de0f0a6ec734280df562b05d5aae97221d329fb20fa68335526d54944609ba",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-harrow.glb",
+      "sourceSha256": "e9c3859825882b32bd2671835aa7cb6b272cd6b6f7bc99ce64bc0ab7b5f34cbe"
+    },
+    {
+      "file": "bible2.tank.t1.harrow.legR.png",
+      "sha256": "8f6585c2996bce3db8168d8f0aa8082c1e3643108d1b24b25fde5b632c7d3909",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t1-harrow.glb",
+      "sourceSha256": "e9c3859825882b32bd2671835aa7cb6b272cd6b6f7bc99ce64bc0ab7b5f34cbe"
+    },
+    {
+      "file": "bible2.tank.t2.harrow.head.png",
+      "sha256": "4d1bebb8df3d661ae8bef04bec3ac323a4afecbbe3b945cb7e71886c19401546",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-harrow.glb",
+      "sourceSha256": "73a461cb53f1b3587ce557eb84cfd5c202632dfdb170fddcf813896356e32868"
+    },
+    {
+      "file": "bible2.tank.t2.harrow.torso.png",
+      "sha256": "ad69ce6e1e30aa6c32214ef911de06c9a87edefe51034b7e29567c1112a4f7d9",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-harrow.glb",
+      "sourceSha256": "73a461cb53f1b3587ce557eb84cfd5c202632dfdb170fddcf813896356e32868"
+    },
+    {
+      "file": "bible2.tank.t2.harrow.armL.png",
+      "sha256": "fce5d68c92190d499af0f63287a3cce3723c5795f8a52665995351222d07fcd1",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-harrow.glb",
+      "sourceSha256": "73a461cb53f1b3587ce557eb84cfd5c202632dfdb170fddcf813896356e32868"
+    },
+    {
+      "file": "bible2.tank.t2.harrow.armR.png",
+      "sha256": "2fa6a080c804ccf39f0f3cc12900673946bcca3b4bc84265c08bef61e1046f68",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-harrow.glb",
+      "sourceSha256": "73a461cb53f1b3587ce557eb84cfd5c202632dfdb170fddcf813896356e32868"
+    },
+    {
+      "file": "bible2.tank.t2.harrow.legL.png",
+      "sha256": "2bdc4c19cac416fd08f2ce784e7ce799421d2209910cae3e036e1270dbc02b59",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-harrow.glb",
+      "sourceSha256": "73a461cb53f1b3587ce557eb84cfd5c202632dfdb170fddcf813896356e32868"
+    },
+    {
+      "file": "bible2.tank.t2.harrow.legR.png",
+      "sha256": "dda46fe51a25934f6be062cab04708c0c9fc34e89c4f053e5b1c22d295419906",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t2-harrow.glb",
+      "sourceSha256": "73a461cb53f1b3587ce557eb84cfd5c202632dfdb170fddcf813896356e32868"
+    },
+    {
+      "file": "bible2.tank.t3.harrow.head.png",
+      "sha256": "8db42dc134a772b09da94f9fc0fb40acf34d3a31c845ecd3626e6dcd7d6ed207",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-harrow.glb",
+      "sourceSha256": "6cc56e76fefa66c045215b223a0d50c3b74a068370a1b5645b20d547901e4074"
+    },
+    {
+      "file": "bible2.tank.t3.harrow.torso.png",
+      "sha256": "1569a1102df89935c40dd361876c6b2bfa885141b4d1024bb12e43d4c294e4d8",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-harrow.glb",
+      "sourceSha256": "6cc56e76fefa66c045215b223a0d50c3b74a068370a1b5645b20d547901e4074"
+    },
+    {
+      "file": "bible2.tank.t3.harrow.armL.png",
+      "sha256": "f2c9ce6fd44a4fa5214893a13fffaee5d06b2c920218f1d0318804e8815e6c64",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-harrow.glb",
+      "sourceSha256": "6cc56e76fefa66c045215b223a0d50c3b74a068370a1b5645b20d547901e4074"
+    },
+    {
+      "file": "bible2.tank.t3.harrow.armR.png",
+      "sha256": "5838411394732112b9d28b264ee22a94373afd525e37c78fac3f8a3ef1ee0f00",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-harrow.glb",
+      "sourceSha256": "6cc56e76fefa66c045215b223a0d50c3b74a068370a1b5645b20d547901e4074"
+    },
+    {
+      "file": "bible2.tank.t3.harrow.legL.png",
+      "sha256": "8e858aef0a5fe6491a55cbed127a2273990347a59c9ad976de811575cf67373f",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-harrow.glb",
+      "sourceSha256": "6cc56e76fefa66c045215b223a0d50c3b74a068370a1b5645b20d547901e4074"
+    },
+    {
+      "file": "bible2.tank.t3.harrow.legR.png",
+      "sha256": "831217ac78902e3775b05a6d86012788f2d1551c30c294f992ccaeea547c5c16",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t3-harrow.glb",
+      "sourceSha256": "6cc56e76fefa66c045215b223a0d50c3b74a068370a1b5645b20d547901e4074"
+    },
+    {
+      "file": "bible2.tank.t4.harrow.head.png",
+      "sha256": "b8ad88369101013394182e8b1e017c027bb773db7447b168d0c68decfe93e3f2",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-harrow.glb",
+      "sourceSha256": "a3bfe7d75247119f68d1e92987815a3110ba9e9c7c00bd9f65d146a15a7d8d65"
+    },
+    {
+      "file": "bible2.tank.t4.harrow.torso.png",
+      "sha256": "85afb31559736ac095c34bf77a7765890ae79d579e780c01fb963d8440a971e9",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-harrow.glb",
+      "sourceSha256": "a3bfe7d75247119f68d1e92987815a3110ba9e9c7c00bd9f65d146a15a7d8d65"
+    },
+    {
+      "file": "bible2.tank.t4.harrow.armL.png",
+      "sha256": "36a80f6a2bad63b434828b9122b0c83a9411016f3a4be3de9e9bb11817ee4732",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-harrow.glb",
+      "sourceSha256": "a3bfe7d75247119f68d1e92987815a3110ba9e9c7c00bd9f65d146a15a7d8d65"
+    },
+    {
+      "file": "bible2.tank.t4.harrow.armR.png",
+      "sha256": "9eb09c9fa649ad268adbb1e17b8d2eb85b3e502ff4c0027b1d172fd1fc6cf76c",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-harrow.glb",
+      "sourceSha256": "a3bfe7d75247119f68d1e92987815a3110ba9e9c7c00bd9f65d146a15a7d8d65"
+    },
+    {
+      "file": "bible2.tank.t4.harrow.legL.png",
+      "sha256": "b2e2908caacfd1e86b14ef866d049d9365631d1c9f96a5073a139a31357fe9f6",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-harrow.glb",
+      "sourceSha256": "a3bfe7d75247119f68d1e92987815a3110ba9e9c7c00bd9f65d146a15a7d8d65"
+    },
+    {
+      "file": "bible2.tank.t4.harrow.legR.png",
+      "sha256": "45e69eb810ce4465a58248a0bb67dbf03d7cd5ebffc42fc6ed29db24be7dbcff",
+      "source": "/bots-playtest/assets/catalogue-2/tank-t4-harrow.glb",
+      "sourceSha256": "a3bfe7d75247119f68d1e92987815a3110ba9e9c7c00bd9f65d146a15a7d8d65"
+    },
+    {
+      "file": "bible2.speed.t1.duelist.head.png",
+      "sha256": "e48a0386e806f52474d95800833013b15ddad2f260625ab5545edffd1527a610",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t1-duelist.glb",
+      "sourceSha256": "9132d8cf916e4e9ddbc224ce1d29a1099582e7b11a14b118499fa35a3cd41f48"
+    },
+    {
+      "file": "bible2.speed.t1.duelist.torso.png",
+      "sha256": "c9df8427da51529c53fd1d31bf8d307f3533a6d6f913f7a9f25d8f8fb19f494a",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t1-duelist.glb",
+      "sourceSha256": "9132d8cf916e4e9ddbc224ce1d29a1099582e7b11a14b118499fa35a3cd41f48"
+    },
+    {
+      "file": "bible2.speed.t1.duelist.armL.png",
+      "sha256": "704ac598547c057e75123facfe29c0ba0d161e1914e55526bb4b9b8888c09479",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t1-duelist.glb",
+      "sourceSha256": "9132d8cf916e4e9ddbc224ce1d29a1099582e7b11a14b118499fa35a3cd41f48"
+    },
+    {
+      "file": "bible2.speed.t1.duelist.armR.png",
+      "sha256": "3e2662119a55ed18ded4124ed0b0013557bb019e5a0d6579c992e1005f867a46",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t1-duelist.glb",
+      "sourceSha256": "9132d8cf916e4e9ddbc224ce1d29a1099582e7b11a14b118499fa35a3cd41f48"
+    },
+    {
+      "file": "bible2.speed.t1.duelist.legL.png",
+      "sha256": "38cd1fd8ec58b12ed7980cf37eef4b9f3646f2a6f6040da1d7cc08b3d0e2ed10",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t1-duelist.glb",
+      "sourceSha256": "9132d8cf916e4e9ddbc224ce1d29a1099582e7b11a14b118499fa35a3cd41f48"
+    },
+    {
+      "file": "bible2.speed.t1.duelist.legR.png",
+      "sha256": "0c30482347c0fc0cbebf74a693b07a5a29cfcc628a0f859a7eadd4e95382c21d",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t1-duelist.glb",
+      "sourceSha256": "9132d8cf916e4e9ddbc224ce1d29a1099582e7b11a14b118499fa35a3cd41f48"
+    },
+    {
+      "file": "bible2.speed.t2.duelist.head.png",
+      "sha256": "da0ed2d03e225a41e52b014c2793822fdc8549f315c318b84270f3df6b2709ca",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t2-duelist.glb",
+      "sourceSha256": "86514433333a25e9ff0bc609a2a916d09865ebea8b63b86bcdcdd03f74b48207"
+    },
+    {
+      "file": "bible2.speed.t2.duelist.torso.png",
+      "sha256": "86665be791d46f40d33c6e500d6586b31ffc43cc96891dda79106f35a3860346",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t2-duelist.glb",
+      "sourceSha256": "86514433333a25e9ff0bc609a2a916d09865ebea8b63b86bcdcdd03f74b48207"
+    },
+    {
+      "file": "bible2.speed.t2.duelist.armL.png",
+      "sha256": "d40ca7b4af148efdf8bd908a443b6f9cbbd193792c3abf7e250512609ec35d13",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t2-duelist.glb",
+      "sourceSha256": "86514433333a25e9ff0bc609a2a916d09865ebea8b63b86bcdcdd03f74b48207"
+    },
+    {
+      "file": "bible2.speed.t2.duelist.armR.png",
+      "sha256": "a9e1fd4d486b3cca1ebaeb67c3f8ba2eb2e535d621ea48815483be34b4ff88d5",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t2-duelist.glb",
+      "sourceSha256": "86514433333a25e9ff0bc609a2a916d09865ebea8b63b86bcdcdd03f74b48207"
+    },
+    {
+      "file": "bible2.speed.t2.duelist.legL.png",
+      "sha256": "f7ec9b21af9b3bff60a9865b1093b636d1565fa987cb218cc2ca669d3686636a",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t2-duelist.glb",
+      "sourceSha256": "86514433333a25e9ff0bc609a2a916d09865ebea8b63b86bcdcdd03f74b48207"
+    },
+    {
+      "file": "bible2.speed.t2.duelist.legR.png",
+      "sha256": "9219dea1bf0ec56e1c0eee525b86b51b5501c6c3b9d5c68cf8bea16610337434",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t2-duelist.glb",
+      "sourceSha256": "86514433333a25e9ff0bc609a2a916d09865ebea8b63b86bcdcdd03f74b48207"
+    },
+    {
+      "file": "bible2.speed.t3.duelist.head.png",
+      "sha256": "c02dde17c23b66533e1f9188360755e43ff89509db33fd58dfdb075c0e0384e2",
+      "source": "/bots-playtest/assets/speed-t3-duelist-v1.glb",
+      "sourceSha256": "2f25bfaea9a5919321af078b47604efc650db33b009d85324a20b8d5e794afc0"
+    },
+    {
+      "file": "bible2.speed.t3.duelist.torso.png",
+      "sha256": "23e7a367a32899437963a71f7d314a7bb7d0d31aa6f5bd3c5a86ae5712da316c",
+      "source": "/bots-playtest/assets/speed-t3-duelist-v1.glb",
+      "sourceSha256": "2f25bfaea9a5919321af078b47604efc650db33b009d85324a20b8d5e794afc0"
+    },
+    {
+      "file": "bible2.speed.t3.duelist.armL.png",
+      "sha256": "b3318c83e818cdb0d2365648fa21d5453dd3d822bc2d512fdb8149bfaace6be2",
+      "source": "/bots-playtest/assets/speed-t3-duelist-v1.glb",
+      "sourceSha256": "2f25bfaea9a5919321af078b47604efc650db33b009d85324a20b8d5e794afc0"
+    },
+    {
+      "file": "bible2.speed.t3.duelist.armR.png",
+      "sha256": "979a51424476a559a7ea56869faa7f7da36bef998f9512ddee29f6fd2f9696d0",
+      "source": "/bots-playtest/assets/speed-t3-duelist-v1.glb",
+      "sourceSha256": "2f25bfaea9a5919321af078b47604efc650db33b009d85324a20b8d5e794afc0"
+    },
+    {
+      "file": "bible2.speed.t3.duelist.legL.png",
+      "sha256": "b14c15e92206c584497d9ad72dcf56704b479e99592c8b6adf1c89d92c130547",
+      "source": "/bots-playtest/assets/speed-t3-duelist-v1.glb",
+      "sourceSha256": "2f25bfaea9a5919321af078b47604efc650db33b009d85324a20b8d5e794afc0"
+    },
+    {
+      "file": "bible2.speed.t3.duelist.legR.png",
+      "sha256": "37966714c1b0552d0d7738694db9bdccb5670b18b1ce284c62fa4c227be5650f",
+      "source": "/bots-playtest/assets/speed-t3-duelist-v1.glb",
+      "sourceSha256": "2f25bfaea9a5919321af078b47604efc650db33b009d85324a20b8d5e794afc0"
+    },
+    {
+      "file": "bible2.speed.t4.duelist.head.png",
+      "sha256": "24cc18bd5b87cac6d5d7832bb334211cb8a69d0466a28a2b45b2747829221bdf",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t4-duelist.glb",
+      "sourceSha256": "d1f3aec5931c8a709cff1c3dddc2c502ef0400eb528f83072524c7247e662e21"
+    },
+    {
+      "file": "bible2.speed.t4.duelist.torso.png",
+      "sha256": "cae35d781d3f2eb072384ee5291eb50d7dd08f62afc2c7db553fa2fc919cad0d",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t4-duelist.glb",
+      "sourceSha256": "d1f3aec5931c8a709cff1c3dddc2c502ef0400eb528f83072524c7247e662e21"
+    },
+    {
+      "file": "bible2.speed.t4.duelist.armL.png",
+      "sha256": "3358b83ba86f45841953ce3f3697d661bb67193b683d22ac43a5701642210a79",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t4-duelist.glb",
+      "sourceSha256": "d1f3aec5931c8a709cff1c3dddc2c502ef0400eb528f83072524c7247e662e21"
+    },
+    {
+      "file": "bible2.speed.t4.duelist.armR.png",
+      "sha256": "eb1b2da6af2718294c6f77c27022030ea1066eaa9c119fcb0e57b45901ac42bc",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t4-duelist.glb",
+      "sourceSha256": "d1f3aec5931c8a709cff1c3dddc2c502ef0400eb528f83072524c7247e662e21"
+    },
+    {
+      "file": "bible2.speed.t4.duelist.legL.png",
+      "sha256": "c010326acd79bc22fb3ad46d71be9c551b55687f6e04c00fd1d8a7c7988dd7d7",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t4-duelist.glb",
+      "sourceSha256": "d1f3aec5931c8a709cff1c3dddc2c502ef0400eb528f83072524c7247e662e21"
+    },
+    {
+      "file": "bible2.speed.t4.duelist.legR.png",
+      "sha256": "ca3b5454211a068b45efe9f5a771bca5d0daa0e830935f05add454d7ca188f13",
+      "source": "/bots-playtest/assets/catalogue-1/speed-t4-duelist.glb",
+      "sourceSha256": "d1f3aec5931c8a709cff1c3dddc2c502ef0400eb528f83072524c7247e662e21"
+    },
+    {
+      "file": "bible2.speed.t1.legion.head.png",
+      "sha256": "2635b112e2470e80438bfbdf589c48e5c2a1ece4d57f6862cd05bb5e01b333ec",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t1-legion.glb",
+      "sourceSha256": "82f700a2f21ce45bf1f025cb13ef9a9028d0c50c134705d6606d9a9b1b01ab76"
+    },
+    {
+      "file": "bible2.speed.t1.legion.torso.png",
+      "sha256": "dda5eef458e13fef7efc242b1553be85e1002ec43c34147411fa4b2e9f49fbe5",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t1-legion.glb",
+      "sourceSha256": "82f700a2f21ce45bf1f025cb13ef9a9028d0c50c134705d6606d9a9b1b01ab76"
+    },
+    {
+      "file": "bible2.speed.t1.legion.armL.png",
+      "sha256": "ece2f98d29bf03c052189682a3285e207068ef36c2f69a81472b26702e02addd",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t1-legion.glb",
+      "sourceSha256": "82f700a2f21ce45bf1f025cb13ef9a9028d0c50c134705d6606d9a9b1b01ab76"
+    },
+    {
+      "file": "bible2.speed.t1.legion.armR.png",
+      "sha256": "583db058b40558de5d943a566a3604115b5b1c5dd32a7179518dd70bd30c2acf",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t1-legion.glb",
+      "sourceSha256": "82f700a2f21ce45bf1f025cb13ef9a9028d0c50c134705d6606d9a9b1b01ab76"
+    },
+    {
+      "file": "bible2.speed.t1.legion.legL.png",
+      "sha256": "8f4c5c58943ac6c33f472bee08465c0fc16dc79f7f6980edb41b2c1de80d4090",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t1-legion.glb",
+      "sourceSha256": "82f700a2f21ce45bf1f025cb13ef9a9028d0c50c134705d6606d9a9b1b01ab76"
+    },
+    {
+      "file": "bible2.speed.t1.legion.legR.png",
+      "sha256": "c1b131a77ee548bfa4a00e43f31010b8eb8de27d04f6599a4c89f7903109cc6a",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t1-legion.glb",
+      "sourceSha256": "82f700a2f21ce45bf1f025cb13ef9a9028d0c50c134705d6606d9a9b1b01ab76"
+    },
+    {
+      "file": "bible2.speed.t2.legion.head.png",
+      "sha256": "dcf88d3fe0051ff7e3e75d70187bec350fd5c47a30c642ea99e4bce3a4aaf026",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t2-legion.glb",
+      "sourceSha256": "a0c8cbdee48b11d0a379b428a8b5620843d4166669229906c4ec7b30752fa070"
+    },
+    {
+      "file": "bible2.speed.t2.legion.torso.png",
+      "sha256": "54c12073e4330127416ee98bb0e2914986caff76abad53f3f7907a2c0b6d3595",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t2-legion.glb",
+      "sourceSha256": "a0c8cbdee48b11d0a379b428a8b5620843d4166669229906c4ec7b30752fa070"
+    },
+    {
+      "file": "bible2.speed.t2.legion.armL.png",
+      "sha256": "6651745940a2434f7f9a56576978f2eea881abb9b9538c70c776c0359494cfdf",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t2-legion.glb",
+      "sourceSha256": "a0c8cbdee48b11d0a379b428a8b5620843d4166669229906c4ec7b30752fa070"
+    },
+    {
+      "file": "bible2.speed.t2.legion.armR.png",
+      "sha256": "2fcbed8255129bf729d834142f2bf5fe07d4f713aa3d1aefd83a65704ae68555",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t2-legion.glb",
+      "sourceSha256": "a0c8cbdee48b11d0a379b428a8b5620843d4166669229906c4ec7b30752fa070"
+    },
+    {
+      "file": "bible2.speed.t2.legion.legL.png",
+      "sha256": "e0940cb985bd3420646dab3f7363d828055077187e1315b40c4879c5362fc0bd",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t2-legion.glb",
+      "sourceSha256": "a0c8cbdee48b11d0a379b428a8b5620843d4166669229906c4ec7b30752fa070"
+    },
+    {
+      "file": "bible2.speed.t2.legion.legR.png",
+      "sha256": "b822dce9aeb4750b1996d5a782c30da2f7176579a36352c7450b4dd7e790c7ad",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t2-legion.glb",
+      "sourceSha256": "a0c8cbdee48b11d0a379b428a8b5620843d4166669229906c4ec7b30752fa070"
+    },
+    {
+      "file": "bible2.speed.t3.legion.head.png",
+      "sha256": "1217abe8984a4abb2d1d5d9a85eb734612ad641f3d7d69f1137b7795f11fadb6",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t3-legion.glb",
+      "sourceSha256": "df4c228104fdcfb9c5be68adf11be1a5424952d2ae90f0c1b5c22d304fe88fca"
+    },
+    {
+      "file": "bible2.speed.t3.legion.torso.png",
+      "sha256": "53bda4baaff82aacf501bd0936b529cc77d9bfeb8a065c38e969da0e74a7754d",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t3-legion.glb",
+      "sourceSha256": "df4c228104fdcfb9c5be68adf11be1a5424952d2ae90f0c1b5c22d304fe88fca"
+    },
+    {
+      "file": "bible2.speed.t3.legion.armL.png",
+      "sha256": "8c410778e9abff696b677ca1f15e6c33eae907533a40b72dbb19bb3f68317671",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t3-legion.glb",
+      "sourceSha256": "df4c228104fdcfb9c5be68adf11be1a5424952d2ae90f0c1b5c22d304fe88fca"
+    },
+    {
+      "file": "bible2.speed.t3.legion.armR.png",
+      "sha256": "74132835373334eb060081a02106d87b74d41c4f1949e3528b13a2e36c34e245",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t3-legion.glb",
+      "sourceSha256": "df4c228104fdcfb9c5be68adf11be1a5424952d2ae90f0c1b5c22d304fe88fca"
+    },
+    {
+      "file": "bible2.speed.t3.legion.legL.png",
+      "sha256": "12acb3b7703ff0045aa833e24894027799b97b5a5ec438e2ad7a519f0fb18c56",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t3-legion.glb",
+      "sourceSha256": "df4c228104fdcfb9c5be68adf11be1a5424952d2ae90f0c1b5c22d304fe88fca"
+    },
+    {
+      "file": "bible2.speed.t3.legion.legR.png",
+      "sha256": "74663224d6e89f24b0647d530934095e70a4fd4d75fd3f6ca6f33dc27f68e256",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t3-legion.glb",
+      "sourceSha256": "df4c228104fdcfb9c5be68adf11be1a5424952d2ae90f0c1b5c22d304fe88fca"
+    },
+    {
+      "file": "bible2.speed.t4.legion.head.png",
+      "sha256": "011ba42a2a2cb3929dc67cde1dfd1015645e65ac9c196b341aef87615008e1cd",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t4-legion.glb",
+      "sourceSha256": "05640697d3503484d533d068c31833f1f48eff3fda5221f028a23ccc66d6c473"
+    },
+    {
+      "file": "bible2.speed.t4.legion.torso.png",
+      "sha256": "b946fdd2b452fe2312f3a0db3634d3cabcd47eefc885b68e97712c13b9968e48",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t4-legion.glb",
+      "sourceSha256": "05640697d3503484d533d068c31833f1f48eff3fda5221f028a23ccc66d6c473"
+    },
+    {
+      "file": "bible2.speed.t4.legion.armL.png",
+      "sha256": "a39891b410d4c89d53dd782d8c2a7ccdb1e331a0a246c7ae4e3aa407aa6b768d",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t4-legion.glb",
+      "sourceSha256": "05640697d3503484d533d068c31833f1f48eff3fda5221f028a23ccc66d6c473"
+    },
+    {
+      "file": "bible2.speed.t4.legion.armR.png",
+      "sha256": "184aa6bb9942b82a86db2644f28b4ef030382821f84444361d96fb55875b171b",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t4-legion.glb",
+      "sourceSha256": "05640697d3503484d533d068c31833f1f48eff3fda5221f028a23ccc66d6c473"
+    },
+    {
+      "file": "bible2.speed.t4.legion.legL.png",
+      "sha256": "36b205eda8cce716acc1ea2ea7a5d27ef4c39e8fdcb95232d8b0ac400ce591eb",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t4-legion.glb",
+      "sourceSha256": "05640697d3503484d533d068c31833f1f48eff3fda5221f028a23ccc66d6c473"
+    },
+    {
+      "file": "bible2.speed.t4.legion.legR.png",
+      "sha256": "fdc5bfb1b768c6b7758b4965291326548760c50cf942e9052ffc4d8d674aacbc",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t4-legion.glb",
+      "sourceSha256": "05640697d3503484d533d068c31833f1f48eff3fda5221f028a23ccc66d6c473"
+    },
+    {
+      "file": "bible2.speed.t1.hunter.head.png",
+      "sha256": "71ffd94c649fe5a1a62b894cb8b60d6db3723b8c767c68ba89a6c98d401e9c77",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t1-hunter.glb",
+      "sourceSha256": "e7b2520b1885f1980f2134405f2c12322dacd9c4252f96a104597f8b0cc6ba17"
+    },
+    {
+      "file": "bible2.speed.t1.hunter.torso.png",
+      "sha256": "b9a3c2467407203e384adef4448bf3c10c1bb78e522f12916032a5a66aed33c9",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t1-hunter.glb",
+      "sourceSha256": "e7b2520b1885f1980f2134405f2c12322dacd9c4252f96a104597f8b0cc6ba17"
+    },
+    {
+      "file": "bible2.speed.t1.hunter.armL.png",
+      "sha256": "5857c71e4cc20e8f1eef639e529dedd1578ffe3c3af009e22713019dad936a84",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t1-hunter.glb",
+      "sourceSha256": "e7b2520b1885f1980f2134405f2c12322dacd9c4252f96a104597f8b0cc6ba17"
+    },
+    {
+      "file": "bible2.speed.t1.hunter.armR.png",
+      "sha256": "cce5cedbdaae60cc4b3876374ef8758b899e37d3b8c3c92b750fe61722634259",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t1-hunter.glb",
+      "sourceSha256": "e7b2520b1885f1980f2134405f2c12322dacd9c4252f96a104597f8b0cc6ba17"
+    },
+    {
+      "file": "bible2.speed.t1.hunter.legL.png",
+      "sha256": "c60ed54c9e0bee820f24611a5ca29559e65abd3177fab9da20904c1d46ac2fe7",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t1-hunter.glb",
+      "sourceSha256": "e7b2520b1885f1980f2134405f2c12322dacd9c4252f96a104597f8b0cc6ba17"
+    },
+    {
+      "file": "bible2.speed.t1.hunter.legR.png",
+      "sha256": "62878a71da725f2db3e99c30219659980877bcaa5d51bbb0744b263643d29118",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t1-hunter.glb",
+      "sourceSha256": "e7b2520b1885f1980f2134405f2c12322dacd9c4252f96a104597f8b0cc6ba17"
+    },
+    {
+      "file": "bible2.speed.t2.hunter.head.png",
+      "sha256": "84dccfe32af15f61f2f722bd7cb2b722c852259b2f7356826057b9910d411459",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t2-hunter.glb",
+      "sourceSha256": "e0cccfae5a6a0a0066fb2abbf59f62b73cba9b5be9f24c576eb1df5c5b97f9d1"
+    },
+    {
+      "file": "bible2.speed.t2.hunter.torso.png",
+      "sha256": "55838479d6d3491671acd0535f0f5e2d408bc318b61c4f3b51363cda0611a369",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t2-hunter.glb",
+      "sourceSha256": "e0cccfae5a6a0a0066fb2abbf59f62b73cba9b5be9f24c576eb1df5c5b97f9d1"
+    },
+    {
+      "file": "bible2.speed.t2.hunter.armL.png",
+      "sha256": "49805021e57b40b00178354b5476bf78ee8fbc10f2fce433831212e64dc7697e",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t2-hunter.glb",
+      "sourceSha256": "e0cccfae5a6a0a0066fb2abbf59f62b73cba9b5be9f24c576eb1df5c5b97f9d1"
+    },
+    {
+      "file": "bible2.speed.t2.hunter.armR.png",
+      "sha256": "95c194f22c7e3a1d200111af804a6a3c6a9427d429da004394ddbf14e7121f7e",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t2-hunter.glb",
+      "sourceSha256": "e0cccfae5a6a0a0066fb2abbf59f62b73cba9b5be9f24c576eb1df5c5b97f9d1"
+    },
+    {
+      "file": "bible2.speed.t2.hunter.legL.png",
+      "sha256": "3b1faecb4457de9e6db11e367bf704097a0c30485118af0c3083a8e7177c2dae",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t2-hunter.glb",
+      "sourceSha256": "e0cccfae5a6a0a0066fb2abbf59f62b73cba9b5be9f24c576eb1df5c5b97f9d1"
+    },
+    {
+      "file": "bible2.speed.t2.hunter.legR.png",
+      "sha256": "87f045b4be9fb47e94089785889edaca4c0acc3c6788cbf6a6efe03080022c3d",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t2-hunter.glb",
+      "sourceSha256": "e0cccfae5a6a0a0066fb2abbf59f62b73cba9b5be9f24c576eb1df5c5b97f9d1"
+    },
+    {
+      "file": "bible2.speed.t3.hunter.head.png",
+      "sha256": "ea1dc05febeec53f85f1bacd6a95ad62504dbb722339a898018f484b070d17d5",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t3-hunter.glb",
+      "sourceSha256": "f67a5b0f99a6ba5cdd6d3507d54e29fd2e4e45bbdfd321c78c63ed1084712adc"
+    },
+    {
+      "file": "bible2.speed.t3.hunter.torso.png",
+      "sha256": "36d7775f14b1356f9f467b1c8029a01731943689b130e5dcaef7247bdb42f7fe",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t3-hunter.glb",
+      "sourceSha256": "f67a5b0f99a6ba5cdd6d3507d54e29fd2e4e45bbdfd321c78c63ed1084712adc"
+    },
+    {
+      "file": "bible2.speed.t3.hunter.armL.png",
+      "sha256": "f75ef21e2d67ff3e732a660daaf76c8d5f6c8ef79858cc625ced146e7a0c62a7",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t3-hunter.glb",
+      "sourceSha256": "f67a5b0f99a6ba5cdd6d3507d54e29fd2e4e45bbdfd321c78c63ed1084712adc"
+    },
+    {
+      "file": "bible2.speed.t3.hunter.armR.png",
+      "sha256": "de0f9dfc7715b92d4b5237f10f7a0c168cd3b7591e402ce658aafe2c5c8b7ed6",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t3-hunter.glb",
+      "sourceSha256": "f67a5b0f99a6ba5cdd6d3507d54e29fd2e4e45bbdfd321c78c63ed1084712adc"
+    },
+    {
+      "file": "bible2.speed.t3.hunter.legL.png",
+      "sha256": "be209aafcff54117585a72e8428a7e87c340af005eb2f8b618f5a671b4b1615e",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t3-hunter.glb",
+      "sourceSha256": "f67a5b0f99a6ba5cdd6d3507d54e29fd2e4e45bbdfd321c78c63ed1084712adc"
+    },
+    {
+      "file": "bible2.speed.t3.hunter.legR.png",
+      "sha256": "f1e1f2e1e0e1cca70a342cabd207fc9852b7d7ec87afe7fdbaf7aac1f23fd6b5",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t3-hunter.glb",
+      "sourceSha256": "f67a5b0f99a6ba5cdd6d3507d54e29fd2e4e45bbdfd321c78c63ed1084712adc"
+    },
+    {
+      "file": "bible2.speed.t4.hunter.head.png",
+      "sha256": "0c2d99b0d7c488525fc433b356c9540cd36bb5b7ca5cad57897a0f7307a08db8",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t4-hunter.glb",
+      "sourceSha256": "2c9786b18fba07e9fc9db63f444c25f1506946f41719d231da8756ee14031019"
+    },
+    {
+      "file": "bible2.speed.t4.hunter.torso.png",
+      "sha256": "7919ddba2820ac3bdb26c917cd9610b02cd7d76686389da131e9d00f284416dc",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t4-hunter.glb",
+      "sourceSha256": "2c9786b18fba07e9fc9db63f444c25f1506946f41719d231da8756ee14031019"
+    },
+    {
+      "file": "bible2.speed.t4.hunter.armL.png",
+      "sha256": "f95a7a8bad8554a8ff5bc6e462cf068c267481c7adfe6d89334643c1471514d4",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t4-hunter.glb",
+      "sourceSha256": "2c9786b18fba07e9fc9db63f444c25f1506946f41719d231da8756ee14031019"
+    },
+    {
+      "file": "bible2.speed.t4.hunter.armR.png",
+      "sha256": "63e916886659ca7c2aadc2c8ac25af812320e842bb35aa257b32f80599e71a92",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t4-hunter.glb",
+      "sourceSha256": "2c9786b18fba07e9fc9db63f444c25f1506946f41719d231da8756ee14031019"
+    },
+    {
+      "file": "bible2.speed.t4.hunter.legL.png",
+      "sha256": "d6ec81a4eb105224922b9445aaac3d09ceca49b3f963e13d5250f71f3561244d",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t4-hunter.glb",
+      "sourceSha256": "2c9786b18fba07e9fc9db63f444c25f1506946f41719d231da8756ee14031019"
+    },
+    {
+      "file": "bible2.speed.t4.hunter.legR.png",
+      "sha256": "f97075a3b66c678ecf22637f4897e1a0897ad1358eb6c5b536459fa2ca2df47e",
+      "source": "/bots-playtest/assets/catalogue-2/speed-t4-hunter.glb",
+      "sourceSha256": "2c9786b18fba07e9fc9db63f444c25f1506946f41719d231da8756ee14031019"
+    },
+    {
+      "file": "bible2.ranged.t1.tracker.head.png",
+      "sha256": "40d969d671b64135c26069ea11ff26b74d18def47b9277bde721c2edfbe54ef7",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t1-tracker.glb",
+      "sourceSha256": "bafd3d6c583bafcbeae1d0f23dab841023eb59ad4baeeb3ff16dccf83a304f43"
+    },
+    {
+      "file": "bible2.ranged.t1.tracker.torso.png",
+      "sha256": "3dca16614de061147115f2543e3b7e98664ef5095de882956ceb9cee95e22a4a",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t1-tracker.glb",
+      "sourceSha256": "bafd3d6c583bafcbeae1d0f23dab841023eb59ad4baeeb3ff16dccf83a304f43"
+    },
+    {
+      "file": "bible2.ranged.t1.tracker.armL.png",
+      "sha256": "1010b2316e6cca888366d59a96c4dbe5fd2414bb156d3b537460c734ce62fd22",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t1-tracker.glb",
+      "sourceSha256": "bafd3d6c583bafcbeae1d0f23dab841023eb59ad4baeeb3ff16dccf83a304f43"
+    },
+    {
+      "file": "bible2.ranged.t1.tracker.armR.png",
+      "sha256": "b5828e5517a2a096005647c44522092ef41f906ddfd54c7eead203c8630563b1",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t1-tracker.glb",
+      "sourceSha256": "bafd3d6c583bafcbeae1d0f23dab841023eb59ad4baeeb3ff16dccf83a304f43"
+    },
+    {
+      "file": "bible2.ranged.t1.tracker.legL.png",
+      "sha256": "2904f4b90422168483b888c3832d5c49c5e7d8ba82258803a488e82ec33df550",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t1-tracker.glb",
+      "sourceSha256": "bafd3d6c583bafcbeae1d0f23dab841023eb59ad4baeeb3ff16dccf83a304f43"
+    },
+    {
+      "file": "bible2.ranged.t1.tracker.legR.png",
+      "sha256": "c29374a07ade7600d4c55e7f7b3f0858cfde51b8cc3574c304e1e42d3c249722",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t1-tracker.glb",
+      "sourceSha256": "bafd3d6c583bafcbeae1d0f23dab841023eb59ad4baeeb3ff16dccf83a304f43"
+    },
+    {
+      "file": "bible2.ranged.t2.tracker.head.png",
+      "sha256": "030dbb00c72bf255e1a4d8fb97c4f0d940cc80bf78c490873f500c03a20fef99",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t2-tracker.glb",
+      "sourceSha256": "04fb7efcdf50fe63e406cf8608a1c6bb37bcb9162123778781c9976bbddc1cf7"
+    },
+    {
+      "file": "bible2.ranged.t2.tracker.torso.png",
+      "sha256": "5124e92ab9765eb1b73a86cc8308cfcf98ad1019463b9d55eb112edb97cff0bf",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t2-tracker.glb",
+      "sourceSha256": "04fb7efcdf50fe63e406cf8608a1c6bb37bcb9162123778781c9976bbddc1cf7"
+    },
+    {
+      "file": "bible2.ranged.t2.tracker.armL.png",
+      "sha256": "3feb04d3b05166eb4d9969bb0336e2e26bad71731525de4d5226d93a773a12ff",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t2-tracker.glb",
+      "sourceSha256": "04fb7efcdf50fe63e406cf8608a1c6bb37bcb9162123778781c9976bbddc1cf7"
+    },
+    {
+      "file": "bible2.ranged.t2.tracker.armR.png",
+      "sha256": "78c7e0b2ae35fb641c4b74cb17a107ae936d7e86087bde5a2cd92152d5ac513b",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t2-tracker.glb",
+      "sourceSha256": "04fb7efcdf50fe63e406cf8608a1c6bb37bcb9162123778781c9976bbddc1cf7"
+    },
+    {
+      "file": "bible2.ranged.t2.tracker.legL.png",
+      "sha256": "04644987972f5b9c7b17e96d66afd074aa3358f2260442a467a2e42fca1e6429",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t2-tracker.glb",
+      "sourceSha256": "04fb7efcdf50fe63e406cf8608a1c6bb37bcb9162123778781c9976bbddc1cf7"
+    },
+    {
+      "file": "bible2.ranged.t2.tracker.legR.png",
+      "sha256": "ebc81eb798cc3d0629dde29f4059056517f9cc27b2fe05ab30d6c57550105207",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t2-tracker.glb",
+      "sourceSha256": "04fb7efcdf50fe63e406cf8608a1c6bb37bcb9162123778781c9976bbddc1cf7"
+    },
+    {
+      "file": "bible2.ranged.t3.tracker.head.png",
+      "sha256": "f1524697197741845c74062b8ffcdf24d20561547419a4363edd056dfec5bf48",
+      "source": "/bots-playtest/assets/ranged-t3-tracker-v1.glb",
+      "sourceSha256": "f2fc77eef3cfa488995067518b3a10c8da686c6878d27aa2a556ae746c2d028c"
+    },
+    {
+      "file": "bible2.ranged.t3.tracker.torso.png",
+      "sha256": "3a4326823aa42eb3dcaf65cd5b3346bf472970a7c997241f8f3923425609862d",
+      "source": "/bots-playtest/assets/ranged-t3-tracker-v1.glb",
+      "sourceSha256": "f2fc77eef3cfa488995067518b3a10c8da686c6878d27aa2a556ae746c2d028c"
+    },
+    {
+      "file": "bible2.ranged.t3.tracker.armL.png",
+      "sha256": "5363e4470ecdd638f21bb4cf4b5f982f3f03c02b3ad6dd51272a031d9455c2c6",
+      "source": "/bots-playtest/assets/ranged-t3-tracker-v1.glb",
+      "sourceSha256": "f2fc77eef3cfa488995067518b3a10c8da686c6878d27aa2a556ae746c2d028c"
+    },
+    {
+      "file": "bible2.ranged.t3.tracker.armR.png",
+      "sha256": "9b29c78a97e2fdd6f392f536f61b5faa94c202b88646935bdacafe77d8c30f69",
+      "source": "/bots-playtest/assets/ranged-t3-tracker-v1.glb",
+      "sourceSha256": "f2fc77eef3cfa488995067518b3a10c8da686c6878d27aa2a556ae746c2d028c"
+    },
+    {
+      "file": "bible2.ranged.t3.tracker.legL.png",
+      "sha256": "e263d3e54e91adaa6b9c273f279c2ebf479e07d547644117090e4f69629dfcac",
+      "source": "/bots-playtest/assets/ranged-t3-tracker-v1.glb",
+      "sourceSha256": "f2fc77eef3cfa488995067518b3a10c8da686c6878d27aa2a556ae746c2d028c"
+    },
+    {
+      "file": "bible2.ranged.t3.tracker.legR.png",
+      "sha256": "d9a6b9761e62751aa680510443bc7a124c04ee413b9104adf1d927088174db59",
+      "source": "/bots-playtest/assets/ranged-t3-tracker-v1.glb",
+      "sourceSha256": "f2fc77eef3cfa488995067518b3a10c8da686c6878d27aa2a556ae746c2d028c"
+    },
+    {
+      "file": "bible2.ranged.t4.tracker.head.png",
+      "sha256": "d82090b98c9bfc0e01cb4fbceda6d5614798f0682b624c907f4e5c0422edbf24",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t4-tracker.glb",
+      "sourceSha256": "8c633d1f15fd998c98a650c961d59d48490c7629e43a07f21535288d81d397f3"
+    },
+    {
+      "file": "bible2.ranged.t4.tracker.torso.png",
+      "sha256": "6f9fdc9827814435be5c1b0604e5a06e01ebef51bce4536d30d5b5dd37e98555",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t4-tracker.glb",
+      "sourceSha256": "8c633d1f15fd998c98a650c961d59d48490c7629e43a07f21535288d81d397f3"
+    },
+    {
+      "file": "bible2.ranged.t4.tracker.armL.png",
+      "sha256": "555eeb1254a7b069959223cd25639e027605b807ecbe3ab1afdb0bd105665a19",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t4-tracker.glb",
+      "sourceSha256": "8c633d1f15fd998c98a650c961d59d48490c7629e43a07f21535288d81d397f3"
+    },
+    {
+      "file": "bible2.ranged.t4.tracker.armR.png",
+      "sha256": "1c1b958f9de7b4ba38b0887ee7b3f5cd9c34a5ae6dc6fc15a0bcb649046c3020",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t4-tracker.glb",
+      "sourceSha256": "8c633d1f15fd998c98a650c961d59d48490c7629e43a07f21535288d81d397f3"
+    },
+    {
+      "file": "bible2.ranged.t4.tracker.legL.png",
+      "sha256": "000889a4c5f6a606706210a452992ed78e9b6d68e87c84f3fe7fb090970b4e7d",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t4-tracker.glb",
+      "sourceSha256": "8c633d1f15fd998c98a650c961d59d48490c7629e43a07f21535288d81d397f3"
+    },
+    {
+      "file": "bible2.ranged.t4.tracker.legR.png",
+      "sha256": "01b9abc5f37d4191538c8481e6e7642f9798adb8f02ca5673a5dc991c7255fc9",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t4-tracker.glb",
+      "sourceSha256": "8c633d1f15fd998c98a650c961d59d48490c7629e43a07f21535288d81d397f3"
+    },
+    {
+      "file": "bible2.ranged.t1.sentinel.head.png",
+      "sha256": "6aa14ac0931e47f07ab2b7fdd734a3d75525777811305753c0751cdfb4cfb44c",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t1-sentinel.glb",
+      "sourceSha256": "434749d4254e461cc1992e6bc988b28389b8609dac97ecb02e4d8d240874ae6a"
+    },
+    {
+      "file": "bible2.ranged.t1.sentinel.torso.png",
+      "sha256": "031a3d1ab3b3bfbf151bec945f8af6f40d35bd262bbdc7be05803dfef6c8da68",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t1-sentinel.glb",
+      "sourceSha256": "434749d4254e461cc1992e6bc988b28389b8609dac97ecb02e4d8d240874ae6a"
+    },
+    {
+      "file": "bible2.ranged.t1.sentinel.armL.png",
+      "sha256": "2330c53fc01fce53fb2c420dfe7f8757b382860eb34054bd12e6929ec6a9c8f2",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t1-sentinel.glb",
+      "sourceSha256": "434749d4254e461cc1992e6bc988b28389b8609dac97ecb02e4d8d240874ae6a"
+    },
+    {
+      "file": "bible2.ranged.t1.sentinel.armR.png",
+      "sha256": "c53d4d96affd87cf70074db98d4cb44263ca93ad883b33a4945dc0000579451b",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t1-sentinel.glb",
+      "sourceSha256": "434749d4254e461cc1992e6bc988b28389b8609dac97ecb02e4d8d240874ae6a"
+    },
+    {
+      "file": "bible2.ranged.t1.sentinel.legL.png",
+      "sha256": "7e55b0efd3e249d60fa2a7be12ea38fccf1e91d21c4fcb7f2511d8c900a61c53",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t1-sentinel.glb",
+      "sourceSha256": "434749d4254e461cc1992e6bc988b28389b8609dac97ecb02e4d8d240874ae6a"
+    },
+    {
+      "file": "bible2.ranged.t1.sentinel.legR.png",
+      "sha256": "0c2d7d9283b4f2d12df2a94ce48fc81d8f768b69196351c8c9dc7c1df3416101",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t1-sentinel.glb",
+      "sourceSha256": "434749d4254e461cc1992e6bc988b28389b8609dac97ecb02e4d8d240874ae6a"
+    },
+    {
+      "file": "bible2.ranged.t2.sentinel.head.png",
+      "sha256": "4bdd660ab81592720bd61d62a83c9047f659c581b92bc12a2cc4a111a65bc05f",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t2-sentinel.glb",
+      "sourceSha256": "814fcf855f5d4a6c1e85963301a4434d5d085f311af972125f3dec62a0543399"
+    },
+    {
+      "file": "bible2.ranged.t2.sentinel.torso.png",
+      "sha256": "fa645913014fc5f071a41c7df74ea5dc0279d29776e1caacbf35491b9d9ec9ac",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t2-sentinel.glb",
+      "sourceSha256": "814fcf855f5d4a6c1e85963301a4434d5d085f311af972125f3dec62a0543399"
+    },
+    {
+      "file": "bible2.ranged.t2.sentinel.armL.png",
+      "sha256": "11dcd52898e3b0d9be1b642617284b3d916c5f49fd4c3ffa1b3bc4c7218271ad",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t2-sentinel.glb",
+      "sourceSha256": "814fcf855f5d4a6c1e85963301a4434d5d085f311af972125f3dec62a0543399"
+    },
+    {
+      "file": "bible2.ranged.t2.sentinel.armR.png",
+      "sha256": "7a16d2630c1872c38d28e037044fc2084ca9d5058aae98d1856f0e6ec0cadc58",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t2-sentinel.glb",
+      "sourceSha256": "814fcf855f5d4a6c1e85963301a4434d5d085f311af972125f3dec62a0543399"
+    },
+    {
+      "file": "bible2.ranged.t2.sentinel.legL.png",
+      "sha256": "a43d122f4e5a53fe3327734d7abeada2033461f37bab52eaf0ff821a1192fd24",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t2-sentinel.glb",
+      "sourceSha256": "814fcf855f5d4a6c1e85963301a4434d5d085f311af972125f3dec62a0543399"
+    },
+    {
+      "file": "bible2.ranged.t2.sentinel.legR.png",
+      "sha256": "7f176917d9b96a5c4bb957ff2d98f4c95c6c7b238cad42a9bea68c25aafeee1d",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t2-sentinel.glb",
+      "sourceSha256": "814fcf855f5d4a6c1e85963301a4434d5d085f311af972125f3dec62a0543399"
+    },
+    {
+      "file": "bible2.ranged.t3.sentinel.head.png",
+      "sha256": "6aa14ac0931e47f07ab2b7fdd734a3d75525777811305753c0751cdfb4cfb44c",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t3-sentinel.glb",
+      "sourceSha256": "91b385dc202a036004f28c4e0f5f20b79013727f1069e42ec6dcb5ecff4cb163"
+    },
+    {
+      "file": "bible2.ranged.t3.sentinel.torso.png",
+      "sha256": "0dc4ee1034825940a22b668b35afb7452a8df25879737c06406d27d509524300",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t3-sentinel.glb",
+      "sourceSha256": "91b385dc202a036004f28c4e0f5f20b79013727f1069e42ec6dcb5ecff4cb163"
+    },
+    {
+      "file": "bible2.ranged.t3.sentinel.armL.png",
+      "sha256": "29c0efca45a7ff16a318a84daa2f0079c7bae94d8a7443eb5e8aa780328ed279",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t3-sentinel.glb",
+      "sourceSha256": "91b385dc202a036004f28c4e0f5f20b79013727f1069e42ec6dcb5ecff4cb163"
+    },
+    {
+      "file": "bible2.ranged.t3.sentinel.armR.png",
+      "sha256": "93f524e81b6ca7bdf0d286f1ed6062a08105a9b69bd50251d82f722d61021282",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t3-sentinel.glb",
+      "sourceSha256": "91b385dc202a036004f28c4e0f5f20b79013727f1069e42ec6dcb5ecff4cb163"
+    },
+    {
+      "file": "bible2.ranged.t3.sentinel.legL.png",
+      "sha256": "78be16f52fcb680d5936ed1fd98ce2cfd2b6b60912027adabaf1619d384bcf62",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t3-sentinel.glb",
+      "sourceSha256": "91b385dc202a036004f28c4e0f5f20b79013727f1069e42ec6dcb5ecff4cb163"
+    },
+    {
+      "file": "bible2.ranged.t3.sentinel.legR.png",
+      "sha256": "fcee8ab7c7fd49ff4864af7f179c0e1651afb1b4a690dfc2b30e61c8acc95f2a",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t3-sentinel.glb",
+      "sourceSha256": "91b385dc202a036004f28c4e0f5f20b79013727f1069e42ec6dcb5ecff4cb163"
+    },
+    {
+      "file": "bible2.ranged.t4.sentinel.head.png",
+      "sha256": "6aa14ac0931e47f07ab2b7fdd734a3d75525777811305753c0751cdfb4cfb44c",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t4-sentinel.glb",
+      "sourceSha256": "ab6e70bc0414a9322284f63b3c2bce89d71558447badabf6b5a3d95b435a8b2a"
+    },
+    {
+      "file": "bible2.ranged.t4.sentinel.torso.png",
+      "sha256": "c975f7d068b9dcdd492f4f2f326fd67940301bf56b4da88b6867e789ecddca96",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t4-sentinel.glb",
+      "sourceSha256": "ab6e70bc0414a9322284f63b3c2bce89d71558447badabf6b5a3d95b435a8b2a"
+    },
+    {
+      "file": "bible2.ranged.t4.sentinel.armL.png",
+      "sha256": "ec283663ddfc3be3f5b85b156ebcff5cf079a263dfafe5903847ea2c1fdf562d",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t4-sentinel.glb",
+      "sourceSha256": "ab6e70bc0414a9322284f63b3c2bce89d71558447badabf6b5a3d95b435a8b2a"
+    },
+    {
+      "file": "bible2.ranged.t4.sentinel.armR.png",
+      "sha256": "dc3f88dee03fc2a2d2cb8f7f977ad20a573b7629cb8de29372757131ad251491",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t4-sentinel.glb",
+      "sourceSha256": "ab6e70bc0414a9322284f63b3c2bce89d71558447badabf6b5a3d95b435a8b2a"
+    },
+    {
+      "file": "bible2.ranged.t4.sentinel.legL.png",
+      "sha256": "e5a6433a8dee151dcfa3ea065d9d0534d9d07ecac596669d461f2dd764a3dceb",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t4-sentinel.glb",
+      "sourceSha256": "ab6e70bc0414a9322284f63b3c2bce89d71558447badabf6b5a3d95b435a8b2a"
+    },
+    {
+      "file": "bible2.ranged.t4.sentinel.legR.png",
+      "sha256": "44014a782f12052f6711ed3872adccc8f85b508ffa3000893b62933e5a06a0dc",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t4-sentinel.glb",
+      "sourceSha256": "ab6e70bc0414a9322284f63b3c2bce89d71558447badabf6b5a3d95b435a8b2a"
+    },
+    {
+      "file": "bible2.ranged.t1.specter.head.png",
+      "sha256": "42f8379f25bc89b9b107c676cfbd28558d0784883c45a5d856b78934c2b9f8c0",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t1-specter.glb",
+      "sourceSha256": "e5259db371b1c7ff9437aeb8d05e06b2039e9b3d07c4e3a8e063fd8367f69f87"
+    },
+    {
+      "file": "bible2.ranged.t1.specter.torso.png",
+      "sha256": "d2e2268a26414692a1327dd236ec5458657e4113ad9739d6ea3570144d09f47b",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t1-specter.glb",
+      "sourceSha256": "e5259db371b1c7ff9437aeb8d05e06b2039e9b3d07c4e3a8e063fd8367f69f87"
+    },
+    {
+      "file": "bible2.ranged.t1.specter.armL.png",
+      "sha256": "5803238d223ca15cf9b9476b11b122a34753140f7c87d9c337a257db6e68bde8",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t1-specter.glb",
+      "sourceSha256": "e5259db371b1c7ff9437aeb8d05e06b2039e9b3d07c4e3a8e063fd8367f69f87"
+    },
+    {
+      "file": "bible2.ranged.t1.specter.armR.png",
+      "sha256": "44565d2e06f5719aa6e3c6fcdc5fcd94ce7f719254c409af38711d5b12f610d5",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t1-specter.glb",
+      "sourceSha256": "e5259db371b1c7ff9437aeb8d05e06b2039e9b3d07c4e3a8e063fd8367f69f87"
+    },
+    {
+      "file": "bible2.ranged.t1.specter.legL.png",
+      "sha256": "08228404730cea74a4a14f383da59951e6f5a4b522c1d529949670e73442ca58",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t1-specter.glb",
+      "sourceSha256": "e5259db371b1c7ff9437aeb8d05e06b2039e9b3d07c4e3a8e063fd8367f69f87"
+    },
+    {
+      "file": "bible2.ranged.t1.specter.legR.png",
+      "sha256": "3d7669e86513c76156ee5718dae50a1bb640eb7bf104cb8cb130bc7734320fe5",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t1-specter.glb",
+      "sourceSha256": "e5259db371b1c7ff9437aeb8d05e06b2039e9b3d07c4e3a8e063fd8367f69f87"
+    },
+    {
+      "file": "bible2.ranged.t2.specter.head.png",
+      "sha256": "42f8379f25bc89b9b107c676cfbd28558d0784883c45a5d856b78934c2b9f8c0",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t2-specter.glb",
+      "sourceSha256": "2b7fd49c996cd7c84e401eb35a328a3a9eb4b3499078f706c20a0b406100f805"
+    },
+    {
+      "file": "bible2.ranged.t2.specter.torso.png",
+      "sha256": "599c4018091e5bc5c18cf60ca8cb9a08a6647df74d3b5bcfce17589bae43120d",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t2-specter.glb",
+      "sourceSha256": "2b7fd49c996cd7c84e401eb35a328a3a9eb4b3499078f706c20a0b406100f805"
+    },
+    {
+      "file": "bible2.ranged.t2.specter.armL.png",
+      "sha256": "0f0fe75e9a31f333aaaab4d4592baaa64e70f82fc9e7f37ffc371021e1a7403e",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t2-specter.glb",
+      "sourceSha256": "2b7fd49c996cd7c84e401eb35a328a3a9eb4b3499078f706c20a0b406100f805"
+    },
+    {
+      "file": "bible2.ranged.t2.specter.armR.png",
+      "sha256": "72f8005de790bae1574f1c4060e54dfe1692d9a2c9dc51029bcbefd2911199db",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t2-specter.glb",
+      "sourceSha256": "2b7fd49c996cd7c84e401eb35a328a3a9eb4b3499078f706c20a0b406100f805"
+    },
+    {
+      "file": "bible2.ranged.t2.specter.legL.png",
+      "sha256": "d2809697d85f2851d5ecac70fea3c5902efbed009febeafe576d9db42ea5b2f2",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t2-specter.glb",
+      "sourceSha256": "2b7fd49c996cd7c84e401eb35a328a3a9eb4b3499078f706c20a0b406100f805"
+    },
+    {
+      "file": "bible2.ranged.t2.specter.legR.png",
+      "sha256": "fcf38ff7ddcbe95baeafd818ba36f2b1be7e44c6bbc94e13539bbb675d92fa69",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t2-specter.glb",
+      "sourceSha256": "2b7fd49c996cd7c84e401eb35a328a3a9eb4b3499078f706c20a0b406100f805"
+    },
+    {
+      "file": "bible2.ranged.t3.specter.head.png",
+      "sha256": "2db82504e3427d8dadd70e432dfd68ad163287267c7b92aae3ceccd2c0e211c5",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t3-specter.glb",
+      "sourceSha256": "71c77377928904f950934e2f50c511967b922e97b25a61164e26659cfee1cc51"
+    },
+    {
+      "file": "bible2.ranged.t3.specter.torso.png",
+      "sha256": "68dad2a076ed5a1465163442445842a2f9d8d615441ceae88194224c47493d3b",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t3-specter.glb",
+      "sourceSha256": "71c77377928904f950934e2f50c511967b922e97b25a61164e26659cfee1cc51"
+    },
+    {
+      "file": "bible2.ranged.t3.specter.armL.png",
+      "sha256": "51eeb7a19593f4a14e2a39eb7bb8a745c344f575499ab46213b4fa244cd22a89",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t3-specter.glb",
+      "sourceSha256": "71c77377928904f950934e2f50c511967b922e97b25a61164e26659cfee1cc51"
+    },
+    {
+      "file": "bible2.ranged.t3.specter.armR.png",
+      "sha256": "f1b68e7c641bcaf8a390e3436ab96aac9788455f0fb92b05e2f4ca4f83a94997",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t3-specter.glb",
+      "sourceSha256": "71c77377928904f950934e2f50c511967b922e97b25a61164e26659cfee1cc51"
+    },
+    {
+      "file": "bible2.ranged.t3.specter.legL.png",
+      "sha256": "45512b5a0ec7679c151da32379c6da223724b9e4c48d55983c22c86e99def239",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t3-specter.glb",
+      "sourceSha256": "71c77377928904f950934e2f50c511967b922e97b25a61164e26659cfee1cc51"
+    },
+    {
+      "file": "bible2.ranged.t3.specter.legR.png",
+      "sha256": "078723be6d143ec002be64143bb19132912d57dbb7bbad46c21c6a0dd0cf90b1",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t3-specter.glb",
+      "sourceSha256": "71c77377928904f950934e2f50c511967b922e97b25a61164e26659cfee1cc51"
+    },
+    {
+      "file": "bible2.ranged.t4.specter.head.png",
+      "sha256": "d23d2006318b9b7fa3e0b47edd62a7a31b21f9bf05fd17b5527fbd7296e994cd",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t4-specter.glb",
+      "sourceSha256": "88e2bf971cafae55931677e636e77e02997b25a30cadb5124da6da19d7a76069"
+    },
+    {
+      "file": "bible2.ranged.t4.specter.torso.png",
+      "sha256": "b7cb73d8f3e6accf83ad33d3b8ad84cf19453bfe224a188f5854ea7e50c581a5",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t4-specter.glb",
+      "sourceSha256": "88e2bf971cafae55931677e636e77e02997b25a30cadb5124da6da19d7a76069"
+    },
+    {
+      "file": "bible2.ranged.t4.specter.armL.png",
+      "sha256": "7b35ffd0391dbf037ca84d1d9860b3fe23f817ec474987908b4905216a71a9ca",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t4-specter.glb",
+      "sourceSha256": "88e2bf971cafae55931677e636e77e02997b25a30cadb5124da6da19d7a76069"
+    },
+    {
+      "file": "bible2.ranged.t4.specter.armR.png",
+      "sha256": "8270771efcab1d3386531b928909c308b181a4e8e3f164e20dd99549434305ef",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t4-specter.glb",
+      "sourceSha256": "88e2bf971cafae55931677e636e77e02997b25a30cadb5124da6da19d7a76069"
+    },
+    {
+      "file": "bible2.ranged.t4.specter.legL.png",
+      "sha256": "2ce60592c4b6a87947728589fd7df6f29f4f13d8aa62f75acd32ee86e4bac22a",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t4-specter.glb",
+      "sourceSha256": "88e2bf971cafae55931677e636e77e02997b25a30cadb5124da6da19d7a76069"
+    },
+    {
+      "file": "bible2.ranged.t4.specter.legR.png",
+      "sha256": "c9eda8b82a229e820a6f3c75fd67f7aa2f0f07aab1249b0acc866685b7f05ba5",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t4-specter.glb",
+      "sourceSha256": "88e2bf971cafae55931677e636e77e02997b25a30cadb5124da6da19d7a76069"
+    },
+    {
+      "file": "kit1.hammer.t1.weapon.png",
+      "sha256": "d043f73a15fbb7854a4d14d83cfaa53e16062ae293b6a7282fcbfaa23b0b9083",
+      "source": "/bots-playtest/assets/weapon-kits-1/hammer-t1.glb",
+      "sourceSha256": "62fe3602f62e4f1001ecad55ecf8d6a387d593beaa4c89c4941e99302ae03e72"
+    },
+    {
+      "file": "kit1.hammer.t2.weapon.png",
+      "sha256": "28a1413d99445a7b3b9d475868bb850b61007963e543e8529d0f1f5118ceaadb",
+      "source": "/bots-playtest/assets/weapon-kits-1/hammer-t2.glb",
+      "sourceSha256": "93884a8fe511f3bd2dcfa3de83a9e51d8fa1a177d9fdb3eaf44d0226ada31854"
+    },
+    {
+      "file": "kit1.hammer.t3.weapon.png",
+      "sha256": "e6ad67b352bb29da52ff93927590ada72493f4d259bd85f4b1c7cf220755a08b",
+      "source": "/bots-playtest/assets/weapon-kits-1/hammer-t3.glb",
+      "sourceSha256": "fb6447e86a5bfcf24d6423fecb53e79c6a465473b2a46e7219f8e266f212ab16"
+    },
+    {
+      "file": "kit1.hammer.t4.weapon.png",
+      "sha256": "41d2e5c8af42d21241f8dc8f3132df5da55635fe0a1d27b87fa426d75243f543",
+      "source": "/bots-playtest/assets/weapon-kits-1/hammer-t4.glb",
+      "sourceSha256": "1153a82058b2a4f8e7841e747a37eddb31b6b46093d9a0377148958453c281c5"
+    },
+    {
+      "file": "kit1.greatsword.t1.weapon.png",
+      "sha256": "ec29262a12d20464e620455a17acdf9a37bc8ddcc778c9e87b7253a53b048617",
+      "source": "/bots-playtest/assets/weapon-kits-1/greatsword-t1.glb",
+      "sourceSha256": "7f5e4dc0f6c73871c77096bfcc9604ff24498de5704c139e148e23f8c849cfc2"
+    },
+    {
+      "file": "kit1.greatsword.t2.weapon.png",
+      "sha256": "90f5a8868258b142f7cd3d8aaf37616b8ec3b954c897a396f361a0bf19d31665",
+      "source": "/bots-playtest/assets/weapon-kits-1/greatsword-t2.glb",
+      "sourceSha256": "ab0a7eb847b52a07ae83ef8006c2b638ab5e53f06d8d447478f39933ec664d81"
+    },
+    {
+      "file": "kit1.greatsword.t3.weapon.png",
+      "sha256": "c4c871cccf7405fa4443c052899c89164f2518db4a8a13649fbe21c6a65122b9",
+      "source": "/bots-playtest/assets/weapon-kits-1/greatsword-t3.glb",
+      "sourceSha256": "ffc61388980bb66dabc4b0d42826e24d4f6107b406acc28ffa627ef6fdc774b8"
+    },
+    {
+      "file": "kit1.greatsword.t4.weapon.png",
+      "sha256": "7c0e8d15867eb09a1a44a8f1ff6e2bd40274ea15cf166171acb63c9279776f4d",
+      "source": "/bots-playtest/assets/weapon-kits-1/greatsword-t4.glb",
+      "sourceSha256": "96cda31ad66850f00d8ca11a75d1a5c496aeb392f25d5fedb614172b023a2c11"
+    },
+    {
+      "file": "kit1.axe.t1.weapon.png",
+      "sha256": "b91f185d2d503533424eb14e930e89af28f03ec3f111eb6efe2e5c9992cc33e1",
+      "source": "/bots-playtest/assets/weapon-kits-1/axe-t1.glb",
+      "sourceSha256": "fb305b81eb97733a36b55ed53bb607f105b815af8e9324b051f7456ac7d20036"
+    },
+    {
+      "file": "kit1.axe.t2.weapon.png",
+      "sha256": "2a89114884c0d6176f14e317ab23520347c296199a084f5a00ef6ae10f7ee182",
+      "source": "/bots-playtest/assets/weapon-kits-1/axe-t2.glb",
+      "sourceSha256": "910da06abe15d62d4c680398bc891f4c3fa7e41538f8f0be3ae0b6596b1d6e3c"
+    },
+    {
+      "file": "kit1.axe.t3.weapon.png",
+      "sha256": "519ca64e33df85d2850d95d4b88bb681e0e2d150497dafaf5b9d52457d93aee1",
+      "source": "/bots-playtest/assets/weapon-kits-1/axe-t3.glb",
+      "sourceSha256": "4d8f1085eba5016b83b70ad5150cfdc6db9b1525d474bafffb45b5eac933c3ad"
+    },
+    {
+      "file": "kit1.axe.t4.weapon.png",
+      "sha256": "226bca5141233332455a087d17b6e18324b759c50aa626561f2bd9d386268296",
+      "source": "/bots-playtest/assets/weapon-kits-1/axe-t4.glb",
+      "sourceSha256": "ecc1dae72ba55f9a165c1254eb071c36a8719aabce591baa9a4180d00b56f2d3"
+    },
+    {
+      "file": "kit1.flail.t1.weapon.png",
+      "sha256": "b91c1666b17b0e737f4b517ac5fcf067f1fecd31bae940590f3ee0841274b721",
+      "source": "/bots-playtest/assets/weapon-kits-1/flail-t1.glb",
+      "sourceSha256": "72020df288fbef2d479c855406be2f5d50e184925fa1dd018865c7685e08cfaf"
+    },
+    {
+      "file": "kit1.flail.t2.weapon.png",
+      "sha256": "af918881e4b1de50bf74b4fddc1c0a8c4cc3510adc4a6e406fc78d8b796ca832",
+      "source": "/bots-playtest/assets/weapon-kits-1/flail-t2.glb",
+      "sourceSha256": "96aefb670f6acfe1518bc3ac611779acbfbca3f6ce434cfaa762cf69ca668de0"
+    },
+    {
+      "file": "kit1.flail.t3.weapon.png",
+      "sha256": "df2765fb8476033c2174c0dee905fb7924ad56136612bbeb45a3357230117fb2",
+      "source": "/bots-playtest/assets/weapon-kits-1/flail-t3.glb",
+      "sourceSha256": "fce8dd7e98e30f0d1a3c83e1472b192ce272543e5ae630bcd481aad4875933a0"
+    },
+    {
+      "file": "kit1.flail.t4.weapon.png",
+      "sha256": "6209054a33aaa7d9c2a811e1a591e5f35a5086d568475f2027134bafb0aebcfe",
+      "source": "/bots-playtest/assets/weapon-kits-1/flail-t4.glb",
+      "sourceSha256": "b8674ec9b9dad8fd408cfad692ff2eb9f0b4b87a65a2dce11a21786509c747be"
+    },
+    {
+      "file": "kit1.sword_shield.t1.weapon.png",
+      "sha256": "4db7c0d51d50dcb925e50b4597441d53250943689899a28ad6918c4c7b6095e7",
+      "source": "/bots-playtest/assets/weapon-kits-1/sword_shield-t1.glb",
+      "sourceSha256": "e4736f2639730d26915420f3031c7f6cfab22408b48ab477d7d10c328ad853ea"
+    },
+    {
+      "file": "kit1.sword_shield.t2.weapon.png",
+      "sha256": "bd17b86e948f72470aabb654e82294a78f8dd5b956ed99be27222b12def4083c",
+      "source": "/bots-playtest/assets/weapon-kits-1/sword_shield-t2.glb",
+      "sourceSha256": "d1a401f2063ef40d58fb1a8f82dfa099c5e5aff18b3719d2335549b8322572f2"
+    },
+    {
+      "file": "kit1.sword_shield.t3.weapon.png",
+      "sha256": "d01290c162c2d0827712e42ea9246d24dedbf9296162e000ac8f885bce327924",
+      "source": "/bots-playtest/assets/weapon-kits-1/sword_shield-t3.glb",
+      "sourceSha256": "d65fdbb53ae1f8efa66bad0a090c46dd097b6195585d685d8d48289ea282a40a"
+    },
+    {
+      "file": "kit1.sword_shield.t4.weapon.png",
+      "sha256": "e134d4e52b0f593d9f018dbce43c6457cc0cc0a63ff64c2f5c3c607b7f863bf9",
+      "source": "/bots-playtest/assets/weapon-kits-1/sword_shield-t4.glb",
+      "sourceSha256": "c76dd8db55407acfb53b4fee02065f2b4fe97f0d061c165b519f220146488d34"
+    },
+    {
+      "file": "kit1.spear_shield.t1.weapon.png",
+      "sha256": "da39bbfa0831e4506343425e7b16217f09d84fd590c70cd3d9ad2dfbad187040",
+      "source": "/bots-playtest/assets/weapon-kits-1/spear_shield-t1.glb",
+      "sourceSha256": "c678e880adfa04eba906d77d85fd36e8d83baff7233f05ef54159fbc0ad13619"
+    },
+    {
+      "file": "kit1.spear_shield.t2.weapon.png",
+      "sha256": "0de228f7592cffab474a14010b99b94d372581cb5bf9fdc70b2bf5938aef9932",
+      "source": "/bots-playtest/assets/weapon-kits-1/spear_shield-t2.glb",
+      "sourceSha256": "65f9235679ca30b8f4570170af00df1164476750bfd6eab9067aac846f22d12b"
+    },
+    {
+      "file": "kit1.spear_shield.t3.weapon.png",
+      "sha256": "725ec24150ce5b75487f1347e97985f391d7e191a5a72b0ab2a64b0e365df4fd",
+      "source": "/bots-playtest/assets/weapon-kits-1/spear_shield-t3.glb",
+      "sourceSha256": "d662b5ded8a554d02cd30bb976ee2593364e456bc5755016f4a14cd7c04cd36c"
+    },
+    {
+      "file": "kit1.spear_shield.t4.weapon.png",
+      "sha256": "5a4d6dacfe9e79bb11857cd37ce290f44a154b0f27689bdc8d78662e0ed6ea7b",
+      "source": "/bots-playtest/assets/weapon-kits-1/spear_shield-t4.glb",
+      "sourceSha256": "ef983d5c9c2714e67cb4f06031bde48bbddd451be67f1a3e6e6de0ebee0b987c"
+    },
+    {
+      "file": "kit1.long_spear.t1.weapon.png",
+      "sha256": "202f9afebea138ae33932e288fb3ade73ecd13f235a618be6da792794f525e5f",
+      "source": "/bots-playtest/assets/weapon-kits-1/long_spear-t1.glb",
+      "sourceSha256": "a9f0e386a5ff491b5467849a80cfe843baeffdef12229a6e08e87190008e6af3"
+    },
+    {
+      "file": "kit1.long_spear.t2.weapon.png",
+      "sha256": "596ada1ca078cb1a1540ca6ef6468ee4cd438718a6f8f14094213b085a9af038",
+      "source": "/bots-playtest/assets/weapon-kits-1/long_spear-t2.glb",
+      "sourceSha256": "259d1af16d247bf31aa9aa79be587a3d4285d99b3783eac86a5156d56dc94063"
+    },
+    {
+      "file": "kit1.long_spear.t3.weapon.png",
+      "sha256": "f94051129a13c60b8e0ff164f5ed6d2abea3e69579e7dff628ab9fb6569851c4",
+      "source": "/bots-playtest/assets/weapon-kits-1/long_spear-t3.glb",
+      "sourceSha256": "f77da4326d9b16ba4af2f312214583327cfc0dac4424b599f15c7c764c34d717"
+    },
+    {
+      "file": "kit1.long_spear.t4.weapon.png",
+      "sha256": "12e5b5bc2e64015de60db5edce199e8eab00269b52198439334a21ca00ca6e4e",
+      "source": "/bots-playtest/assets/weapon-kits-1/long_spear-t4.glb",
+      "sourceSha256": "f82fdccf394a952e64f60a07f177c1812e54ac6f661001a96f899c00d939958e"
+    },
+    {
+      "file": "kit1.dual_blades.t1.weapon.png",
+      "sha256": "30c3ceed4891bed1bd5208fecf829182103f89b1fd54e05ac47e8fa4c6d603fa",
+      "source": "/bots-playtest/assets/weapon-kits-1/dual_blades-t1.glb",
+      "sourceSha256": "de459ee73c1a706115aa364c5f7931e6d084b7c50f7c9ef8c6a01d8271432a6e"
+    },
+    {
+      "file": "kit1.dual_blades.t2.weapon.png",
+      "sha256": "343f11a1609036ea0dba90da2adc2ba505ca17b3b1ce237134fe278c589ecea7",
+      "source": "/bots-playtest/assets/weapon-kits-1/dual_blades-t2.glb",
+      "sourceSha256": "a76a7bea24d87574390d51ad37d24ae819d1a5daaf214efade46822899e1d130"
+    },
+    {
+      "file": "kit1.dual_blades.t3.weapon.png",
+      "sha256": "e90310b0079d72180329298fcd1547d6dc60d61864498c721edd0cac71bbbc5f",
+      "source": "/bots-playtest/assets/weapon-kits-1/dual_blades-t3.glb",
+      "sourceSha256": "b2ed64bcd25e0c2576343262972a191b470b2e6dad32fa9d0f54ad5355f4e14b"
+    },
+    {
+      "file": "kit1.dual_blades.t4.weapon.png",
+      "sha256": "5dce3516c22298f4c115442dffaefee2f6ea2db53cdc3c2d1e7b58a81580bf87",
+      "source": "/bots-playtest/assets/weapon-kits-1/dual_blades-t4.glb",
+      "sourceSha256": "6297af3c0695b8e44f848722901e1270ddb9968327e9b73e1c9d8b77a2251851"
+    },
+    {
+      "file": "kit1.rifle.t1.weapon.png",
+      "sha256": "57e6cdb84307e48b2b24d383b3e222cbbb301ad1a222bbb1018c109d4940769f",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t1-tracker.glb",
+      "sourceSha256": "bafd3d6c583bafcbeae1d0f23dab841023eb59ad4baeeb3ff16dccf83a304f43"
+    },
+    {
+      "file": "kit1.rifle.t2.weapon.png",
+      "sha256": "aea56d8d88570f7512393d98a4e081a1e033e24ce76f9937d75b18acad9eba19",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t2-tracker.glb",
+      "sourceSha256": "04fb7efcdf50fe63e406cf8608a1c6bb37bcb9162123778781c9976bbddc1cf7"
+    },
+    {
+      "file": "kit1.rifle.t3.weapon.png",
+      "sha256": "aea56d8d88570f7512393d98a4e081a1e033e24ce76f9937d75b18acad9eba19",
+      "source": "/bots-playtest/assets/ranged-t3-tracker-v1.glb",
+      "sourceSha256": "f2fc77eef3cfa488995067518b3a10c8da686c6878d27aa2a556ae746c2d028c"
+    },
+    {
+      "file": "kit1.rifle.t4.weapon.png",
+      "sha256": "1cd659342a0960adb2ef8248b99eb495f7f0966b5dc815977bd8487a3baf5b27",
+      "source": "/bots-playtest/assets/catalogue-1/ranged-t4-tracker.glb",
+      "sourceSha256": "8c633d1f15fd998c98a650c961d59d48490c7629e43a07f21535288d81d397f3"
+    },
+    {
+      "file": "kit1.precision_rifle.t1.weapon.png",
+      "sha256": "05d44f78bab1180d6922433b5389acb695561843a5bfe39432e15f3395ede07a",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t1-specter.glb",
+      "sourceSha256": "e5259db371b1c7ff9437aeb8d05e06b2039e9b3d07c4e3a8e063fd8367f69f87"
+    },
+    {
+      "file": "kit1.precision_rifle.t2.weapon.png",
+      "sha256": "f3c2d36fab448e08b4a575cab1359ca798adec08725f6a2f932262bf4af645d2",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t2-specter.glb",
+      "sourceSha256": "2b7fd49c996cd7c84e401eb35a328a3a9eb4b3499078f706c20a0b406100f805"
+    },
+    {
+      "file": "kit1.precision_rifle.t3.weapon.png",
+      "sha256": "6f88e0a38df2d4197988b06e516ac026b82c948aed616bda96e2478d1277013f",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t3-specter.glb",
+      "sourceSha256": "71c77377928904f950934e2f50c511967b922e97b25a61164e26659cfee1cc51"
+    },
+    {
+      "file": "kit1.precision_rifle.t4.weapon.png",
+      "sha256": "770e8884fec0cc5cac52064c269bd9c8c8de7ed42fef867ff14f5ab319a4385a",
+      "source": "/bots-playtest/assets/catalogue-2/ranged-t4-specter.glb",
+      "sourceSha256": "88e2bf971cafae55931677e636e77e02997b25a30cadb5124da6da19d7a76069"
+    },
+    {
+      "file": "kit1.rotary.t1.weapon.png",
+      "sha256": "3883aeebb9a7428f626d524fc25fb1292d15316885dced583990fd74d2a29d2d",
+      "source": "/bots-playtest/assets/weapon-kits-1/rotary-t1.glb",
+      "sourceSha256": "98b73bcc2e2d41dc605e5c705570d9e8c1a4c4445666b3dae7c585f6aaee0ab5"
+    },
+    {
+      "file": "kit1.rotary.t2.weapon.png",
+      "sha256": "4c4630362008832a63e410fcc17a1f9a8c99c9e5522df861effbd1bbdf0c85e1",
+      "source": "/bots-playtest/assets/weapon-kits-1/rotary-t2.glb",
+      "sourceSha256": "1e9766791233c112f16fd6966bd44b631f6f57f46d96dec511322edd369ea2c8"
+    },
+    {
+      "file": "kit1.rotary.t3.weapon.png",
+      "sha256": "3a859363939811287ff6417fcc8290cc874d710d585add95a963a85a8edbd9a7",
+      "source": "/bots-playtest/assets/weapon-kits-1/rotary-t3.glb",
+      "sourceSha256": "cb2f04315bc2aedc21a439473aaa553e9a0b7c1747d64df682abaec8ef075fed"
+    },
+    {
+      "file": "kit1.rotary.t4.weapon.png",
+      "sha256": "06b1c15944da5ab92e1f10b6f0a0bdad5bcc99c136be6518c7b18bc25528d415",
+      "source": "/bots-playtest/assets/weapon-kits-1/rotary-t4.glb",
+      "sourceSha256": "1aa29658ab752116a73b73108d8572d56241daeb65f9c7fe00c599f5477183a6"
+    },
+    {
+      "file": "kit1.arm_cannon.t1.weapon.png",
+      "sha256": "352cabe95d578ca841fabfbc5bbde24b6c7559ee8607862359780f7f509f232c",
+      "source": "/bots-playtest/assets/weapon-kits-1/arm_cannon-t1.glb",
+      "sourceSha256": "9c815a828751f66d7a497365cc56b06d2edb687692a300db80af244c491729ff"
+    },
+    {
+      "file": "kit1.arm_cannon.t2.weapon.png",
+      "sha256": "60a9fabe53790746cbb5921014d25c2fb01274eaff607f98a0787a7a82dc5995",
+      "source": "/bots-playtest/assets/weapon-kits-1/arm_cannon-t2.glb",
+      "sourceSha256": "fa3188451548e910b8590e7670e767e9554de23c92020edee838a4a3a1aa7394"
+    },
+    {
+      "file": "kit1.arm_cannon.t3.weapon.png",
+      "sha256": "e0ebad778f6422b95c281bd1e7ca943372680bebd50c38fa4148e1797f111b87",
+      "source": "/bots-playtest/assets/weapon-kits-1/arm_cannon-t3.glb",
+      "sourceSha256": "69544f4f9c24e1264e4459a71b1f9b0667443ae4887262e3beafb82805990743"
+    },
+    {
+      "file": "kit1.arm_cannon.t4.weapon.png",
+      "sha256": "66643921609fe31a695c264da01bfcde6e715942580872c83c6a4613fbca2e00",
+      "source": "/bots-playtest/assets/weapon-kits-1/arm_cannon-t4.glb",
+      "sourceSha256": "36ad16a9f1a6b9587a7ab5f21627e8f2705b8c46f7c0e63a5756c4937c19466b"
+    }
+  ]
+}

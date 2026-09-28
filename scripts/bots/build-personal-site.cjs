@@ -13,6 +13,12 @@ function hosted(text) {
     .replaceAll('/viewer.js', prefix + 'viewer.js');
 }
 async function main() {
+  require('./archive-workshop-renderer.cjs');
+  // Presentation changes must not silently reinterpret a recorded workshop replay.
+  const presentationFiles=['practice-viewer.ts','game-display.ts','game-bridge.ts','combat-effects.ts','fight-personality.ts','fight-report.ts','arena-room.ts','arena-atmosphere.ts','paint.ts','banner.ts','styles.css','presentation-settings.ts','server-contact.ts'];
+  const presentation=crypto.createHash('sha256').update(Buffer.concat(presentationFiles.map(name=>fs.readFileSync(path.join(source,name))))).digest('hex').slice(0,16);
+  const versionFile=path.join(source,'asset-versions.ts');
+  fs.writeFileSync(versionFile,fs.readFileSync(versionFile,'utf8').replace(/"presentation":"[a-f0-9]+"/,`"presentation":"${presentation}"`));
   const ts = require('typescript');
   const program = ts.createProgram([path.join(source, 'main.ts')], {
     target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext,
@@ -68,7 +74,7 @@ async function main() {
   fs.writeFileSync(path.join(site, 'index.html'), html);
   fs.writeFileSync(path.join(site, 'styles.css'), hosted(fs.readFileSync(path.join(source, 'styles.css'), 'utf8')));
   fs.writeFileSync(path.join(site, 'release.json'), JSON.stringify({
-    scope: 'Version 8 practice and parts workbench. No accounts, rewards or ranked fights.',
+    scope: 'Version 8 renderer for the connected browser workshop and standalone practice. Browser progression only; no wallet rewards or ranked fights.',
     versions: fs.readFileSync(path.join(source, 'asset-versions.ts'), 'utf8'),
   }, null, 2));
   console.log('Playtest built: strict TypeScript passed; ' + receipt.assets.length + ' assets checked; /bots/playtest ready.');

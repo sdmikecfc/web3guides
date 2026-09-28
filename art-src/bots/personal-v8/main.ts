@@ -382,7 +382,7 @@ async function start() {
 }
 
 document.getElementById('exchange-mode')!.onclick=()=>{location.href='/?view=exchange&revision=tank-exchange-1'};
-void (new URLSearchParams(location.search).get('view')==='practice'?import('./practice-viewer').then(m=>m.startPractice()):new URLSearchParams(location.search).get('view')==='parts'?import('./parts-viewer').then(m=>m.startParts()):new URLSearchParams(location.search).get('view')==='heroes'?import('./heroes-viewer').then(m=>m.startHeroes()):new URLSearchParams(location.search).get('view')==='exchange'?import('./exchange-viewer').then(m=>m.startExchange()):start()).catch(error => {
+void (new URLSearchParams(location.search).get('view')==='display'?import('./game-display').then(m=>m.startGameDisplay()):new URLSearchParams(location.search).get('view')==='practice'?import('./practice-viewer').then(m=>m.startPractice()):new URLSearchParams(location.search).get('view')==='parts'?import('./parts-viewer').then(m=>m.startParts()):new URLSearchParams(location.search).get('view')==='heroes'?import('./heroes-viewer').then(m=>m.startHeroes()):new URLSearchParams(location.search).get('view')==='exchange'?import('./exchange-viewer').then(m=>m.startExchange()):start()).catch(error => {
   status.textContent = 'This browser could not start the 3D viewer. Try a browser with 3D support.';
   console.error('Tank viewer startup:', error);
 });

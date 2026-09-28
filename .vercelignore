@@ -2,6 +2,18 @@
 .bots-preview/
 .dk-preview/
 .next-diner-noodles/
+# Runtime types, stats and paint data live in src/lib/bots/workshop8.
+# The site must build without any local asset-authoring source.
 art-src/
 public/bots-art/_raw/
 .crypt-v1-backup/
+
+# Local build caches and development worktrees are not deployment inputs.
+# Custom Next output names are not covered by Vercel's default .next exclusion.
+/.next*/
+/.claude/
+/.codex-remote-attachments/
+/.game-dev/
+/.dev-captures/
+/.captures/
+*.tsbuildinfo

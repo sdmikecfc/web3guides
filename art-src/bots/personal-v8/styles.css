@@ -91,3 +91,11 @@
 .parts-cabinet #part-stat-panel small{display:block;line-height:1.4}
 .parts-cabinet #part-stat-panel:focus-visible{outline:2px solid #e7bd79;outline-offset:2px}
 .parts-cabinet{scrollbar-gutter:stable}
+html:has(.game-display),body.game-display{background:transparent!important}
+.game-display .studio{display:block;position:relative;width:100%;height:100dvh;min-height:0;background:transparent!important}
+.game-display canvas{display:block;width:100%;height:100%;touch-action:none}
+#game-model-status{position:absolute;left:20px;bottom:20px;padding:12px 18px;border-radius:12px;background:#28251bd9;color:#ffefd0;max-width:calc(100% - 40px)}
+
+.embedded-fight .studio{height:100dvh;min-height:0;grid-template-rows:42px minmax(0,1fr)}
+.embedded-fight .topbar{min-height:0;padding:4px 12px;justify-content:flex-end}
+.embedded-fight .practice-stage{min-height:0}

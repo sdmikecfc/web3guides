@@ -1,9 +1,7 @@
 import * as T from 'three';
 import {equipmentPose,type EquipmentMotion} from './equipment-pose';
-export const SLOTS=['head','torso','armL','armR','legL','legR','weapon'] as const;
-export type Slot=typeof SLOTS[number];
-export type Entry={id:string;style:'tank'|'speed'|'ranged';family:string;tier:number;name:string;description:string;url:string;sha256:string;approval:string;weapon:string;hands?:number;thumbnailRoot?:string;offhand:boolean;slots:Slot[]};
-export type Choices=Record<Slot,string>;
+import {SLOTS,type Slot,type Entry,type Choices} from '../../../src/lib/bots/workshop8/equipment-types';
+export {SLOTS,type Slot,type Entry,type Choices} from '../../../src/lib/bots/workshop8/equipment-types';
 const ROOT:Record<Exclude<Slot,'torso'|'weapon'>,string>={head:'head',armL:'shoulderL',armR:'shoulderR',legL:'hipL',legR:'hipR'};
 const V=()=>new T.Vector3();
 function requireNode(m:T.Object3D,name:string){const o=m.getObjectByName(name);if(!o)throw Error('Missing attachment: '+name);return o}

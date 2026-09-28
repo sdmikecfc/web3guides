@@ -3,6 +3,7 @@ import { botsDb } from "@/app/bots/_server/db";
 import { sessionFromRequest } from "@/app/bots/_server/session";
 import { displayName, type PlayerRow } from "@/app/bots/_server/players";
 import { CAMPAIGN_CATEGORIES, campaignPeriod, campaignSnapshotAvailable, emptyCampaign, publicStandings, type CampaignView } from "@/lib/bots/campaign-view";
+import { competitionEnabled, workshopCompetition } from '@/app/bots/_server/workshop-competition';
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ const dateOrNull = (n: unknown) => typeof n === "string" && Number.isFinite(Date
 const object = (n: unknown): Record<string, any> => n && typeof n === "object" && !Array.isArray(n) ? n as Record<string, any> : {};
 
 /** Read a reporter snapshot. Missing launch configuration never becomes fake standings. */
-export async function GET(req: Request) {
+async function legacyCampaign(req: Request) {
   const period = campaignPeriod(new URL(req.url).searchParams.get("period"));
   const reply = (view: CampaignView) => NextResponse.json(view, { headers: { "Cache-Control": "private, no-store" } });
   try {
@@ -60,4 +61,15 @@ export async function GET(req: Request) {
     }
     return reply(out);
   } catch { return reply(emptyCampaign(period)); }
+}
+
+export async function GET(req:Request){
+ if(new URL(req.url).searchParams.get('workshop')!=='1'||!competitionEnabled())return legacyCampaign(req);
+ const period=campaignPeriod(new URL(req.url).searchParams.get('period'));
+ const [legacy,current]=await Promise.all([legacyCampaign(req),workshopCompetition(req,period)]);
+ const view=await legacy.json();
+ if(current.competition.state==='draft'||view.campaign?.id!==current.sourceCampaignId){view.standings={roi:[],profit:[],battles:[]};view.earning=null;view.ready=false;view.confirmedThrough=null;view.period={key:period,startsAt:null,endsAt:null,status:'upcoming'};}
+ view.campaign={id:'workshop-competition-1',title:'Model Kombat $2,000 competition',status:current.competition.state,startsAt:current.competition.startsAt,endsAt:current.competition.endsAt};
+ view.standings.battles=current.standings;
+ return NextResponse.json({...view,workshop:current.competition},{headers:{'Cache-Control':'private, no-store'}});
 }

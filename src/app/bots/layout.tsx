@@ -1,13 +1,10 @@
 /**
- * The /bots tree layout: ONE WalletProviders for the whole tree (the S7 and
- * chef root-layout pattern, src/app/chef/layout.tsx), so the wallet connects
- * once and survives client-side nav. BotsTopNav is a FIXED overlay, never in
- * a page's layout flow, so it cannot break the bay canvas.
+ * Shared game typography and surface. The connected workshop has no wallet
+ * provider. Existing wallet routes lazily load their original providers/nav.
  */
 
 import localFont from "next/font/local";
-import { WalletProviders } from "@/app/wallet/providers";
-import { BotsTopNav } from "./_components/BotsTopNav";
+import BotsRouteProviders from "./_components/BotsRouteProviders";
 import { M } from "./_ui/tokens";
 
 export const metadata = {
@@ -35,13 +32,11 @@ const toyFont = localFont({
 });
 
 export default function BotsLayout({ children }: { children: React.ReactNode }) {
-  // the site accent on the connect button: the money layer IS the site
   return (
-    <WalletProviders accent={M.accent} accentForeground="#ffffff">
+    <BotsRouteProviders>
       <div className={toyFont.variable} style={{ background: M.ground, minHeight: "100dvh", fontFamily: "var(--font-bots-toy), ui-rounded, Arial, sans-serif" }}>
-        <BotsTopNav />
         {children}
       </div>
-    </WalletProviders>
+    </BotsRouteProviders>
   );
 }

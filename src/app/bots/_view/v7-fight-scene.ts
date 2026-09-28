@@ -7,15 +7,48 @@ import type { BuildV7, EventV7, StateV7 } from "@/lib/bots/v7/types";
 import { createLabSet } from "../lab/staging";
 import { createToyV7, type ToyV7 } from "./v7-toy";
 import { createEffectsV7 } from "./v7-effects";
-import { createRemasterTerraces } from "./v7-arena";
 
 export interface PresentationV7 { mode: "fight" | "turntable" | "weapon-demo"; focusSide?: 0 | 1; orbit?: boolean }
-const ease = (n: number) => { const x = Math.max(0, Math.min(1, n)); return x * x * (3 - 2 * x); };
+/** Explicit art-review inputs. No game route supplies these overrides. */
+export interface VisualReviewV7 {
+  modelUrls?: [string | undefined, string | undefined];
+  canonicalFraming?: boolean;
+  effects?: boolean;
+  stillCrowd?: boolean;
+  inspectionAngle?: number;
+}
 const point = (p: readonly number[]) => new THREE.Vector3(p[0] / 1000, p[1] / 1000, p[2] / 1000);
 interface Debris { object: THREE.Object3D; event: EventV7; origin: THREE.Vector3; rotation: THREE.Quaternion; velocity: THREE.Vector3; axis: THREE.Vector3 }
 
+function travelSampleV7(f: StateV7["fighters"][number], frame: number, ago: number) {
+  const target = frame - ago, trail = f.motionTrail;
+  if (!trail.length) return { x: f.x, z: f.z };
+  if (target <= trail[0].frame) return trail[0];
+  for (let i = 0; i < trail.length; i++) {
+    const a = trail[i], b = trail[i + 1] ?? { frame, x: f.x, z: f.z };
+    if (target <= b.frame) { const t = Math.min(1, Math.max(0, (target - a.frame) / Math.max(1, b.frame - a.frame))); return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t }; }
+  }
+  return { x: f.x, z: f.z };
+}
+
+/** A ringside operator follows the exchange without crossing to its other side.
+ * The short recording-based average is independent of render rate and seek order. */
+export function exchangeCameraV7(state: StateV7, aspect: number, moving: boolean) {
+  let x = 0, z = 0, weight = 0;
+  for (let i = 0; i < 5; i++) {
+    const w = 5 - i, a = travelSampleV7(state.fighters[0], state.frame, i * 6), b = travelSampleV7(state.fighters[1], state.frame, i * 6);
+    x += (a.x + b.x) * .5 * w; z += (a.z + b.z) * .5 * w; weight += w;
+  }
+  x /= weight * 1000; z /= weight * 1000;
+  const portrait = aspect < .85;
+  // This small truck correction responds to real lateral travel, not the angle
+  // between fighters. Circling and passing one another cannot whip the camera.
+  const truck = moving ? Math.max(-.08, Math.min(.08, x / 80 - z / 160)) : 0;
+  return { x, z, angle: (portrait ? .76 : .16) + truck, elevation: portrait ? .68 : .35, fov: 37 };
+}
+
 /** New rig + deterministic director. Older fights keep their original renderer. */
-export async function createFightSceneV7(canvas: HTMLCanvasElement, builds: [BuildV7, BuildV7], initial: Partial<PresentationV7> = {}) {
+export async function createFightSceneV7(canvas: HTMLCanvasElement, builds: [BuildV7, BuildV7], initial: Partial<PresentationV7> = {}, review: VisualReviewV7 = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance", alpha: false });
   renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .93;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -28,31 +61,39 @@ export async function createFightSceneV7(canvas: HTMLCanvasElement, builds: [Bui
   key.shadow.mapSize.set(2048, 2048); key.shadow.normalBias = .016; key.shadow.bias = -.00008; key.shadow.radius = 3; scene.add(key);
   const rim = new THREE.DirectionalLight(0x9dcdff, 2.45); rim.position.set(3, 4.5, -4); scene.add(rim);
   const fill = new THREE.DirectionalLight(0xffcc89, .85); fill.position.set(5, 2.5, 3); scene.add(fill);
-  let toys: ToyV7[] = [], stage: Awaited<ReturnType<typeof createLabSet>> | undefined;
+  let toys: ToyV7[] = [], framingToys: ToyV7[] = [], stage: Awaited<ReturnType<typeof createLabSet>> | undefined;
   let effects: ReturnType<typeof createEffectsV7> | undefined;
-  let terraces: ReturnType<typeof createRemasterTerraces> | undefined;
   let disposed = false;
   function release() {
     key.shadow.dispose(); scene.background = null; scene.environment = null; scene.clear(); environment.dispose(); renderer.dispose();
     if (!canvas.isConnected) renderer.forceContextLoss();
   }
   try {
-    const settled = await Promise.allSettled(builds.map(createToyV7));
+    const settled = await Promise.allSettled(builds.map((build, i) => createToyV7(build, review.modelUrls?.[i])));
     toys = settled.flatMap(r => r.status === "fulfilled" ? [r.value] : []);
     const failure = settled.find(r => r.status === "rejected") as PromiseRejectedResult | undefined;
     if (failure) throw failure.reason;
+    if (review.canonicalFraming) {
+      const frames = await Promise.allSettled(builds.map(build => createToyV7(build)));
+      framingToys = frames.flatMap(r => r.status === "fulfilled" ? [r.value] : []);
+      const failedFrame = frames.find(r => r.status === "rejected") as PromiseRejectedResult | undefined;
+      if (failedFrame) throw failedFrame.reason;
+    }
     stage = await createLabSet(scene, 6.75, true); toys.forEach(t => scene.add(t.root));
     effects = createEffectsV7(scene, toys);
-    terraces = createRemasterTerraces(scene);
-  } catch (error) { toys.forEach(t => t.dispose()); stage?.dispose(); release(); throw error; }
+  } catch (error) { toys.forEach(t => t.dispose()); framingToys.forEach(t => t.dispose()); stage?.dispose(); release(); throw error; }
   // Keep the existing miniature arena, while giving its surface a less washed-out finish.
   scene.traverse(o => {
-    if (!(o instanceof THREE.Mesh) || !(o.geometry instanceof THREE.CylinderGeometry)) return;
+    if (!(o instanceof THREE.Mesh)) return;
+    // The original animated audience reaches down behind the ring. An opaque
+    // floor outside the ring would cover its lower rows as the camera moves.
+    if (o.geometry instanceof THREE.PlaneGeometry && o.geometry.parameters.width === 100) { o.visible = false; return; }
+    if (!(o.geometry instanceof THREE.CylinderGeometry)) return;
     const p = o.geometry.parameters;
     if (p.radiusTop > 5 && p.height < .1) { const m = o.material as THREE.MeshStandardMaterial; m.color.setHex(0xc9b59a); m.roughness = .83; }
     // The director can travel beyond the old fixed-camera backdrop. Surround
     // that complete travel volume so retreating near a rail cannot expose a void.
-    if (p.radiusTop === 10.8 && p.openEnded) { o.scale.set(2.8, 2, 2.8); o.position.y = 7.7; }
+    if (p.radiusTop === 10.8 && p.openEnded) { o.scale.set(2.8, 4, 2.8); o.position.y = 4.8; }
   });
   const anchors = [new THREE.Group(), new THREE.Group()];
   const bounds = new THREE.Box3(), partBounds = new THREE.Box3(), debrisBounds = new THREE.Box3();
@@ -86,6 +127,13 @@ export async function createFightSceneV7(canvas: HTMLCanvasElement, builds: [Bui
       toy.root.visible = !showroom || focus === i;
       if (showroom) toy.root.position.set(-state.fighters[i].x / 1000, 0, -state.fighters[i].z / 1000);
       toy.root.updateMatrixWorld(true);
+      const framing = framingToys[i];
+      if (framing) {
+        framing.pose(state.fighters[i], sample, shownFrame, reduced);
+        framing.root.visible = toy.root.visible;
+        framing.root.position.copy(toy.root.position);
+        framing.root.updateMatrixWorld(true);
+      }
       anchors[i].position.set(showroom ? 0 : state.fighters[i].x / 1000, 0, showroom ? 0 : state.fighters[i].z / 1000);
     });
     while (cursor < state.events.length) {
@@ -104,11 +152,11 @@ export async function createFightSceneV7(canvas: HTMLCanvasElement, builds: [Bui
       d.object.updateMatrixWorld(true); debrisBounds.setFromObject(d.object);
       if (debrisBounds.min.y < .014) d.object.position.y += .014 - debrisBounds.min.y;
     }
-    stage!.update(showroom, width, height, anchors, !reduced && !state.done);
-    terraces!.update(showroom, shownFrame, reduced || state.done);
-    effects!.render(state, shownFrame, reduced, showroom ? (focus === 0 ? 1 : 0) : -1);
+    stage!.update(showroom, width, height, anchors, !review.stillCrowd && !reduced && !state.done);
+    effects!.setVisible(review.effects !== false);
+    if (review.effects !== false) effects!.render(state, shownFrame, reduced, showroom ? (focus === 0 ? 1 : 0) : -1);
     bounds.makeEmpty();
-    toys.forEach(t => {
+    (framingToys.length ? framingToys : toys).forEach(t => {
       if (!t.root.visible) return;
       t.root.traverseVisible(o => {
         if (!(o instanceof THREE.Mesh)) return;
@@ -118,38 +166,17 @@ export async function createFightSceneV7(canvas: HTMLCanvasElement, builds: [Bui
     });
     if (bounds.isEmpty()) bounds.setFromCenterAndSize(new THREE.Vector3(0, 1.5, 0), new THREE.Vector3(4, 3, 3));
     bounds.getCenter(aim);
-    const a = state.fighters[0], b = state.fighters[1], dx = b.x - a.x, dz = b.z - a.z;
-    // Absolute sampling makes seeking and offline frame export reproduce the camera.
-    let axisX = dx, axisZ = dz;
-    if (cinematic && !reduced) {
-      // A short average of recorded travel provides smooth direction without
-      // depending on how many rendering frames happened before a replay seek.
-      const count = Math.min(a.motionTrail.length, b.motionTrail.length);
-      let weight = 1; axisX = dx; axisZ = dz;
-      for (let i = Math.max(0, count - 5); i < count; i++) {
-        const w = (i + 1) / Math.max(1, count);
-        axisX += (b.motionTrail[i].x - a.motionTrail[i].x) * w; axisZ += (b.motionTrail[i].z - a.motionTrail[i].z) * w; weight += w;
-      }
-      axisX /= weight; axisZ /= weight;
-    }
-    const portrait = camera.aspect < .85;
-    const spacing = Math.hypot(dx, dz);
-    const portraitBias = portrait ? .38 + .65 * ease((spacing - 1800) / 3800) : .14;
-    let angle = showroom ? state.fighters[focus].yaw / 1000 + .30 + (presentation.orbit && !reduced ? shownFrame / 60 * .28 : 0) : cinematic && !reduced ? Math.atan2(-axisZ, axisX) + portraitBias : portrait ? .9 : .18;
-    let elevation = showroom ? .23 : portrait ? .68 : .35, fov = showroom ? 32 : 37;
-    if (cinematic && !reduced && !showroom) {
-      let beat: EventV7 | undefined, lastBeat = -180;
-      for (const e of state.events) {
-        if (e.frame > shownFrame || e.frame - lastBeat < 180) continue;
-        if (e.kind === "special_start" || e.kind === "knockdown" || e.kind === "ko" || (e.kind === "hit" && e.critical)) { beat = e; lastBeat = e.frame; }
-      }
-      if (beat) {
-        const age = shownFrame - beat.frame;
-        const accent = ease(age / 14) * (1 - ease((age - (beat.kind === "ko" ? 62 : 25)) / 30));
-        elevation -= .085 * accent; angle += (beat.who ? -.07 : .07) * accent; fov -= 2.2 * accent;
-        if (beat.worldPoint) aim.lerp(point(beat.worldPoint), .10 * accent);
-      }
-      const opening = 1 - ease(shownFrame / 105); elevation -= opening * .065;
+    const exchange = exchangeCameraV7(state, camera.aspect, cinematic && !reduced);
+    const angle = showroom ? state.fighters[focus].yaw / 1000 + .30 + (review.inspectionAngle ?? 0) + (presentation.orbit && !reduced ? shownFrame / 60 * .28 : 0) : exchange.angle;
+    const elevation = showroom ? .23 : exchange.elevation, fov = showroom ? 32 : exchange.fov;
+    if (!showroom) {
+      aim.set(exchange.x, 1.4, exchange.z);
+      // Keep room for the next guard, duck or counter rather than tightening on
+      // every retracted arm. Actual mesh bounds still win for wide weapons.
+      state.fighters.forEach(f => {
+        bounds.expandByPoint(offset.set(f.x / 1000 - .9, 0, f.z / 1000 - .9));
+        bounds.expandByPoint(offset.set(f.x / 1000 + .9, 2.9, f.z / 1000 + .9));
+      });
     }
     camera.fov = fov; camera.updateProjectionMatrix();
     backward.set(Math.sin(angle), elevation, Math.cos(angle)).normalize(); right.crossVectors(worldUp, backward).normalize(); up.crossVectors(backward, right).normalize();
@@ -157,7 +184,7 @@ export async function createFightSceneV7(canvas: HTMLCanvasElement, builds: [Bui
     let distance = showroom ? 4.7 : 5.8;
     for (const x of [bounds.min.x, bounds.max.x]) for (const y of [bounds.min.y, bounds.max.y]) for (const z of [bounds.min.z, bounds.max.z]) {
       offset.set(x, y, z).sub(aim);
-      distance = Math.max(distance, Math.abs(offset.dot(right)) / (tanH * .86) + offset.dot(backward), Math.abs(offset.dot(up)) / (tanV * .83) + offset.dot(backward));
+      distance = Math.max(distance, Math.abs(offset.dot(right)) / (tanH * .83) + offset.dot(backward), Math.abs(offset.dot(up)) / (tanV * .80) + offset.dot(backward));
     }
     camera.position.copy(aim).addScaledVector(backward, distance + .28); camera.lookAt(aim);
     renderer.render(scene, camera); drawMs = performance.now() - start;
@@ -165,6 +192,7 @@ export async function createFightSceneV7(canvas: HTMLCanvasElement, builds: [Bui
   return {
     render, reset,
     setPresentation(next: Partial<PresentationV7>) { presentation = { ...presentation, ...next }; },
+    setReview(next: Pick<VisualReviewV7, "effects" | "stillCrowd" | "inspectionAngle">) { review = { ...review, ...next }; },
     resize(w: number, h: number, dpr: number) {
       if (disposed) return; width = Math.max(1, w); height = Math.max(1, h); camera.aspect = width / height; camera.updateProjectionMatrix();
       renderer.setPixelRatio(Math.min(width < 600 ? 1.35 : 1.25, dpr)); renderer.setSize(width, height, false);
@@ -173,7 +201,7 @@ export async function createFightSceneV7(canvas: HTMLCanvasElement, builds: [Bui
     },
     stats() { return { dents: toys.reduce((n, t) => n + t.dents, 0), scorches: toys.reduce((n, t) => n + t.scorches, 0), vertices: toys.reduce((n, t) => n + t.changedVertices, 0), gripError: Math.max(...toys.map(t => t.gripError)), drawCalls: renderer.info.render.calls, triangles: renderer.info.render.triangles, drawMs, crowd: stage!.crowdState().playing, displayFrame }; },
     inspect() { return { camera: { position: camera.position.toArray(), target: aim.toArray(), fov: camera.fov }, poses: sampled, actors: toys.map(t => t.inspect()), damage: toys.map(t => ({ dents: t.dents, vertices: t.changedVertices })), textures: renderer.info.memory.textures, geometries: renderer.info.memory.geometries }; },
-    dispose() { if (disposed) return; disposed = true; clearDebris(); effects!.dispose(); terraces!.dispose(); toys.forEach(t => t.dispose()); scene.traverse(o => { if (o instanceof THREE.InstancedMesh) o.dispose(); }); stage!.dispose(); release(); },
+    dispose() { if (disposed) return; disposed = true; clearDebris(); effects!.dispose(); toys.forEach(t => t.dispose()); framingToys.forEach(t => t.dispose()); scene.traverse(o => { if (o instanceof THREE.InstancedMesh) o.dispose(); }); stage!.dispose(); release(); },
   };
 }
 export type FightSceneV7 = Awaited<ReturnType<typeof createFightSceneV7>>;

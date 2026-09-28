@@ -18,7 +18,7 @@ For production-mode previews, set `BOTS_REMASTER_PREVIEW=1` for the direct previ
 - A separate v7 simulation and shared articulated pose. Hands, weapon grips, cannon cradle, muzzle, recoil, feet and wheels use the same hierarchy for contact and display. Preparation, recovery, interruption, missing limbs and directional defeat have explicit poses.
 - Real hammer/blade sweeps, cannon projectiles, backup-pistol draws, retreat, shoves, limited control effects and three actual Specials. Amber shield, cyan Overdrive route trails/afterimages, violet Slow Field, and active countdowns distinguish the abilities.
 - Robot-owned clay geometry receives recorded local impacts. Damage follows a part through detachment, reconstructs on replay, and resets between fights. Fine normal/roughness maps are embedded in the exported GLBs.
-- A camera that follows recorded action and frames both fighters; portrait and steady/reduced-motion modes; warm miniature arena lighting, audience terraces and existing locally served crowd animation.
+- A camera that follows recorded action and frames both fighters; portrait and steady/reduced-motion modes; warm miniature arena lighting and the original locally served Higgsfield crowd animation. The rejected foreground spectator figures have been removed.
 - Designed procedural proof audio, native review-video recording, and repeatable local frame capture. These audio cues are not the final recorded Foley mix; native MediaRecorder footage is not the planned frame-perfect Mediabunny exporter.
 
 ## Compatibility boundaries

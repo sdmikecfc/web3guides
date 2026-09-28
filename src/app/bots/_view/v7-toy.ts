@@ -16,12 +16,13 @@ interface ClaySurface {
 }
 
 /** Each actor owns its deformable geometry. Cached source meshes are never posed or dented. */
-export async function createToyV7(build: BuildV7) {
-  let promise = sourceCache.get(build.rig.modelUrl);
+export async function createToyV7(build: BuildV7, visualModelUrl = build.rig.modelUrl) {
+  // Art-review assets are presentation inputs, never canonical build mutations.
+  let promise = sourceCache.get(visualModelUrl);
   if (!promise) {
-    promise = loader.loadAsync(build.rig.modelUrl).then(g => g.scene);
-    sourceCache.set(build.rig.modelUrl, promise);
-    promise.catch(() => sourceCache.delete(build.rig.modelUrl));
+    promise = loader.loadAsync(visualModelUrl).then(g => g.scene);
+    sourceCache.set(visualModelUrl, promise);
+    promise.catch(() => sourceCache.delete(visualModelUrl));
   }
   const root = (await promise).clone(true);
   const nodes = new Map<string, THREE.Object3D>();
