@@ -1,0 +1,34 @@
+require('./personal-native-path.cjs');
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),ts=require('typescript');
+require.extensions['.ts']=(m,file)=>m._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText,file);
+const {freshWorkshop,changeWorkshop,blankDraft}=require('../../src/lib/bots/workshop8/state.ts');
+const {preset}=require('../../src/lib/bots/workshop8/catalogue.ts');
+const {emptyCompetition}=require('../../src/lib/bots/workshop8/competition.ts');
+const {chromium}=require(process.env.MK_PLAYWRIGHT||'C:/Users/Mike/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const origin='http://127.0.0.1:3183',out='D:/Temp/modelkombat-manual-review';
+async function main(){fs.mkdirSync(out,{recursive:true});const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+try{const page=await browser.newPage({viewport:{width:1280,height:720}}),errors=[],writes=[];page.on('pageerror',e=>errors.push(e.message));
+ let state=changeWorkshop(freshWorkshop(),{kind:'draft',draft:{...blankDraft(),name:'My Warden',choices:preset('tank')}});state=changeWorkshop(state,{kind:'finish',request:'manual-test-starter'});state.welcomed=true;const before=JSON.stringify(state);
+ await page.addInitScript(()=>localStorage.setItem('mk8.welcome.3','seen'));
+ const packet=()=>({ok:true,journey:true,session:{kind:'guest'},garageId:'manual-fixture',garages:[{id:'manual-fixture',name:'Test garage',robots:state.robots.map(r=>({id:r.id,name:r.name})),activeFight:null}],state,days:{},serverNow:Date.now()});
+ await page.route('**/api/bots/campaign?*',r=>r.fulfill({json:{workshop:{...emptyCompetition(false,true),available:true,state:'draft'},standings:{roi:[],profit:[],battles:[]}}}));
+ await page.route('**/api/bots/workshop{,/**,?*}',r=>{if(r.request().method()!=='GET')writes.push(r.request().postData());return r.fulfill({json:r.request().url().includes('/session')?{ok:true,enabled:true}:packet()});});
+ await page.goto(origin+'/bots/workshop?view=fight',{waitUntil:'domcontentloaded',timeout:120000});await page.getByRole('button',{name:'Take control · Practice'}).click({timeout:120000});
+ const iframe=page.frameLocator('iframe[title="Take control practice arena"]');await iframe.getByRole('button',{name:'Start fight',exact:true}).waitFor({timeout:120000});
+ const frame=page.frames().find(f=>f.url().includes('/bots-playtest/'));await frame.waitForFunction(()=>window.practice8?.ready,{timeout:120000});
+ await page.screenshot({path:path.join(out,'manual-intro.png')});await iframe.getByRole('button',{name:'Start fight',exact:true}).click();
+ await iframe.locator('canvas').click();await page.keyboard.down('Digit1');await page.waitForTimeout(70);await page.keyboard.up('Digit1');await page.waitForTimeout(700);
+ assert.ok(await frame.evaluate(()=>window.practice8.engine.commands.some(c=>c.kind==='attack')),'Keyboard command recorded');
+ await page.keyboard.press('Digit6');await iframe.getByRole('button',{name:'Resume · 6',exact:true}).waitFor();const pausedTick=await frame.evaluate(()=>window.practice8.engine.tick);await page.waitForTimeout(150);assert.equal(await frame.evaluate(()=>window.practice8.engine.tick),pausedTick);await page.keyboard.press('Numpad6');await iframe.getByRole('button',{name:'Pause · 6',exact:true}).waitFor();await page.keyboard.press('Numpad1');await frame.waitForFunction(()=>window.practice8.engine.commands.filter(c=>c.kind==='attack'&&c.edge==='press').length>=2,{timeout:10000});
+ const defendBox=await iframe.getByRole('button',{name:'Defend',exact:true}).boundingBox();await page.mouse.move(defendBox.x+10,defendBox.y+10);await page.mouse.down();await page.waitForTimeout(80);await page.mouse.up();
+ await frame.evaluate(()=>window.dispatchEvent(new Event('blur')));await iframe.getByRole('button',{name:'Resume · 6',exact:true}).waitFor();
+ const tick=await frame.evaluate(()=>window.practice8.engine.tick);await page.waitForTimeout(200);assert.equal(await frame.evaluate(()=>window.practice8.engine.tick),tick,'Blur pauses simulation');assert.equal(await frame.evaluate(()=>window.practice8.engine.defending),false);
+ await iframe.getByRole('button',{name:'Resume · 6',exact:true}).click();
+ for(const [label,width,height]of [['desktop',1280,720],['phone',390,844],['landscape',844,390]]){await page.setViewportSize({width,height});await page.waitForTimeout(400);const bounds=await iframe.getByRole('button',{name:'Attack',exact:true}).boundingBox();assert.ok(bounds&&bounds.y>=0&&bounds.y+bounds.height<=height,label+' attack visible');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),label+' no horizontal overflow');await page.screenshot({path:path.join(out,`manual-${label}.png`)});}
+ await page.setViewportSize({width:1280,height:720});
+ const result=await frame.evaluate(()=>{const e=window.practice8.engine;for(let i=0;i<7200&&!e.done;i+=10){if(i%90===0)e.command('attack');if(i%90===10)e.command('attack','release');window.practice8.step(10);}return {tick:e.tick,winner:e.winner,commands:e.commands.length,events:e.events.length};});
+ await iframe.getByRole('button',{name:'Rematch · same rival'}).waitFor();const seed=await frame.evaluate(()=>window.practice8.engine.seed);await iframe.getByRole('button',{name:'Rematch · same rival'}).click();assert.equal(await frame.evaluate(()=>window.practice8.engine.seed),seed);assert.equal(await frame.evaluate(()=>window.practice8.engine.tick<120),true);
+ await page.getByRole('button',{name:'Back to fights',exact:true}).click();await page.getByRole('button',{name:'Take control · Practice'}).waitFor();assert.equal(JSON.stringify(state),before);assert.deepEqual(writes,[],'Manual practice sends no progression writes');assert.deepEqual(errors,[]);
+ fs.writeFileSync(path.join(out,'browser-results.json'),JSON.stringify({passed:true,result,scope:'Actual WebGL renderer; mocked save and campaign reads; desktop browser emulation, not physical phone',writes,errors},null,2));console.log('PASS actual renderer, keyboard, pause, responsive controls, full fight, rematch and zero reward writes:',JSON.stringify(result));
+}finally{await browser.close()}}
+main().catch(e=>{console.error(e);process.exitCode=1});

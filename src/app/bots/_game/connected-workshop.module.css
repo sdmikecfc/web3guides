@@ -51,3 +51,5 @@
 @media(max-height:500px) and (min-width:651px){.shell.tradingShell{grid-template-rows:48px 34px minmax(0,1fr) 46px}}
 
 @media(min-width:901px){.tradingShell .dashboard{padding:18px max(24px,4vw)}}
+
+@media(max-height:500px){.shell.manualShell{grid-template-rows:0 28px minmax(0,1fr) 44px}.manualShell>.header{visibility:hidden;padding:0;overflow:hidden}.manualShell>:nth-child(2){height:28px;min-height:0;overflow:hidden}.manualShell>.nav{padding:2px}.manualShell .nav button{min-height:36px}}

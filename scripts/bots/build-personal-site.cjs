@@ -15,7 +15,7 @@ function hosted(text) {
 async function main() {
   require('./archive-workshop-renderer.cjs');
   // Presentation changes must not silently reinterpret a recorded workshop replay.
-  const presentationFiles=['practice-viewer.ts','game-display.ts','game-bridge.ts','combat-effects.ts','fight-personality.ts','fight-report.ts','arena-room.ts','arena-atmosphere.ts','paint.ts','banner.ts','styles.css','presentation-settings.ts','server-contact.ts'];
+  const presentationFiles=['equipment-pose.ts','manual-engine.ts','manual-controls.ts','manual-spectacle.ts','side-stage.ts','side-stage-media.ts','practice-viewer.ts','game-display.ts','game-bridge.ts','combat-effects.ts','fight-personality.ts','fight-report.ts','arena-room.ts','arena-atmosphere.ts','paint.ts','banner.ts','styles.css','presentation-settings.ts','server-contact.ts'];
   const presentation=crypto.createHash('sha256').update(Buffer.concat(presentationFiles.map(name=>fs.readFileSync(path.join(source,name))))).digest('hex').slice(0,16);
   const versionFile=path.join(source,'asset-versions.ts');
   fs.writeFileSync(versionFile,fs.readFileSync(versionFile,'utf8').replace(/"presentation":"[a-f0-9]+"/,`"presentation":"${presentation}"`));

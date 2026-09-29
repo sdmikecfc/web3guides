@@ -18,7 +18,7 @@ async function main(){
  assert.equal((await b.call('?garage='+initial.garageId)).status,404);
  assert.equal((await b.call('/select',{garageId:initial.garageId})).status,404);
  const payload=Buffer.from(JSON.stringify({wallet:'0x'+'d'.repeat(40),isTest:true,exp:Date.now()+3600000})).toString('base64url');
- const token='bb1.'+payload+'.'+createHmac('sha256','journey-local-test-only-secret').update(payload).digest('base64url');
+ const token='bb1.'+payload+'.'+createHmac('sha256',process.env.MK_TEST_SESSION_SECRET||'journey-local-test-only-secret').update(payload).digest('base64url');
  a.setToken(token);const claim=await a.call('/claim',{});assert.equal(claim.status,200);assert.notEqual(claim.cookieHeader,boot.cookieHeader);assert.ok(claim.data.garages.some(g=>g.id===initial.garageId));
  b.setToken(token);const both=await b.call('/claim',{});assert.equal(both.status,200);assert.ok(both.data.garages.some(g=>g.id===other.garageId));assert.ok(both.data.garages.some(g=>g.id===initial.garageId));
  assert.equal((await a.call('?garage='+initial.garageId)).data.state.coins,250);assert.equal((await b.call('?garage='+other.garageId)).data.state.coins,250);

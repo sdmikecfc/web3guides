@@ -7,6 +7,7 @@ import { changeWorkshop, freshWorkshop, readWorkshop, type Fight8, type Workshop
 import { defaultAppearance, ENTRY_MAP, preset, practiceOpponent, dailyItems } from '@/lib/bots/workshop8/catalogue';
 import { explainFight, recordCareer, freshJourney } from '@/lib/bots/workshop8/journey';
 import { competitionEnabled } from './workshop-competition';
+const tokenZonesEnabled = () => process.env.BOTS_TOKEN_ZONES === '1';
 import { TRAINING_VERSION } from '@/lib/bots/workshop8/training';
 import { applyBrowserStarter, playerAction, requestId } from '@/lib/bots/workshop8/server-contract';
 import { simulateWorkshopFight, WORKSHOP_RULES } from './workshop8-simulation';
@@ -64,7 +65,7 @@ async function garages(db:BotsDb,owner:Identity):Promise<Garage[]>{
 }
 function publicFight(f:Fight8){return {id:f.id,name:f.name,choices:f.choices,appearance:{version:f.appearance.version,parts:f.appearance.parts,banner:false},rival:f.rival,seed:f.seed,arena:f.arena,mode:f.mode,startedAt:f.startedAt,completedAt:f.completedAt,winner:f.winner,inputs:f.inputs,ticks:f.ticks,reason:f.reason,versions:f.versions,report:f.report,replay:true,source:f.mode==='training'?'training':'house'};}
 async function commit(db:BotsDb,owner:Identity,g:Garage,id:string,next:Workshop8,day?:string,published?:unknown){
-  return await rpc(db,competitionEnabled()?'mk8_competition_commit':'mk8_journey_commit',{p_player:owner.player,p_garage:g.id,p_revision:g.revision,p_request:id,p_state:next,p_day:day??null,p_public:published??null,...(competitionEnabled()?{p_wallet:owner.kind==='wallet'&&!owner.isTest?owner.wallet:null}:{})}) as Workshop8;
+  return await rpc(db,tokenZonesEnabled()?'mkz_commit':competitionEnabled()?'mk8_competition_commit':'mk8_journey_commit',{p_player:owner.player,p_garage:g.id,p_revision:g.revision,p_request:id,p_state:next,p_day:day??null,p_public:published??null,...(tokenZonesEnabled()||competitionEnabled()?{p_wallet:owner.kind==='wallet'&&!owner.isTest?owner.wallet:null}:{})}) as Workshop8;
 }
 async function advance(db:BotsDb,owner:Identity,g:Garage,now:number){
   const f=g.state.active;if(!f||f.waiting)return {state:g.state,engine:null};

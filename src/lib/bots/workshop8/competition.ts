@@ -10,7 +10,7 @@ export interface WorkshopCompetition {
  pool:number; split:{roi:number;profit:number;battles:number}; rules:string;
  startsAt:string|null; endsAt:string|null; connected:boolean;
  enrollment:'not_open'|'not_entered'|'entered'|'unavailable';
- weeks:[QualificationWeek,QualificationWeek]; finalQualified:boolean|null;
+ weeks:QualificationWeek[]; finalQualified:boolean|null;
  points:number|null; attemptsRemaining:number|null; updatedAt:string|null;
  categories:Record<'roi'|'profit'|'battles',{score:number|null;rank:number|null;provisional:boolean}>;
  nextAction:'play'|'connect'|'enroll'|'check'|'fight';

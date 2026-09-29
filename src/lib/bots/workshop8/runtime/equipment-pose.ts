@@ -1,6 +1,6 @@
 import * as T from 'three';
 import type {ActionPath} from './weapon-actions';
-export type EquipmentMotion={path:ActionPath;phase:number;mount?:'L'|'R';recoil?:number;contactHeight?:number;contactTarget?:number[];travel?:number[];gait?:number;burst?:boolean;overdrive?:boolean;reaction?:number[];brace?:boolean;shieldGuard?:number};
+export type EquipmentMotion={path:ActionPath;phase:number;mount?:'L'|'R';recoil?:number;contactHeight?:number;contactTarget?:number[];travel?:number[];gait?:number;burst?:boolean;overdrive?:boolean;reaction?:number[];brace?:boolean;shieldGuard?:number;manual?:{tick:number;style:'tank'|'speed'|'ranged';guard:number;deflect:number;dodge:number;counter:boolean}};
 const V=(x=0,y=0,z=0)=>new T.Vector3(x,y,z);
 function frame(axis:T.Vector3,normal:T.Vector3){const z=axis.clone().normalize(),x=normal.clone().addScaledVector(z,-normal.dot(z)).normalize(),y=new T.Vector3().crossVectors(z,x).normalize();return new T.Quaternion().setFromRotationMatrix(new T.Matrix4().makeBasis(x,y,z))}
 /** Weapon-led display poses. Both arms solve to a single rigid weapon, so a
@@ -36,6 +36,22 @@ export function equipmentPose(model:T.Group){
    chest.rotateZ(-r[0]*.25);chest.rotateY(r[0]*.12);
    get('head').rotateZ(r[0]*.10);get('head').rotateX(-r[1]*.12);
   }
+  if(motion?.manual){
+   const m=motion.manual,p=motion.phase,path=motion.path,pelvis=get('pelvis'),chest=get('chest');
+   const load=T.MathUtils.smoothstep(p,0,.30)*(1-T.MathUtils.smoothstep(p,.30,.48)),drive=T.MathUtils.smoothstep(p,.30,.53)*(1-T.MathUtils.smoothstep(p,.65,1));
+   const attacking=!['ready','guard'].includes(path)&&p>0;
+   if(attacking){
+    if(['cross','reverse','combo'].includes(path)){const side=path==='reverse'?-1:1;chest.rotateY(side*(-.20*load+.28*drive));pelvis.rotateY(side*(-.08*load+.10*drive));}
+    else if(path==='overhead'){chest.rotateX(-.12*load+.22*drive);pelvis.position.y-=.12*drive;}
+    else if(path==='rise'){pelvis.position.y-=.20*load;chest.rotateX(.12*load-.14*drive);chest.rotateY(-.16*load+.20*drive);}
+    else if(['thrust','beat','butt','riposte'].includes(path)){pelvis.position.z+=.10*drive;chest.rotateX(.12*drive);}
+   }else if(!m.guard&&!m.dodge){chest.rotateY(Math.sin(m.tick*.035)*.025);get('head').rotateX(Math.sin(m.tick*.025)*.025);}
+   // Guard compresses the stance; real blocks kick the upper body back, while
+   // the existing IK keeps both hands on the same supported weapon.
+   pelvis.position.y-=m.guard*.10+m.dodge*.24;
+   chest.rotateX(-m.guard*.09-m.deflect*.16-m.dodge*.23);
+   chest.rotateY(m.deflect*.12);get('head').rotateX(m.guard*.06+m.deflect*.08);
+  }
   if(motion?.path==='punch'){
    const p=T.MathUtils.clamp(motion.phase,0,1),mount=motion.mount??'R',sign=mount==='R'?-1:1,load=T.MathUtils.smoothstep(p,0,.30)*(1-T.MathUtils.smoothstep(p,.30,.50)),strike=T.MathUtils.smoothstep(p,.30,.56)*(1-T.MathUtils.smoothstep(p,.65,1));
    get('chest').rotateY(sign*(.14*load-.38*strike));get('chest').rotateX(.16*strike);get('pelvis').position.z+=.18*strike;model.updateMatrixWorld(true);
@@ -44,7 +60,7 @@ export function equipmentPose(model:T.Group){
    const reach=solve(mount,handTarget.clone().sub(handFrames[mount].offset.clone().applyQuaternion(rotation)),rotation);model.updateMatrixWorld(true);report={kind:'backup',twoHanded:false,mount,reach,phase:p};return report;
   }
   if(kind==='rifle')get('chest').rotateY(motion?-.18:-.42);
-  if(motion&&motion.path!=='ready'&&kind!=='rifle'){const p=motion.phase,load=Math.sin(Math.min(1,p/.40)*Math.PI/2)*(1-T.MathUtils.smoothstep(p,.40,1));get('chest').rotateY(-.32*load+.30*Math.sin(Math.max(0,p-.4)*Math.PI*2));get('chest').rotateX(.26*Math.sin(p*Math.PI));}
+  if(motion&&motion.path!=='ready'&&kind!=='rifle'&&(!motion.manual||motion.path!=='guard')){const p=motion.phase,load=Math.sin(Math.min(1,p/.40)*Math.PI/2)*(1-T.MathUtils.smoothstep(p,.40,1));get('chest').rotateY((-.32*load+.30*Math.sin(Math.max(0,p-.4)*Math.PI*2))*(motion.manual?1-T.MathUtils.smoothstep(p,.85,1):1));get('chest').rotateX(.26*Math.sin(p*Math.PI));}
   get('head').rotateY(kind==='rifle'?(motion?.18:.92):.07*wave);
   if(['spear_shield','long_spear'].includes(model.userData.weaponKind)&&motion?.path==='butt'){const p=motion.phase,choke=(model.userData.weaponKind==='long_spear'?1.0:.88)*Math.min(1,p/.30,(1-p)/.35),weapon=get('weaponR'),parentBind=bind.get(weapon.parent!)!;weapon.position.addScaledVector(shaft.clone().applyQuaternion(parentBind.worldQ.clone().invert()),-choke);for(const name of ['gripR','weaponAxis','weaponNormal',...(model.userData.weaponKind==='long_spear'?['twoHandGrip']:[])]){const marker=get(name),parent=bind.get(marker.parent!)!;marker.position.addScaledVector(shaft.clone().applyQuaternion(parent.worldQ.clone().invert()),choke);}}
   model.updateMatrixWorld(true);
@@ -57,8 +73,8 @@ export function equipmentPose(model:T.Group){
    const p=T.MathUtils.clamp(motion.phase,0,1),lerp=T.MathUtils.lerp,ease=(v:number)=>{v=T.MathUtils.clamp(v,0,1);return v*v*(3-2*v)},path=motion.path;
    const attack=ease((p-.30)/.28),back=ease((p-.65)/.35),load=ease(p/.30)*(1-attack),release=attack*(1-back),ready=right.clone();
    if(kind==='rifle'){
-    direction=V(0,-.025,1);face=V(0,1,0);right.set(-.25,shoulderY-.40,.67-(motion.recoil??0)*.16);
-   }else if(path==='guard'){direction=V(1,.35,.10).normalize();face=V(0,0,1);right.set(-.50,shoulderY-.25,.90);
+    direction=V(0,-.025,1);face=V(0,1,0);right.set(-.25,shoulderY-.40,.67-(motion.recoil??0)*.16);if(motion.manual&&path==='guard'){direction.lerp(V(.18,.28,1).normalize(),motion.manual.guard).normalize();right.y+=.20*motion.manual.guard;right.z-=.08*motion.manual.guard;}
+   }else if(path==='guard'){const weight=motion.manual?.guard??1;direction.lerp(V(1,.35,.10).normalize(),weight).normalize();face=V(0,0,1);right.lerp(V(-.50,shoulderY-.25,.90),weight);if(motion.manual){right.y+=.10*motion.manual.deflect;right.z-=.16*motion.manual.deflect;}
    }else if(['thrust','beat','butt','riposte'].includes(path)){
     const short=path==='butt';direction.lerp(V(path==='beat'?.10:0,short?-.10:-.03,1).normalize(),Math.max(load,release));right.add(V(.16*release,-.07*release,(short?-.19:.30)*release-.62*load));face=V(0,1,0);if(path==='beat'){right.x+=.22*load+.16*release;right.y+=.16*load;}if(short&&model.userData.weaponKind==='long_spear'){direction.lerp(V(0,.04,-1),Math.max(load,release)).normalize();right.z+=.25*release;}
    }else if(path==='shield'){
@@ -85,7 +101,7 @@ export function equipmentPose(model:T.Group){
   if(motion?.contactHeight!==undefined&&kind!=='rifle'){const p=motion.phase,blend=Math.sin(Math.PI*T.MathUtils.clamp((p-.15)/.70,0,1)),tip=bind.get(model.getObjectByName(model.userData.weaponKind==='hammer'?'hammerFace':'weaponTip')!)?.world,reach=tip?tip.distanceTo(grip):1;right.y+=T.MathUtils.clamp(motion.contactHeight-(right.y+direction.y*reach),-.65,.65)*blend;}
   // Converge the actual bore/point toward the chosen world-space target.
   // Root turning is still bounded by simulation; this is a small aiming correction.
-  if(motion?.contactTarget){
+  if(motion?.contactTarget&&!(motion.manual&&motion.path==='guard')){
    const p=motion.phase,thrust=['thrust','beat','riposte'].includes(motion.path)||motion.path==='butt'&&model.userData.weaponKind==='spear_shield';
    if(kind==='rifle'||thrust){const target=V().fromArray(motion.contactTarget),blend=kind==='rifle'?1:T.MathUtils.smoothstep(p,.14,.30)*(1-T.MathUtils.smoothstep(p,.65,1));let aim=target.clone().sub(right).normalize();
     if(kind==='rifle'){const muzzleOffset=b('muzzle').world.clone().sub(grip);for(let n=0;n<2;n++){const rotation=frame(aim,face).multiply(frame(shaft,normal).invert());aim.copy(target).sub(right).sub(muzzleOffset.clone().applyQuaternion(rotation)).normalize();}}

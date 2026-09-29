@@ -4,6 +4,8 @@ import { sessionFromRequest } from "@/app/bots/_server/session";
 import { displayName, type PlayerRow } from "@/app/bots/_server/players";
 import { CAMPAIGN_CATEGORIES, campaignPeriod, campaignSnapshotAvailable, emptyCampaign, publicStandings, type CampaignView } from "@/lib/bots/campaign-view";
 import { competitionEnabled, workshopCompetition } from '@/app/bots/_server/workshop-competition';
+import {tokenZonesEnabled,readTokenZones} from '@/app/bots/_server/token-zones';
+import {zoneWorkshopStatus} from '@/lib/bots/workshop8/token-zone-status';
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,6 +66,10 @@ async function legacyCampaign(req: Request) {
 }
 
 export async function GET(req:Request){
+ if(tokenZonesEnabled()&&new URL(req.url).searchParams.get('workshop')==='1'){
+  const zones=await readTokenZones(req);
+  return NextResponse.json({zones,workshop:zoneWorkshopStatus(zones),standings:{roi:[],profit:[],battles:[]}},{headers:{'Cache-Control':'private, no-store'}});
+ }
  if(new URL(req.url).searchParams.get('workshop')!=='1'||!competitionEnabled())return legacyCampaign(req);
  const period=campaignPeriod(new URL(req.url).searchParams.get('period'));
  const [legacy,current]=await Promise.all([legacyCampaign(req),workshopCompetition(req,period)]);

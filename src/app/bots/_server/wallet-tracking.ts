@@ -46,18 +46,18 @@ export function createWalletTrackingHandlers(deps:Dependencies={db:botsDb,env:pr
    authorize(req);const q=new URL(req.url).searchParams,after=q.get('after'),scope=q.get('scope')??'pending';
    if([...q.keys()].some(k=>!['after','scope'].includes(k))||q.getAll('after').length>1||q.getAll('scope').length>1||(after!==null&&!address(after))||!['pending','all','monitor'].includes(scope))invalid();
    // Page by connected wallet; monitoring returns both addresses in each row.
-   let query=deps.db().from('mk8_wallet_discovery').select('wallet,since,status,mcp_wallet,revision,checked_at').order('wallet').limit(501);
+   let query=deps.db().from(deps.env.BOTS_TOKEN_ZONES==='1'?'mkz_wallet_discovery':'mk8_wallet_discovery').select('wallet,since,status,mcp_wallet,revision,checked_at').order('wallet').limit(501);
    if(after)query=query.gt('wallet',after);if(scope==='pending')query=query.neq('status','linked');
    const {data,error}=await query;if(error||!Array.isArray(data))throw Error('Discovery unavailable');
    const rows=data.slice(0,500);let monitored:any[]=[];
-   if(scope==='monitor'&&rows.length){const read=await deps.db().from('mk8_tracking_wallets').select('player_wallet,trade_wallet,since').in('player_wallet',rows.map(r=>r.wallet)).limit(1001);if(read.error||!Array.isArray(read.data)||read.data.length>1000)throw Error('Watchlist unavailable');monitored=read.data;}
+   if(scope==='monitor'&&rows.length){const read=await deps.db().from(deps.env.BOTS_TOKEN_ZONES==='1'?'mkz_tracking_wallets':'mk8_tracking_wallets').select('player_wallet,trade_wallet,since').in('player_wallet',rows.map(r=>r.wallet)).limit(10001);if(read.error||!Array.isArray(read.data)||read.data.length>10000)throw Error('Watchlist unavailable');monitored=read.data;}
    return reply({ok:true,schemaVersion:1,generatedAt:new Date(deps.now()).toISOString(),lookupIntervalHours:4,
     wallets:rows.map(r=>({wallet:r.wallet,since:r.since,status:r.status,mcpWallet:r.mcp_wallet,expectedRevision:r.revision,checkedAt:r.checked_at,
       ...(scope==='monitor'?{tradeWallets:monitored.filter(x=>x.player_wallet===r.wallet).map(x=>x.trade_wallet)}:{})})),
     nextCursor:data.length>500?rows[rows.length-1].wallet:null});
   }catch(e){return failure(e)}},
   async POST(req:Request){try{
-   authorize(req);const payload=await readPayload(req,deps.now()),{data,error}=await deps.db().rpc('mk8_resolve_wallet',{p_payload:payload});
+   authorize(req);const payload=await readPayload(req,deps.now()),{data,error}=await deps.db().rpc(deps.env.BOTS_TOKEN_ZONES==='1'?'mkz_resolve_wallet':'mk8_resolve_wallet',{p_payload:payload});
    if(error){
     if(/MK_LINK_(CONFLICT|REVIEW_REQUIRED)/.test(error.message))throw new TrackingError(409,'mapping_conflict','Refresh the lookup list. An existing or overlapping wallet mapping requires review.');
     if(error.message.includes('MK_LINK_UNREGISTERED'))throw new TrackingError(422,'unregistered_wallet','This wallet is not a registered game player.');

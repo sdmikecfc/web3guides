@@ -1,3 +1,3 @@
 import Landing from './Landing';
-export const metadata={title:'Model Kombat — Trade smart. Fight for fun.',description:'Connect your wallet, set up Doma Strategies or MCP, track the $2,000 competition and build your first robot free.'};
+export const metadata={title:'Model Kombat — Trade together. Climb higher.',description:'Connect your wallet, set up Doma Strategies or MCP and unlock nine fixed-token reward zones.'};
 export default function Page(){return <Landing/>}

@@ -8,6 +8,12 @@ const functions={mk8_competition_commit:['p_player','p_garage','p_revision','p_r
 async function main(){
  const db=new PGlite();await db.exec('create role anon;create role authenticated;create role service_role bypassrls');
  for(const name of ['bots-workshop-v8.sql','bots-workshop-journey.sql','bots-workshop-competition.sql'])await db.exec(fs.readFileSync(path.join(__dirname,'../sql',name),'utf8'));
+ if(process.env.MK_ZONE_FIXTURE==='1'){
+  await db.exec('create table battle_bots_players(wallet text primary key,enlisted_at timestamptz,is_test boolean default false,is_operator boolean default false)');
+  for(const name of ['bots-workshop-wallet-links.sql','bots-token-zones.sql','bots-token-zone-wallets.sql'])await db.exec(fs.readFileSync(path.join(__dirname,'../sql',name),'utf8'));
+  Object.assign(functions,{mkz_read:['p_wallet'],mkz_register_wallet:['p_wallet'],mkz_commit:['p_player','p_garage','p_revision','p_request','p_state','p_day','p_public','p_wallet']});
+  tables.add('mkz_wallet_discovery');
+ }
  await db.exec('set role service_role');
  let failCommunity=false;
  const server=createServer(async(req,res)=>{res.setHeader('Content-Type','application/json');try{

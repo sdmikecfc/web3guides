@@ -4,6 +4,7 @@ import { STRATEGY_LINKS } from '@/lib/bots/strings';
 import type { useWorkshopCompetition } from './WorkshopCompetition';
 import css from './workshop-trading.module.css';
 import WalletTrackingStatus from './WalletTrackingStatus';
+import TokenZoneBoard from './TokenZoneBoard';
 
 type Model=ReturnType<typeof useWorkshopCompetition>;
 const money=(n:number|null)=>n===null?'Not available':new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(n);
@@ -12,7 +13,8 @@ export function TradingBar({model,onOpen}:{model:Model;onOpen:()=>void}){
  const v=model.value,draft=v.state==='draft',known=v.available&&v.connected;
  return <aside className={css.bar} aria-label="Trading and competition summary">
   <button className={css.barAction} onClick={onOpen}>Trading & rewards <span>↗</span></button>
-  <span>{draft?'$2,000 · Coming soon':!v.available?'$2,000 · Status unavailable':v.enrollment==='entered'?'Competition entered':'Not entered'}</span>
+  <span>{process.env.NEXT_PUBLIC_BOTS_TOKEN_ZONES==='1'?(draft?'Token zones · Coming soon':!v.available?'Token zones · Status unavailable':v.enrollment==='entered'?'Competition entered':'Not entered'):(draft?'$2,000 · Coming soon':!v.available?'$2,000 · Status unavailable':v.enrollment==='entered'?'Competition entered':'Not entered')}</span>
+  {process.env.NEXT_PUBLIC_BOTS_TOKEN_ZONES==='1'&&<span>Volume <b>{model.zones?.personal?.volumeUsd!=null?money(Number(model.zones.personal.volumeUsd)):'—'}</b></span>}
   <span>ROI <b>{known&&v.categories.roi.score!==null?`${v.categories.roi.score.toFixed(2)}%`:'—'}</b></span>
   <span>Profit <b>{known&&v.categories.profit.score!==null?money(v.categories.profit.score):'—'}</b></span>
   <span className={css.barRank}>Rank <b>{known&&v.categories.roi.rank!==null?`#${v.categories.roi.rank}*`:'—'}</b></span>
@@ -25,6 +27,7 @@ export default function WorkshopTrading({model,onConnect,onPlay,onRules}:{model:
  const setupRef=useRef<HTMLElement>(null);
  const v=model.value,draft=v.state==='draft',known=v.available&&v.connected;
  const copy=async()=>{try{await navigator.clipboard.writeText(STRATEGY_LINKS.mcp);setCopied(true);setCopyError(false)}catch{setCopyError(true)}};
+ if(process.env.NEXT_PUBLIC_BOTS_TOKEN_ZONES==='1')return <TokenZoneBoard/>;
  return <section className={css.hub} aria-label="Trading and rewards">
   <header className={css.hero}><div><span>DOMA TRADING × MODEL KOMBAT</span><h1>Trade. Track. Take a battle break.</h1><p>Set up Doma Strategies. Follow your return and profit here. Build and battle robots between trades.</p></div><button onClick={onRules}><strong>$2,000</strong><span>Cash prize pool · {draft?'Coming soon':'See status & rules'} →</span></button></header>
   <p className={css.state}>{draft?'Start date to be announced. You can set up now; prelaunch trades and fights will not count.':!v.available?'Competition data is unavailable. Setup does not confirm entry or rewards.':v.enrollment==='entered'?'You are entered. Verified activity determines eligibility and scores.':'You are not entered. Connect your wallet and enter when the competition is open.'}</p>

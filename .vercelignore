@@ -11,6 +11,9 @@ public/bots-art/_raw/
 # Local build caches and development worktrees are not deployment inputs.
 # Custom Next output names are not covered by Vercel's default .next exclusion.
 /.next*/
+/.mk-release-next/
+/.mk-token-build/
+/.mk-token-review/
 /.claude/
 /.codex-remote-attachments/
 /.game-dev/
