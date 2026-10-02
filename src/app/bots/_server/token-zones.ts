@@ -3,11 +3,10 @@ import {createHmac,createHash,timingSafeEqual} from 'node:crypto';
 import {botsDb,Refusal} from './db';
 import {sessionFromRequest} from './session';
 import {sameOrigin} from './workshop-journey';
+import {trackingCredential} from './tracking-credential';
+import {checkZoneBatch,readZoneBatch,readFeedRegistry} from './token-zone-feed';
 import {emptyZoneView,ZONE_CAMPAIGN,ZONE_RULES,ZONE_FRESH_MS,ZONE_CATEGORIES,REWARD_ZONES,DAY,decimalUnits,unitsDecimal,ranked,qualificationDays,tokenAwards,type ZoneScore,type ZoneView,type ZoneAsset} from '@/lib/bots/token-zones';
 export const tokenZonesEnabled=()=>process.env.BOTS_TOKEN_ZONES==='1';
-const numberString=(v:unknown)=>typeof v==='string'&&/^-?\d{1,34}(\.\d{1,6})?$/.test(v);
-const scoreString=(v:unknown)=>typeof v==='string'&&/^-?\d{1,40}(\.\d{1,36})?$/.test(v);
-const address=(v:unknown)=>typeof v==='string'&&/^0x[0-9a-f]{40}$/.test(v);
 const date=(v:unknown)=>typeof v==='string'&&Number.isFinite(Date.parse(v));
 export async function readTokenZones(req:Request):Promise<ZoneView>{
  const out=emptyZoneView();if(!tokenZonesEnabled())return out;
@@ -66,29 +65,28 @@ export async function enterTokenZones(req:Request){
 }
 function authorizeFeed(req:Request){
  if(!tokenZonesEnabled())throw new Refusal(503,'Token-zone tracking is not enabled.');
- const token=process.env.MK_MCP_INGEST_TOKEN,header=req.headers.get('authorization')??'';
- if(!token||token.length<32)throw new Refusal(503,'Trade-feed credential is not configured.');
+ const token=trackingCredential(process.env),header=req.headers.get('authorization')??'';
+ if(!token)throw new Refusal(503,'Trade-feed credential is not configured.');
  const hash=(s:string)=>createHash('sha256').update(s).digest();
  if(header.length>520||!header.startsWith('Bearer ')||!timingSafeEqual(hash(header.slice(7)),hash(token)))throw new Refusal(401,'Invalid feed credential.');
 }
 export async function zoneFeedGet(req:Request){
  authorizeFeed(req);const db=botsDb();const {data,error}=await db.rpc('mkz_read',{p_wallet:null});if(error||!data?.campaign)throw new Refusal(503,'Apply the token-zone setup first.');
- const markets=await db.from('mkz_markets').select('*').limit(10001);if(markets.error||markets.data.length>10000)throw new Refusal(503,'Market registry unavailable or incomplete.');
- const entries=await db.from('mkz_entries').select('participant,wallet,entered_at').eq('campaign_id',ZONE_CAMPAIGN).limit(20001);if(entries.error||entries.data.length>20000)throw new Refusal(503,'Participant registry incomplete.');
- return {schemaVersion:1,campaign:data.campaign,markets:markets.data,participants:entries.data,intervalHours:4,
+ const registry=await readFeedRegistry(db);
+ return {schemaVersion:1,campaign:data.campaign,markets:registry.markets,participants:registry.entries,intervalHours:4,
+  preflightPath:'/api/bots/tracking/zones/check',
+  setupIssues:[...(!registry.markets.length?['No eligible trading markets have been verified.']:[]),...(!data.campaign.financial_method?['ROI/profit methodology is not configured.']:[]),...((data.assets??[]).length!==9?['The nine reward assets have not all been registered.']:[])],
+  walletLookup:{path:'/api/bots/tracking/wallets',scopes:['pending','all','monitor'],pagination:'Follow nextCursor as the after query parameter until null.',post:{schemaVersion:1,requestId:'UUID; keep exact request and ID on retries',wallet:'Registered connected wallet, lowercase',mcpWallet:'Verified embedded execution wallet, lowercase; null if not_found',domaUserId:'Doma account ID as a decimal string; null if not_found',privyDid:'Verified did:privy identifier or null',status:'linked | not_found',checkedAt:'Current UTC timestamp in YYYY-MM-DDTHH:mm:ss.SSSZ format',expectedRevision:'The exact revision returned by GET'}},
   instructions:'Read-only Doma source access. Discover registered wallets through /api/bots/tracking/wallets, following every nextCursor. Group by Doma user ID, not address equality. Do not trade, approve, transfer, modify Reporter or open a campaign. While draft, validate attribution and report blockers; do not submit scoring. For active/closed campaigns, submit canonical completed economic fills through this endpoint. Reuse the same requestId and exact body on retries. Corrections retain economicId with a higher revision. Never claim complete coverage without reconciling all enrolled linked wallets and corrections. Missing or undefined ROI may be null with source evidence; do not sum wallet percentages.',
   batchContract:{schemaVersion:1,requestId:'UUID, stable across identical retries',campaignId:ZONE_CAMPAIGN,rules:ZONE_RULES,coverageFrom:'Campaign opening ISO timestamp',confirmedThrough:'Audited coverage ISO timestamp, monotonic',complete:'boolean: complete reconciled trade coverage',financialComplete:'boolean: complete participant-level accounting snapshot',methodology:'Exact campaign.financial_method identifier',fills:[{chainId:97477,economicId:'Stable source economic-fill identity shared by Strategy/agent evidence; not each router hop',revision:'Positive integer',wallet:'Lowercase verified execution wallet',transactionHash:'Lowercase 0x transaction hash',domainToken:'Registered domain-token address',quoteToken:'Registered USDC/ETH representation',executedAt:'Authoritative completion ISO timestamp',volumeUsd:'Positive decimal string, up to 6 fractional digits; one economic trade counted once',source:'strategy | agent_wallet',status:'verified | revoked',evidence:'Source records, attribution and correction reference'}],financials:[{participant:'Verified Doma account ID',roi:'Unrounded existing-method decimal string or null if undefined',profit:'Existing-method decimal string or null if undefined',evidence:'Accounting coverage and method reference'}]},
   limits:{maxBytes:2000000,maxFills:2000,maxFinancials:20000},
+  batching:'Submit all fill chunks with complete:false and financialComplete:false. Only the final reconciled batch may set complete:true. financialComplete:true requires the entire participant-level accounting snapshot and the configured methodology. Partial or unavailable source coverage must remain false.',
  };
 }
 export async function zoneFeedPost(req:Request){
- authorizeFeed(req);if(req.headers.get('content-type')?.split(';')[0]!=='application/json')throw new Refusal(415,'Send application/json.');
- const reader=req.body?.getReader();if(!reader)throw new Refusal(400,'Missing batch.');let size=0;const chunks:Uint8Array[]=[];
- try{while(true){const r=await reader.read();if(r.done)break;size+=r.value.length;if(size>2_000_000){await reader.cancel();throw new Refusal(413,'Batch exceeds 2 MB.');}chunks.push(r.value);}}finally{reader.releaseLock();}
- let p:any;try{p=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{throw new Refusal(400,'Invalid JSON.');}
- const invalid=()=>{throw new Refusal(400,'Invalid trade batch. Use the documented contract.');};
- if(!p||p.schemaVersion!==1||p.rules!==ZONE_RULES||p.campaignId!==ZONE_CAMPAIGN||! /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(p.requestId)||!date(p.coverageFrom)||!date(p.confirmedThrough)||typeof p.complete!=='boolean'||typeof p.financialComplete!=='boolean'||!Array.isArray(p.fills)||p.fills.length>2000||!Array.isArray(p.financials)||p.financials.length>20000)invalid();
- for(const f of p.fills){if(!f||f.chainId!==97477||typeof f.economicId!=='string'||f.economicId.length<1||f.economicId.length>160||!Number.isSafeInteger(f.revision)||f.revision<1||!address(f.wallet)||!address(f.domainToken)||!address(f.quoteToken)||! /^0x[0-9a-f]{64}$/.test(f.transactionHash)||!date(f.executedAt)||!numberString(f.volumeUsd)||decimalUnits(f.volumeUsd)<=BigInt(0)||!['verified','revoked'].includes(f.status)||!['strategy','agent_wallet'].includes(f.source)||typeof f.evidence!=='string'||!f.evidence.length||f.evidence.length>1000)invalid();}
- for(const f of p.financials){if(!f||typeof f.participant!=='string'||(f.roi!==null&&!scoreString(f.roi))||(f.profit!==null&&!scoreString(f.profit))||typeof f.evidence!=='string'||!f.evidence.length||f.evidence.length>1000)invalid();}
+ authorizeFeed(req);const p=await readZoneBatch(req);
  const {data,error}=await botsDb().rpc('mkz_ingest',{p_payload:p});if(error)throw new Refusal(409,'Batch rejected: coverage, registry, identity or revision needs review. Nothing was partially applied.');return data;
+}
+export async function zoneFeedCheck(req:Request){
+ authorizeFeed(req);return checkZoneBatch(await readZoneBatch(req),botsDb());
 }

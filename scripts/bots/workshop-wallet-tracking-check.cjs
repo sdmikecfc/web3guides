@@ -1,7 +1,9 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict'),ts=require('typescript');
 const root=path.resolve(__dirname,'../..'),mod={exports:{}},now=Date.now(),wallet='0x'+'a'.repeat(40),mcp='0x'+'b'.repeat(40),token='resolver-fixture-'+ 'x'.repeat(40);
 const source=ts.transpileModule(fs.readFileSync(path.join(root,'src/app/bots/_server/wallet-tracking.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-vm.runInNewContext(source,{module:mod,exports:mod.exports,require:n=>n==='node:crypto'?require(n):{},Date,Response,Buffer,URL,Error,Number,Array,JSON,process:{env:{}}});
+const credentialModule={exports:{}};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root,'src/app/bots/_server/tracking-credential.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:credentialModule.exports});
+vm.runInNewContext(source,{module:mod,exports:mod.exports,require:n=>n==='node:crypto'?require(n):n==='./tracking-credential'?credentialModule.exports:{},Date,Response,Buffer,URL,Error,Number,Array,JSON,process:{env:{}}});
 function fixture(){const calls=[],rows=[{wallet,since:new Date(now).toISOString(),status:'pending',mcp_wallet:null,revision:0,checked_at:null}];
  const db={from(table){calls.push(table);const filters=[];const q={select(){return q},order(){return q},limit(){return q},gt(k,v){filters.push(r=>r[k]>v);return q},neq(k,v){filters.push(r=>r[k]!==v);return q},in(){return q},then(resolve){return Promise.resolve({data:table==='mk8_tracking_wallets'?[{player_wallet:wallet,trade_wallet:wallet}]:rows.filter(r=>filters.every(f=>f(r))),error:null}).then(resolve)}};return q},async rpc(name,args){calls.push({name,args});return {data:name==='mk8_resolve_wallet'?{ok:true,wallet:args.p_payload.wallet,revision:1}:{wallets:[wallet,mcp],recentObservedTrades:[],coverage:'unverified'},error:null}}};
  const deps={db:()=>db,env:{MK_WALLET_TRACKING_ENABLED:'1',MK_MCP_INGEST_TOKEN:token},now:()=>now,session:()=>({wallet})};return {calls,deps,handlers:()=>mod.exports.createWalletTrackingHandlers(deps)};
@@ -17,6 +19,13 @@ async function main(){let t=fixture();assert.equal((await t.handlers().GET(get('
  const r=await t.handlers().activity(new Request('http://local/api/bots/tracking/activity?wallet='+mcp));assert.equal(r.status,200);assert.equal(t.calls.at(-1).args.p_wallet,wallet,'personal status never accepts another URL wallet');assert.match(r.headers.get('cache-control'),/no-store/);
  t.deps.session=()=>null;assert.equal((await t.handlers().activity(get())).status,401);
  t=fixture();t.deps.db=()=>{throw Error('private database secret')};const failure=await t.handlers().POST(post());assert.equal(failure.status,503);assert.ok(!(await failure.text()).includes('private database secret'));
+ t=fixture();delete t.deps.env.MK_MCP_INGEST_TOKEN;t.deps.env.MK_WALLET_RESOLVER_TOKEN=token;
+ assert.equal((await t.handlers().GET(get())).status,200,'the deployed legacy secret authorizes discovery');
+ assert.equal((await t.handlers().POST(post())).status,200,'the same deployed secret authorizes the mapping write');
+ t.deps.env.MK_MCP_INGEST_TOKEN='replacement-'+token;
+ assert.equal((await t.handlers().GET(get())).status,401,'legacy credential cannot bypass an explicit rotation');
+ assert.equal((await t.handlers().GET(get('',t.deps.env.MK_MCP_INGEST_TOKEN))).status,200);
+ t.deps.env.MK_MCP_INGEST_TOKEN='';assert.equal((await t.handlers().GET(get())).status,503,'invalid configured override fails closed');
  console.log('PASS API: existing Doma AI credential authorizes mapping, disabled rollout, strict bounded writes, malformed reports rejected, personal session ownership, no-cache responses and sanitized errors.');
  const config=ts.readConfigFile(path.join(root,'tsconfig.json'),ts.sys.readFile).config,options=ts.convertCompilerOptionsFromJson(config.compilerOptions,root).options;
  options.incremental=false;options.noEmit=true;

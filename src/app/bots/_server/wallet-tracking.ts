@@ -2,6 +2,7 @@ import 'server-only';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { botsDb, type BotsDb } from './db';
 import { sessionFromRequest } from './session';
+import { trackingCredential } from './tracking-credential';
 
 type Dependencies = { db: () => BotsDb; env: Record<string,string|undefined>; now: () => number; session: typeof sessionFromRequest };
 class TrackingError extends Error { constructor(public status:number,public code:string,message:string){super(message)} }
@@ -36,8 +37,8 @@ async function readPayload(req:Request,now:number){
 export function createWalletTrackingHandlers(deps:Dependencies={db:botsDb,env:process.env,now:Date.now,session:sessionFromRequest}){
  function enabled(){if(deps.env.MK_WALLET_TRACKING_ENABLED!=='1')throw new TrackingError(503,'tracking_disabled','Wallet tracking setup is not enabled yet.')}
  function authorize(req:Request){
-  enabled();const token=deps.env.MK_MCP_INGEST_TOKEN,auth=req.headers.get('authorization')??'';
-  if(!token||token.length<32||token.length>512||/\s/.test(token))throw new TrackingError(503,'resolver_unconfigured','Wallet lookup is not configured.');
+  enabled();const token=trackingCredential(deps.env),auth=req.headers.get('authorization')??'';
+  if(!token)throw new TrackingError(503,'resolver_unconfigured','Wallet lookup is not configured.');
   if(auth.length>520||!auth.startsWith('Bearer ')||!timingSafeEqual(digest(auth.slice(7)),digest(token)))throw new TrackingError(401,'unauthorized','A valid wallet resolver credential is required.');
  }
  function failure(e:unknown){return e instanceof TrackingError?reply({ok:false,code:e.code,error:e.message},e.status):reply({ok:false,code:'tracking_unavailable',error:'Wallet tracking is unavailable. Retry safely.'},503)}

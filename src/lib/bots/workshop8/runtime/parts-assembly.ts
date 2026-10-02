@@ -55,6 +55,11 @@ export function assemble(choices:Choices,library:Map<string,T.Group>){
  for(const f of footData){const box=new T.Box3().setFromObject(f.foot,true),target=f.foot.getWorldPosition(V());target.y+=.03-box.min.y;solveTwoLink(model,'hip'+f.s,'knee'+f.s,'ankle'+f.s,target,new T.Vector3(f.s==='L'?1:-1,1,3));setWorldQ(f.foot,f.q)}
  model.updateMatrixWorld(true);
  model.userData.weaponKind=donor('weapon').userData.weaponKind;model.userData.weaponHands=donor('weapon').userData.weaponHands;
+ // An opt-in anatomical bind for new animation systems. The legacy weapon
+ // stance and its reset behaviour remain unchanged.
+ const bindNodes:{o:T.Object3D;p:T.Vector3;q:T.Quaternion;s:T.Vector3}[]=[];
+ model.traverse(o=>{if(!(o as T.Mesh).isMesh)bindNodes.push({o,p:o.position.clone(),q:o.quaternion.clone(),s:o.scale.clone()})});
+ const bind=()=>{for(const n of bindNodes){n.o.position.copy(n.p);n.o.quaternion.copy(n.q);n.o.scale.copy(n.s);}model.updateMatrixWorld(true)};
  const stance=equipmentPose(model);const rest=()=>{stance.pose(0)};
  const articulate=(value:number,motion?:EquipmentMotion)=>{stance.pose(value,motion)};rest();
  function inspect(){model.updateMatrixWorld(true);const gripError=requireNode(model,'handGripR').getWorldPosition(V()).distanceTo(requireNode(model,'gripR').getWorldPosition(V()));
@@ -62,7 +67,7 @@ export function assemble(choices:Choices,library:Map<string,T.Group>){
   let meshes=0,triangles=0,finite=true;model.traverse(o=>{finite&&=o.matrixWorld.elements.every(Number.isFinite);const m=o as T.Mesh;if(m.isMesh){meshes++;triangles+=(m.geometry.index?.count??m.geometry.attributes.position.count)/3}});
   return {choices:{...choices},gripError,feet,meshes,triangles,finite,weaponCount:installed.weapon!.length,stance:stance.inspect()};
  }
- return {model,installed,rest,articulate,inspect};
+ return {model,installed,rest,bind,articulate,inspect};
 }
 export function setWorldQ(o:T.Object3D,q:T.Quaternion){o.quaternion.copy(o.parent!.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));o.updateWorldMatrix(false,true)}
 export function solveTwoLink(model:T.Object3D,aName:string,bName:string,cName:string,target:T.Vector3,pole:T.Vector3){

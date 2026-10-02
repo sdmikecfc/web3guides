@@ -4,17 +4,16 @@
 
 ## What you do
 
-1. **Run the whole `D:\Temp\modelkombat-launch-guide\01-workshop-setup.sql` in your database SQL editor.** One paste, one Run. The last result should show four `true` values, `draft`, and empty dates. Existing active records are preserved. If there is an error, stop and send it; do not run fragments.
-2. **Keep the existing secret.** Do not create another internal-AI key. Use your existing `MK_MCP_INGEST_TOKEN`. The new routes use it too. Enable `MK_WALLET_TRACKING_ENABLED=1`, `BOTS_TOKEN_ZONES=1` and `NEXT_PUBLIC_BOTS_TOKEN_ZONES=1` for this release. Keep the existing workshop/journey settings.
-3. **Give the internal AI the instruction below, on its four-hour schedule.** Its source database access stays read-only. Our game receives the verified results.
-4. **Publish yourself with `vercel --prod` after the reviewed commit is pushed.** Run it from `D:\Temp\modelkombat-release-token-zones-20260929\candidate`. This clean copy uses your existing Vercel project and excludes unfinished Domain Kitchen changes. The command stays the same. A Git push does not publish. Deployment does not open the competition.
-5. **Before opening:** provide the public reward-holding wallet address, reconcile its nine token balances/contracts and liquid pairs, and check two scheduled tracking runs against real trades. Choose a start time only after those checks are green.
+1. **Your SQL setup is installed. No new SQL is needed for the October 2 tracking fix.** The database remains draft with empty dates. The ordered setup file remains available for a fresh installation; do not rerun it just for this fix.
+2. **Publish the prepared fix yourself with `vercel --prod`.** Use `D:\Temp\modelkombat-release-reactor-pit-20260930\candidate` after its build passes. This clean copy targets the existing project and excludes unrelated working changes. Git push is not deployment. Deployment does not open the competition.
+3. **Copy the complete [internal-AI instruction](model-kombat-internal-ai-instruction.txt) into your internal AI.** It reuses the existing job and secret, finds associated wallets, and checks real trade samples without recording prelaunch scores. Its source access stays read-only; our API writes game-only Supabase tables. It needs no Supabase admin key.
+4. **Send back its first report.** Before opening, verify registered trading pairs, the existing ROI/profit method, the public reward-holding address and nine funded token allocations, then reconcile two feed runs. Choose a start time only when those checks pass.
+
+The existing production secret is named `MK_WALLET_RESOLVER_TOKEN`. The corrected code accepts it; no new key is needed. An explicitly configured `MK_MCP_INGEST_TOKEN` takes precedence for deliberate future rotation. The non-secret switches are `MK_WALLET_TRACKING_ENABLED=1`, `BOTS_TOKEN_ZONES=1`, and `NEXT_PUBLIC_BOTS_TOKEN_ZONES=1`; they do not open scoring.
 
 ## One instruction for the internal AI
 
-Every four hours, update Model Kombat tracking at https://www.modelkombat.xyz using the existing Model Kombat ingestion secret from your secure configuration. Read GET /api/bots/tracking/zones first and follow its instructions and batchContract. Use the same Bearer credential for all tracking endpoints. Read GET /api/bots/tracking/wallets?scope=pending, follow every nextCursor, and resolve each registered wallet through the authoritative Doma account to its embedded wallet. POST the verified association to /api/bots/tracking/wallets using the existing schema and expectedRevision. Do not guess ownership or overwrite conflicts. Read scope=monitor and reconcile enrolled participants' linked execution wallets. Count eligible domain-token/USDC or domain-token/ETH economic fills once, preserving Strategy versus linked-agent-wallet attribution, evidence, corrections and coverage. Never equate a linked wallet with proof of an individual MCP command. POST reconciled batches to /api/bots/tracking/zones only while the campaign accepts scoring. While draft, make no scoring submissions: report read-only attribution checks and missing setup. Report failures and incomplete coverage explicitly. Never trade, approve, transfer, open the competition, modify Reporter, or expose the secret. Do not infer zero activity from missing data.
-
-The wallet-association POST uses: schemaVersion 1, a retry-stable requestId UUID, wallet, mcpWallet, domaUserId, privyDid (or null), status linked/not_found, checkedAt (UTC ISO with milliseconds), expectedRevision from the list. For not_found, mcpWallet, domaUserId and privyDid are all null. Confirm account ownership from Doma records; wallet addresses may differ.
+Use the linked text file above, rather than an older collector prompt. It includes the exact URLs, returned contracts, draft rehearsal, source attribution, chunking, corrections, failure handling and first-run report. A rehearsal receipt is not a stored trade or proof of complete coverage.
 
 ## Launch checklist
 
@@ -25,7 +24,8 @@ The wallet-association POST uses: schemaVersion 1, a retry-stable requestId UUID
 - PASS: local browser starter → training loss (+75, no repairs) → house win (+75) → 50-coin purchase → plan with one owned spare and 200 coins remaining. Final balance: 100. Keyboard navigation worked through the complete loop.
 - PASS: desktop, portrait and short-landscape review at 1280×720, 390×844 and 844×390, with no horizontal overflow. [Evidence and limitations](model-kombat-token-zone-review.md).
 - NOT VERIFIED: reward-holding address, funded token quantities, exact USDC representation and live liquid pairs.
-- NOT VERIFIED: two real scheduled source reconciliations, production migration, wallet signatures and cross-device restoration against production.
+- PASS (October 2): installed token-zone database is readable; campaign is draft with null dates. The credential-name mismatch is fixed in source; new rehearsal and contract tests pass. Real PostgreSQL confirms starter grants, one training reward, linked-garage coin caps and concurrent settlement protection.
+- NOT VERIFIED: two real scheduled source reconciliations, the new deployment's authenticated feed, wallet signatures and cross-device restoration against production. The October 2 live check found no feed batches, no reward assets, and an unmatched wallet. Source tests do not prove live ingestion.
 - NOT TESTED: physical-phone performance. Browser sizing is not physical-device testing.
 
 These red items block opening the cash competition. They do not require inventing another reward system or granting prelaunch points.

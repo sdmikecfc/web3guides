@@ -3,12 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { createWorkshopSoundtrack, MUSIC_SETTINGS, type MusicStatus } from "./workshop-soundtrack";
 
 /** One soundtrack for the shell; combat effects remain inside the renderer. */
-export default function useWorkshopMusic(battle: boolean) {
+export default function useWorkshopMusic(battle: boolean, suspended = false) {
   const player = useRef<ReturnType<typeof createWorkshopSoundtrack> | null>(null);
   const [settings, setSettings] = useState({ enabled: true, volume: .3 });
   const [ready, setReady] = useState(false), [status, setStatus] = useState<MusicStatus>("waiting");
-  const current = useRef({ ...settings, battle });
-  current.current = { ...settings, battle };
+  const current = useRef({ ...settings, battle, suspended });
+  current.current = { ...settings, battle, suspended };
 
   useEffect(() => {
     let saved = { enabled: true, volume: .3 };
@@ -22,9 +22,9 @@ export default function useWorkshopMusic(battle: boolean) {
     const controller = createWorkshopSoundtrack(new Audio(), setStatus);
     player.current = controller;
     controller.configure(current.current);
-    controller.visibility(document.hidden);
-    const gesture = () => controller.gesture();
-    const visibility = () => controller.visibility(document.hidden);
+    controller.visibility(document.hidden || current.current.suspended);
+    const gesture = () => { if (!current.current.suspended) controller.gesture(); };
+    const visibility = () => controller.visibility(document.hidden || current.current.suspended);
     // Keep listening so a blocked first attempt can recover on the next click or key.
     window.addEventListener("pointerdown", gesture);
     window.addEventListener("click", gesture);
@@ -41,11 +41,12 @@ export default function useWorkshopMusic(battle: boolean) {
   useEffect(() => {
     if (!ready) return;
     player.current?.configure({ ...settings, battle });
+    player.current?.visibility(document.hidden || suspended);
     try { localStorage.setItem(MUSIC_SETTINGS, JSON.stringify(settings)); } catch { /* Storage is optional. */ }
-  }, [battle, ready, settings]);
+  }, [battle, ready, settings, suspended]);
 
   const change = (next: typeof settings) => {
-    current.current = { ...next, battle };
+    current.current = { ...next, battle, suspended };
     player.current?.configure(current.current);
     player.current?.gesture();
     setSettings(next);
@@ -62,4 +63,3 @@ export default function useWorkshopMusic(battle: boolean) {
     </div>
   </details>;
 }
-
