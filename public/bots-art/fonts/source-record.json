@@ -1,0 +1,25 @@
+{
+  "retrieved": "2026-09-12T05:12:15.728Z",
+  "officialDirectory": "https://github.com/google/fonts/tree/main/ofl/baloo2",
+  "license": "SIL Open Font License 1.1; preserve OFL.txt with redistribution",
+  "files": [
+    {
+      "file": "Baloo2-Variable.ttf",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/baloo2/Baloo2%5Bwght%5D.ttf",
+      "bytes": 683200,
+      "sha256": "d47a6852548059b1db49a1319d06d499d546c3fa2237cf9eee9c43c8abb025c2"
+    },
+    {
+      "file": "OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/baloo2/OFL.txt",
+      "bytes": 4384,
+      "sha256": "ad09b05dc8bc678c9daf7c4c5f7ef1f55e5726127f4330b2e98e40b9dffcb860"
+    },
+    {
+      "file": "METADATA.pb",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/baloo2/METADATA.pb",
+      "bytes": 1021,
+      "sha256": "75ee7c6bd15a6981db588fa89f74eebe0c7fa292843e3f1263905118da2a0caf"
+    }
+  ]
+}

@@ -121,6 +121,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "expired token" }, { status: 401 });
   }
 
+  // Season closed? Refuse to bank real (non-test) runs once s2_enabled is not 'true', so the
+  // games are OFF even for a residual open nonce. Test tokens still bank (admin sandbox).
+  if (!tok.is_test) {
+    const { data: en } = await db
+      .from("launch_wars_boss_config")
+      .select("value")
+      .eq("key", "s2_enabled")
+      .maybeSingle();
+    if (String(en?.value || "") !== "true") {
+      return NextResponse.json({ ok: false, error: "Season 2 has ended. The games are closed." }, { status: 403 });
+    }
+  }
+
   // The score passes through (maxScore is only the high anti-forge ceiling), so
   // duels + the leaderboard separate skill. The REWARD is what's capped: doubloons
   // never exceed rules.cap no matter how high the score climbs.

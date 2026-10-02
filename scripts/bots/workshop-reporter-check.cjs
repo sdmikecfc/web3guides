@@ -1,0 +1,13 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),ts=require('typescript'),path=require('node:path');
+const root=path.resolve(__dirname,'../..');
+function load(file,imports){const module={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root,file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module,exports:module.exports,require:n=>imports[n],Date,Map,Set,Array,Number,String,JSON});return module.exports;}
+const view=load('src/lib/bots/campaign-view.ts',{}),domain=load('src/lib/bots/workshop8/competition.ts',{'../campaign-view':view});
+const {reporterQualification:qualify}=load('src/lib/bots/workshop8/reporter-evidence.ts',{'../campaign-view':view,'./competition':domain});
+const now=Date.now(),day=86400000,iso=n=>new Date(n).toISOString(),start=iso(now-10*day),end=iso(now+4*day),wallet='0x'+'a'.repeat(40),id='campaign';
+function fixture(){const fills=[0,1,2,7,8,9].map((d,i)=>({id:String(i),executedAt:iso(Date.parse(start)+d*day),source:'keeper',verified:true}));return {snapshot:{schemaVersion:1,campaign:{id,startsAt:start,endsAt:end},period:{key:'final'},ready:true,issues:[],updatedAt:iso(now),provenance:{confirmedThrough:iso(now)},players:{[wallet]:{snapshotStatus:'ready',accountingPending:false,exclusion:null,pendingFillCount:0,confirmedFillCount:6,confirmedTradeDays:6,lastConfirmedFillAt:fills[5].executedAt}}},enrollment:{snapshot_status:'ready',eligibility_status:'eligible',is_test:false,credit_from_at:start},fills};}
+const q=x=>qualify(x,id,wallet,start,end,now);
+let f=fixture();assert.ok(q(f).weeks.every(w=>w.status==='qualified'));f.fills.push({...f.fills[0]});assert.equal(q(f).strategyFills,6);
+f=fixture();f.fills[0].source='doma_mcp';assert.equal(q(f).weeks[0].days,2);assert.equal(q(f).mcpFills,1);
+for(const mutate of [x=>x.fills[0].verified=false,x=>x.fills.pop(),x=>x.snapshot.ready=false,x=>x.snapshot.provenance.confirmedThrough=iso(now-day),x=>x.enrollment.snapshot_status='pending',x=>x.enrollment.is_test=true,x=>x.fills.push({...x.fills[0],source:'doma_mcp'}),x=>x.snapshot.players[wallet].pendingFillCount=1,x=>x.truncated=true]){f=fixture();mutate(f);assert.equal(q(f).weeks[0].days,null);}
+f=fixture();f.fills.shift();f.snapshot.players[wallet].confirmedFillCount=5;f.snapshot.players[wallet].confirmedTradeDays=5;assert.equal(q(f).weeks[0].days,2,'a reconciled source correction removes the qualifying day');
+console.log('PASS: Reporter execution-time qualification, both weeks, MCP separation, duplicates, corrected rows, stale/partial/source mismatch, test and enrollment exclusions.');

@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>S5 Map Editor</title>
+<!--
+  S5 MAP EDITOR - drag EVERYTHING, copy the file. (Mike, 2026-08-01: buildings
+  first; then "make paths for tanks... separate paths for each tank just like
+  the buildings"; then "safe areas for players... that would encapsulate all
+  issues with maps for future seasons.")
+
+  DOUBLE-CLICK THIS FILE. No server, no build: it loads the real plate and the
+  real sprites straight off disk (it must live at the web3guides repo root so
+  the relative public/ paths resolve).
+
+  WHAT IT EDITS - the complete per-plate layout, one file:
+    * BUILDINGS  drag a sprite; feet = where it stands
+    * PATHS      the tank patrol routes. Click a route to select it, drag its
+                 points, double-click a segment to add a point, double-click a
+                 point to delete it. Each route names the vehicle that drives
+                 it (route i carries pool[i % 3]: tank-a / tank-b / truck-a).
+                 Routes are drawn one-way here and exported OUT-AND-BACK
+                 automatically (the engine's walker wraps, so an open line
+                 would teleport end-to-start without the fold).
+    * PLAYER CAMP  the dashed ellipse: the safe area where commanders holding
+                 nothing pitch their tents. Drag its centre to move it, drag
+                 the square corner handle to resize it.
+
+  WORKFLOW
+    1. drag until the board looks right (arrows nudge, shift = bigger)
+    2. COPY FILE -> paste over map-layout.txt, replacing everything
+    3. python map-manual.py        (writes src/lib/s5/world.fit.ts)
+
+  Sizes are the REAL rendered sizes (same fractions + per-fort raise scale the
+  map uses). Warnings match map-manual.py's checker: edges, clipped tops,
+  fort-pair crowding, forts inside the camp. What no checker can see is WATER:
+  reeds read as vegetation, so judge shorelines with your eyes.
+
+  Positions autosave to localStorage. IMPORT pastes an existing map-layout.txt
+  back in. NEW SEASON: update SLATE (names/scales) and, if the roster changes,
+  SITES - everything else is data.
+-->
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #14150f; color: #e8e4d4; font: 13px/1.45 ui-monospace, Consolas, monospace; }
+  header { display: flex; gap: 10px; align-items: center; padding: 10px 14px; flex-wrap: wrap; }
+  header h1 { font-size: 14px; letter-spacing: .12em; color: #f0b340; margin-right: 8px; }
+  button {
+    background: #262819; color: #f0b340; border: 1px solid #6a5a2a; border-radius: 8px;
+    padding: 7px 14px; font: 700 12px ui-monospace, monospace; cursor: pointer;
+  }
+  button:hover { background: #33351f; }
+  button.primary { background: #f0b340; color: #191507; border-color: #f0b340; }
+  button.primary:hover { background: #ffc95e; }
+  #status { color: #9aa387; }
+  #wrap { position: relative; margin: 0 14px 10px; user-select: none; }
+  #board { position: relative; width: 100%; overflow: hidden; border: 1px solid #3a3c28; border-radius: 10px; }
+  #board > img.plate { display: block; width: 100%; height: auto; pointer-events: none; }
+  #overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #overlay .pathline { fill: none; stroke: rgba(240,179,64,.5); stroke-width: 3; cursor: pointer; }
+  #overlay .pathline.sel { stroke: #ffd160; stroke-width: 4; }
+  #overlay .pathhit { fill: none; stroke: rgba(0,0,0,0.001); stroke-width: 16; cursor: pointer; }
+  #overlay .pt { fill: #ffd160; stroke: #191507; stroke-width: 2; cursor: grab; }
+  #overlay .campring { fill: rgba(255,210,60,.08); stroke: rgba(255,210,60,.75);
+                       stroke-width: 3; stroke-dasharray: 10 7; cursor: grab; }
+  #overlay .campgrab { fill: #ffd160; stroke: #191507; stroke-width: 2; cursor: nwse-resize; }
+  #overlay text { fill: #ffe9b8; font: 700 15px ui-monospace, monospace;
+                  paint-order: stroke; stroke: rgba(10,10,6,.85); stroke-width: 4px; pointer-events: none; }
+  .spr { position: absolute; transform: translate(-50%, -100%); cursor: grab; }
+  .spr:active { cursor: grabbing; }
+  .spr img { display: block; width: 100%; height: auto; pointer-events: none;
+             filter: drop-shadow(0 4px 10px rgba(0,0,0,.45)); }
+  .spr .tag {
+    position: absolute; top: 100%; left: 50%; transform: translate(-50%, 2px);
+    background: rgba(8,8,5,.78); color: #ffeeC8; padding: 1px 6px 2px; border-radius: 4px;
+    font: 700 11px ui-monospace, monospace; white-space: nowrap; pointer-events: none;
+  }
+  .spr.site .tag { color: #ffd98f; }
+  .spr.wk1 .tag { box-shadow: inset 0 0 0 1px rgba(224,102,46,.65); }
+  .spr.wk2 .tag { box-shadow: inset 0 0 0 1px rgba(127,212,193,.55); }
+  .spr.sel img { filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 6px #f0b340); }
+  .spr.bad img { filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 7px #ff5f4f); }
+  .spr.flash img { animation: flashPulse 1.4s ease-out 2; }
+  @keyframes flashPulse {
+    0%, 100% { filter: drop-shadow(0 0 0 #fff); }
+    50% { filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 14px #ffd160) brightness(1.35); }
+  }
+  #side {
+    position: fixed; right: 14px; top: 56px; width: 250px; max-height: 72vh; overflow: auto;
+    background: rgba(16,17,11,.94); border: 1px solid #3a3c28; border-radius: 10px; padding: 10px 12px;
+  }
+  #side h2 { font-size: 11px; letter-spacing: .14em; color: #9aa387; margin: 8px 0 6px; }
+  #side .w { color: #ff8f7a; margin: 3px 0; }
+  #side .ok { color: #79c98f; }
+  #roster { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+  #roster button {
+    background: none; border: 0; padding: 1px 2px; text-align: left; cursor: pointer;
+    color: #cfc9ae; font: 11.5px ui-monospace, monospace; border-radius: 4px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #roster button:hover { color: #ffd160; background: rgba(240,179,64,.10); }
+  #roster button.site { color: #b8a97e; }
+  #roster button.miss { color: #ff8f7a; font-weight: 700; }
+  #sel { color: #f0b340; margin-bottom: 2px; min-height: 17px; }
+  #hint { color: #6f7660; font-size: 11.5px; }
+  dialog { background: #191a10; color: #e8e4d4; border: 1px solid #6a5a2a; border-radius: 10px; width: min(720px, 92vw); }
+  dialog textarea { width: 100%; height: 300px; background: #0f100a; color: #d9d4bd; border: 1px solid #3a3c28;
+                    font: 12px ui-monospace, monospace; padding: 8px; }
+  dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+  footer { padding: 0 14px 14px; color: #6f7660; }
+  footer code { color: #b8b092; }
+</style>
+</head>
+<body>
+<header>
+  <h1>S5 MAP EDITOR</h1>
+  <button class="primary" id="copyBtn">COPY FILE</button>
+  <button id="addPathBtn">+ PATH</button>
+  <button id="delPathBtn">DELETE PATH</button>
+  <button id="addZoneBtn">+ PLAYER ZONE</button>
+  <button id="delZoneBtn">DELETE ZONE</button>
+  <button id="importBtn">IMPORT</button>
+  <button id="resetBtn">RESET TO SHIPPED</button>
+  <span id="status"></span>
+</header>
+
+<div id="wrap">
+  <div id="board">
+    <img class="plate" src="public/s5-art/world/bg-land.webp" alt="">
+    <svg id="overlay" preserveAspectRatio="none"></svg>
+  </div>
+</div>
+
+<aside id="side">
+  <div id="sel">click anything</div>
+  <div id="hint">paths: click line = select · drag dots = move ·
+    dbl-click line = add point · dbl-click dot = remove ·
+    player zones: drag ring = move, square = resize, + PLAYER ZONE adds another
+    (the selected one is solid, the rest dashed; campers are dealt across all
+    of them by area)</div>
+  <h2 id="rosterHead">ON THE BOARD</h2>
+  <div id="roster"></div>
+  <h2>WARNINGS</h2>
+  <div id="warns" class="ok">-</div>
+</aside>
+
+<footer>
+  After COPY FILE: paste over <code>map-layout.txt</code>, then run <code>python map-manual.py</code>.
+  Route i carries vehicle pool[i % 3] (tank-a, tank-b, truck-a). Water is invisible to every
+  checker (reeds read as plants) - judge shorelines by eye.
+</footer>
+
+<dialog id="importDlg">
+  <p style="margin-bottom:8px">Paste a map-layout.txt (roads + camp come along):</p>
+  <textarea id="importTxt" spellcheck="false"></textarea>
+  <div class="row"><button id="importCancel">Cancel</button><button class="primary" id="importOk">Load</button></div>
+</dialog>
+
+<script>
+"use strict";
+
+/* ── The roster. Width fractions mirror map-manual.py ROSTER + world.ts;
+      fort scale mirrors S5_TARGET_SCALE. New season: edit here. ─────────── */
+const SITES = [
+  ["basecamp",     0.104, "YOUR BASE - the big golden field"],
+  ["commandpost",  0.044, "Leaderboards - beside the base"],
+  ["muster",       0.040, "Other Commanders - on the south road"],
+  ["powerstation", 0.040, "Power Station (locked)"],
+  ["convoyroad",   0.052, "Mini Game: Warpath - THE BRIDGE"],
+  ["airfield",     0.052, "Mini Game: Warhawks"],
+  ["arena",        0.052, "Mini Game: Armorclash"],
+  ["ridgepass",    0.052, "Mini Game: Breakthrough"],
+];
+const TARGET_SIZE = 0.046;
+const SLATE = [ // [display name, raise scale, day] in listing order = launch order
+  ["hotcommerce.com", 1.05, "Mon Aug 3"],
+  ["FYI.xyz",         1.30, "Tue Aug 4"],
+  ["hypnotise.ai",    1.04, "Wed Aug 5"],
+  ["Deprogram.com",   1.00, "Thu Aug 6"],
+  ["Walletz.xyz",     1.08, "Fri Aug 7"],
+  ["NoRules.ai",      1.22, "Mon Aug 10"],
+  ["vaultpool.com",   1.16, "Tue Aug 11"],
+  ["Applications.com",1.50, "Wed Aug 12"],
+  ["datafinder.ai",   1.06, "Thu Aug 13"],
+  ["Geoquest.xyz",    1.06, "Fri Aug 14"],
+];
+const FORT_ART = ["fort", "fort2", "fort3"]; // i % 3, same as targetArtFor()
+const VEHICLES = ["tank-a", "tank-b", "truck-a"]; // route i carries VEHICLES[i % 3]
+
+/* The shipped board = Mike's 2026-08-01 editor layout, the RESET target. */
+const SHIPPED = {
+  basecamp:[0.882,0.690], commandpost:[0.924,0.338], muster:[0.861,0.924],
+  powerstation:[0.931,0.483], convoyroad:[0.791,0.230], airfield:[0.651,0.223],
+  arena:[0.790,0.378], ridgepass:[0.541,0.134],
+  t0:[0.321,0.629], t1:[0.416,0.752], t2:[0.436,0.568], t3:[0.131,0.596], t4:[0.533,0.757],
+  t5:[0.356,0.451], t6:[0.189,0.754], t7:[0.130,0.369], t8:[0.301,0.276], t9:[0.255,0.396],
+};
+const SHIPPED_ROAD_LINES = [
+  "road 0.500,0.655 0.440,0.670 0.500,0.655",
+  "road 0.340,0.695 0.280,0.720 0.340,0.695",
+  "road 0.665,0.300 0.650,0.370 0.665,0.300",
+  "road 0.615,0.520 0.600,0.590 0.615,0.520",
+  "road 0.560,0.835 0.620,0.850 0.560,0.835",
+  "road 0.200,0.250 0.225,0.340 0.200,0.250",
+  "road 0.685,0.175 0.670,0.245 0.685,0.175",
+  "road 0.320,0.706 0.258,0.728 0.320,0.706",
+  "road 0.150,0.105 0.180,0.205 0.150,0.105",
+  "road 0.596,0.648 0.560,0.655 0.596,0.648",
+];
+const SHIPPED_CAMP = { x: 0.251, y: 0.692, rx: 0.243, ry: 0.289 };
+
+const LS_KEY = "s5-map-editor-v2";
+const VB_W = 1000, VB_H = 500; // svg viewBox units (x*1000, y*500)
+
+/* ── Road helpers: the engine's walker WRAPS, so exported routes fold
+      out-and-back (A B C -> A B C B A); imports collapse the fold. ───────── */
+function collapseRoad(pts) {
+  const n = pts.length;
+  if (n >= 3 && n % 2 === 1) {
+    const half = (n + 1) / 2;
+    let mirror = true;
+    for (let i = 0; i < half; i++) {
+      const a = pts[i], b = pts[n - 1 - i];
+      if (Math.abs(a.x - b.x) > 1e-6 || Math.abs(a.y - b.y) > 1e-6) { mirror = false; break; }
+    }
+    if (mirror) return pts.slice(0, half);
+  }
+  return pts.slice();
+}
+function foldRoad(pts) {
+  return pts.concat(pts.slice(0, -1).reverse());
+}
+function parseRoadLine(line) {
+  const pts = [];
+  for (const tok of line.trim().split(/\s+/).slice(1)) {
+    const m = tok.split(",");
+    if (m.length === 2) {
+      const x = +m[0], y = +m[1];
+      if (Number.isFinite(x) && Number.isFinite(y)) pts.push({ x, y });
+    }
+  }
+  return pts.length >= 2 ? collapseRoad(pts) : null;
+}
+
+/* ── Items ──────────────────────────────────────────────────────────────── */
+const items = [];
+for (const [key, frac, blurb] of SITES) {
+  items.push({ key, kind: "site", label: key.toUpperCase(), blurb, frac,
+               art: `public/s5-art/world/site-${key}.webp` });
+}
+SLATE.forEach(([name, scale, day], i) => {
+  items.push({ key: `t${i}`, kind: i < 5 ? "wk1" : "wk2", label: name, blurb: day,
+               frac: TARGET_SIZE * scale,
+               art: `public/s5-art/world/${FORT_ART[i % 3]}-intact.webp` });
+});
+
+let paths = SHIPPED_ROAD_LINES.map(parseRoadLine).filter(Boolean);
+let camps = [{ ...SHIPPED_CAMP }];
+let campSel = 0;
+let saved = null;
+try { saved = JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch {}
+if (saved) {
+  if (Array.isArray(saved.paths) && saved.paths.length) {
+    paths = saved.paths.map((p) => p.map((q) => ({ x: +q.x, y: +q.y }))).filter((p) => p.length >= 2);
+  }
+  // Back-compatible with a save from the one-ellipse era.
+  if (Array.isArray(saved.camps) && saved.camps.length) camps = saved.camps.map((c) => ({ ...c }));
+  else if (saved.camp && Number.isFinite(+saved.camp.x)) camps = [{ ...saved.camp }];
+}
+for (const it of items) {
+  const p = (saved && saved.pos && saved.pos[it.key]) || SHIPPED[it.key] || [0.5, 0.5];
+  it.x = p[0]; it.y = p[1];
+}
+
+/* ── DOM ────────────────────────────────────────────────────────────────── */
+const board = document.getElementById("board");
+const overlay = document.getElementById("overlay");
+overlay.setAttribute("viewBox", `0 0 ${VB_W} ${VB_H}`);
+const statusEl = document.getElementById("status");
+const selEl = document.getElementById("sel");
+const warnsEl = document.getElementById("warns");
+let selected = null;      // building
+let selPath = -1;         // path index
+let selPt = -1;           // point index in the selected path
+
+const rosterEl = document.getElementById("roster");
+for (const it of items) {
+  const el = document.createElement("div");
+  el.className = `spr ${it.kind}`;
+  el.innerHTML = `<img src="${it.art}" alt=""><span class="feet"></span><span class="tag">${it.label}</span>`;
+  board.appendChild(el);
+  it.el = el;
+  it.img = el.querySelector("img");
+  el.addEventListener("pointerdown", (e) => startItemDrag(it, e));
+
+  // THE ROSTER: every building, always listed, click to find it. Born from
+  // "walletz.xyz was not on the map editor" - it was, lost in the crowd; a
+  // checklist makes lost-in-the-crowd a solved problem. A red row means a
+  // sprite genuinely failed to render.
+  const row = document.createElement("button");
+  row.type = "button";
+  row.textContent = it.label;
+  if (it.kind === "site") row.classList.add("site");
+  row.addEventListener("click", () => {
+    selectItem(it);
+    it.el.classList.remove("flash");
+    void it.el.offsetWidth; // restart the pulse even on a double click
+    it.el.classList.add("flash");
+    setTimeout(() => it.el.classList.remove("flash"), 3000);
+  });
+  rosterEl.appendChild(row);
+  it.rosterBtn = row;
+}
+
+function bw() { return board.clientWidth; }
+function bh() { return board.clientHeight; }
+
+function save() {
+  const pos = {};
+  for (const it of items) pos[it.key] = [it.x, it.y];
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ pos, paths, camps })); } catch {}
+}
+
+/* ── SVG overlay: paths + camp ──────────────────────────────────────────── */
+function svgEl(name, attrs) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", name);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+function ptsAttr(pts) {
+  return pts.map((p) => `${(p.x * VB_W).toFixed(1)},${(p.y * VB_H).toFixed(1)}`).join(" ");
+}
+
+function drawOverlay() {
+  overlay.innerHTML = "";
+  // camps first, under the path lines. Any number of them: one oval never
+  // covered every piece of rear ground worth standing on.
+  camps.forEach((camp, ci) => {
+    const ring = svgEl("ellipse", {
+      class: "campring",
+      cx: camp.x * VB_W, cy: camp.y * VB_H,
+      rx: camp.rx * VB_W, ry: camp.ry * VB_H,
+      "vector-effect": "non-scaling-stroke",
+      "stroke-dasharray": ci === campSel ? "" : "7 6",
+    });
+    ring.addEventListener("pointerdown", (e) => startCampDrag(e, false, ci));
+    overlay.appendChild(ring);
+    overlay.appendChild(svgEl("text", {
+      x: (camp.x - camp.rx) * VB_W + 10, y: (camp.y - camp.ry) * VB_H + 22,
+    })).textContent = camps.length > 1 ? `PLAYER ZONE ${ci + 1}` : "PLAYER CAMP";
+    const grab = svgEl("rect", {
+      class: "campgrab",
+      x: (camp.x + camp.rx * 0.7071) * VB_W - 6, y: (camp.y + camp.ry * 0.7071) * VB_H - 6,
+      width: 12, height: 12, "vector-effect": "non-scaling-stroke",
+    });
+    grab.addEventListener("pointerdown", (e) => startCampDrag(e, true, ci));
+    overlay.appendChild(grab);
+  });
+
+  paths.forEach((pts, pi) => {
+    // fat invisible hit line under the visible one
+    const hit = svgEl("polyline", { class: "pathhit", points: ptsAttr(pts) });
+    hit.addEventListener("pointerdown", (e) => { e.stopPropagation(); selectPath(pi, -1); });
+    hit.addEventListener("dblclick", (e) => insertPoint(pi, e));
+    overlay.appendChild(hit);
+    const line = svgEl("polyline", {
+      class: "pathline" + (pi === selPath ? " sel" : ""),
+      points: ptsAttr(pts),
+      "vector-effect": "non-scaling-stroke",
+    });
+    overlay.appendChild(line);
+    const label = svgEl("text", { x: pts[0].x * VB_W + 8, y: pts[0].y * VB_H - 8 });
+    label.textContent = `P${pi + 1} · ${VEHICLES[pi % VEHICLES.length]}`;
+    overlay.appendChild(label);
+    if (pi === selPath) {
+      pts.forEach((p, qi) => {
+        const dot = svgEl("circle", {
+          class: "pt", cx: p.x * VB_W, cy: p.y * VB_H, r: 7,
+          "vector-effect": "non-scaling-stroke",
+        });
+        dot.addEventListener("pointerdown", (e) => startPointDrag(pi, qi, e));
+        dot.addEventListener("dblclick", (e) => { e.stopPropagation(); removePoint(pi, qi); });
+        overlay.appendChild(dot);
+      });
+    }
+  });
+}
+
+function boardXY(e) {
+  const r = board.getBoundingClientRect();
+  return {
+    x: Math.min(0.998, Math.max(0.002, (e.clientX - r.left) / r.width)),
+    y: Math.min(0.998, Math.max(0.002, (e.clientY - r.top) / r.height)),
+  };
+}
+
+function selectPath(pi, qi) {
+  selPath = pi; selPt = qi;
+  selected = null;
+  for (const o of items) o.el.classList.remove("sel");
+  selEl.textContent = pi >= 0
+    ? `path P${pi + 1} (${VEHICLES[pi % VEHICLES.length]})${qi >= 0 ? `  point ${qi + 1}` : ""}`
+    : "click anything";
+  drawOverlay();
+}
+
+function startPointDrag(pi, qi, e) {
+  e.preventDefault(); e.stopPropagation();
+  selectPath(pi, qi);
+  const move = (ev) => {
+    const p = boardXY(ev);
+    paths[pi][qi].x = p.x; paths[pi][qi].y = p.y;
+    drawOverlay();
+  };
+  const up = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    check(); save();
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+}
+
+function insertPoint(pi, e) {
+  e.stopPropagation();
+  const p = boardXY(e);
+  // insert into the nearest segment
+  const pts = paths[pi];
+  let best = 1, bd = Infinity;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const d = Math.hypot(p.x - mx, p.y - my);
+    if (d < bd) { bd = d; best = i; }
+  }
+  pts.splice(best, 0, p);
+  selectPath(pi, best);
+  check(); save();
+}
+
+function removePoint(pi, qi) {
+  if (paths[pi].length <= 2) { statusEl.textContent = "a path needs at least 2 points"; return; }
+  paths[pi].splice(qi, 1);
+  selectPath(pi, -1);
+  check(); save();
+}
+
+function startCampDrag(e, resize, ci) {
+  e.preventDefault(); e.stopPropagation();
+  selectPath(-1, -1);
+  campSel = ci;
+  const camp = camps[ci];
+  const label = camps.length > 1 ? `PLAYER ZONE ${ci + 1}` : "PLAYER CAMP";
+  selEl.textContent = label;
+  const start = boardXY(e);
+  const c0 = { ...camp };
+  const move = (ev) => {
+    const p = boardXY(ev);
+    if (resize) {
+      camp.rx = Math.max(0.03, Math.min(0.45, c0.rx + (p.x - start.x) / 0.7071));
+      camp.ry = Math.max(0.02, Math.min(0.30, c0.ry + (p.y - start.y) / 0.7071));
+    } else {
+      camp.x = Math.min(0.97, Math.max(0.03, c0.x + (p.x - start.x)));
+      camp.y = Math.min(0.97, Math.max(0.03, c0.y + (p.y - start.y)));
+    }
+    selEl.textContent = `${label}  ${camp.x.toFixed(3)},${camp.y.toFixed(3)}  r ${camp.rx.toFixed(3)}x${camp.ry.toFixed(3)}`;
+    drawOverlay();
+  };
+  const up = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    check(); save();
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+}
+
+document.getElementById("addPathBtn").addEventListener("click", () => {
+  const n = paths.length;
+  const y = 0.15 + (n % 8) * 0.09;
+  paths.push([{ x: 0.46, y }, { x: 0.54, y }]);
+  selectPath(paths.length - 1, -1);
+  statusEl.textContent = `path P${paths.length} added - drag its dots onto a painted road`;
+  check(); save();
+});
+document.getElementById("delPathBtn").addEventListener("click", () => {
+  if (selPath < 0) { statusEl.textContent = "select a path first"; return; }
+  paths.splice(selPath, 1);
+  selectPath(-1, -1);
+  check(); save();
+});
+
+/* ── Buildings (unchanged mechanics) ────────────────────────────────────── */
+function layoutItems() {
+  for (const it of items) {
+    it.el.style.width = (it.frac * bw()) + "px";
+    it.el.style.left = (it.x * 100) + "%";
+    it.el.style.top = (it.y * 100) + "%";
+  }
+}
+let retryTimer = 0;
+function layout() {
+  if (bw() < 2) {
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(layout, 250);
+    return;
+  }
+  layoutItems();
+  drawOverlay();
+  check();
+}
+try { new ResizeObserver(() => layout()).observe(board); } catch {}
+
+function selectItem(it) {
+  selected = it;
+  selPath = -1; selPt = -1;
+  for (const o of items) o.el.classList.toggle("sel", o === it);
+  selEl.textContent = it ? `${it.label}  x ${it.x.toFixed(3)}  y ${it.y.toFixed(3)}` : "click anything";
+  drawOverlay();
+}
+
+function startItemDrag(it, e) {
+  e.preventDefault();
+  selectItem(it);
+  const r = board.getBoundingClientRect();
+  const offX = e.clientX - (r.left + it.x * r.width);
+  const offY = e.clientY - (r.top + it.y * r.height);
+  const move = (ev) => {
+    it.x = Math.min(0.995, Math.max(0.005, (ev.clientX - r.left - offX) / r.width));
+    it.y = Math.min(0.995, Math.max(0.005, (ev.clientY - r.top - offY) / r.height));
+    it.el.style.left = (it.x * 100) + "%";
+    it.el.style.top = (it.y * 100) + "%";
+    selEl.textContent = `${it.label}  x ${it.x.toFixed(3)}  y ${it.y.toFixed(3)}`;
+  };
+  const up = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    check(); save();
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+}
+
+window.addEventListener("keydown", (e) => {
+  if (!e.key.startsWith("Arrow")) return;
+  const step = e.shiftKey ? 0.01 : 0.002;
+  const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
+  const dy = e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
+  if (selected) {
+    e.preventDefault();
+    selected.x = Math.min(0.995, Math.max(0.005, selected.x + dx));
+    selected.y = Math.min(0.995, Math.max(0.005, selected.y + dy));
+    layoutItems(); selectItem(selected); check(); save();
+  } else if (selPath >= 0 && selPt >= 0) {
+    e.preventDefault();
+    const q = paths[selPath][selPt];
+    q.x = Math.min(0.998, Math.max(0.002, q.x + dx));
+    q.y = Math.min(0.998, Math.max(0.002, q.y + dy));
+    drawOverlay(); check(); save();
+  }
+});
+
+/* ── Warnings: mirror the checker. Advice, never a block. ───────────────── */
+function check() {
+  const w = [];
+  const W = bw(), H = bh();
+  if (W < 2) return;
+  for (const it of items) it.el.classList.remove("bad");
+  let onBoard = 0;
+  for (const it of items) {
+    const wid = it.frac * W;
+    const hei = it.img.naturalWidth ? wid * (it.img.naturalHeight / it.img.naturalWidth) : 0;
+    if (it.y * H - hei < 0) { w.push(`${it.label}: top clips the board`); it.el.classList.add("bad"); }
+    if (it.x * W - wid / 2 < 0.02 * W || it.x * W + wid / 2 > 0.98 * W) {
+      w.push(`${it.label}: hanging off the edge`); it.el.classList.add("bad");
+    }
+    const rendered = it.img.naturalWidth > 0 && it.el.offsetWidth > 0;
+    if (it.rosterBtn) it.rosterBtn.classList.toggle("miss", !rendered);
+    if (rendered) onBoard++;
+    else w.push(`${it.label}: NOT RENDERED (art missing or zero size)`);
+  }
+  const head = document.getElementById("rosterHead");
+  if (head) head.textContent = `ON THE BOARD ${onBoard}/${items.length}`;
+  for (let a = 0; a < items.length; a++) {
+    for (let b = a + 1; b < items.length; b++) {
+      const A = items[a], B = items[b];
+      const dx = (A.x - B.x) * W, dy = (A.y - B.y) * H;
+      const bothForts = A.kind !== "site" && B.kind !== "site";
+      const need = (bothForts ? 1.3 : 1.0) * ((A.frac + B.frac) * W) / 2;
+      if (Math.hypot(dx, dy) < need) {
+        w.push(`${A.label} + ${B.label}: crowding (${Math.round(Math.hypot(dx, dy))}px, want ${Math.round(need)})`);
+        A.el.classList.add("bad"); B.el.classList.add("bad");
+      }
+    }
+  }
+  // Forts inside the camp are a DESIGN (players camp among the walls they
+  // fight); the live scatter guarantees nobody stands ON a building, so the
+  // editor does not warn about the overlap.
+  paths.forEach((pts, pi) => {
+    if (pts.length < 2) w.push(`path P${pi + 1} has fewer than 2 points`);
+  });
+  warnsEl.className = w.length ? "" : "ok";
+  warnsEl.innerHTML = w.length ? w.map((s) => `<div class="w">${s}</div>`).join("") : "board is clean";
+}
+
+/* ── Export: the WHOLE map-layout.txt, ready to paste ───────────────────── */
+function fileText() {
+  const L = [];
+  L.push("# LAUNCH WARS - WORLD LAYOUT (authored in map-editor.html)");
+  L.push("#");
+  L.push("# One building per line:   key   x   y   (0..1, feet of the sprite)");
+  L.push("#   python map-manual.py --grid   redraw the numbered grid");
+  L.push("#   python map-manual.py          apply this file -> world.fit.ts");
+  L.push("#");
+  L.push("# t0..t9 are the strongholds IN LISTING ORDER = LAUNCH ORDER.");
+  L.push("# `camp` lines are PLAYER SAFE AREA ellipses (as many as you like);");
+  L.push("# `road` lines are the tank");
+  L.push("# patrols (exported out-and-back; route i carries vehicle i % 3).");
+  L.push("#");
+  for (const camp of camps) {
+    L.push(`camp ${camp.x.toFixed(3)} ${camp.y.toFixed(3)} ${camp.rx.toFixed(3)} ${camp.ry.toFixed(3)}`);
+  }
+  L.push("");
+  for (const it of items.filter((x) => x.kind === "site")) {
+    L.push(`${it.key.padEnd(14)} ${it.x.toFixed(3)} ${it.y.toFixed(3)}    # ${it.blurb}`);
+  }
+  L.push("");
+  items.filter((x) => x.kind !== "site").forEach((it, i) => {
+    L.push(`t${i}             ${it.x.toFixed(3)} ${it.y.toFixed(3)}    # stronghold ${i + 1}  ${it.label}  ${it.blurb}`);
+  });
+  L.push("");
+  L.push("# ── ROADS ─ tank patrols (drawn one-way in the editor, folded here) ──");
+  for (const pts of paths) {
+    L.push("road " + foldRoad(pts).map((p) => `${p.x.toFixed(3)},${p.y.toFixed(3)}`).join(" "));
+  }
+  L.push("");
+  return L.join("\n");
+}
+
+document.getElementById("copyBtn").addEventListener("click", async () => {
+  const txt = fileText();
+  try {
+    await navigator.clipboard.writeText(txt);
+    statusEl.textContent = "copied - paste over map-layout.txt, then: python map-manual.py";
+  } catch {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([txt], { type: "text/plain" }));
+    a.download = "map-layout.txt";
+    a.click();
+    statusEl.textContent = "clipboard blocked - downloaded map-layout.txt instead";
+  }
+});
+
+/* ── Import ─────────────────────────────────────────────────────────────── */
+const dlg = document.getElementById("importDlg");
+document.getElementById("importBtn").addEventListener("click", () => {
+  document.getElementById("importTxt").value = "";
+  dlg.showModal();
+});
+document.getElementById("importCancel").addEventListener("click", () => dlg.close());
+document.getElementById("importOk").addEventListener("click", () => {
+  const txt = document.getElementById("importTxt").value;
+  const newPaths = [];
+  const newCamps = [];
+  let hits = 0;
+  for (const raw of txt.split(/\r?\n/)) {
+    const line = raw.split("#")[0].trim();
+    if (!line) continue;
+    if (line.startsWith("road ")) {
+      const pts = parseRoadLine(line);
+      if (pts) newPaths.push(pts);
+      continue;
+    }
+    if (line.startsWith("camp ")) {
+      const b = line.split(/\s+/);
+      if (b.length >= 5) newCamps.push({ x: +b[1], y: +b[2], rx: +b[3], ry: +b[4] });
+      continue;
+    }
+    const m = line.match(/^(\S+)\s+([\d.]+)\s+([\d.]+)/);
+    if (!m) continue;
+    const it = items.find((x) => x.key === m[1]);
+    if (it) { it.x = +m[2]; it.y = +m[3]; hits++; }
+  }
+  if (newPaths.length) paths = newPaths;
+  if (newCamps.length) { camps = newCamps; campSel = 0; }
+  dlg.close();
+  selectPath(-1, -1);
+  layout(); save();
+  statusEl.textContent = `imported ${hits} positions, ${newPaths.length} paths${newCamps.length ? `, ${newCamps.length} zone(s)` : ""}`;
+});
+
+// PLAYER ZONES. One oval never covered every piece of rear ground worth
+// standing on (Mike, 2026-08-02), so a board can carry as many as it likes.
+// A new one lands beside the selected zone at the same size, which is almost
+// always what you want: two halves of one rear area.
+document.getElementById("addZoneBtn").addEventListener("click", () => {
+  const base = camps[campSel] || camps[0] || { x: 0.5, y: 0.8, rx: 0.12, ry: 0.07 };
+  camps.push({
+    x: Math.min(0.94, base.x + base.rx + 0.04),
+    y: base.y,
+    rx: base.rx,
+    ry: base.ry,
+  });
+  campSel = camps.length - 1;
+  selEl.textContent = `PLAYER ZONE ${campSel + 1}`;
+  drawOverlay(); check(); save();
+});
+document.getElementById("delZoneBtn").addEventListener("click", () => {
+  // Never zero: a board with no zone falls back to following the muster sign,
+  // which is a different behaviour and not what deleting a zone should mean.
+  if (camps.length <= 1) { statusEl.textContent = "keep at least one player zone"; return; }
+  camps.splice(campSel, 1);
+  campSel = Math.max(0, campSel - 1);
+  drawOverlay(); check(); save();
+});
+document.getElementById("resetBtn").addEventListener("click", () => {
+  for (const it of items) { const p = SHIPPED[it.key]; if (p) { it.x = p[0]; it.y = p[1]; } }
+  paths = SHIPPED_ROAD_LINES.map(parseRoadLine).filter(Boolean);
+  camps = [{ ...SHIPPED_CAMP }]; campSel = 0;
+  selectPath(-1, -1);
+  layout(); save();
+  statusEl.textContent = "reset to the shipped board";
+});
+
+/* Sprites size correctly only after their natural dims arrive. */
+let pending = items.length + 1;
+const done = () => { if (--pending <= 0) layout(); };
+document.querySelector("img.plate").addEventListener("load", done);
+for (const it of items) {
+  if (it.img.complete) done();
+  else { it.img.addEventListener("load", done); it.img.addEventListener("error", done); }
+}
+if (document.querySelector("img.plate").complete) done();
+window.addEventListener("resize", layout);
+</script>
+</body>
+</html>

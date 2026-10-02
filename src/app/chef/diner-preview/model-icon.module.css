@@ -1,0 +1,4 @@
+.image,.fallback{display:inline-block;max-width:100%;height:auto;aspect-ratio:1;vertical-align:middle;flex-shrink:0}
+.image{object-fit:contain}
+.fallback{display:inline-grid;place-items:center;background:transparent;color:#91a18b;border-radius:0}
+.fallback>svg{max-width:60%;height:auto;opacity:.68}

@@ -1,0 +1,59 @@
+{
+ "mode": "v3",
+ "slot": "leg",
+ "shapes": [
+  "boot",
+  "wheels",
+  "springs",
+  "sneakers",
+  "pegs"
+ ],
+ "note": "The leg shape table drawn. target/ is ON TARGET (condition a ControlNet on this: it does not carry the unconditioned generator's bias); plate/ is PRE-COMPENSATED with the bake's PRE table, for the img2img lane. Neither is shipped and the game never reads this folder. Every shape hangs on the frozen pivots in src/app/bots/_view/rig-points.ts: the hip cap is the same circle on every one, so BURIAL reads 0.50 for all five, and every shape's floor and foot box are the stance solve's own, so the foot pivot lands on ink and the assembled stance does not move.",
+ "coral": "ONE block at the bottom on every shape, the widest thing on every row it covers, nothing above it coral: the tyre on wheels, the pad on springs, the sole on sneakers, the round pad on pegs. rank-part.py's sole band is the run of bottom rows whose coral covers half the row's ink, and CORAL SPILL is what sits outside it, so a ring, a rim or a drip is the defect and a block is not.",
+ "coralStep": "WAVE TWO. Every shape now stands its body ON its block instead of flush with it. Measured over wave one's 96 renders, the median CORAL SPILL tracks one number and nothing else: the body's width over the block's width at the line where they meet (pegs 0.22 spilled 0.015, springs 0.72 spilled 0.047, wheels 1.00 spilled 0.075, sneakers 1.00 spilled 0.122). A line the alpha, lineart and depth maps all carry is an edge the render stops at; a line only the label image carries is a panel line it paints across. The block is still ONE block with a straight top edge and still the widest thing on every row it covers, so no judge rule moved.",
+ "coralHeightOverFootHeight": {
+  "boot": 0.42,
+  "wheels": 0.3,
+  "springs": 0.34,
+  "sneakers": 0.34,
+  "pegs": 0.36
+ },
+ "wheelRadiusOverFootHeight": 0.42,
+ "wheelHubOverWheelRadius": 0.34,
+ "wheelTyreWidthOverBootBox": 0.78,
+ "springTurnWidthOverBootBox": 0.5,
+ "shoeInsetOverSoleWidth": 0.14,
+ "canvas": {
+  "w": 192,
+  "h": 280
+ },
+ "pivots": {
+  "hip": [
+   70,
+   63
+  ],
+  "foot": [
+   70,
+   181
+  ]
+ },
+ "pre": {
+  "armW": 1.1904761904761905,
+  "armL": 0.8470588235294118,
+  "legH": 0.89,
+  "footH": 0.89,
+  "footW": 1.1
+ },
+ "files": [
+  "target/legs-boot.png",
+  "plate/legs-boot.png",
+  "target/legs-wheels.png",
+  "plate/legs-wheels.png",
+  "target/legs-springs.png",
+  "plate/legs-springs.png",
+  "target/legs-sneakers.png",
+  "plate/legs-sneakers.png",
+  "target/legs-pegs.png",
+  "plate/legs-pegs.png"
+ ]
+}

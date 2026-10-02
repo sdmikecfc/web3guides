@@ -1,0 +1,113 @@
+/*
+ * DOMAIN KITCHEN UI MOTION (M11).
+ *
+ * The ONLY stylesheet in the game tree, and it exists for exactly the things
+ * inline style objects cannot express: pseudo-states (:active, :hover),
+ * keyframes, and media queries. Everything else stays in tokens.ts.
+ *
+ * Before this file the whole DOM layer had ONE css transition in it (the boot
+ * progress bar). The Pixi layer already had sparks, floating emotes, speech
+ * chips and sound cues; none of that motion vocabulary crossed into the chrome,
+ * which is a large part of why the interface felt like a document sitting on
+ * top of a game.
+ */
+
+/* ── sheets ─────────────────────────────────────────────────────────────── */
+
+.scrim {
+  animation: fade 180ms ease-out both;
+}
+
+.sheet {
+  animation: rise 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes rise {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ── press feedback ─────────────────────────────────────────────────────── */
+
+/*
+ * Applied to every tappable chrome control. `transform` only, so it never
+ * triggers layout and never fights the 600ms snapshot re-render.
+ */
+.press {
+  transition: transform 120ms cubic-bezier(0.32, 0.72, 0, 1), filter 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.press:active {
+  transform: scale(0.94);
+}
+@media (hover: hover) {
+  .press:hover {
+    filter: brightness(1.12);
+  }
+}
+
+/* ── bars ───────────────────────────────────────────────────────────────── */
+
+/*
+ * The panel snapshot ticks every 600ms, so an un-eased bar visibly STEPS.
+ * Easing slightly longer than the tick makes quality and mastery read as
+ * moving rather than jumping.
+ */
+.barFill {
+  transition: width 400ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ── the coin counter ───────────────────────────────────────────────────── */
+
+/*
+ * Pops when the number changes. The count-up itself is done in JS (the value
+ * interpolates); this is only the punctuation on top of it.
+ */
+.coinPop {
+  animation: pop 260ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+
+/* ── toast ──────────────────────────────────────────────────────────────── */
+
+.toast {
+  animation: drop 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes drop {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── accessibility ──────────────────────────────────────────────────────── */
+
+/*
+ * A player who has asked their OS for less motion gets none of it. Note that
+ * OPACITY fades are kept: they carry no vestibular risk and removing them
+ * would make sheets appear with a jarring hard cut.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .coinPop,
+  .toast {
+    animation: none;
+  }
+  .press,
+  .barFill {
+    transition: none;
+  }
+  .press:active {
+    transform: none;
+  }
+}

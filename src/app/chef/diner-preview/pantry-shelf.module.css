@@ -1,0 +1,58 @@
+.pantry{color:#584b3c;min-width:0}
+.pantry button{font-family:inherit;cursor:pointer;touch-action:manipulation}
+.pantry button:focus-visible{outline:3px solid #3b8775;outline-offset:3px}
+.pantry button:disabled{cursor:default;opacity:1}
+.pantry h3,.pantry h4{font-family:var(--font-dk),ui-rounded,system-ui,sans-serif}
+.eyebrow{display:block;color:#9a7756;font-size:9px;font-weight:800;letter-spacing:1.25px;text-transform:uppercase;line-height:1.3}
+.shelfHeading,.marketHeading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
+.pantry h3{margin:3px 0 0;font-size:23px;line-height:1.12;font-weight:800;letter-spacing:-.45px;color:#385f4e}
+.shelfHeading h3>span{font-size:17px;display:inline-block;margin-left:5px;color:#a57d4d;letter-spacing:0;font-variant-numeric:tabular-nums}
+.varieties{font-size:11px;color:#938167;white-space:nowrap}
+.inventory{list-style:none;margin:0 0 21px;padding:12px 10px 19px;display:grid;grid-template-columns:repeat(auto-fill,minmax(91px,1fr));gap:11px 7px;background:linear-gradient(#f3ead8,#eee2c9);border:1px solid #e4d3b3;border-bottom:7px solid #ccad80;border-radius:16px 16px 10px 10px;box-shadow:0 3px 0 #b7986b22,inset 0 2px 7px #9981530b;position:relative}
+.ingredient{position:relative;min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center;min-height:101px;padding:5px 3px 7px;background:#fffaf071;border-radius:12px;border:1px solid #fffaf080}
+.ingredient>svg{display:block;width:68px;height:68px}
+.ingredient strong{font-size:12px;line-height:1.2;color:#64513c;overflow-wrap:anywhere;max-width:100%}
+.quantity{position:absolute;right:3px;top:4px;padding:3px 6px;border-radius:8px;background:#fef6e4;border:1px solid #ddc9a1;color:#497056;font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.2;z-index:1}
+.emptyShelf{text-align:center;padding:13px 22px 20px;margin-bottom:17px;background:linear-gradient(#fff9ec,#f4e8cc);border:1px dashed #dcc9a8;border-bottom:5px solid #ccb083;border-radius:17px 17px 10px 10px}
+.emptyArt{display:flex;align-items:flex-end;justify-content:center;margin-bottom:7px}
+.emptyArt>svg:first-child{transform:rotate(-9deg);margin-right:-7px}.emptyArt>svg:nth-child(2){transform:translateY(-5px)}.emptyArt>svg:last-child{transform:rotate(8deg);margin-left:-8px}
+.emptyShelf>strong{display:block;font-size:16px;color:#85704f;font-weight:800;line-height:1.25}
+.emptyShelf p{font-size:12px;line-height:1.5;max-width:350px;margin:7px auto 0;color:#9c896d}
+.parcel{display:grid;grid-template-columns:84px minmax(0,1fr);column-gap:12px;align-items:center;padding:12px 15px;background:#f5ebd6;border:1px solid #e6d5b2;border-radius:17px;margin-bottom:26px}
+.parcelArt{position:relative;grid-row:1/3;width:84px;display:grid;place-items:center;transform:rotate(-5deg)}
+.parcelCopy h3{font-size:19px}.parcelCopy p{font-size:11px;line-height:1.45;margin:6px 0;color:#927652}
+.pantry .parcelButton{display:inline-flex;align-items:center;justify-content:center;justify-self:start;gap:8px;min-height:44px;border:1px solid #c2d1ad;background:#e7eed8;color:#4d7452;font-size:12px;font-weight:800;line-height:1.2;border-radius:11px;padding:8px 13px;margin-top:3px}
+.parcelButton:hover{background:#dfeacd}
+.parcelOpened{background:#f3f0e4;border-color:#e2dac8;padding-top:10px;padding-bottom:10px}.parcelOpened .parcelArt{grid-row:1;transform:none}.parcelOpened .parcelArt>svg{width:63px;height:63px;opacity:.75}.parcelOpened .parcelCopy h3{font-size:17px}.parcelOpened .eyebrow{display:none}
+.receipt{position:absolute;bottom:0;right:8px;display:grid;place-items:center;width:24px;height:24px;border:2px solid #f3f0e4;border-radius:50%;background:#709869;color:#fff9e9}
+.marketHeading{margin-bottom:0}.wallet{display:inline-flex;align-items:center;gap:4px;background:#fff4d5;border:1px solid #e9d4a8;border-radius:11px;color:#977037;padding:6px 9px;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.marketNote{font-size:12px;line-height:1.45;color:#958164;margin:8px 0 12px;max-width:470px}
+.offers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:23px}
+.offer{min-width:0;position:relative;text-align:center;border:1px solid #e1d0b1;border-bottom-width:3px;border-radius:16px;background:#fff9ee;padding:10px 10px 9px;display:flex;flex-direction:column;align-items:center}
+.rarity{display:inline-block;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#958164;line-height:1.2;background:#f0e8d5;border-radius:5px;padding:3px 5px}.uncommon{color:#5f805b;background:#e8efda}.rare{color:#a07936;background:#f9e8ba}
+.offerArt{width:100%;height:89px;display:grid;place-items:center}.offerArt>svg{width:86px;height:86px;max-width:100%}
+.offer h4{color:#694e35;font-size:15px;font-weight:800;line-height:1.1;margin:1px 0 5px;min-height:1.1em;overflow-wrap:normal;word-break:normal;hyphens:none;letter-spacing:-.15px}
+.offer p{font-size:10px;line-height:1.2;color:#a08c6d;margin:0 0 10px}
+.pantry .buy{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;min-height:44px;margin-top:auto;padding:9px 5px;border:1px solid #e9b961;border-radius:10px;background:#f9ca71;color:#745021;font-size:15px;font-weight:800;box-shadow:0 2px 0 #b8873d27;font-variant-numeric:tabular-nums}
+.buy:hover:not(:disabled){background:#ffda8b}.pantry .buy:disabled{background:#eee6d4;border-color:#dfd3bd;box-shadow:none;color:#a08f72}
+.offerReason{display:block;font-size:9px;line-height:1.3;min-height:24px;margin:7px 0 0;color:#a08a69;max-width:100%}
+.garden{display:flex;align-items:center;gap:11px;padding:12px 14px;border:1px solid #d5ddc0;border-radius:16px;background:linear-gradient(110deg,#edf0dc,#f7f6e9);margin-bottom:21px}
+.gardenArt{position:relative;flex:0 0 59px;display:grid;place-items:center}.gardenArt>svg:last-child{position:absolute;right:-2px;bottom:1px;color:#68905a}
+.garden>div:nth-child(2){min-width:0;flex:1}.garden h3{font-size:17px}.garden .eyebrow{font-size:8px;color:#85905d;letter-spacing:1px}.garden p{font-size:11px;color:#89916c;line-height:1.35;margin:5px 0 0}
+.pantry .harvest{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;flex-shrink:0;border:1px solid #b7c79d;border-radius:10px;background:#dce8c6;padding:9px 12px;color:#567347;font-size:12px;font-weight:800}.harvest:hover:not(:disabled){background:#d2e2b5}.pantry .harvest:disabled{background:#ebeddf;border-color:#d9ddc8;color:#99a080}
+.dailyAllowance{display:flex;gap:13px;align-items:center;padding:0 2px 18px;margin-bottom:17px;border-bottom:1px dashed #dccbb0}
+.dailyAllowance>div:first-child{flex:1;min-width:0}.dailyAllowance strong{display:block;font-size:11px;font-weight:800;color:#7d7a56}.dailyAllowance span{font-size:9px;line-height:1.4;color:#a49a7f;display:block;margin-top:3px}
+.allowancePips{display:flex;gap:3px;flex-shrink:0}.allowancePips>span{width:9px;height:9px;border-radius:50%;background:#e8e3d2;border:1px solid #d8d0bb;margin:0}.allowancePips>.filledPip{background:#8fac7e;border-color:#809e6e;box-shadow:inset 0 1px #aec39c}
+.pantry .recipeButton{display:flex;align-items:center;justify-content:center;gap:12px;min-height:60px;width:100%;border:1px solid #c7d6b6;border-radius:15px;background:#e7eedb;color:#497250;padding:12px 17px;text-align:left;font-weight:800;font-size:16px;line-height:1.2;box-shadow:0 3px 0 #83966b16}
+.recipeButton>span{flex:1}.recipeButton small{display:block;font-size:10px;font-weight:500;color:#839370;margin-top:4px}.recipeButton:hover{background:#dfebd0}
+@media(max-width:520px){
+  .pantry h3{font-size:21px}.shelfHeading h3>span{font-size:16px}.eyebrow{font-size:8px;letter-spacing:1px}.varieties{font-size:10px}
+  .inventory{grid-template-columns:repeat(3,minmax(0,1fr));padding:10px 7px 15px;gap:8px 5px}.ingredient{padding:6px 2px;min-height:98px}.ingredient strong{font-size:11px}.ingredient>svg{width:63px;height:63px;max-width:100%}.quantity{font-size:10px;padding:2px 5px;right:1px;top:3px}
+  .parcel{grid-template-columns:64px minmax(0,1fr);padding:12px 11px;column-gap:10px}.parcelArt{width:64px}.parcelArt>svg{width:66px;height:66px}.parcelCopy h3{font-size:17px}.parcelCopy p{font-size:11px}.parcelOpened .parcelCopy h3{font-size:16px}.parcelButton{font-size:11px}.parcelOpened .parcelArt>svg{width:54px;height:54px}
+  .marketNote{font-size:11px}.wallet{font-size:12px;padding:6px 8px}.offers{gap:7px}.offer{border-radius:13px;padding:8px 6px}.offerArt{height:80px}.offerArt>svg{width:78px;height:78px}.offer h4{font-size:12.5px;line-height:1.15;min-height:28px;display:flex;align-items:center;justify-content:center}.offer p{font-size:9px;margin-bottom:9px}.rarity{font-size:7px;letter-spacing:.7px}.pantry .buy{font-size:13px;gap:4px;min-height:44px}.buy>svg{width:15px;height:15px}.offerReason{font-size:8px;min-height:23px}
+  .garden{flex-wrap:wrap;padding:12px;gap:9px}.garden .eyebrow{font-size:7px}.garden h3{font-size:17px}.gardenArt{flex-basis:54px}.gardenArt>svg:first-child{width:54px;height:54px}.pantry .harvest{margin-left:auto;padding:8px 10px;font-size:11px}.garden>div:nth-child(2){flex-basis:calc(100% - 70px)}
+  .dailyAllowance{gap:8px}.dailyAllowance strong{font-size:10px}.dailyAllowance span{font-size:8px}.allowancePips{gap:2px}.allowancePips>span{width:8px;height:8px}
+  .pantry .recipeButton{font-size:15px;padding:12px 14px;gap:9px}.recipeButton small{font-size:9px}
+}
+@media(max-width:350px){.inventory{grid-template-columns:repeat(2,minmax(0,1fr))}.offerArt{height:67px}.offerArt>svg{width:66px;height:66px}.offer h4{font-size:12px}.parcel{grid-template-columns:54px minmax(0,1fr)}.parcelArt{width:54px}.parcelArt>svg{width:58px;height:58px}}
+@media(prefers-reduced-motion:reduce){.pantry button{transition:none}}

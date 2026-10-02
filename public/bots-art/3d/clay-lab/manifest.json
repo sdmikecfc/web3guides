@@ -1,0 +1,206 @@
+{
+  "version": "clay-lab-v1",
+  "origin": "Original procedural sculpture for Model Kombat",
+  "license": "Project-owned original assets; no third-party source assets",
+  "units": "metres",
+  "up": "+Y",
+  "front": "+Z",
+  "parts": {
+    "brute-head-0": {
+      "file": "brute-head-0.glb",
+      "bytes": 183992,
+      "sha256": "32fe9fbfdb811c216304ed2421dfcf2d6956f752c896a4467ad3eec1727fc42c",
+      "claySurfaces": 1,
+      "vertices": 3726
+    },
+    "brute-torso-0": {
+      "file": "brute-torso-0.glb",
+      "bytes": 200444,
+      "sha256": "99cd09f751dbdae4d4c924af87246cd677b8af8a5df5b28247d735e577cbcfed",
+      "claySurfaces": 1,
+      "vertices": 4610
+    },
+    "brute-arm-0": {
+      "file": "brute-arm-0.glb",
+      "bytes": 133652,
+      "sha256": "ab1ca4f3716e0c30007861ee6e0342246c182beaa3cf3bf93d3380ed534db2b4",
+      "claySurfaces": 2,
+      "vertices": 3394
+    },
+    "brute-leg-0": {
+      "file": "brute-leg-0.glb",
+      "bytes": 135688,
+      "sha256": "1f1def41aa62377cd707f26ea66e59e22fe01cb2db65ac88751ce34018d6c106",
+      "claySurfaces": 3,
+      "vertices": 4106
+    },
+    "brute-head-1": {
+      "file": "brute-head-1.glb",
+      "bytes": 191336,
+      "sha256": "2e09896a549f4342de8df8397ea271506d1525ce4bc132e83917327112ec74da",
+      "claySurfaces": 1,
+      "vertices": 3870
+    },
+    "brute-torso-1": {
+      "file": "brute-torso-1.glb",
+      "bytes": 200448,
+      "sha256": "e026fb0642d488694b247a75fc7070733195b73ad505a62eaf98380d3fe0b8b7",
+      "claySurfaces": 1,
+      "vertices": 4610
+    },
+    "brute-arm-1": {
+      "file": "brute-arm-1.glb",
+      "bytes": 133656,
+      "sha256": "98abab70042eb2b0789608f4dfc118001a1ec1523ad4568c9a3948a9bc237b5d",
+      "claySurfaces": 2,
+      "vertices": 3394
+    },
+    "brute-leg-1": {
+      "file": "brute-leg-1.glb",
+      "bytes": 135700,
+      "sha256": "4b80a0d2071a797a7b001ccc45f92d396b0337865a46e054e60337a02087d5ca",
+      "claySurfaces": 3,
+      "vertices": 4106
+    },
+    "hotshot-head-0": {
+      "file": "hotshot-head-0.glb",
+      "bytes": 213896,
+      "sha256": "ffccf1ead0f3632e184d6c5b984be10e32f0fdf498d7c9d0dc0ec7b79e262d88",
+      "claySurfaces": 1,
+      "vertices": 4892
+    },
+    "hotshot-torso-0": {
+      "file": "hotshot-torso-0.glb",
+      "bytes": 200456,
+      "sha256": "a673d18a1dfe7ce3d1b44fb20345b1217910764c3b602f553f4a3572fbc73451",
+      "claySurfaces": 1,
+      "vertices": 4610
+    },
+    "hotshot-arm-0": {
+      "file": "hotshot-arm-0.glb",
+      "bytes": 133652,
+      "sha256": "9104e0365172552ceafacc1d881e8765e5df1fa46de60696aefde57bc8b98220",
+      "claySurfaces": 2,
+      "vertices": 3394
+    },
+    "hotshot-leg-0": {
+      "file": "hotshot-leg-0.glb",
+      "bytes": 158984,
+      "sha256": "7df2e5306e55fd904239b8b059b10b17ef25cf16bd3e53fa5d17f251421535a7",
+      "claySurfaces": 2,
+      "vertices": 3936
+    },
+    "hotshot-head-1": {
+      "file": "hotshot-head-1.glb",
+      "bytes": 170600,
+      "sha256": "263ae1850054d2268bc1c3fe1a6b92545ec78c96528d555bd3b26a3eb5b27c18",
+      "claySurfaces": 1,
+      "vertices": 3688
+    },
+    "hotshot-torso-1": {
+      "file": "hotshot-torso-1.glb",
+      "bytes": 200452,
+      "sha256": "0a64d697f3a4dff27462d7b02437ce5f10d4a8a423f6ba9431aa3cf68b573016",
+      "claySurfaces": 1,
+      "vertices": 4610
+    },
+    "hotshot-arm-1": {
+      "file": "hotshot-arm-1.glb",
+      "bytes": 136132,
+      "sha256": "dda98040a9c5adec57b7ccf863c7c2aa976d88e4daf0c751d456c1bc2ab05110",
+      "claySurfaces": 2,
+      "vertices": 3426
+    },
+    "hotshot-leg-1": {
+      "file": "hotshot-leg-1.glb",
+      "bytes": 167528,
+      "sha256": "b3afc812fed76c7a7260a92010258b002eab12189999f7efe2bf2018bcd7c383",
+      "claySurfaces": 2,
+      "vertices": 4000
+    },
+    "deadeye-head-0": {
+      "file": "deadeye-head-0.glb",
+      "bytes": 129852,
+      "sha256": "05371a2b754445fd31b3c485b30932986041bcc2213a308932edabe30231efdc",
+      "claySurfaces": 1,
+      "vertices": 2690
+    },
+    "deadeye-torso-0": {
+      "file": "deadeye-torso-0.glb",
+      "bytes": 200452,
+      "sha256": "9ac84d547bc54b0580ae737f8694097f846f11ca0b23b823a006bff5782af6d9",
+      "claySurfaces": 1,
+      "vertices": 4610
+    },
+    "deadeye-arm-0": {
+      "file": "deadeye-arm-0.glb",
+      "bytes": 133656,
+      "sha256": "f259198301385531a9c764863308883d1e6869dce5113a170c58eb0d1e320feb",
+      "claySurfaces": 2,
+      "vertices": 3394
+    },
+    "deadeye-leg-0": {
+      "file": "deadeye-leg-0.glb",
+      "bytes": 135676,
+      "sha256": "4b4a373529ab558575570c45fc6a36946d4f6b01b2dc50a9ce8520f00ab82e0e",
+      "claySurfaces": 3,
+      "vertices": 4106
+    },
+    "deadeye-head-1": {
+      "file": "deadeye-head-1.glb",
+      "bytes": 129852,
+      "sha256": "a28f03c6cd87ba22f7225fdae35b55bcd50a33ffb898f561f8bbc954c8100da4",
+      "claySurfaces": 1,
+      "vertices": 2690
+    },
+    "deadeye-torso-1": {
+      "file": "deadeye-torso-1.glb",
+      "bytes": 200452,
+      "sha256": "347e5dbec897c8e6d6edae57c52c0c4df8dbc26568f28302188096bf5a221e93",
+      "claySurfaces": 1,
+      "vertices": 4610
+    },
+    "deadeye-arm-1": {
+      "file": "deadeye-arm-1.glb",
+      "bytes": 133652,
+      "sha256": "91702e1cdcaf5feee0edd2f5f76d295d618a1183317c168e65ca80aede719cf6",
+      "claySurfaces": 2,
+      "vertices": 3394
+    },
+    "deadeye-leg-1": {
+      "file": "deadeye-leg-1.glb",
+      "bytes": 146204,
+      "sha256": "71284d9e9897e2003ac6a358affd8e23644c86798f2d4992a2c472af9b3d187d",
+      "claySurfaces": 3,
+      "vertices": 4298
+    },
+    "hammer": {
+      "file": "hammer.glb",
+      "bytes": 62116,
+      "sha256": "9004c463c3efc5ce6ec664cbaab91b4d540b70ffcb4eea318738540510a4c564",
+      "claySurfaces": 0,
+      "vertices": 1056
+    },
+    "baton": {
+      "file": "baton.glb",
+      "bytes": 57164,
+      "sha256": "5d07c390fb318f749df50c554c99ef2befa30ec17dbd5259f45a967469a3db94",
+      "claySurfaces": 0,
+      "vertices": 1006
+    },
+    "rifle": {
+      "file": "rifle.glb",
+      "bytes": 68352,
+      "sha256": "c4ce984248d41dcdacc440e2f91ef55e3bb9666a337c94e89b3a7a331555e9e3",
+      "claySurfaces": 0,
+      "vertices": 1182
+    },
+    "shield": {
+      "file": "shield.glb",
+      "bytes": 90540,
+      "sha256": "80f26f292c06a5d6edb6384d8989b96fc108672dec4788834589de7df8f7440d",
+      "claySurfaces": 1,
+      "vertices": 2218
+    }
+  }
+}

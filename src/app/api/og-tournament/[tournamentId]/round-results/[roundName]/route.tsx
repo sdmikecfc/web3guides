@@ -51,7 +51,7 @@ export async function GET(
   if (!ROUND_LABEL[roundName]) return new Response("Invalid round", { status: 400 });
 
   const db = ogTournamentDb();
-  const { data: t } = await db.from("og_tournaments").select("tournament_id, display_name").eq("tournament_id", tid).maybeSingle();
+  const { data: t } = await db.from("og_tournaments").select("tournament_id, display_name, edition").eq("tournament_id", tid).maybeSingle();
   if (!t) return new Response("Tournament not found", { status: 404 });
 
   const { data: matches } = await db
@@ -88,7 +88,12 @@ export async function GET(
     if (u.display_name) nameById.set(u.discord_id, u.display_name);
   }
 
-  const label = ROUND_LABEL[roundName];
+  const cn = t.edition === "cn";
+  const CN_ROUND_LABEL: Record<string, string> = { ROUND_16: "16强", QUARTERS: "八强", SEMIS: "四强" };
+  const label = cn ? (CN_ROUND_LABEL[roundName] || roundName) : ROUND_LABEL[roundName];
+  const L = cn
+    ? { suffix: " OG锦标赛", resultsSuffix: " · 结果", resolved: "✅ 本轮已结算" }
+    : { suffix: " OG Tournament", resultsSuffix: " — Results", resolved: "✅ Round Resolved" };
 
   const fonts = await loadCjkFonts();
 
@@ -111,14 +116,14 @@ export async function GET(
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 24 }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <span style={{ fontSize: 12, color: C.amber, letterSpacing: 4, textTransform: "uppercase", fontWeight: 700 }}>
-              {t.display_name} OG Tournament
+              {t.display_name}{L.suffix}
             </span>
             <span style={{ fontSize: 36, color: C.white, fontWeight: 900, marginTop: 4, letterSpacing: -1 }}>
-              {label} — Results
+              {label}{L.resultsSuffix}
             </span>
           </div>
           <span style={{ fontSize: 13, color: C.green, letterSpacing: 3, textTransform: "uppercase", fontWeight: 700 }}>
-            ✅ Round Resolved
+            {L.resolved}
           </span>
         </div>
 
@@ -202,11 +207,11 @@ export async function GET(
 
         {/* Footer */}
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 18, paddingTop: 14, borderTop: `1px solid ${C.violet}33`, fontSize: 13, color: C.muted, letterSpacing: 1 }}>
-          <span style={{ display: "flex" }}>{list.length} match{list.length === 1 ? "" : "es"} resolved</span>
+          <span style={{ display: "flex" }}>{cn ? `已结算 ${list.length} 场对决` : `${list.length} match${list.length === 1 ? "" : "es"} resolved`}</span>
           <span style={{ display: "flex" }}>
-            {roundName === "SEMIS" ? "→ winners announced May 29" :
-             roundName === "QUARTERS" ? "→ Semi Finals open next" :
-             "→ Quarter Finals open next"}
+            {roundName === "SEMIS" ? (cn ? "→ 获胜者即将公布" : "→ winners announced May 29") :
+             roundName === "QUARTERS" ? (cn ? "→ 接下来是四强" : "→ Semi Finals open next") :
+             (cn ? "→ 接下来是八强" : "→ Quarter Finals open next")}
           </span>
         </div>
       </div>

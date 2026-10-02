@@ -1,0 +1,20 @@
+{
+  "schema": "game-room.plan-metadata.v1",
+  "roomId": "model-kombat-garage",
+  "style": "monochrome-engineering",
+  "projectionSource": "source-coordinate diagram",
+  "layers": [
+    "floor plan",
+    "mobile plan",
+    "front clearance elevation"
+  ],
+  "semanticLabelsOutsideImage": false,
+  "aiInspirationIncluded": true,
+  "aiInspirationReason": "Original user-approved concept art is retained as the target, separately from deterministic diagrams.",
+  "coverage": [
+    "plans/desktop-layout.svg",
+    "plans/mobile-layout.svg",
+    "plans/front-elevation.svg"
+  ],
+  "limitations": "These are coordinate diagrams, not a Blender mesh multi-view audit."
+}

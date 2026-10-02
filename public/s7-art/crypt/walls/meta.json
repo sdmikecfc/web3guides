@@ -1,0 +1,208 @@
+{
+  "viewport": {
+    "w": 800,
+    "h": 600
+  },
+  "vanishingPoint": {
+    "x": 400,
+    "y": 300
+  },
+  "planes": [
+    {
+      "z": 0,
+      "scale": 1.0,
+      "rect": [
+        0,
+        0,
+        800,
+        600
+      ]
+    },
+    {
+      "z": 1,
+      "scale": 0.62,
+      "rect": [
+        152,
+        114,
+        496,
+        372
+      ]
+    },
+    {
+      "z": 2,
+      "scale": 0.4,
+      "rect": [
+        240,
+        180,
+        320,
+        240
+      ]
+    },
+    {
+      "z": 3,
+      "scale": 0.27,
+      "rect": [
+        292,
+        219,
+        216,
+        162
+      ]
+    },
+    {
+      "z": 4,
+      "scale": 0.19,
+      "rect": [
+        324,
+        243,
+        152,
+        114
+      ]
+    }
+  ],
+  "pieces": [
+    {
+      "z": 0,
+      "kind": "front",
+      "x": 0,
+      "y": 0,
+      "w": 800,
+      "h": 600
+    },
+    {
+      "z": 0,
+      "kind": "left",
+      "x": 0,
+      "y": 0,
+      "w": 152,
+      "h": 600
+    },
+    {
+      "z": 1,
+      "kind": "front",
+      "x": 152,
+      "y": 114,
+      "w": 496,
+      "h": 372
+    },
+    {
+      "z": 1,
+      "kind": "left",
+      "x": 152,
+      "y": 114,
+      "w": 88,
+      "h": 372
+    },
+    {
+      "z": 2,
+      "kind": "front",
+      "x": 240,
+      "y": 180,
+      "w": 320,
+      "h": 240
+    },
+    {
+      "z": 2,
+      "kind": "left",
+      "x": 240,
+      "y": 180,
+      "w": 52,
+      "h": 240
+    },
+    {
+      "z": 3,
+      "kind": "front",
+      "x": 292,
+      "y": 219,
+      "w": 216,
+      "h": 162
+    },
+    {
+      "z": 3,
+      "kind": "left",
+      "x": 292,
+      "y": 219,
+      "w": 32,
+      "h": 162
+    }
+  ],
+  "filePattern": "{variant}-z{z}-{kind}.webp",
+  "right": "mirror of left: flip horizontally, draw at x = viewport.w - (x + w)",
+  "plates": {
+    "floor": {
+      "rect": [
+        0,
+        357,
+        800,
+        243
+      ],
+      "filePattern": "{variant}-plate.webp"
+    },
+    "ceiling": {
+      "rect": [
+        0,
+        0,
+        800,
+        243
+      ],
+      "filePattern": "{variant}-plate.webp"
+    }
+  },
+  "capRect": [
+    324,
+    243,
+    152,
+    114
+  ],
+  "fog": {
+    "color": [
+      22,
+      26,
+      36
+    ],
+    "steps": [
+      {
+        "overPlane": 1,
+        "alpha": 0.12,
+        "rect": [
+          152,
+          114,
+          496,
+          372
+        ]
+      },
+      {
+        "overPlane": 2,
+        "alpha": 0.25,
+        "rect": [
+          240,
+          180,
+          320,
+          240
+        ]
+      },
+      {
+        "overPlane": 3,
+        "alpha": 0.4,
+        "rect": [
+          292,
+          219,
+          216,
+          162
+        ]
+      }
+    ],
+    "order": "paint far to near; fill each fog step over its plane opening after ALL of that slice's content (a closing front wall at z is slice-z content and goes under the plane-z fog step) and before the nearer slice's pieces"
+  },
+  "variants": {
+    "wall": [
+      "wall-a",
+      "wall-b"
+    ],
+    "floor": [
+      "floor-a"
+    ],
+    "ceiling": [
+      "ceiling-a"
+    ]
+  }
+}

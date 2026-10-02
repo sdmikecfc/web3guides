@@ -1,0 +1,259 @@
+{
+  "_": [
+    "BATTLE BOTS: THE HEAD SHAPE TABLE (tier one, 2026-09-05).",
+    "",
+    "WHY IT EXISTS. Mike, 5 September: 'Not a whole lot of variation going on with",
+    "the models. Was hoping people could make their own cute unique robots.' It was",
+    "measured, not felt: six of the eight shipped heads are one dome, all eight",
+    "boots are one boot, and the eight torsos share one outline exactly. Two",
+    "earlier runs proved the rule this file answers to: PROMPT CHANGES CANNOT BEAT",
+    "WHAT THE RULER DRAWS. So variation is bought by AUTHORING RULERS, and the",
+    "head is where it is bought first, because the head is 57 of every 100 pixels",
+    "of a robot at ring size.",
+    "",
+    "WHAT A ROW IS. One SHAPE (the crown silhouette and the ears) and one MOUTH.",
+    "Eight shapes and five mouth kinds give eighteen head looks; two of them are",
+    "already live (round with a grille is the shipped design-1 head, box with a",
+    "grille is the shipped design-2 head) and carry draw:false, so the v3 bake",
+    "draws the other SIXTEEN.",
+    "",
+    "WHAT THIS FILE MAY NOT CARRY. No eye override, no symmetry override, no judge",
+    "relaxation of any kind. Every head in this table keeps exactly two lamp eyes",
+    "on the design-one eye row at the design-one radius band, a blank forehead, the",
+    "crease lugs, the dome underside and its ink inside the full head width. That",
+    "is the whole reason scripts/sd/rank-part.py needs no rule moved for any of",
+    "them: a shape that would need a rule relaxed is refused from this table.",
+    "",
+    "WHERE THE GEOMETRY LIVES. Here: the shape word, the mouth kind, the prompt",
+    "clause and the note. NOT here: a single coordinate. The drawing is",
+    "scripts/bots-bake-parts.mjs --out v3 (headPartsV3), because a ruler is a",
+    "drawing and a drawing that can be retuned from a config file is a drawing",
+    "nobody can reproduce."
+  ],
+  "version": 3,
+  "slot": "head",
+  "tier": 1,
+  "_tier": "Tier is RICHNESS and shape is IDENTITY, so the two axes are independent. This table is authored at tier one only; the richer tiers of each shape follow later and change appointments, never the silhouette.",
+
+  "_promptSeam": [
+    "How a row reaches the model. scripts/sd/bots-sd-prompts.json owns the head's",
+    "subject, and two of its clauses are shape-dependent:",
+    "  form      carries the crown words 'a rounded dome crown'",
+    "  features  carries the mouth words below in mouthPhrase",
+    "The job emitter REPLACES those two exact substrings with this row's crown and",
+    "mouth clause and refuses if either substring is not found, so a matrix edit",
+    "that moves the wording breaks loudly instead of silently shipping the dome",
+    "prompt on a bear."
+  ],
+  "crownPhrase": "a rounded dome crown",
+  "mouthPhrase": "a dark recessed slatted grille for a mouth, low on the face under the eyes",
+
+  "mouths": {
+    "grille": {
+      "prompt": "a dark recessed slatted grille for a mouth, low on the face under the eyes",
+      "notes": "the shipped mouth: one dark bar of slats on the centre line, well under the eyes"
+    },
+    "widegrille": {
+      "prompt": "a wide dark recessed slatted grille for a mouth, spanning the face low under the eyes",
+      "notes": "the same bar carried out to the cheeks: the bucket's own mouth, and the only mouth that is wider than it is tall by more than two to one"
+    },
+    "smile": {
+      "prompt": "a dark recessed curved smile for a mouth, low on the face under the eyes",
+      "notes": "a crescent slot, tips curling up, the same dark hole material as the grille"
+    },
+    "o": {
+      "prompt": "a dark recessed round O mouth, low on the face under the eyes",
+      "notes": "one round hole on the centre line; the smallest mouth in the table, so it is drawn large enough to survive ring size"
+    },
+    "zigzag": {
+      "prompt": "a dark recessed zigzag mouth, low on the face under the eyes",
+      "notes": "a saw-tooth slot; the cone's own mouth and the only mouth with a repeating rhythm"
+    }
+  },
+
+  "shapes": [
+    {
+      "shape": "round",
+      "name": "Round",
+      "prompt": "a rounded dome crown with a round cup ear high on each side",
+      "notes": "the shipped design-one head. Its crown is the baseline every other shape is a departure from, so it is in the table with its two new mouths and its own grille look is left alone.",
+      "looks": [
+        { "mouth": "grille", "draw": false, "why": "already live as head design 1; the bake does not redraw a shipped head" },
+        { "mouth": "smile", "draw": true },
+        { "mouth": "o", "draw": true }
+      ]
+    },
+    {
+      "shape": "box",
+      "name": "Box",
+      "prompt": "a soft box crown with rounded corners and a round cup ear on each side",
+      "notes": "the shipped design-two head. Squared above, domed below, as the whole-bot study demands.",
+      "looks": [
+        { "mouth": "grille", "draw": false, "why": "already live as head design 2; the bake does not redraw a shipped head" },
+        { "mouth": "smile", "draw": true },
+        { "mouth": "o", "draw": true }
+      ]
+    },
+    {
+      "shape": "bear",
+      "name": "Bear",
+      "prompt": "two big round cup ears that form the top of the head, a low rounded crown between them",
+      "notes": "the ears ARE the crown: their tops are the apex of the whole figure and the head's own dome sits below them. The single biggest silhouette departure in the table and the one a player will name first.",
+      "looks": [
+        { "mouth": "smile", "draw": true },
+        { "mouth": "o", "draw": true }
+      ]
+    },
+    {
+      "shape": "tv",
+      "name": "TV",
+      "prompt": "a soft box crown with a short aerial standing on top of it",
+      "notes": "the aerial lives INSIDE the head room the canvas already carries: its tip is the apex, so the figure's height does not move and no other part has to be retuned.",
+      "looks": [
+        { "mouth": "smile", "draw": true },
+        { "mouth": "grille", "draw": true }
+      ]
+    },
+    {
+      "shape": "bell",
+      "name": "Bell",
+      "prompt": "a narrow rounded crown that flares out to the full width at the cheeks, like a bell",
+      "notes": "the only shape whose width grows all the way down. The crease lugs still make the outer edge, so the thing that covers the shoulder cap is unchanged.",
+      "looks": [
+        { "mouth": "o", "draw": true },
+        { "mouth": "smile", "draw": true }
+      ]
+    },
+    {
+      "shape": "bucket",
+      "name": "Bucket",
+      "prompt": "a wide flat rim across the top like an upturned bucket, the head narrowing a little below it",
+      "notes": "the rim is the top. It is the only shape that is widest at the crown, which is what makes it read at ring size against the dome.",
+      "looks": [
+        { "mouth": "widegrille", "draw": true },
+        { "mouth": "smile", "draw": true }
+      ]
+    },
+    {
+      "shape": "cone",
+      "name": "Cone",
+      "prompt": "a squat cone with a blunt rounded top, widening steadily down to the cheeks",
+      "notes": "a straight-sided taper, so its silhouette is the one in the table with no curve on the sides at all.",
+      "looks": [
+        { "mouth": "zigzag", "draw": true },
+        { "mouth": "o", "draw": true }
+      ]
+    },
+    {
+      "shape": "cat",
+      "name": "Cat",
+      "prompt": "two soft pointed ears at the top with short rounded tips, a rounded crown between them",
+      "notes": "cuddly, not spiky: the tip of each ear is rounded off at about a bolt head across, and no point stands longer than that, so the head keeps reading as a clay toy and never as a weapon.",
+      "looks": [
+        { "mouth": "smile", "draw": true },
+        { "mouth": "grille", "draw": true }
+      ]
+    }
+  ],
+  "_bodies": [
+    "THE BODY SHAPE TABLE: the TORSO and the ARM (lane T, 2026-09-05). The head",
+    "rows above live in `shapes` and keep the file's `slot: head` heading, which",
+    "is where this file started; the body rows live here, under `bodies`, so a",
+    "reader of either section can never be handed the other one by accident.",
+    "",
+    "WHY IT EXISTS. The look-alike gate read the factory rulers and reported, of",
+    "the torso: eight files, ONE shape, all 28 pairs at 1.000. Not close, the",
+    "same outline eight times, because tier and design only ever changed what was",
+    "drawn ON the barrel and never the barrel. The arm came back as two shapes",
+    "across eight files with a typical pair at 0.830. PROMPT CHANGES CANNOT BEAT",
+    "WHAT THE RULER DRAWS, so the body buys its variation by AUTHORING RULERS.",
+    "",
+    "WHAT A ROW IS. One SHAPE, one OUTLINE. There is no second axis here: the",
+    "head's mouth swap works because a mouth is a hole in a face, and a torso has",
+    "no equivalent. A panel line is not a shape, which is the whole finding this",
+    "table answers to.",
+    "",
+    "WHAT THIS FILE MAY NOT CARRY. No judge relaxation of any kind. Every shape",
+    "keeps the contract's own proportion bands, the frozen pivots, the buried",
+    "skirt and, on the torso, the wind-up key at the importer's own anchor. That",
+    "is checked at bake time on the rendered pixels, not asserted here.",
+    "",
+    "WHERE THE GEOMETRY LIVES. Here: the shape word, the prompt clause and the",
+    "note. NOT here: a single coordinate. The drawing is",
+    "scripts/bots-bake-parts.mjs --out v3 (torsoPartsV3 and armPartsV3), because",
+    "a ruler is a drawing and a drawing that can be retuned from a config file is",
+    "a drawing nobody can reproduce."
+  ],
+  "_bodyPromptSeam": [
+    "How a body row reaches the model. scripts/sd/bots-sd-prompts.json owns the",
+    "torso's and the arm's subject, and ONE clause of each is shape-dependent:",
+    "  form   the outline words",
+    "The job emitter REPLACES that exact substring with this row's form clause",
+    "and refuses if the substring is not found, so a matrix edit that moves the",
+    "wording breaks loudly instead of quietly shipping the barrel's prompt on a",
+    "teapot."
+  ],
+  "bodies": {
+    "torso": {
+      "slot": "torso",
+      "formPhrase": "a rounded barrel, half again wider than it is tall, shoulders rounded off, no neck",
+      "shapes": [
+        {
+          "shape": "barrel",
+          "name": "Barrel",
+          "prompt": "a rounded barrel body, straight sides and big soft rounded corners, half again wider than it is tall, shoulders rounded off, no neck",
+          "notes": "the shipped outline, and the only one of the four that is not new. It is in the table as the comparison ruler every other shape is read against: a table with the live shape missing cannot say what changed. Drawn by torsoPartsV2 at tier one, design one, so it is today's barrel and not a redrawing of it.",
+          "live": true
+        },
+        {
+          "shape": "toolbox",
+          "name": "Toolbox",
+          "prompt": "a squared toolbox body with a wide flat lid across the top that overhangs a much narrower case below it, a seam where the lid meets the case, corners softened but not round, no neck",
+          "notes": "the only shape in the table that steps IN as it goes down, and the step is a real edge in the silhouette rather than a groove drawn on a barrel. Its case is the narrowest waist in the table, which is what makes the lid read as a lid and not as a shoulder."
+        },
+        {
+          "shape": "teapot",
+          "name": "Teapot",
+          "prompt": "a rounded teapot body, narrow at the shoulders and swelling out to a low rounded belly, tucked in to a flat base, with one small spout stub low on its left side, no neck",
+          "notes": "the only shape with no straight side anywhere: its widest row sits low, below the middle, where every other shape in the table is widest at the top or the same all the way down. The spout is a STUB, a short nub off the belly and never a handle loop, because an enclosed hole is see-through and the clay law forbids it."
+        },
+        {
+          "shape": "engine",
+          "name": "Engine",
+          "prompt": "a squared engine block body, a big flat-sided casting with square shoulders and softly bevelled corners, a raised cover panel across the chest and three ribs below it, the same width all the way down, no neck",
+          "notes": "the biggest and squarest thing in the table, at the top of the width band and near the top of the height band, and the only one whose width never changes from shoulder to base. It carries the table's distance the cheap way, by area: every other shape sits inside it."
+        }
+      ]
+    },
+    "arm": {
+      "slot": "arm",
+      "formPhrase": "a stubby vertical limb, straight up and down, three times as long as it is wide, a plain rounded cap at the top end and a simple rounded mitt hand at the bottom, perfectly symmetric left to right",
+      "shapes": [
+        {
+          "shape": "mitts",
+          "name": "Mitts",
+          "prompt": "a stubby vertical limb, straight up and down, a plain rounded cap at the top end, a rounded elbow ball with a band across it, a wrist cuff, and a round mitt hand with a thumb at the bottom",
+          "notes": "the live arm's family, redrawn. It is NOT the v2 ruler: that one measures armL 0.268 against a band that stops at 0.263, so carrying it would put an out-of-band shape in a table whose whole claim is that no rule moves for it. The fist is pulled up the shaft until the band is met, and nothing else about the family changes."
+        },
+        {
+          "shape": "claws",
+          "name": "Claws",
+          "prompt": "a plain vertical tube limb with a rounded cap at the top end, no elbow, a shallow collar at the wrist, and a two-finger gripper hand at the bottom whose thick fingers spread outward and then curl back in toward each other",
+          "notes": "the fingers CLOSE. Two that only spread read as a trolley on the contact sheet; two that come back toward each other read as a claw. The arm itself is a plain tube, because the mitt's character is its stack of mouldings and the claw's is the absence of them. The palm is a round boss and the hand pivot sits inside it, so the fingers can open below that row without the pivot landing in air."
+        },
+        {
+          "shape": "pincers",
+          "name": "Pincers",
+          "prompt": "a thin vertical stick limb, much slimmer than a normal arm, a small rounded cap at the top end, one narrow band at the elbow and one at the wrist, ending in two long straight thin prongs that open into a wide fork",
+          "notes": "the thin one, and its point is how little ink it has: at ring size it reads as a stick with a fork on the end and never as a limb with a hand. The widest row on it is the OPEN FORK and not the shoulder cap, because a cap sized to the contract's armW on a shaft this thin is a lollipop, which is what the first cut drew."
+        },
+        {
+          "shape": "tube",
+          "name": "Tube",
+          "prompt": "a chunky concertina bellows limb, a stack of soft rings of two alternating widths so the edge is scalloped, no elbow, no wrist and no fingers, ending in a plain rounded stub",
+          "notes": "no hand at all, which is the one thing no other arm in the table does. It is also the widest and the shortest, so the two arms with a hand blob at the bottom cannot be confused with it. The rings overlap so the part stays one blob with no enclosed hole."
+        }
+      ]
+    }
+  }
+}

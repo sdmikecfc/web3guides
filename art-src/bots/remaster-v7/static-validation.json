@@ -1,0 +1,46 @@
+{
+  "status": "passed",
+  "evidence": "Static exported GLB/manifest checks, not a gameplay or physical-device performance claim.",
+  "manifestSha256": "47fe5275c9c1c662acd43b28872d08afc6c1ed179140c06b616304bd0aaca8df",
+  "heroes": [
+    {
+      "style": "tank",
+      "sha256": "c185906da7f767a7d8ed0c30bda198a4195e2cf5097e82954a2531e2aec1fbe7",
+      "bytes": 4979992,
+      "triangles": 84396,
+      "rigNodes": 25,
+      "meshNodes": 73,
+      "claySurfaces": 24,
+      "materials": 10,
+      "embeddedImages": 2,
+      "allRestNodesMatchExport": true,
+      "allNormalMappedPrimitivesHaveTangents": true
+    },
+    {
+      "style": "speed",
+      "sha256": "0573b71f4f1d808fdefec7c675a5c75cea1f7f8efdaab43c316ade794e8d7ef6",
+      "bytes": 4370396,
+      "triangles": 64812,
+      "rigNodes": 30,
+      "meshNodes": 73,
+      "claySurfaces": 19,
+      "materials": 9,
+      "embeddedImages": 2,
+      "allRestNodesMatchExport": true,
+      "allNormalMappedPrimitivesHaveTangents": true
+    },
+    {
+      "style": "ranged",
+      "sha256": "834c2a8bc472b75b7dbd2adefca83edde9ba4681f65133be4d10857db315bf9a",
+      "bytes": 4616636,
+      "triangles": 72448,
+      "rigNodes": 34,
+      "meshNodes": 84,
+      "claySurfaces": 24,
+      "materials": 9,
+      "embeddedImages": 2,
+      "allRestNodesMatchExport": true,
+      "allNormalMappedPrimitivesHaveTangents": true
+    }
+  ]
+}

@@ -1,0 +1,2307 @@
+{
+  "createdAt": "2026-09-17T10:23:18.118Z",
+  "scope": "Static Model Kombat workbench and practice playtest; no accounts or rewards",
+  "assets": [
+    {
+      "path": "assets/catalogue-2/manifest.json",
+      "bytes": 26360,
+      "sha256": "f0b948bf0dd7f62a3006a0850471fd6446e6b80097675b3020c237438ca5d787"
+    },
+    {
+      "path": "assets/catalogue-2/tank-t1-warden.glb",
+      "bytes": 12009168,
+      "sha256": "105c609826c00e39f46a744a35dc8b82c5801ad4e427d149590ec283df214181"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.warden.head.png",
+      "bytes": 49322,
+      "sha256": "99d072e537d94f295bd75e8623be9ca1c09548a6f1a0d8c064c3f8095a8fb624"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.warden.torso.png",
+      "bytes": 50830,
+      "sha256": "a98d79a4eb18d4728e5b199333c49863292560fb44990fc99422a9d18682e9d5"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.warden.armL.png",
+      "bytes": 22323,
+      "sha256": "99b7dd1013721a572656f02829019bd4c76a06b32ab734897db659cc23bb5dec"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.warden.armR.png",
+      "bytes": 23814,
+      "sha256": "2ff988a4bbb429250b3f77e349926b2bd62fe53681c52c3d7596ade515b5d3a0"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.warden.legL.png",
+      "bytes": 41185,
+      "sha256": "ecfa95d7bff5feab3c642ec5e01a778cced0e18b86c7c8659d4fe29b92ca1249"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.warden.legR.png",
+      "bytes": 40565,
+      "sha256": "efe75158618d7fec6ca650ccd95a1dc93e79e996afcd250fddff782ae889dba4"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.warden.weapon.png",
+      "bytes": 13388,
+      "sha256": "d8eefbfe35693b07ae8e0ea90b97cc164d5b547979a19d1475e80b4f1bb8293d"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.warden.whole.png",
+      "bytes": 141770,
+      "sha256": "0ce71d19bcd5e4f80afb329c01d03654da6cafcb8791d57901c426b308776607"
+    },
+    {
+      "path": "assets/catalogue-2/tank-t2-warden.glb",
+      "bytes": 13005468,
+      "sha256": "461c5adc5be0922dcdae3231a35e166ebdc39c1c4fa0cd2d675cf95ceec151c1"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.warden.head.png",
+      "bytes": 44181,
+      "sha256": "4d6143fcad07763787704d6b9ddaa19526cf9fb1c24f4f0f95fb2acd8853ba93"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.warden.torso.png",
+      "bytes": 51553,
+      "sha256": "89e658f28bf26ec80db5d67a9a5c0e0c76ac57233713da040544e531fd81c76d"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.warden.armL.png",
+      "bytes": 23229,
+      "sha256": "307cc743aec0629ed22b324cb57bfa1240b531d4991d2b47ec842fd2faf7f620"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.warden.armR.png",
+      "bytes": 24927,
+      "sha256": "c3937f3c35486eaa4a144e83b2c8e013fb2ae259088ac5697b19af5d679aad4c"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.warden.legL.png",
+      "bytes": 40833,
+      "sha256": "680dd6eb3043349ef7fe3c8114203a4e8c87fb8a50a7aaea68620449c628968a"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.warden.legR.png",
+      "bytes": 40565,
+      "sha256": "438a322a5d701f800c20bfc0293d0cf1d1c890d098200e75ae26b4f088f26670"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.warden.weapon.png",
+      "bytes": 13801,
+      "sha256": "486119fd49743e910f56cc821b34b0fea4fc806728c6cab7b8de069f99f5f6e5"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.warden.whole.png",
+      "bytes": 142427,
+      "sha256": "357cb5b0b4c312211f20b4f781940b0644469e9f1b1e499c78d1a2f3dc03b345"
+    },
+    {
+      "path": "assets/catalogue-2/tank-t3-warden.glb",
+      "bytes": 14065284,
+      "sha256": "ac35eb0594516cb912d6fdacecdfb51efa6f6c91aed835c4001516ed5f8e9027"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.warden.head.png",
+      "bytes": 45963,
+      "sha256": "ad077a9770558a5c456bed9fb523859c98480cfb274204cc9a7e29610861436d"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.warden.torso.png",
+      "bytes": 51898,
+      "sha256": "50b02bc300e30e833626b8ef90b115a616ff59960558d575e0cbe51614ed01a2"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.warden.armL.png",
+      "bytes": 26982,
+      "sha256": "dd76c7c17aa4da2b95ab720e87179a298114dd96019e37b018c91309ca756dd6"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.warden.armR.png",
+      "bytes": 28202,
+      "sha256": "93bd0afbd8f672c779e7c8bf5bc92a4f0164d736b544549b00eac6c512a95f10"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.warden.legL.png",
+      "bytes": 41483,
+      "sha256": "2efc75b93ebfc5dfccd90e28061a115817691d1d1db2ea11a28ec88b5caaceef"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.warden.legR.png",
+      "bytes": 41030,
+      "sha256": "d751ec8b8f767f5acdd0355e52d197104890c5f99c693405480a60a8a1bdac5d"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.warden.weapon.png",
+      "bytes": 14008,
+      "sha256": "4b249c244d4e43ebcaf07cf5a3e030da19ab26cd6b8ddc9489cee4980d464246"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.warden.whole.png",
+      "bytes": 150038,
+      "sha256": "4b255b2f312e898547e9a297a0e8dbf218017b234445317ef3b3e58206b575e6"
+    },
+    {
+      "path": "assets/catalogue-2/painted/warden.png",
+      "bytes": 161519,
+      "sha256": "7c4dea31e4c0602482d02d9efaed97a58f3895118d35a4ff134301762396701c"
+    },
+    {
+      "path": "assets/catalogue-2/tank-t4-warden.glb",
+      "bytes": 14846744,
+      "sha256": "7212d4c71affbac7d2baf1012c8a9d604cadd1cda0c45dd0b8d2563f5310a0c1"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.warden.head.png",
+      "bytes": 45921,
+      "sha256": "5c4e4515193e46cd5c8ed81c446c2ceaa98511287f656e63c1d6230c6dae5113"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.warden.torso.png",
+      "bytes": 52472,
+      "sha256": "0f5957405f2c1dc0b1c96c5462e1401c7e8a29cbc66496b5e75755c6ec6b49df"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.warden.armL.png",
+      "bytes": 28696,
+      "sha256": "4f816760988970ecf2235f0b8657477598ef5e70b0e9d4e580e4fc831fe2cbda"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.warden.armR.png",
+      "bytes": 27371,
+      "sha256": "e6db5f560481636d1333e2f096ed492379562b3f24e426d2582f2e831b01e289"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.warden.legL.png",
+      "bytes": 42689,
+      "sha256": "76bcafc05317d6a95952a7fd5eaadfa07db254a9f4c0a348aa939de742c9fb74"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.warden.legR.png",
+      "bytes": 41661,
+      "sha256": "2bd5409f5daf30b0433994d4a68bfbe0454ce8b7ab0f0046058eb72fa2a84eff"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.warden.weapon.png",
+      "bytes": 13712,
+      "sha256": "e6812438b985828faa40f34b92a4e1ca5d339c06f4a0d1f0db69ec2902a4478d"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.warden.whole.png",
+      "bytes": 147329,
+      "sha256": "d58721010666a8bf18eb820015f09ba4872456857763c5fa0efe56bf50217cff"
+    },
+    {
+      "path": "assets/catalogue-2/tank-t1-revenant.glb",
+      "bytes": 11221352,
+      "sha256": "cf42fde86dd9310a8c8c78c2cd54fa65a6d0fd79a6cf6e0764d89d18a7d22dfc"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.revenant.head.png",
+      "bytes": 39720,
+      "sha256": "cbb5c54d53f42de83e8704c3741e71fe2bf89ec409eed13bb23cd56d1d915f33"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.revenant.torso.png",
+      "bytes": 49022,
+      "sha256": "e45297e3912da03bf28071f6783d3a0db7ed00b2f9a5ada815d4f25899774f16"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.revenant.armL.png",
+      "bytes": 25752,
+      "sha256": "b09eb42a4954dab42a6c01c80036b224d94e60c48bbf6e3268fa410a8c9f89c5"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.revenant.armR.png",
+      "bytes": 24495,
+      "sha256": "329a9d5bbe7cec6fc10f48f22baf20dea9fe9f8ca7ed9f41247fc1426284fb8e"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.revenant.legL.png",
+      "bytes": 41106,
+      "sha256": "d83515a3a234c4fc4ccc0bc3a7337b7437e93dfa58fee3c1f4b1d1467fb2fd0f"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.revenant.legR.png",
+      "bytes": 40441,
+      "sha256": "f092868a67758a05c035e812fb136cf7df01ee7d4c0064a31a4010ba3614acdc"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.revenant.weapon.png",
+      "bytes": 12960,
+      "sha256": "138000c4b502c2a5e7f0e6d88eda05f395a9c7a40559d5a5e8e222d65ac76351"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.revenant.whole.png",
+      "bytes": 145932,
+      "sha256": "7b9913d319675111c6749a4605e844b3614aa27fc01440256cbee20ec8c6fdb4"
+    },
+    {
+      "path": "assets/catalogue-2/tank-t2-revenant.glb",
+      "bytes": 12167336,
+      "sha256": "246ce146b51fd60298198fdbf30a456cfc77d4f57e30ac843d58a24f2551cb21"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.revenant.head.png",
+      "bytes": 39694,
+      "sha256": "3f0343424958efebf973d86839f4492f64a4bd6c5e908b2cd0833f92edcad3e0"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.revenant.torso.png",
+      "bytes": 50491,
+      "sha256": "7204296ff08b77f50a4d22fb6756992ccd2401362ad352113a412b153c1c6734"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.revenant.armL.png",
+      "bytes": 26743,
+      "sha256": "850b9ec4493a11ba785924f8dc0d25cec1818711e4b4313e52f6538cf4fa34cf"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.revenant.armR.png",
+      "bytes": 23492,
+      "sha256": "f83f2e2b71b882bed6329a9f62298849c3e48b8d1f1a479f57cd447b755dc0ff"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.revenant.legL.png",
+      "bytes": 40713,
+      "sha256": "ec3fa044a76c314e5cf97ed14f0740eea120050457904f199f273d376d8782a2"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.revenant.legR.png",
+      "bytes": 40428,
+      "sha256": "993bb0564ab106690e379b04060821ad635cfe83fb238c2990f5db9112ef209b"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.revenant.weapon.png",
+      "bytes": 12713,
+      "sha256": "5ea7095f8c056c61b1fc1247e6f864ba037ae3534f769a01a1f5fff9abd92ed7"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.revenant.whole.png",
+      "bytes": 143015,
+      "sha256": "ef56e9e8d41ec1a5fed8a4863703c60b711ac56c657119cae104f930edab7906"
+    },
+    {
+      "path": "assets/catalogue-2/tank-t3-revenant.glb",
+      "bytes": 12094400,
+      "sha256": "66eb7e70390adc89c4edd5b1d450b0e6b1468d398b82d4c83e3ab011fbc60755"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.revenant.head.png",
+      "bytes": 40142,
+      "sha256": "29b17b0bf0f84ce5eb4ad78b6fe8fc55839b85dcae89a9a74ebf4e3c74d16d0d"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.revenant.torso.png",
+      "bytes": 50757,
+      "sha256": "a9c10ac9f3260b6022af1fa7012594a1b842c5cdb97b56dbf182c166fb16e3a3"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.revenant.armL.png",
+      "bytes": 26719,
+      "sha256": "8670d0cc149d640ba251cf4b6b7e41fe234ff459336e6576f3c872f692c4a494"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.revenant.armR.png",
+      "bytes": 22621,
+      "sha256": "cabb622bc369f4589b593d4f12c9fc3c4e440de8853a30f4e8170c02bdc1063a"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.revenant.legL.png",
+      "bytes": 41435,
+      "sha256": "f69496c5d26e57dceac1a88242379d5fe8d7d214aec865f7b6b926e79fcfecdf"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.revenant.legR.png",
+      "bytes": 40850,
+      "sha256": "2752bdb0f25826301d2dda6c7b002c3e967a4430cf4e3537d24254b41d39c96b"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.revenant.weapon.png",
+      "bytes": 12663,
+      "sha256": "085e83b993c737e0c3e1fab0b9129565edd765acae936cef0b290007c9abcefd"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.revenant.whole.png",
+      "bytes": 140499,
+      "sha256": "77ede3c92654c1ffa381cd1ba0fb7ef7b188e1cab0628f3a828a6832de091cab"
+    },
+    {
+      "path": "assets/catalogue-2/painted/revenant.png",
+      "bytes": 150056,
+      "sha256": "da26bb5e9372ee7bebc5fb2911c80f1f2aec15762b898acd846d6dc6ba692709"
+    },
+    {
+      "path": "assets/catalogue-2/tank-t4-revenant.glb",
+      "bytes": 12327516,
+      "sha256": "5a8bd4441606be213339d82a913277a3838e5c29941bbf8f6a296bd66d6f995b"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.revenant.head.png",
+      "bytes": 40295,
+      "sha256": "96054686031f9a4e28d6464f11e14b45436b8b6012c48f8550164a408acca8d9"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.revenant.torso.png",
+      "bytes": 50769,
+      "sha256": "134e7c1715e442f5d179fc4f5a3e94b3c7e1b83588feb207003ba0727c9c075b"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.revenant.armL.png",
+      "bytes": 27446,
+      "sha256": "2a1cac9bcfa00dfc2132b9369eb6330d2d8efa41fe71e1a07d26471d55bb3ecd"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.revenant.armR.png",
+      "bytes": 22002,
+      "sha256": "6104fd35768fa290096c3e3c00cc06038cbe09cc602a22449f4fdd8c6ddbabf2"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.revenant.legL.png",
+      "bytes": 42859,
+      "sha256": "cf89609548a37f4166454e7fff86c9c6cd204943101af35379fbbfcaae724ef6"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.revenant.legR.png",
+      "bytes": 41716,
+      "sha256": "d155f1f1ae517c883d9d7579ffab4eff26cb86a54634479533f16a7da6900f21"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.revenant.weapon.png",
+      "bytes": 12481,
+      "sha256": "6274a8767e7df8ba041f87914f3bb40960ab6d225e8bb838450e23aff7a3af58"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.revenant.whole.png",
+      "bytes": 139247,
+      "sha256": "b3f6dc9a9e834f8335c1cad426e9da238cb2450c8386e52d1fff4a5e21c737e8"
+    },
+    {
+      "path": "assets/catalogue-2/tank-t1-harrow.glb",
+      "bytes": 12568696,
+      "sha256": "e9c3859825882b32bd2671835aa7cb6b272cd6b6f7bc99ce64bc0ab7b5f34cbe"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.harrow.head.png",
+      "bytes": 38166,
+      "sha256": "4c981138f5a3230b9f6d340a337aac8895dd3ce98f00eb260460124787fc9bf5"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.harrow.torso.png",
+      "bytes": 50642,
+      "sha256": "c99a7e06d45a89ca135857a9e359c126ebf44ce68a7d8023ab55405cdff3b590"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.harrow.armL.png",
+      "bytes": 22439,
+      "sha256": "6f57b1a48c0ff598309455dc06ce894201d9af5b6bc36a8391b11d5d46f4c7ff"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.harrow.armR.png",
+      "bytes": 22006,
+      "sha256": "6de4d982a20004b7de165d9ea07076f8bd06ed77fcf07ad7b2bf3d37eb398c35"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.harrow.legL.png",
+      "bytes": 41208,
+      "sha256": "2950a22d87275529bdaccb181bf282d0de11a8da90b9dfb1305e4d5340687a24"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.harrow.legR.png",
+      "bytes": 40604,
+      "sha256": "468a39086c9c704c63780e97272bedbbc0dec9ad69eedcdaf54f846cc97447c2"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.harrow.weapon.png",
+      "bytes": 13209,
+      "sha256": "2cef203a0f53e73d195c360a96086e9a0d6fccd8fbb549d03dd3cb3f7e6eefb2"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t1.harrow.whole.png",
+      "bytes": 133567,
+      "sha256": "8902b2b3f7e75c14e8c5eb25a99d72ae2fe387036f6943f989944fa22eab17d7"
+    },
+    {
+      "path": "assets/catalogue-2/tank-t2-harrow.glb",
+      "bytes": 13516740,
+      "sha256": "73a461cb53f1b3587ce557eb84cfd5c202632dfdb170fddcf813896356e32868"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.harrow.head.png",
+      "bytes": 38090,
+      "sha256": "622d6ff7433f9a41d08e0b1cbf6a2bb4950b79c91a9dc8a74eddaf090fd9c01f"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.harrow.torso.png",
+      "bytes": 51287,
+      "sha256": "bbdac32e9ebcdfab6f50d7ca4ec306cc624ae615a200dc13ec4ed3d855de4ff1"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.harrow.armL.png",
+      "bytes": 23634,
+      "sha256": "27f747352db1d977ab0a7353d449ca3a9c7de22d9b1a8b0e1eb7de4ddf19c8d2"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.harrow.armR.png",
+      "bytes": 22635,
+      "sha256": "3b45ccd3c3186b113f2e95291ddba800abd6fc9845fe56f2b978350041e2c23f"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.harrow.legL.png",
+      "bytes": 41509,
+      "sha256": "528641ae73368599904ab734949d1f6003d133c363f898be388b44f75c6a94a0"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.harrow.legR.png",
+      "bytes": 41020,
+      "sha256": "c9026158840a3560fe37b141ec64db358d6ac82b6cad4a21f123ed0cb7fac82d"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.harrow.weapon.png",
+      "bytes": 13224,
+      "sha256": "9e9e040080fded6f34777d94a7ba20e9bbd59567c461923d5efb870e62ceaf34"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t2.harrow.whole.png",
+      "bytes": 135625,
+      "sha256": "c7f3804c08be7423edd070e753c257d8ae4703b8527bfe8cf116f1305c9ebf2c"
+    },
+    {
+      "path": "assets/catalogue-2/tank-t3-harrow.glb",
+      "bytes": 13454196,
+      "sha256": "6cc56e76fefa66c045215b223a0d50c3b74a068370a1b5645b20d547901e4074"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.harrow.head.png",
+      "bytes": 38060,
+      "sha256": "c465fcb53d5c5baecc8a10a5aa36c49568f16bef77f809008ae62d5f4c7bc814"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.harrow.torso.png",
+      "bytes": 51529,
+      "sha256": "b9f987b46724c26f1d4b714428355aa62b3d193a2c3938b9ffd1361a1f215a40"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.harrow.armL.png",
+      "bytes": 23629,
+      "sha256": "09e538cf042d3593b6126298bda09af1ca30fd3b9b3931222eb8a61e8289e529"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.harrow.armR.png",
+      "bytes": 22972,
+      "sha256": "5dd992ff875001faa26911ea1ecf39c77f76e384214485b5ec7dbe2743bcfd32"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.harrow.legL.png",
+      "bytes": 41459,
+      "sha256": "33523a94e1bb8de1de2e5bb479af3913800243b36e78cb5c987ea7008029cb9b"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.harrow.legR.png",
+      "bytes": 41028,
+      "sha256": "00e980098938b30a4a4946e9ea59da791702d0c69423315a49f96a6c504b27da"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.harrow.weapon.png",
+      "bytes": 13564,
+      "sha256": "1db5744976f766f9601c9f040677908b1701c8fa21cc3fc312fd9e141ad9efe8"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t3.harrow.whole.png",
+      "bytes": 136391,
+      "sha256": "1e6a388c480489aeb2f5a236b130265323f1bfa34aeed5d82a857c9272af73ff"
+    },
+    {
+      "path": "assets/catalogue-2/painted/harrow.png",
+      "bytes": 158813,
+      "sha256": "5515d20c90669a51fe43ce56d6f15f035292130cced26406e46969c79c6beefe"
+    },
+    {
+      "path": "assets/catalogue-2/tank-t4-harrow.glb",
+      "bytes": 13709072,
+      "sha256": "a3bfe7d75247119f68d1e92987815a3110ba9e9c7c00bd9f65d146a15a7d8d65"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.harrow.head.png",
+      "bytes": 38060,
+      "sha256": "c465fcb53d5c5baecc8a10a5aa36c49568f16bef77f809008ae62d5f4c7bc814"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.harrow.torso.png",
+      "bytes": 51529,
+      "sha256": "b9f987b46724c26f1d4b714428355aa62b3d193a2c3938b9ffd1361a1f215a40"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.harrow.armL.png",
+      "bytes": 23651,
+      "sha256": "1a1708d511c0dbcaa0875a33dd425128c985195899eb647a2067ece7093b9d15"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.harrow.armR.png",
+      "bytes": 22797,
+      "sha256": "cb5de41c57ea3570ab4d3c48fc403166f398e7515f934d11a1feb368a8cf8dac"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.harrow.legL.png",
+      "bytes": 42477,
+      "sha256": "4e5a244603997bda908abcc6dd3b5d236b5c75addd07bf78d94c1899c8bba9a5"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.harrow.legR.png",
+      "bytes": 41971,
+      "sha256": "d2caae9bce8a173156c4d2665352e7dbaa1b50a4bb2996dc3803f3e731ab550e"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.harrow.weapon.png",
+      "bytes": 13969,
+      "sha256": "2a83b45e8aefa668257e6d849fac7f0afdbe13ee763bb56f0276efe1aca780e2"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.tank.t4.harrow.whole.png",
+      "bytes": 136401,
+      "sha256": "ece2534251805504007e7c1be5a7aa831f690c65e6d65dbe7e16ab0303fbd18d"
+    },
+    {
+      "path": "assets/catalogue-1/speed-t1-duelist.glb",
+      "bytes": 9284544,
+      "sha256": "9132d8cf916e4e9ddbc224ce1d29a1099582e7b11a14b118499fa35a3cd41f48"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.duelist.head.png",
+      "bytes": 29925,
+      "sha256": "dfa6773048d63940d8b13c0158910ad5b18d2accac08af0a5e1f4d3612cb2204"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.duelist.torso.png",
+      "bytes": 44386,
+      "sha256": "24df1394d0bd74cf4db22c85d5999d03a578cd6c794cb169752b4a82a07115bf"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.duelist.armL.png",
+      "bytes": 26985,
+      "sha256": "75f1e8fa2bf3046e2664e977f4aafbe324ccba51e5d83a666afd39e2daf62a1e"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.duelist.armR.png",
+      "bytes": 25963,
+      "sha256": "5b3885480ceb73e5418df8fc31e82ce60c1cd7968913cc3c85f0df82ed2e3b19"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.duelist.legL.png",
+      "bytes": 27289,
+      "sha256": "8b33067fc175178cc14ddaa97deb00e6d0e75d873613c27d0f675785ba5bd3a3"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.duelist.legR.png",
+      "bytes": 26838,
+      "sha256": "1d357a1cc0472a1383dd3a8d9af5321462e17170c108fbda4bf84e728902f2eb"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.duelist.weapon.png",
+      "bytes": 11034,
+      "sha256": "7b316d767182e7c9fe67bdbf88119b8b7ff3a98ef0074e33cf31b19c1bf81626"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.duelist.whole.png",
+      "bytes": 119549,
+      "sha256": "d6b5af0532b22574c55f2054ff62e8e46b01db20f4e3cbfa9bce78eb114cd00e"
+    },
+    {
+      "path": "assets/catalogue-1/speed-t2-duelist.glb",
+      "bytes": 9751896,
+      "sha256": "86514433333a25e9ff0bc609a2a916d09865ebea8b63b86bcdcdd03f74b48207"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.duelist.head.png",
+      "bytes": 30317,
+      "sha256": "c0a5a948a934c0edd0eaa72cfc2b5a034e9e688ede48af85b5589d17bf91952f"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.duelist.torso.png",
+      "bytes": 42126,
+      "sha256": "d31d866ffe8352138496ccedf688ab58e61a45a5471404a143acb3f5ca7494dc"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.duelist.armL.png",
+      "bytes": 27797,
+      "sha256": "03aa0389ea5119b7a3dc0e9cae964304c6721da76ad7ba538e62a5ae592150a8"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.duelist.armR.png",
+      "bytes": 23966,
+      "sha256": "a0076a1affeda4fb67f05a00f707971a9e1c347bb0fc79f45c0e3db2bf0fa097"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.duelist.legL.png",
+      "bytes": 27385,
+      "sha256": "89c484e5ba8a0941badf6be5d57dd6abde40d15146f0fe7f3298a98c8794986a"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.duelist.legR.png",
+      "bytes": 27150,
+      "sha256": "6e16ea424feeed6ffdfdddd28492fde654f465a172561bbf6059170ef9b4d4bc"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.duelist.weapon.png",
+      "bytes": 16037,
+      "sha256": "018d6bfbe5f043238244a03ba7a5c4bb235b97b61799988f00527acd5f5d74fb"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.duelist.whole.png",
+      "bytes": 119527,
+      "sha256": "5781855f2cca2d6cbf50a236f393cc795ec57ca7032c4273edb3293e9cbccfd1"
+    },
+    {
+      "path": "assets/speed-t3-duelist-v1.glb",
+      "bytes": 10270076,
+      "sha256": "2f25bfaea9a5919321af078b47604efc650db33b009d85324a20b8d5e794afc0"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.duelist.head.png",
+      "bytes": 29744,
+      "sha256": "9979e3fb0a3f54f5a57caeb3df81ea6e4aac75393695f8bf40e4669218ee9300"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.duelist.torso.png",
+      "bytes": 44834,
+      "sha256": "9aee065bf7ed1bf111b180b44a96b74c8762c43c18e3f376ea85eb153e8135e8"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.duelist.armL.png",
+      "bytes": 26805,
+      "sha256": "cf351ec003d6f37c8248a74d31d56c29b6e901ad77e275df55295a387be501e2"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.duelist.armR.png",
+      "bytes": 10857,
+      "sha256": "66a2159888ecb3ab79ab9f58ea956408f22cb152c07a9526a22f66dd5b2552d0"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.duelist.legL.png",
+      "bytes": 27532,
+      "sha256": "cfd92ad15b7d579d3c3c42af41c717c0f9d9b118371d72c2ceb1663af8d94239"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.duelist.legR.png",
+      "bytes": 27137,
+      "sha256": "002f8418b27fef25d52573eae211b024848e4b85e280ad779e587a0f6687d832"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.duelist.weapon.png",
+      "bytes": 10197,
+      "sha256": "947c1ceaf546e3361ec367a07b3a7219a0eac109fe997580fcd912f9e621e68f"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.duelist.whole.png",
+      "bytes": 99533,
+      "sha256": "9de76e3bb731804ded6924a770cd2831559d8b65a62d6b410d2966c51b60321d"
+    },
+    {
+      "path": "assets/catalogue-2/painted/duelist.png",
+      "bytes": 121997,
+      "sha256": "d6492c6886f2984a13956e96705da3a86276d945608a0f36ea3e6a5598d715df"
+    },
+    {
+      "path": "assets/catalogue-1/speed-t4-duelist.glb",
+      "bytes": 10574568,
+      "sha256": "d1f3aec5931c8a709cff1c3dddc2c502ef0400eb528f83072524c7247e662e21"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.duelist.head.png",
+      "bytes": 32681,
+      "sha256": "99ec6701d396e461f85555bc3353ca19e197d49c877851c2043c5252ed145026"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.duelist.torso.png",
+      "bytes": 45109,
+      "sha256": "defe402a2a1c2674217077ea041b2a69885ac0e8a41e410a8dcdd9f9902a3a95"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.duelist.armL.png",
+      "bytes": 26274,
+      "sha256": "f0c190ba396c5a7ec6420b4452a5dbf60464198fa14d9e4d037adca817633da7"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.duelist.armR.png",
+      "bytes": 10923,
+      "sha256": "25cf6672e05665e31ef78375dc3ab8fe3c2ae9f358570ddcc61e1ea9b0259791"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.duelist.legL.png",
+      "bytes": 27679,
+      "sha256": "ed8d58d06237f451780a75f42423cf29af79db87157e29ee76a8ab3c7e43171d"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.duelist.legR.png",
+      "bytes": 27563,
+      "sha256": "b8aed5086cb8a11aa0aa48f80e54581306d6b6f8af84adc4f71ad99b310c6343"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.duelist.weapon.png",
+      "bytes": 9788,
+      "sha256": "c87badbc9f1790d87624390e0e2456649e097630153a715a24fc6b94967a4fe0"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.duelist.whole.png",
+      "bytes": 99461,
+      "sha256": "ea2c5ec1eb553f01b646b428a43ab42b6d4671df13206b243eee31a6048ffadd"
+    },
+    {
+      "path": "assets/catalogue-2/speed-t1-legion.glb",
+      "bytes": 8731392,
+      "sha256": "82f700a2f21ce45bf1f025cb13ef9a9028d0c50c134705d6606d9a9b1b01ab76"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.legion.head.png",
+      "bytes": 37314,
+      "sha256": "c3fce6a3799f9ea5bf7f306b8ba7498b833e9f12d3adf5b1b8857d5e96365bad"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.legion.torso.png",
+      "bytes": 44993,
+      "sha256": "5e01cde6ff1abd9c91be4522071a27783225b469e65edcc98db9162e5477c1cd"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.legion.armL.png",
+      "bytes": 27472,
+      "sha256": "68568f478c239d03ba72242df5056599e3942958fb9d2ac3930f751b52a1af4d"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.legion.armR.png",
+      "bytes": 26584,
+      "sha256": "c1b5166575b758c9324652f76475176197173b81c92ad53e0b21e09ac737b038"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.legion.legL.png",
+      "bytes": 26322,
+      "sha256": "cf70247c5c4da765eb9217c44d576a7d7d4da808464c7167f12961b42ce26cdb"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.legion.legR.png",
+      "bytes": 25497,
+      "sha256": "8c06fb8e2ea8c776c51c5677db0babf9764f5a05711f2da7aa4920743252d897"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.legion.weapon.png",
+      "bytes": 11815,
+      "sha256": "ad40275231ee2bf008e1dabc0939946a21ca9afbe483662c5cd83dba0c2f77ee"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.legion.whole.png",
+      "bytes": 116017,
+      "sha256": "dbe401635ecc088908ad84d949b027e7dddab17c37864076c5159ba5bb1c693b"
+    },
+    {
+      "path": "assets/catalogue-2/speed-t2-legion.glb",
+      "bytes": 9240664,
+      "sha256": "a0c8cbdee48b11d0a379b428a8b5620843d4166669229906c4ec7b30752fa070"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.legion.head.png",
+      "bytes": 38658,
+      "sha256": "4072b257ee9b65ef74633fd381a5c7bac831d17aedfc8bf0c219e0fef6a5d1fc"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.legion.torso.png",
+      "bytes": 45841,
+      "sha256": "d25f22091a43d74a81b2bc028c774dcce50011850500132124ad967327a0170c"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.legion.armL.png",
+      "bytes": 29679,
+      "sha256": "e65b5375ea52c2c375bf5b17940d09c75b5c08a24d8cff501441e36e5b9e3c46"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.legion.armR.png",
+      "bytes": 23827,
+      "sha256": "33033b200e2173cfb2b005178b6a2572bcc7d07a31b8557ee1151317f5db6ed0"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.legion.legL.png",
+      "bytes": 26396,
+      "sha256": "43ed06df1d1722f69486f9848011c7e80a3120e3813beb1d262621b0b68b938a"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.legion.legR.png",
+      "bytes": 25549,
+      "sha256": "bfcd95235f51487114d82cd4a7de4108dabb877f2f9d0681c374c7021225d5e6"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.legion.weapon.png",
+      "bytes": 17613,
+      "sha256": "331e2929752862e89c7cba8da32da5bdd88be225d6ea71cc7c70d388a8d5c070"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.legion.whole.png",
+      "bytes": 119468,
+      "sha256": "a745ce19e039888ff9125985708ca0538b648fc5e9a3bcaf8a80e59ff5ec2ea3"
+    },
+    {
+      "path": "assets/catalogue-2/speed-t3-legion.glb",
+      "bytes": 9569016,
+      "sha256": "df4c228104fdcfb9c5be68adf11be1a5424952d2ae90f0c1b5c22d304fe88fca"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.legion.head.png",
+      "bytes": 38658,
+      "sha256": "e7fde726594a71a782588bc55bddb0baf36ceebb76834c0bbc91d63d15f6720a"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.legion.torso.png",
+      "bytes": 45899,
+      "sha256": "be5a89a6eed7304efa1542be1382e81792929ba266793f19e4eb1995d304aa32"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.legion.armL.png",
+      "bytes": 29215,
+      "sha256": "933c11f902aa62ee3b874882616fc75edd351ceba5818ba0536c5794c7d85846"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.legion.armR.png",
+      "bytes": 10835,
+      "sha256": "0f9fee307760395fe40b9dd9409993e689d48593fd1407d80a892b9d5e161c4b"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.legion.legL.png",
+      "bytes": 26478,
+      "sha256": "e0bfe6f0848d912ca049f78574bc209ade043842a134d2c84eab0f777ed5e057"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.legion.legR.png",
+      "bytes": 25561,
+      "sha256": "afae805317c1a54e830cdb23ca0bc6aca0fa43b15023e04eba267ee359f21e81"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.legion.weapon.png",
+      "bytes": 10781,
+      "sha256": "ce6c01497554733388adf73275bfeb2b6ff959abf9ad94b75c9578a8a628804e"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.legion.whole.png",
+      "bytes": 99658,
+      "sha256": "b6ab434c7b719bc5232ed232b9f12426d606defcab96ed9c489fde2c66b8749b"
+    },
+    {
+      "path": "assets/catalogue-2/painted/legion.png",
+      "bytes": 101407,
+      "sha256": "497860ec1e18e414bdabe35a414323815292f797dc1a2c3b5bbc5b5320084175"
+    },
+    {
+      "path": "assets/catalogue-2/speed-t4-legion.glb",
+      "bytes": 9424424,
+      "sha256": "05640697d3503484d533d068c31833f1f48eff3fda5221f028a23ccc66d6c473"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.legion.head.png",
+      "bytes": 39369,
+      "sha256": "eae31f7cdd753e9b131b35d9d4e3ac7995533dfadb2757f7725a6462ff8a7f95"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.legion.torso.png",
+      "bytes": 47356,
+      "sha256": "d3b15bc304e586f31b0c1b760103f7f42c8c26cd1f207820a53bc932d8c10864"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.legion.armL.png",
+      "bytes": 28477,
+      "sha256": "6a19af49e0431c3a1c20d97f76bb6bc569f1904c98374abde90d4b221d07c317"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.legion.armR.png",
+      "bytes": 10934,
+      "sha256": "bec50a54786c0991f0326897542f7a29eab402aed9898a824e93c81d607674af"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.legion.legL.png",
+      "bytes": 26863,
+      "sha256": "6e0811c2f8bdc03fb9c291c55c3a80b0189596ae36aaa608e23f5f45bdd5f2db"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.legion.legR.png",
+      "bytes": 26442,
+      "sha256": "31720a3c544f9761643fd1e074c8631d4da5667502900ae012c2610fd69d2436"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.legion.weapon.png",
+      "bytes": 10202,
+      "sha256": "d4c91165300151152d003854da6a8bbfbc9d371b1a3931eea7377c85efc6cf92"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.legion.whole.png",
+      "bytes": 99903,
+      "sha256": "33c55f1635ac49da86aa42abcc8b1fc164f677ad12a86426a7d837e253548bee"
+    },
+    {
+      "path": "assets/catalogue-2/speed-t1-hunter.glb",
+      "bytes": 8849724,
+      "sha256": "e7b2520b1885f1980f2134405f2c12322dacd9c4252f96a104597f8b0cc6ba17"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.hunter.head.png",
+      "bytes": 38797,
+      "sha256": "0e72b3bdcefae11514f99a7bff831ff8220c0ceeb05c8b881d706a4ab0cc4a22"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.hunter.torso.png",
+      "bytes": 44470,
+      "sha256": "f15537c0f90ff7dcbb792cbc3ca0f1daa23bf29fa3a4c043207e4847efab1063"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.hunter.armL.png",
+      "bytes": 27682,
+      "sha256": "f73331dff6a419d07136b6e4e6438114ec4abead34a15adbe37dde0698552b45"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.hunter.armR.png",
+      "bytes": 26309,
+      "sha256": "96f13fb6ab1bd451ba97d2950f5d049e83baa3595827a54cd181b4bc83c95da3"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.hunter.legL.png",
+      "bytes": 25920,
+      "sha256": "5f883334665329bae29d4ca5293abc17b76a16d3511bc40cf0646ece12673a33"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.hunter.legR.png",
+      "bytes": 26341,
+      "sha256": "007c0a2e629880513cf37a43aad7f9d3cd58318278e0ddc0400b86fc2b61c65f"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.hunter.weapon.png",
+      "bytes": 11934,
+      "sha256": "fb5e6fb984ddb979cabb93724f0f308f1f179e7daa4f847b49667c172442c50b"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t1.hunter.whole.png",
+      "bytes": 119865,
+      "sha256": "f9099647b922abc04f031af5c2d6b6ebb1fa5d4fb7a0ffbdfbeb1ac75f7e862c"
+    },
+    {
+      "path": "assets/catalogue-2/speed-t2-hunter.glb",
+      "bytes": 9227284,
+      "sha256": "e0cccfae5a6a0a0066fb2abbf59f62b73cba9b5be9f24c576eb1df5c5b97f9d1"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.hunter.head.png",
+      "bytes": 38801,
+      "sha256": "09d1d7ba358834d4b6bd4c79f131b964b0431b92ddd6374f8c2a9b21477efe2a"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.hunter.torso.png",
+      "bytes": 44470,
+      "sha256": "f15537c0f90ff7dcbb792cbc3ca0f1daa23bf29fa3a4c043207e4847efab1063"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.hunter.armL.png",
+      "bytes": 28032,
+      "sha256": "34e047ec27940a46d9dae6d4433d7e3d7e684091f20da22fb2c9b7efd16f0aff"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.hunter.armR.png",
+      "bytes": 23641,
+      "sha256": "1decb257450d92977010286d7763f66197ebe4a6d1b616f19102e4d1c92cb392"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.hunter.legL.png",
+      "bytes": 26149,
+      "sha256": "3b0f867479a1e421161496fd0603c57a440a48f7ddd13c49be45fb99eb407077"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.hunter.legR.png",
+      "bytes": 26724,
+      "sha256": "cf26499bbdc87ed54de1034133ab6f380bcd12cfc7c12b7264f73a9719fdd86b"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.hunter.weapon.png",
+      "bytes": 14841,
+      "sha256": "c0f234129e65fac5ee04d40f9245862a5059fe8f094d19e1b571ac04d308681d"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t2.hunter.whole.png",
+      "bytes": 120948,
+      "sha256": "b0f6a024c1b34a3e3c467cdfa1fc15ca5681cba4f3bdeb710d76856603f76ce4"
+    },
+    {
+      "path": "assets/catalogue-2/speed-t3-hunter.glb",
+      "bytes": 9549128,
+      "sha256": "f67a5b0f99a6ba5cdd6d3507d54e29fd2e4e45bbdfd321c78c63ed1084712adc"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.hunter.head.png",
+      "bytes": 38745,
+      "sha256": "4e373416e136841a575563fc4658ef5a2708ceda4dbed2a4e7a0f4c1d57025e1"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.hunter.torso.png",
+      "bytes": 44335,
+      "sha256": "8f8986496424e54a102d0a9d8ff5001484ae735a60b3b58e2487d89c0c88bfea"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.hunter.armL.png",
+      "bytes": 25217,
+      "sha256": "a91f6b95e95d34f940b317eb343423ad19532e20d81a4dbf24279097d6dc1509"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.hunter.armR.png",
+      "bytes": 10801,
+      "sha256": "089348ce497dc1bdb8d0b600d7168c61e4016b12e951fb94e613ba0c99485cef"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.hunter.legL.png",
+      "bytes": 26135,
+      "sha256": "7f9e67245433f3447382d1b0cc993e5385c542f06718c8297c95c77176324aac"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.hunter.legR.png",
+      "bytes": 26509,
+      "sha256": "af47d484f898162e2d2e1a09788f6b8c13a076204a8b1c404aa7ab5403314cbd"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.hunter.weapon.png",
+      "bytes": 9376,
+      "sha256": "4ea361f1b87366f98d0d1b8d2a9279e2fbfd5bec41adeaf18c914f75a5f545cd"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t3.hunter.whole.png",
+      "bytes": 96220,
+      "sha256": "7f7adce08583444601a362a963a00bf972c3252fe4e4722c4b72776e8598bb9b"
+    },
+    {
+      "path": "assets/catalogue-2/painted/hunter.png",
+      "bytes": 120833,
+      "sha256": "a6aebc7ae08c65f15b902ff2adcce4f3eab5e5dae377beb40e7280cb509e0355"
+    },
+    {
+      "path": "assets/catalogue-2/speed-t4-hunter.glb",
+      "bytes": 9298916,
+      "sha256": "2c9786b18fba07e9fc9db63f444c25f1506946f41719d231da8756ee14031019"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.hunter.head.png",
+      "bytes": 38722,
+      "sha256": "3c6b0b659faa89d3558ab5ced6c3d195f37e4ad335852fe13f6cbe16c22023d4"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.hunter.torso.png",
+      "bytes": 44008,
+      "sha256": "859f1ca26f704fc6a202010ed2224f52ef715b37cbd23734af62e98db941e072"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.hunter.armL.png",
+      "bytes": 25211,
+      "sha256": "838023149403b5bc61054ab8fef6d6720de674a2294f1d3e9ea92a401a66cf72"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.hunter.armR.png",
+      "bytes": 10871,
+      "sha256": "98c58d7f563fafdea728034c167c7a3a957cedd80f2ec1684503754608eea085"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.hunter.legL.png",
+      "bytes": 26551,
+      "sha256": "39f1efc8c736ec00393bb632df42b4867f083b384528470ea0c328af4b4a0d61"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.hunter.legR.png",
+      "bytes": 26994,
+      "sha256": "eff5744334cb54d2fd81c0d5cabb6e0a2a29ff42fcface4f4c43d91afcd1e3ae"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.hunter.weapon.png",
+      "bytes": 9013,
+      "sha256": "6f6a868db1de8ccf9cf15395e971e5d6bd1cc48bc1b21594ffc3ec78f9f35e5b"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.speed.t4.hunter.whole.png",
+      "bytes": 96306,
+      "sha256": "c9184c95e448f979ae23fde90f72d9b257082f1b737868ad751e9aeba69bc427"
+    },
+    {
+      "path": "assets/catalogue-1/ranged-t1-tracker.glb",
+      "bytes": 9751356,
+      "sha256": "bafd3d6c583bafcbeae1d0f23dab841023eb59ad4baeeb3ff16dccf83a304f43"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.tracker.head.png",
+      "bytes": 24924,
+      "sha256": "5bf75b44cdc45b0a4a9aa3398361b6651f8a22f1be29a9572d585c3a9e8577cf"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.tracker.torso.png",
+      "bytes": 32026,
+      "sha256": "910c1f66db435d548fbec2310cbce872c22237d9f918282eb7697dd6d01973e9"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.tracker.armL.png",
+      "bytes": 20843,
+      "sha256": "81d29e93e298d14c1501b02fb8e9c90ecb0add9c477157bc2e746bf40d056df5"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.tracker.armR.png",
+      "bytes": 21607,
+      "sha256": "f8446e51f1ea598dce61c9d786bc883efc482ec254ff5e349e9897305b3a64c6"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.tracker.legL.png",
+      "bytes": 23511,
+      "sha256": "978d49604060456e58759dc51c2c3d736794e23e5c17a7695c7c617625696c51"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.tracker.legR.png",
+      "bytes": 25064,
+      "sha256": "f472e7079274633cde56c44bcb514b425d424ae63d525a2c751c01782857429e"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.tracker.weapon.png",
+      "bytes": 18754,
+      "sha256": "e6b669e7bb1aa4b226b97d12fd7b47e9e6997f601a4b01163cf3929ca8254469"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.tracker.whole.png",
+      "bytes": 109077,
+      "sha256": "6ab13b49d30dd81b18bc7991bed868b5add93814f8bdb919dbcfb61262f0e5c3"
+    },
+    {
+      "path": "assets/catalogue-1/ranged-t2-tracker.glb",
+      "bytes": 11625168,
+      "sha256": "04fb7efcdf50fe63e406cf8608a1c6bb37bcb9162123778781c9976bbddc1cf7"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.tracker.head.png",
+      "bytes": 20744,
+      "sha256": "be3ef512ba0cd347c556b56a6356692fbc457481ab31306b88e072f6d0ad9172"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.tracker.torso.png",
+      "bytes": 32133,
+      "sha256": "c052eaedfb2c0f018e85c83c6121bb88c85a1880b0e0368169b4a640df795c40"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.tracker.armL.png",
+      "bytes": 20369,
+      "sha256": "9720f598ad2c61b12f693af0f1c496950669d5356341516117c3f9bcbd3a4be8"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.tracker.armR.png",
+      "bytes": 20259,
+      "sha256": "42c3615dee07856bb90832f65785de917c23cfe9c3876cb292f86570f007fd9f"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.tracker.legL.png",
+      "bytes": 23943,
+      "sha256": "a4b9ed6e977e9d71f08c0848612479ee3f1a083f6febfc3e60aa006ed58bc7cd"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.tracker.legR.png",
+      "bytes": 26417,
+      "sha256": "2f65428d3125b4d8447204cd0921af594f9cfc5b300f6bf86bd035b26cf5d696"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.tracker.weapon.png",
+      "bytes": 18412,
+      "sha256": "7d6d99d44d64c21084cc93b49758e928d35e5724145d2ab84f847c20dcf51666"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.tracker.whole.png",
+      "bytes": 103566,
+      "sha256": "02e072368ff1fb2fcbde3275327cc2a54cf0aea98bc57f4dbdc524c323a0580d"
+    },
+    {
+      "path": "assets/ranged-t3-tracker-v1.glb",
+      "bytes": 11828196,
+      "sha256": "f2fc77eef3cfa488995067518b3a10c8da686c6878d27aa2a556ae746c2d028c"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.tracker.head.png",
+      "bytes": 20953,
+      "sha256": "c80343e082887c1464992771cb27650ce7561cd238dc02e4bd2f2003eb756cd5"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.tracker.torso.png",
+      "bytes": 30195,
+      "sha256": "da60413e66a9631fa11337462e44046b3ab4a4213ce130aae46d20ecc25f11f2"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.tracker.armL.png",
+      "bytes": 20977,
+      "sha256": "489da5e686fed82b200a9ffc97c56d616d786838bcfd2ed8b362dda0c43aa0da"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.tracker.armR.png",
+      "bytes": 20308,
+      "sha256": "a03a297c443b939f3cb1169dd251f8fc45cdc65e7a97349cde6f1529e7b0e1a6"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.tracker.legL.png",
+      "bytes": 24249,
+      "sha256": "45839c0f808acc19d9fbceba4bd56a1b02b065cca6297b794ece5adcb1f24593"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.tracker.legR.png",
+      "bytes": 27589,
+      "sha256": "862b675977fe332928d45f419c373e5439187beb8f66dbabc9b964a2f6339026"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.tracker.weapon.png",
+      "bytes": 18412,
+      "sha256": "7d6d99d44d64c21084cc93b49758e928d35e5724145d2ab84f847c20dcf51666"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.tracker.whole.png",
+      "bytes": 104034,
+      "sha256": "f4a50614849888917c78befd169d09c7ede99ae22cfa6e3c2ef3ca89448c4d74"
+    },
+    {
+      "path": "assets/catalogue-2/painted/tracker.png",
+      "bytes": 104665,
+      "sha256": "75fc8abdbc70135f06b1f96979b6c44056c76a8c9ea7c38cba4818ae1784c4d6"
+    },
+    {
+      "path": "assets/catalogue-1/ranged-t4-tracker.glb",
+      "bytes": 12494972,
+      "sha256": "8c633d1f15fd998c98a650c961d59d48490c7629e43a07f21535288d81d397f3"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.tracker.head.png",
+      "bytes": 20567,
+      "sha256": "27ca6dddc803f0ada0e1020530a20e2d276a73502476a3fdbaa84fd0f57c0d68"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.tracker.torso.png",
+      "bytes": 30161,
+      "sha256": "bfc58ca3cac1dba7d69c6bdb8af12a12a482aaf93ff948532895e9bd85ca6c2b"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.tracker.armL.png",
+      "bytes": 21131,
+      "sha256": "eec6339e92dca08b995f4f26807cbc2221e294632ca0ac4374cd85cce8b0ae85"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.tracker.armR.png",
+      "bytes": 21200,
+      "sha256": "6bad9d9cc70bfb9d803f046c80810f4e5e95b43c4078f33a16feab91b843c464"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.tracker.legL.png",
+      "bytes": 24387,
+      "sha256": "2ccbe8606c6fbac28c4433383c8c8eacd0423d7824962c7ba507552645ef36c2"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.tracker.legR.png",
+      "bytes": 27470,
+      "sha256": "b4474fd1d2cc476412ae08a812bc7463cf9ffe864476b925fb11b4745d4041f8"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.tracker.weapon.png",
+      "bytes": 18640,
+      "sha256": "007cb722c9908d2d905f1c651f7acdf83fa868b61bac9a82b21e25b154758c32"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.tracker.whole.png",
+      "bytes": 105420,
+      "sha256": "4774e6dab7cb9872e3b66462b733c8d38864f3b5847bcfc53b933129282ddd06"
+    },
+    {
+      "path": "assets/catalogue-2/ranged-t1-sentinel.glb",
+      "bytes": 9256408,
+      "sha256": "434749d4254e461cc1992e6bc988b28389b8609dac97ecb02e4d8d240874ae6a"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.sentinel.head.png",
+      "bytes": 31100,
+      "sha256": "275f95437941d2b7736f1f5488dcc8dd3f96d7fe4749bd318f7e07f7d0e002e0"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.sentinel.torso.png",
+      "bytes": 32954,
+      "sha256": "cf5040bc300a6552a6d6db0686853442300a617f432d67c83e5edc078f8f85f9"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.sentinel.armL.png",
+      "bytes": 20966,
+      "sha256": "a9a1cfaf978f4972504dc917c586b24282023d0c89fc606ee24cb51b991c20ef"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.sentinel.armR.png",
+      "bytes": 21420,
+      "sha256": "a9fe9dbd46e3ee67117d82018beb867e39fc2863e83b990f489a69feb05bad7b"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.sentinel.legL.png",
+      "bytes": 24773,
+      "sha256": "ed7ae1b215dfd91e1ae7f7be9f414c7aa6e9c8b5d0ef1e0c4b55b2890e528907"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.sentinel.legR.png",
+      "bytes": 26193,
+      "sha256": "067c26fb467f5831b3f219807827e9a46713047b569311f884839889453e6195"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.sentinel.weapon.png",
+      "bytes": 18754,
+      "sha256": "e6b669e7bb1aa4b226b97d12fd7b47e9e6997f601a4b01163cf3929ca8254469"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.sentinel.whole.png",
+      "bytes": 111170,
+      "sha256": "22d9719cfc1c4d656af2fa82f2f9c297d90532ccb40c3daa4667baef29c7c576"
+    },
+    {
+      "path": "assets/catalogue-2/ranged-t2-sentinel.glb",
+      "bytes": 10009548,
+      "sha256": "814fcf855f5d4a6c1e85963301a4434d5d085f311af972125f3dec62a0543399"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.sentinel.head.png",
+      "bytes": 31097,
+      "sha256": "7406fcd755318fa38bb1290d25876d96c56b0998f94360f1f5b241d03fe9a9c3"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.sentinel.torso.png",
+      "bytes": 32901,
+      "sha256": "cb14f14aafebb854cef64dd4b1cb683007f53ff03a1c5a97204fcf00b934326c"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.sentinel.armL.png",
+      "bytes": 20671,
+      "sha256": "7c7dfced606b3daffc64423f1596727ed1e378e3ca7ef22c5e9df2bb3298d61f"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.sentinel.armR.png",
+      "bytes": 20505,
+      "sha256": "770fac522ea3a53669644ea5ee71dcde32f816acb532fb7af5981e515b7688e5"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.sentinel.legL.png",
+      "bytes": 25623,
+      "sha256": "16d65903cde06c51677037173a5c32ecf5092cb4b34c6e7c8747036839c99095"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.sentinel.legR.png",
+      "bytes": 26755,
+      "sha256": "77150f89391231b82243c64d6ff8b61d30367629173869a9fa04c4211b5629ef"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.sentinel.weapon.png",
+      "bytes": 18412,
+      "sha256": "7d6d99d44d64c21084cc93b49758e928d35e5724145d2ab84f847c20dcf51666"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.sentinel.whole.png",
+      "bytes": 109313,
+      "sha256": "3fbc858d6d5e0d70831b0685697b9f22f82d32db95b3e36cf1b2c3322c6ae978"
+    },
+    {
+      "path": "assets/catalogue-2/ranged-t3-sentinel.glb",
+      "bytes": 9915476,
+      "sha256": "91b385dc202a036004f28c4e0f5f20b79013727f1069e42ec6dcb5ecff4cb163"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.sentinel.head.png",
+      "bytes": 31100,
+      "sha256": "275f95437941d2b7736f1f5488dcc8dd3f96d7fe4749bd318f7e07f7d0e002e0"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.sentinel.torso.png",
+      "bytes": 32796,
+      "sha256": "9d1776b0e4ab0ac763d524e21f4732f54be64e5295934924b4b38150d7948e19"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.sentinel.armL.png",
+      "bytes": 20964,
+      "sha256": "b8a529591a14ebc496ebcae39405e7d5fe9b405774d17ce87eee03d2443db5df"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.sentinel.armR.png",
+      "bytes": 20151,
+      "sha256": "eb8b355fe0eb9e5b1fcbfc0bca80b9ec6ec286b8330d542890377f9daeca206e"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.sentinel.legL.png",
+      "bytes": 24501,
+      "sha256": "944618a6a85f04ac385ad263ff209349b0e3afffbc20388518bf8b8e00cf143b"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.sentinel.legR.png",
+      "bytes": 25956,
+      "sha256": "7a45c5b24cc8b507be1ddbb04774293062f936bc199a43c497fac241053b791f"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.sentinel.weapon.png",
+      "bytes": 18408,
+      "sha256": "06b6cdc960fca4a704c8b9c6357c45062445910c8f592c06d028c6be7e1d6832"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.sentinel.whole.png",
+      "bytes": 107580,
+      "sha256": "896f23af826a4c05243517e0652481c42444e159e843920c62a58b64a3defd76"
+    },
+    {
+      "path": "assets/catalogue-2/painted/sentinel.png",
+      "bytes": 116018,
+      "sha256": "3c2197de9cf5b2864ab9fb36200c22781f5cb691839ae6ad9084b03d53266cd3"
+    },
+    {
+      "path": "assets/catalogue-2/ranged-t4-sentinel.glb",
+      "bytes": 10550620,
+      "sha256": "ab6e70bc0414a9322284f63b3c2bce89d71558447badabf6b5a3d95b435a8b2a"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.sentinel.head.png",
+      "bytes": 31097,
+      "sha256": "7406fcd755318fa38bb1290d25876d96c56b0998f94360f1f5b241d03fe9a9c3"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.sentinel.torso.png",
+      "bytes": 32725,
+      "sha256": "6ebfef40bc4d51482bc5f8283441e0f015755b2d7c5a2ac2f101debcba120e07"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.sentinel.armL.png",
+      "bytes": 21150,
+      "sha256": "28bc4ff3281109d1512137477f33cd6b89994446d1114ee849353417f541e103"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.sentinel.armR.png",
+      "bytes": 21093,
+      "sha256": "a842f857f9a92c97858ae4825da9803a5adc7770abc1535c3a77df5485e67ad4"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.sentinel.legL.png",
+      "bytes": 25160,
+      "sha256": "2755db761e3a4565bdb79332d588342e99be23b131a2144f4d52f92aeda01e4f"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.sentinel.legR.png",
+      "bytes": 26205,
+      "sha256": "a34a8caaf299de09445dab748b22b6dbe4b8a49f1d6e5c3321cd4fe78a2421e1"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.sentinel.weapon.png",
+      "bytes": 18633,
+      "sha256": "6d1a38c688a62256070fd591d9215e829bb3dc84be4a9ce8b13797b1e7f16a8a"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.sentinel.whole.png",
+      "bytes": 109255,
+      "sha256": "64bb4995612f27636d3974929e087f1f1e614633bab67c17497db20848d8c3fe"
+    },
+    {
+      "path": "assets/catalogue-2/ranged-t1-specter.glb",
+      "bytes": 9283496,
+      "sha256": "e5259db371b1c7ff9437aeb8d05e06b2039e9b3d07c4e3a8e063fd8367f69f87"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.specter.head.png",
+      "bytes": 23050,
+      "sha256": "2308cd1a8173b13ef2ccae14c8e4e84f201bfe8126d54cd3f9823330667bad60"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.specter.torso.png",
+      "bytes": 33448,
+      "sha256": "3440e11d9081d7c7e136cf9486c17b9111188399740046811d3e05b4782546d2"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.specter.armL.png",
+      "bytes": 20056,
+      "sha256": "ca98c303de0fd15526ba372d8a1106b1360bd1dbdaf705f127ab93247698e0a5"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.specter.armR.png",
+      "bytes": 19188,
+      "sha256": "898ebbe2ffde67847f509f9409580c041b5c93173f7bae677ab8289e220bd79f"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.specter.legL.png",
+      "bytes": 23351,
+      "sha256": "4b480e0cf4d6ac5043148dd963e1b3d4e99df3abe5f294a01523590e244150e1"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.specter.legR.png",
+      "bytes": 24529,
+      "sha256": "ded31bc7eacca27a61ca14cc9f16457353f343583c84cf76640f5083d26034cf"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.specter.weapon.png",
+      "bytes": 17112,
+      "sha256": "9e6f31f439026302cab2bd97957b08a62362b8ee89a24c8c62b0415bdfb8a863"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t1.specter.whole.png",
+      "bytes": 101737,
+      "sha256": "8b1ff2271a7d67836483b4e320d6bac15a55cf3d2763e4fec2fcb77e8dd2515d"
+    },
+    {
+      "path": "assets/catalogue-2/ranged-t2-specter.glb",
+      "bytes": 9975532,
+      "sha256": "2b7fd49c996cd7c84e401eb35a328a3a9eb4b3499078f706c20a0b406100f805"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.specter.head.png",
+      "bytes": 23050,
+      "sha256": "2308cd1a8173b13ef2ccae14c8e4e84f201bfe8126d54cd3f9823330667bad60"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.specter.torso.png",
+      "bytes": 33449,
+      "sha256": "b5d5b300d24dc5ad01bda02f3475b2794e273950c88f315ca03fbedfaf4b2782"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.specter.armL.png",
+      "bytes": 19958,
+      "sha256": "3a312851c5b84f4c868bbdd1fff68dad5be5670efe717a25fb2f3eae64617afa"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.specter.armR.png",
+      "bytes": 18198,
+      "sha256": "22905e732ff84c0ed9425943375cf9fe7d988eb851f6cc56723230715a91071d"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.specter.legL.png",
+      "bytes": 23478,
+      "sha256": "1dccd95199f11c4cd936cb215d90a34f9f40977e81a8b95eac937ade0c5b05b1"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.specter.legR.png",
+      "bytes": 24675,
+      "sha256": "d436fda7f72ad5d4d1a381723c9fa3a7ac4d8c71159113268426d071392171b9"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.specter.weapon.png",
+      "bytes": 16529,
+      "sha256": "b20035ee895734fb2cdc87a00a1ddd79106ee3c1fb2e0a703bd321626ab3ad7b"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t2.specter.whole.png",
+      "bytes": 100137,
+      "sha256": "4fc8185247e69e8ea04436e05b1a350426bcc4514fc4dc91599e207e9b709423"
+    },
+    {
+      "path": "assets/catalogue-2/ranged-t3-specter.glb",
+      "bytes": 9974344,
+      "sha256": "71c77377928904f950934e2f50c511967b922e97b25a61164e26659cfee1cc51"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.specter.head.png",
+      "bytes": 23654,
+      "sha256": "b83fbd19899907f5d4b49fb751efff336d0d24c84841dd4b1b12d2c4f08ca940"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.specter.torso.png",
+      "bytes": 33443,
+      "sha256": "84db4a0a200f104db3251fdfb95ddd475c01c4e1f37e81e31a8fa7ecd4d1b222"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.specter.armL.png",
+      "bytes": 20056,
+      "sha256": "ca98c303de0fd15526ba372d8a1106b1360bd1dbdaf705f127ab93247698e0a5"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.specter.armR.png",
+      "bytes": 17676,
+      "sha256": "efe4e0e650d112d7b62bebf967d54ac6a1bb24768d4d94f287a13e8e72beea1a"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.specter.legL.png",
+      "bytes": 23478,
+      "sha256": "1dccd95199f11c4cd936cb215d90a34f9f40977e81a8b95eac937ade0c5b05b1"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.specter.legR.png",
+      "bytes": 24675,
+      "sha256": "d436fda7f72ad5d4d1a381723c9fa3a7ac4d8c71159113268426d071392171b9"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.specter.weapon.png",
+      "bytes": 16267,
+      "sha256": "6c3a1527bfb1d005e6b801eeae9a2b7482bc218bcfc3f1325a40a882b97c392a"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t3.specter.whole.png",
+      "bytes": 99613,
+      "sha256": "d17cff6816639d404d2f619099a1352d0e15e003f2a7077bb6bc26c14834adb1"
+    },
+    {
+      "path": "assets/catalogue-2/painted/specter.png",
+      "bytes": 100174,
+      "sha256": "a27a9b424be7a2ad5c72806f11647698b6522333f960fac4bd1d5bc6a4d55c67"
+    },
+    {
+      "path": "assets/catalogue-2/ranged-t4-specter.glb",
+      "bytes": 10607500,
+      "sha256": "88e2bf971cafae55931677e636e77e02997b25a30cadb5124da6da19d7a76069"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.specter.head.png",
+      "bytes": 23654,
+      "sha256": "b83fbd19899907f5d4b49fb751efff336d0d24c84841dd4b1b12d2c4f08ca940"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.specter.torso.png",
+      "bytes": 33608,
+      "sha256": "b52514dc94fa3b08e95997259c6f3252563df0eed076c0c85d8183b688938c0d"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.specter.armL.png",
+      "bytes": 20229,
+      "sha256": "d5d11f21badc1082d5c186bf7780c95dbee2087c2995ddb2f6875c6fc0aecb1d"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.specter.armR.png",
+      "bytes": 18106,
+      "sha256": "a7487364e6c38eb8b11f9c2d385852c449888f4a35003e0aeba89c90245abb75"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.specter.legL.png",
+      "bytes": 24488,
+      "sha256": "e24e1d7cdef19be183cc172fd8222928146f32003ed50075e34271cf8670ee39"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.specter.legR.png",
+      "bytes": 25421,
+      "sha256": "52d01f23cef815b0b078da3ce5c5efc64064c33478b9ea4e8e9edc9fdb15cc7f"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.specter.weapon.png",
+      "bytes": 16290,
+      "sha256": "4325038cb5e8390386beaded6fbdd6ae5fcc0105933ad24987f5eec54413c33a"
+    },
+    {
+      "path": "assets/catalogue-2/thumbs/bible2.ranged.t4.specter.whole.png",
+      "bytes": 100092,
+      "sha256": "a941214ed35e556750778f94c2bed1ac6cec70bcf30afe5f0d0cac9126f430a8"
+    },
+    {
+      "path": "assets/weapon-kits-1/manifest.json",
+      "bytes": 28537,
+      "sha256": "5f9046355591dfec67893fea102a23797a3cc1f5ec7f2feee4b8e10a76c75ce0"
+    },
+    {
+      "path": "assets/weapon-kits-1/hammer-t1.glb",
+      "bytes": 414312,
+      "sha256": "62fe3602f62e4f1001ecad55ecf8d6a387d593beaa4c89c4941e99302ae03e72"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.hammer.t1.weapon.png",
+      "bytes": 15420,
+      "sha256": "31aace4c73d4d2de944056e395d2777beaa7246f5b86f879ba4ac207e7426e5d"
+    },
+    {
+      "path": "assets/weapon-kits-1/hammer-t2.glb",
+      "bytes": 1023548,
+      "sha256": "93884a8fe511f3bd2dcfa3de83a9e51d8fa1a177d9fdb3eaf44d0226ada31854"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.hammer.t2.weapon.png",
+      "bytes": 17090,
+      "sha256": "c9d8d194ecb6611b23a8c4d81dda2dbfb1fca60f607542467d82320625bd69a3"
+    },
+    {
+      "path": "assets/weapon-kits-1/hammer-t3.glb",
+      "bytes": 940728,
+      "sha256": "fb6447e86a5bfcf24d6423fecb53e79c6a465473b2a46e7219f8e266f212ab16"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.hammer.t3.weapon.png",
+      "bytes": 17978,
+      "sha256": "cff76a96cb2cd03f01d28380ed799572c3b20df893d205d0a79fee927ef682b3"
+    },
+    {
+      "path": "assets/weapon-kits-1/hammer-t4.glb",
+      "bytes": 1435880,
+      "sha256": "1153a82058b2a4f8e7841e747a37eddb31b6b46093d9a0377148958453c281c5"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.hammer.t4.weapon.png",
+      "bytes": 17371,
+      "sha256": "fd8d24d8980c4174b0b57a6cffafa96bea20b9c40d5875b637d8e68f4497ff90"
+    },
+    {
+      "path": "assets/weapon-kits-1/greatsword-t1.glb",
+      "bytes": 282236,
+      "sha256": "7f5e4dc0f6c73871c77096bfcc9604ff24498de5704c139e148e23f8c849cfc2"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.greatsword.t1.weapon.png",
+      "bytes": 13899,
+      "sha256": "4a124f08f84f934cf04fc8e31a0925261a1b0a56f1b75730e97e93892b86e6d1"
+    },
+    {
+      "path": "assets/weapon-kits-1/greatsword-t2.glb",
+      "bytes": 399344,
+      "sha256": "ab0a7eb847b52a07ae83ef8006c2b638ab5e53f06d8d447478f39933ec664d81"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.greatsword.t2.weapon.png",
+      "bytes": 15142,
+      "sha256": "03f6ee63d2e630139505a6621d598a7c2a96cc04b12823a3e1c115a8328f2cc0"
+    },
+    {
+      "path": "assets/weapon-kits-1/greatsword-t3.glb",
+      "bytes": 898492,
+      "sha256": "ffc61388980bb66dabc4b0d42826e24d4f6107b406acc28ffa627ef6fdc774b8"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.greatsword.t3.weapon.png",
+      "bytes": 15443,
+      "sha256": "2c5bd5011be0e7f163fd1c9c27fe444c5fa6c8499042fddaf583f82ec12667e6"
+    },
+    {
+      "path": "assets/weapon-kits-1/greatsword-t4.glb",
+      "bytes": 894012,
+      "sha256": "96cda31ad66850f00d8ca11a75d1a5c496aeb392f25d5fedb614172b023a2c11"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.greatsword.t4.weapon.png",
+      "bytes": 16149,
+      "sha256": "865cce86296ea6765eeac7b4b505e4c44b0647be30ee572ebcb9245adb7e9bfe"
+    },
+    {
+      "path": "assets/weapon-kits-1/axe-t1.glb",
+      "bytes": 901528,
+      "sha256": "fb305b81eb97733a36b55ed53bb607f105b815af8e9324b051f7456ac7d20036"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.axe.t1.weapon.png",
+      "bytes": 17743,
+      "sha256": "3b0260b241971d5e5b9d46b613656e99c33f5f79b375ac330c1bb85615c0c1be"
+    },
+    {
+      "path": "assets/weapon-kits-1/axe-t2.glb",
+      "bytes": 1024124,
+      "sha256": "910da06abe15d62d4c680398bc891f4c3fa7e41538f8f0be3ae0b6596b1d6e3c"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.axe.t2.weapon.png",
+      "bytes": 18979,
+      "sha256": "648865583e7fdb4189c00e721a857dfc18b89db28dc4109ea6a6e8f3e35c9d84"
+    },
+    {
+      "path": "assets/weapon-kits-1/axe-t3.glb",
+      "bytes": 1050792,
+      "sha256": "4d8f1085eba5016b83b70ad5150cfdc6db9b1525d474bafffb45b5eac933c3ad"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.axe.t3.weapon.png",
+      "bytes": 18739,
+      "sha256": "9bad38096ef5664ce273c6c061847bb8be0b30ad580aa1814c3d273797ab1bfa"
+    },
+    {
+      "path": "assets/weapon-kits-1/axe-t4.glb",
+      "bytes": 1054416,
+      "sha256": "ecc1dae72ba55f9a165c1254eb071c36a8719aabce591baa9a4180d00b56f2d3"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.axe.t4.weapon.png",
+      "bytes": 18927,
+      "sha256": "71795513939b68c06a11391ad1489bb18a9a28e33cb89acdd8b34f5a4bf93e7b"
+    },
+    {
+      "path": "assets/weapon-kits-1/flail-t1.glb",
+      "bytes": 1932040,
+      "sha256": "72020df288fbef2d479c855406be2f5d50e184925fa1dd018865c7685e08cfaf"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.flail.t1.weapon.png",
+      "bytes": 23708,
+      "sha256": "ee4c070f22f3f8f228c9baefa9b2f2f31f71f7da9b7d222e2758f0d430890795"
+    },
+    {
+      "path": "assets/weapon-kits-1/flail-t2.glb",
+      "bytes": 1947216,
+      "sha256": "96aefb670f6acfe1518bc3ac611779acbfbca3f6ce434cfaa762cf69ca668de0"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.flail.t2.weapon.png",
+      "bytes": 23878,
+      "sha256": "797274461714dd58da3ffda9ff3c1ae5c73db1738526c7c7eb0ee24f9829e604"
+    },
+    {
+      "path": "assets/weapon-kits-1/flail-t3.glb",
+      "bytes": 1962616,
+      "sha256": "fce8dd7e98e30f0d1a3c83e1472b192ce272543e5ae630bcd481aad4875933a0"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.flail.t3.weapon.png",
+      "bytes": 23732,
+      "sha256": "6c0fd54d7a74ec8ded725b70db2140efed45941af77fc14fbc3679fbd3c99c87"
+    },
+    {
+      "path": "assets/weapon-kits-1/flail-t4.glb",
+      "bytes": 1977776,
+      "sha256": "b8674ec9b9dad8fd408cfad692ff2eb9f0b4b87a65a2dce11a21786509c747be"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.flail.t4.weapon.png",
+      "bytes": 23847,
+      "sha256": "e2fe247649b37c53ab57b2835b31a69c7c5b8b028376ef10356ba566aad55b1a"
+    },
+    {
+      "path": "assets/weapon-kits-1/sword_shield-t1.glb",
+      "bytes": 819508,
+      "sha256": "e4736f2639730d26915420f3031c7f6cfab22408b48ab477d7d10c328ad853ea"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.sword_shield.t1.weapon.png",
+      "bytes": 15033,
+      "sha256": "2bc9aadbbd006905bc15ae50ffdee08575c8a6d2b41763974daa47ff40aed139"
+    },
+    {
+      "path": "assets/weapon-kits-1/sword_shield-t2.glb",
+      "bytes": 1466400,
+      "sha256": "d1a401f2063ef40d58fb1a8f82dfa099c5e5aff18b3719d2335549b8322572f2"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.sword_shield.t2.weapon.png",
+      "bytes": 15416,
+      "sha256": "d8aa37d00140df4633e1705b2b343da713b022277806b3c0377f119561b636ee"
+    },
+    {
+      "path": "assets/weapon-kits-1/sword_shield-t3.glb",
+      "bytes": 1633500,
+      "sha256": "d65fdbb53ae1f8efa66bad0a090c46dd097b6195585d685d8d48289ea282a40a"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.sword_shield.t3.weapon.png",
+      "bytes": 15863,
+      "sha256": "acbef6958045c1bb5218f2cc6aef473509a8855717351735be4822a72fbf50cb"
+    },
+    {
+      "path": "assets/weapon-kits-1/sword_shield-t4.glb",
+      "bytes": 1629024,
+      "sha256": "c76dd8db55407acfb53b4fee02065f2b4fe97f0d061c165b519f220146488d34"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.sword_shield.t4.weapon.png",
+      "bytes": 15930,
+      "sha256": "d54390ed7fee522ec51ecd9e9066d1ac37611dd92b05ee28f795f7ff16871adb"
+    },
+    {
+      "path": "assets/weapon-kits-1/spear_shield-t1.glb",
+      "bytes": 928872,
+      "sha256": "c678e880adfa04eba906d77d85fd36e8d83baff7233f05ef54159fbc0ad13619"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.spear_shield.t1.weapon.png",
+      "bytes": 11196,
+      "sha256": "57f527a011d7bff43ddd7de6ec571e317671ab6f0a756414bb602e034ad8ef94"
+    },
+    {
+      "path": "assets/weapon-kits-1/spear_shield-t2.glb",
+      "bytes": 1479480,
+      "sha256": "65f9235679ca30b8f4570170af00df1164476750bfd6eab9067aac846f22d12b"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.spear_shield.t2.weapon.png",
+      "bytes": 11766,
+      "sha256": "d572b2e5b54d952b96838d66e99153836c7c2d7b82719b4713b1406f0c09cec9"
+    },
+    {
+      "path": "assets/weapon-kits-1/spear_shield-t3.glb",
+      "bytes": 1528556,
+      "sha256": "d662b5ded8a554d02cd30bb976ee2593364e456bc5755016f4a14cd7c04cd36c"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.spear_shield.t3.weapon.png",
+      "bytes": 12018,
+      "sha256": "531d47fd401dfa1dacb4d2e99c9a6165f07e05e6b80507cd8951303d678bcf5f"
+    },
+    {
+      "path": "assets/weapon-kits-1/spear_shield-t4.glb",
+      "bytes": 1528548,
+      "sha256": "ef983d5c9c2714e67cb4f06031bde48bbddd451be67f1a3e6e6de0ebee0b987c"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.spear_shield.t4.weapon.png",
+      "bytes": 12054,
+      "sha256": "78bdd650b8f3354fb79803f58ef39646f7357c4277988f6a0f1f6db3f37aa2ed"
+    },
+    {
+      "path": "assets/weapon-kits-1/long_spear-t1.glb",
+      "bytes": 436464,
+      "sha256": "a9f0e386a5ff491b5467849a80cfe843baeffdef12229a6e08e87190008e6af3"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.long_spear.t1.weapon.png",
+      "bytes": 10984,
+      "sha256": "7ab32aea6590d24e68f22d979201a333af83a41cf2ebef53e89a51c2a727ba30"
+    },
+    {
+      "path": "assets/weapon-kits-1/long_spear-t2.glb",
+      "bytes": 925360,
+      "sha256": "259d1af16d247bf31aa9aa79be587a3d4285d99b3783eac86a5156d56dc94063"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.long_spear.t2.weapon.png",
+      "bytes": 11284,
+      "sha256": "1235f0a4dcd9477d74b2660a11d7831d71e03a48c3d30eed5af7eac3edd9656a"
+    },
+    {
+      "path": "assets/weapon-kits-1/long_spear-t3.glb",
+      "bytes": 950404,
+      "sha256": "f77da4326d9b16ba4af2f312214583327cfc0dac4424b599f15c7c764c34d717"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.long_spear.t3.weapon.png",
+      "bytes": 11812,
+      "sha256": "e0f69b4e12c23b2cdb99a4ed241c9994e674a321c262d6a1b1761c51af05feae"
+    },
+    {
+      "path": "assets/weapon-kits-1/long_spear-t4.glb",
+      "bytes": 950400,
+      "sha256": "f82fdccf394a952e64f60a07f177c1812e54ac6f661001a96f899c00d939958e"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.long_spear.t4.weapon.png",
+      "bytes": 11772,
+      "sha256": "e5079d7006c8720810b0e5f9370999a87f4ab8381feb90ad508106a4bd233532"
+    },
+    {
+      "path": "assets/weapon-kits-1/dual_blades-t1.glb",
+      "bytes": 347524,
+      "sha256": "de459ee73c1a706115aa364c5f7931e6d084b7c50f7c9ef8c6a01d8271432a6e"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.dual_blades.t1.weapon.png",
+      "bytes": 13033,
+      "sha256": "8113fbe51ffeadc3b1193f2ec2c14316edf39d63b5989cf2f15b5c68097bc574"
+    },
+    {
+      "path": "assets/weapon-kits-1/dual_blades-t2.glb",
+      "bytes": 478456,
+      "sha256": "a76a7bea24d87574390d51ad37d24ae819d1a5daaf214efade46822899e1d130"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.dual_blades.t2.weapon.png",
+      "bytes": 13535,
+      "sha256": "28adfa694d38bee4aaa3c7f70d05bafcac34511e8794c861a78b22dbded6f3ed"
+    },
+    {
+      "path": "assets/weapon-kits-1/dual_blades-t3.glb",
+      "bytes": 1013004,
+      "sha256": "b2ed64bcd25e0c2576343262972a191b470b2e6dad32fa9d0f54ad5355f4e14b"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.dual_blades.t3.weapon.png",
+      "bytes": 14179,
+      "sha256": "9ff366b64b87bc7aaa46303a066fbab57b6c8ab59b7c7c68799867ecf2e97eb6"
+    },
+    {
+      "path": "assets/weapon-kits-1/dual_blades-t4.glb",
+      "bytes": 1006284,
+      "sha256": "6297af3c0695b8e44f848722901e1270ddb9968327e9b73e1c9d8b77a2251851"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.dual_blades.t4.weapon.png",
+      "bytes": 14353,
+      "sha256": "202482618381f41d5795227b0132a69401871854e869919e5aaab91bb862f217"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.rifle.t1.weapon.png",
+      "bytes": 19028,
+      "sha256": "05269ca13cc2910c4c954687165919da75c2e1c50f281a8ac51bdd8895da36d5"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.rifle.t2.weapon.png",
+      "bytes": 18613,
+      "sha256": "700fc979d7228a0505cdd126cbc6fff8d8f3afcf82e1a3ce66123511e8f4df46"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.rifle.t3.weapon.png",
+      "bytes": 18613,
+      "sha256": "700fc979d7228a0505cdd126cbc6fff8d8f3afcf82e1a3ce66123511e8f4df46"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.rifle.t4.weapon.png",
+      "bytes": 18994,
+      "sha256": "3766f17eb9a78465a2dde13b3cde85d9a5f1367f03f37a2e731727d3ffe6d2f2"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.precision_rifle.t1.weapon.png",
+      "bytes": 17292,
+      "sha256": "2fa8322b6c53bb9fa52e3d9dc7b989917e920b2b37170d66c17b86a19be83b40"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.precision_rifle.t2.weapon.png",
+      "bytes": 16755,
+      "sha256": "284d8957a45e701d2ae0cf6a2f3501169d74ade82a8ffbee2e43af348513c40d"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.precision_rifle.t3.weapon.png",
+      "bytes": 16425,
+      "sha256": "91b701bc5422c5594672dfc4bd303265b073889b61d7977fef25d86cd594497f"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.precision_rifle.t4.weapon.png",
+      "bytes": 16616,
+      "sha256": "420728fa2ab02afe9423ff719b90fd616d101929ad84c8d408ab3abf9fe15766"
+    },
+    {
+      "path": "assets/weapon-kits-1/rotary-t1.glb",
+      "bytes": 1095168,
+      "sha256": "98b73bcc2e2d41dc605e5c705570d9e8c1a4c4445666b3dae7c585f6aaee0ab5"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.rotary.t1.weapon.png",
+      "bytes": 26799,
+      "sha256": "09f735cb23bae967be5fe05358fb473a0ab7a3ec044f81f4b2a8233d8c8d4a18"
+    },
+    {
+      "path": "assets/weapon-kits-1/rotary-t2.glb",
+      "bytes": 1624272,
+      "sha256": "1e9766791233c112f16fd6966bd44b631f6f57f46d96dec511322edd369ea2c8"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.rotary.t2.weapon.png",
+      "bytes": 26799,
+      "sha256": "09f735cb23bae967be5fe05358fb473a0ab7a3ec044f81f4b2a8233d8c8d4a18"
+    },
+    {
+      "path": "assets/weapon-kits-1/rotary-t3.glb",
+      "bytes": 1763252,
+      "sha256": "cb2f04315bc2aedc21a439473aaa553e9a0b7c1747d64df682abaec8ef075fed"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.rotary.t3.weapon.png",
+      "bytes": 27326,
+      "sha256": "e24a3b18dc519dae4eee547471f121c4299ee4a1f61cc32dfa84261b7e1f6519"
+    },
+    {
+      "path": "assets/weapon-kits-1/rotary-t4.glb",
+      "bytes": 1775396,
+      "sha256": "1aa29658ab752116a73b73108d8572d56241daeb65f9c7fe00c599f5477183a6"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.rotary.t4.weapon.png",
+      "bytes": 27907,
+      "sha256": "825811482bd4be00968c73e03233b97aa04098b6a522b6b8605cb2a82439d22e"
+    },
+    {
+      "path": "assets/weapon-kits-1/arm_cannon-t1.glb",
+      "bytes": 880900,
+      "sha256": "9c815a828751f66d7a497365cc56b06d2edb687692a300db80af244c491729ff"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.arm_cannon.t1.weapon.png",
+      "bytes": 26518,
+      "sha256": "7120996433bd86c6d94e9f308e14c33fa925cec2a1e82ecb8737b29a661acd13"
+    },
+    {
+      "path": "assets/weapon-kits-1/arm_cannon-t2.glb",
+      "bytes": 1042264,
+      "sha256": "fa3188451548e910b8590e7670e767e9554de23c92020edee838a4a3a1aa7394"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.arm_cannon.t2.weapon.png",
+      "bytes": 28657,
+      "sha256": "4fcdf44bc7fdaebe5c5fee0ee22f08e3a660c8f4703c411071c5603cb93fb91d"
+    },
+    {
+      "path": "assets/weapon-kits-1/arm_cannon-t3.glb",
+      "bytes": 1571344,
+      "sha256": "69544f4f9c24e1264e4459a71b1f9b0667443ae4887262e3beafb82805990743"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.arm_cannon.t3.weapon.png",
+      "bytes": 31310,
+      "sha256": "45c051459f60c8b7c02fc649e8920428ff408c0a58bd6ec98723430578874f7a"
+    },
+    {
+      "path": "assets/weapon-kits-1/arm_cannon-t4.glb",
+      "bytes": 1595568,
+      "sha256": "36ad16a9f1a6b9587a7ab5f21627e8f2705b8c46f7c0e63a5756c4937c19466b"
+    },
+    {
+      "path": "assets/weapon-kits-1/thumbs/kit1.arm_cannon.t4.weapon.png",
+      "bytes": 30959,
+      "sha256": "7b406511632c9b983dc0a52ed1b6e81822371fa73f47b4442db430b8bfc996fe"
+    },
+    {
+      "path": "assets/tank-t3-warden-v1.glb",
+      "bytes": 14406652,
+      "sha256": "abde93a07f177a5f182a6b3ece75d0200c611841fbbc8da8358264c4e0aca7f6"
+    },
+    {
+      "path": "assets/tank-t3-warden-hammer-motion-2.glb",
+      "bytes": 14063796,
+      "sha256": "d6d0ee084612736be4d29ef52478fb9b3e14b15d7601c3b553ceb65310c1b362"
+    },
+    {
+      "path": "assets/warden-support-hand.glb",
+      "bytes": 342052,
+      "sha256": "794ec300d75ba72ce8b9f01dffdcbee479ff9cc0dd15a7bc5e90b60aa375596a"
+    },
+    {
+      "path": "assets/weapon-kits-1/special-equipment.glb",
+      "bytes": 1091752,
+      "sha256": "acc070352676140ca3ed91e515381880b8a7b334f4402f69f365a055227fab23"
+    },
+    {
+      "path": "assets/speed-t3-duelist-v1-concept.png",
+      "bytes": 2010920,
+      "sha256": "7c74958550096a72b3758854631240ac093928800621610a7c7d6cbb765015ad"
+    },
+    {
+      "path": "assets/ranged-t3-tracker-v1-concept.png",
+      "bytes": 1846538,
+      "sha256": "2f65d94bb1598a7b126a1ccfc59711fa4ad02b901f11a8624768620cc6abd401"
+    },
+    {
+      "path": "assets/arena-crowd-loop.mp4",
+      "bytes": 143889,
+      "sha256": "39d033dc0ff634e43fa46e108d3f78c51e4c7202e35c0569c4d886196fab3002"
+    },
+    {
+      "path": "assets/arenas-1/spaceship.png",
+      "bytes": 2756167,
+      "sha256": "11322291a449521570d94583bd1f1d864ac82899afbdc6502d65dbb6f2fd4f5f"
+    },
+    {
+      "path": "assets/arenas-1/spaceship.mp4",
+      "bytes": 3553397,
+      "sha256": "fad77932c61c6ba55ced88497880cc46d261a107be8d7416d49aa612bc182d8a"
+    },
+    {
+      "path": "assets/arenas-1/colosseum.png",
+      "bytes": 2929507,
+      "sha256": "b6c037ce4057230284887795910a3dac93719cea02e3b00bf47ae212d3587e81"
+    },
+    {
+      "path": "assets/arenas-1/colosseum.mp4",
+      "bytes": 4726186,
+      "sha256": "61bcf9d8a4b0dfea729d1d50f5975e6359f8ce57400cd82ec8e5e751e6b4fc9d"
+    },
+    {
+      "path": "assets/arenas-1/basement.png",
+      "bytes": 2862617,
+      "sha256": "75e638d1f0140e28c4be71f3606530d4c8f9ac0b2d5cf8891a38eb8cf80b100f"
+    },
+    {
+      "path": "assets/arenas-1/basement.mp4",
+      "bytes": 4479458,
+      "sha256": "9e60f9977a19e701884d35556f97cc218b42cbb97221ad9bb84f3a4d8cc0f6df"
+    }
+  ],
+  "versions": "export const AUXILIARY_ASSET_HASHES={\"supportHand\":\"794ec300d75ba72ce8b9f01dffdcbee479ff9cc0dd15a7bc5e90b60aa375596a\",\"specialKit\":\"acc070352676140ca3ed91e515381880b8a7b334f4402f69f365a055227fab23\"} as const;\nexport const PREVIEW_VERSIONS={\"rules\":\"e97da3b4ef5a1fd9\",\"motion\":\"4794f129a19e81cd\",\"presentation\":\"2a7b371462972892\"} as const;\n",
+  "sourceBuild": {
+    "status": "v8-personal-kits-preview; visual-and-balance-approval-open",
+    "scope": "Local version-8 practice, paint and 48 kits; no game state or rewards",
+    "asset": "../assets/tank-t3-warden-hammer-motion-2.glb",
+    "createdAt": "2026-09-17T09:43:03.477Z",
+    "files": [
+      {
+        "path": "main.ts",
+        "sha256": "c4903bf03a5679b9594fbe5bc9c1bfaecc7f5434d300a9b36451b9fd0a522876"
+      },
+      {
+        "path": "asset-versions.ts",
+        "sha256": "21591c47885e9de54f097a8780ca0f0b362abebb59a9c36e8dfefcc00fdbb530"
+      },
+      {
+        "path": "weapon-actions.ts",
+        "sha256": "f97b3159a6ddaee6b2bb9859f1e143685e70bdfb706a8cbc1bbb4adca4aea936"
+      },
+      {
+        "path": "equipment-stats.ts",
+        "sha256": "728fe1fbc57c3e213a6110fe6745ef640bd58c9110097e06d4311abcf2b1228d"
+      },
+      {
+        "path": "equipment-stats-ui.ts",
+        "sha256": "229eb6ca5d388be5399e00994ee8716ec69620dd44702a41cdef785641217873"
+      },
+      {
+        "path": "v8-engine.ts",
+        "sha256": "c02d6264b65907857164afdfd6e1020f3d716c9f6e321d0665e2d35016f2ffd4"
+      },
+      {
+        "path": "practice-viewer.ts",
+        "sha256": "a0cc161d3675c8b6b40fc825c31561eef3fae8b2445f91041559547010af888f"
+      },
+      {
+        "path": "fight-personality.ts",
+        "sha256": "7fd98ad3fa7328eaa791da3b1bc24adde66ce1373e77b807e0c87f897e62693d"
+      },
+      {
+        "path": "fight-report.ts",
+        "sha256": "d904d316bdfc3de3665fba17ab0b82899b9e27bf99c46dbf6d580411467d0f57"
+      },
+      {
+        "path": "arena-room.ts",
+        "sha256": "eab590c78b2fd7419819ecb2aa7980b5f1420b61a8f14c87384abe924cd309ad"
+      },
+      {
+        "path": "arena-atmosphere.ts",
+        "sha256": "d9cac3734a50fbf435182ca89d8841f43d6890e565c03ca251c3644584b468b1"
+      },
+      {
+        "path": "visual-fighter-picker.ts",
+        "sha256": "c74a962a6be62db32059621ad295308dbfa2a21f84a31cdf06009c01e04a771b"
+      },
+      {
+        "path": "paint.ts",
+        "sha256": "19b6f1d9072a2e7e72acaf7d2a47bbe5a3eecf95464c66d319449832a7447c0c"
+      },
+      {
+        "path": "banner.ts",
+        "sha256": "55f19c05872de7ff49146e3b64f736eacabac85b1d349b293a4b4882324b7cfb"
+      },
+      {
+        "path": "special-equipment.ts",
+        "sha256": "ba078fb1a05c3dd2c6ef584bf79cf6f0c956c0fb1f5f9d5688e35deece274ba4"
+      },
+      {
+        "path": "combat-effects.ts",
+        "sha256": "c742b46090524f92075aa9a1b3a86c5dffa8f8dd74538e71c4b18f3e7cdc9508"
+      },
+      {
+        "path": "hammer-motion.ts",
+        "sha256": "2d116f01d6fb718e9925665bdbd93aa16ac8b9ef85a6dc3bd817c99a201d1c54"
+      },
+      {
+        "path": "exchange.ts",
+        "sha256": "8c223ecb8582357d5887a2bdf5f6f467cdca616c3714d53229e2dfd3595adac9"
+      },
+      {
+        "path": "exchange-viewer.ts",
+        "sha256": "49d4b62c5e189dfc9e180f6af24ac8fd0dfc6efda688fd8eec2d6dd598fb76c8"
+      },
+      {
+        "path": "hero-motion.ts",
+        "sha256": "045b8b4e47c8754cb5098f26ba0ad19f6aa054cd2a83aae68f6da50b52a4a910"
+      },
+      {
+        "path": "heroes-viewer.ts",
+        "sha256": "1c40cb1b0ed1a5a858b097903f8be2ba1de742e8ed957b57485b2ee948ef5acc"
+      },
+      {
+        "path": "parts-assembly.ts",
+        "sha256": "4b6d24d57fe93ff57420f1b0864ee645dc04c957fe5faf56e2837c6ee9dc1314"
+      },
+      {
+        "path": "parts-viewer.ts",
+        "sha256": "e96946317457d7774366e0d77be79e37c58af61511e16af53070f0fc162fe835"
+      },
+      {
+        "path": "equipment-pose.ts",
+        "sha256": "54532c08a5679017b91c156f98c3549c67a562bd1fc3b0fac6898ce7e1cecc5d"
+      },
+      {
+        "path": "styles.css",
+        "sha256": "e8e2523636a3d5e5487d090d5fd03e451613431c9c4c6a2c12ecfa112b605138"
+      },
+      {
+        "path": "index.html",
+        "sha256": "fcabf8065a486f328c3dd22eb358e4638c4dfcc1f48b380acf3aa25dcee48aef"
+      },
+      {
+        "path": "bootstrap.cjs",
+        "sha256": "e685b5b97aeae29a03af96c11e4dbbc5850e7b67dbc327d0a8ccc6d44e8c07cf"
+      },
+      {
+        "path": "typescript-loader.cjs",
+        "sha256": "6485a70642ca4447fc5f070d3587ca6dc76974cd50697b130e713079506a8842"
+      }
+    ]
+  }
+}

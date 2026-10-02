@@ -1,0 +1,383 @@
+/*
+ * THE JUNKYARD (screens doc 3.3). Only the things a style attribute cannot
+ * do: the media query between 1440 and 390, the scrolling strips, and the
+ * 44px tap floor. Every colour and radius still comes from _ui/tokens.ts
+ * through the inline styles, the way the Build screen does it.
+ *
+ * Desktop 1440: the band is 220 tall, the cards are a 300px auto-fill grid
+ * and the Tier 4 card spans two columns. Phone 390: the band is 160 with the
+ * thumbs in a horizontal scroll, the strips scroll sideways, and every row
+ * is one column of 88px card rows.
+ */
+
+/*
+ * THE YARD (lane 4, 2026-09-06). Was a cream diorama with a nursery bookcase
+ * standing in it. It is now a fenced yard with a tipper truck in it, and the
+ * three flat layers below are the whole set: dusty air, a fence of corrugated
+ * tin, and dirt. Gradients, so they stretch to any width without a prop
+ * distorting; the truck and the heap are drawn at a fixed shape in
+ * YardScene.tsx and anchored to the two ends.
+ */
+.band {
+  position: relative;
+  height: 250px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 22px;
+  isolation: isolate;
+}
+
+/* every layer of the set sits behind the parts, never over them */
+.band > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 1. the dusty air over the yard */
+.sky {
+  position: absolute;
+  inset: 0 0 44% 0;
+  z-index: 0;
+  background: linear-gradient(180deg, #f2e9d8 0%, #ece1cc 62%, #e4d8c1 100%);
+}
+
+/*
+ * 2. THE FENCE. Corrugated tin: a repeating rib, a rail across the top, and
+ * a rust wash creeping up from the dirt. The ribs are 11px, which reads as
+ * tin at any band width and never as a stripe pattern.
+ */
+.fence {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 16%;
+  height: 40%;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgba(150, 116, 78, 0) 52%, rgba(150, 116, 78, 0.22) 100%),
+    repeating-linear-gradient(
+      90deg,
+      #d8caae 0 4px,
+      #cdbfa2 4px 8px,
+      #bdae91 8px 11px
+    );
+  border-top: 5px solid #b6a184;
+  box-shadow: inset 0 -3px 0 rgba(120, 96, 66, 0.28);
+}
+
+/* the fence posts, one every 132px, so the run has structure */
+.fence::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(140, 116, 84, 0) 0 124px,
+    rgba(140, 116, 84, 0.38) 124px 132px
+  );
+}
+
+/* 3. the dirt, with gravel scattered over it */
+.dirt {
+  position: absolute;
+  inset: 56% 0 0 0;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 12% 30%, rgba(120, 100, 72, 0.16) 0 3px, transparent 4px),
+    radial-gradient(circle at 34% 66%, rgba(120, 100, 72, 0.14) 0 4px, transparent 5px),
+    radial-gradient(circle at 58% 24%, rgba(120, 100, 72, 0.13) 0 3px, transparent 4px),
+    radial-gradient(circle at 77% 72%, rgba(120, 100, 72, 0.15) 0 4px, transparent 5px),
+    radial-gradient(circle at 91% 38%, rgba(120, 100, 72, 0.12) 0 3px, transparent 4px),
+    linear-gradient(180deg, #cfc0a4 0%, #c2b295 46%, #b7a687 100%);
+  /* five different tile widths, so the gravel never lines up into a pattern */
+  background-size: 317px 100%, 233px 100%, 191px 100%, 271px 100%, 349px 100%, auto;
+  box-shadow: inset 0 4px 8px rgba(120, 96, 66, 0.14);
+}
+
+/* the racks of parts laid out in the middle of the yard */
+.planks {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  margin: 0 14px 18px;
+}
+
+/*
+ * ONE RACK: a row of parts and the girder holding it. The girder used to be a
+ * fixed 620 wide while the row of parts under it was 486, so both racks stuck
+ * out past their own load at either end and read as unfinished. The column
+ * shrinks to its row, and the girder takes its width from it, so a rack is
+ * always exactly as long as the parts standing on it.
+ */
+.rack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/*
+ * THE RACK THE PARTS ARE LAID ON. Was a plank of orange wood, which is what
+ * made the band read as a bookcase. It is a riveted steel girder now: a lit
+ * top edge, a dark underside, and a run of rivets down the middle.
+ */
+.girder {
+  width: 100%;
+  height: 12px;
+  border-radius: 3px;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.5) 0 1.3px, transparent 1.8px),
+    linear-gradient(180deg, #c6bfb1 0 3px, #a9a294 3px 9px, #837c70 9px 12px);
+  background-size: 30px 12px, auto;
+  background-position: 10px center, center;
+  box-shadow: 0 4px 0 rgba(96, 80, 58, 0.28);
+}
+
+.plankRow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  justify-content: center;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+/*
+ * A PART NEVER SHRINKS. A flex child shrinks before its parent scrolls, and
+ * these children are buttons holding a fixed 58px plate: squeezed, the button
+ * narrowed and the plate inside it did not, so the parts SLID OVER EACH OTHER
+ * and their colour dots fell between them. It looked like a page that had
+ * failed to lay out, and it was every screen under about 1200 wide, the phone
+ * included. Held at their natural width, the row scrolls instead, which is
+ * what the overflow above was always for.
+ */
+.plankRow > * {
+  flex: 0 0 auto;
+}
+
+.plankRow::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * The colour strip, the 4 star calendar and the three filter rows: one
+ * scrolling row each on a narrow screen.
+ *
+ * NOTHING IS EVER CUT IN HALF AT THE EDGE. A row that runs out of width used
+ * to end by slicing a word or a chip clean through, which reads as a page that
+ * failed to draw rather than as a row you can push. The last 22 pixels fade
+ * out instead, and the row carries 22 pixels of trailing space, so a row that
+ * FITS has nothing but empty space inside the fade and looks untouched. It is
+ * not behind the phone media query on purpose: the 1440 rows fit, a 1280
+ * laptop's do not, and a demo does not get to choose its screen.
+ */
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 22px 2px 0;
+  -webkit-mask-image: linear-gradient(90deg, #000 0 calc(100% - 22px), rgba(0, 0, 0, 0) 100%);
+  mask-image: linear-gradient(90deg, #000 0 calc(100% - 22px), rgba(0, 0, 0, 0) 100%);
+}
+
+.strip::-webkit-scrollbar {
+  display: none;
+}
+
+/* a row of listing cards */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+/* the Tier 4 spotlight card spans two columns where there is room */
+.wide {
+  grid-column: span 2;
+}
+
+/*
+ * THE ONE 4 STAR PART OF THE DAY gets its own narrow grid rather than sitting
+ * in the four column run. In the wide grid a single card that spans two of
+ * four columns leaves two empty cells beside it, which reads as parts that
+ * failed to load rather than as the day's one big part.
+ */
+.heroRow {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 680px;
+}
+
+.heroRow .wide {
+  grid-column: auto;
+}
+
+/*
+ * THE THUMB'S PAINT LAYER. The shelf's whole job is "buy the right colour on
+ * the right day", so a listing has to be drawn in the colour you would buy.
+ * The rig does that with two sprites, the grey base and the white paint mask
+ * tinted at multiply; this is the same composite in CSS: the colour, cut to
+ * the mask's shape, multiplied onto the base underneath.
+ *
+ * Behind @supports on purpose. A browser that cannot cut the colour to the
+ * mask would paint a solid square over the part, which is worse than the
+ * untinted plate, so it gets the untinted plate and the colour dot instead.
+ */
+.paint {
+  display: none;
+}
+
+@supports ((-webkit-mask-image: url("")) or (mask-image: url(""))) {
+  .paint {
+    display: block;
+    position: absolute;
+    inset: 0;
+    mix-blend-mode: multiply;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    pointer-events: none;
+    /*
+     * NOT QUITE ALL THE WAY. A multiply at full strength by the ink paint
+     * takes the clay's brightest highlight to #272c37 and its deepest shade to
+     * #171a21: a nine step range, which at thumbnail size is a black cut-out
+     * with no form in it. Holding back a tenth of the layer lets the moulded
+     * light through, so an ink head still shows a brow and a cheek, and the
+     * paint still reads as unmistakably ink. Every lighter paint is unchanged
+     * to the eye.
+     */
+    opacity: 0.9;
+  }
+}
+
+/* every control on this screen clears the 44px tap floor */
+.tap {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.desktopOnly {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.mobileOnly {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wide {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 759px) {
+  /*
+   * Phone: the band is 160 tall, so the two planks would not fit stacked.
+   * The whole shipment becomes ONE scrolling line of thumbs (screens doc
+   * 3.3, mobile: "the band 390x160 with the thumbs in a horizontal
+   * scroll"): the planks column turns into a row, the drawn plank bars go,
+   * and the props go with them so the sixteen thumbs get the full width.
+   */
+  .band {
+    height: 168px;
+    padding: 0;
+    align-items: flex-end;
+  }
+  /*
+   * The set moves with the band. On a phone the fence sits lower and the dirt
+   * takes the bottom third, so the one scrolling line of parts stands ON the
+   * dirt instead of floating in a field of cream (which is what the 220 tall
+   * desktop layers did when they were squeezed into 160).
+   */
+  .sky {
+    inset: 0 0 52% 0;
+  }
+  .fence {
+    top: 12%;
+    height: 40%;
+    border-top-width: 4px;
+  }
+  .fence::after {
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(140, 116, 84, 0) 0 88px,
+      rgba(140, 116, 84, 0.38) 88px 94px
+    );
+  }
+  .dirt {
+    inset: 48% 0 0 0;
+  }
+  .planks {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 0 16px;
+    padding: 0 12px;
+    gap: 10px;
+  }
+  .planks::-webkit-scrollbar {
+    display: none;
+  }
+  /*
+   * On a phone the two racks become two halves of ONE line inside the
+   * scrolling band, so neither of them may be squeezed to the screen width:
+   * each takes its natural length and the band scrolls past both.
+   */
+  .rack {
+    flex: 0 0 auto;
+    max-width: none;
+  }
+  .plankRow {
+    justify-content: flex-start;
+    overflow: visible;
+    margin-top: 0 !important;
+  }
+  .plankBar,
+  .girder {
+    display: none;
+  }
+  /*
+   * The same fade the wide screen has, a little deeper: at 390 every one of
+   * these rows overflows, so the fade is doing real work on all five of them
+   * and a shallow one still looks like a slice.
+   */
+  .strip {
+    padding-right: 28px;
+    -webkit-mask-image: linear-gradient(90deg, #000 0 calc(100% - 28px), rgba(0, 0, 0, 0) 100%);
+    mask-image: linear-gradient(90deg, #000 0 calc(100% - 28px), rgba(0, 0, 0, 0) 100%);
+  }
+  /*
+   * THE LINE OF PARTS FADES TOO. The band's own rounded frame chopped the
+   * sixteenth thumb mid-part at the right edge, and a half a robot head at the
+   * edge of a picture reads as a bug. The fade says the line keeps going.
+   */
+  .planks {
+    -webkit-mask-image: linear-gradient(90deg, #000 0 calc(100% - 26px), rgba(0, 0, 0, 0) 100%);
+    mask-image: linear-gradient(90deg, #000 0 calc(100% - 26px), rgba(0, 0, 0, 0) 100%);
+  }
+  .desktopOnly {
+    display: none;
+  }
+  .mobileOnly {
+    display: block;
+  }
+}

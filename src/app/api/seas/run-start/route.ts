@@ -60,6 +60,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "expired token" }, { status: 401 });
   }
 
+  // Season closed? Block real (non-test) runs so the games go OFF the moment s2_enabled is not
+  // 'true'. Test tokens still play so the admin sandbox keeps working.
+  if (!tok.is_test) {
+    const { data: en } = await db
+      .from("launch_wars_boss_config")
+      .select("value")
+      .eq("key", "s2_enabled")
+      .maybeSingle();
+    if (String(en?.value || "") !== "true") {
+      return NextResponse.json({ ok: false, error: "Season 2 has ended. The games are closed." }, { status: 403 });
+    }
+  }
+
   // Rate limit: recent nonces for this captain. A missing table means migration
   // 023 has not run, so we degrade rather than block play.
   const sinceIso = new Date(Date.now() - 60_000).toISOString();

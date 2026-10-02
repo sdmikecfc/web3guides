@@ -1,0 +1,276 @@
+{
+  "schema": "game-room.layout.v1",
+  "roomId": "model-kombat-garage",
+  "units": "meters",
+  "status": "accepted visual direction; source composition; final technical audits pending",
+  "source": "../../../../src/app/bots/_view/living-room.ts",
+  "surfaces": [
+    {
+      "id": "shadow-ground",
+      "center": [
+        0,
+        0.006,
+        5
+      ],
+      "dimensions": [
+        40,
+        0,
+        40
+      ],
+      "supportNormal": [
+        0,
+        1,
+        0
+      ],
+      "material": "ShadowMaterial; physical shadow receiver over photographic floor"
+    },
+    {
+      "id": "back-wall-projection",
+      "center": [
+        0,
+        6,
+        -4
+      ],
+      "dimensions": [
+        32,
+        12,
+        0
+      ],
+      "supportNormal": [
+        0,
+        0,
+        1
+      ],
+      "texture": "/bots-art/plates/workshop-interior.png",
+      "uvRepeat": [
+        1,
+        0.667
+      ],
+      "uvOffset": [
+        0,
+        0.333
+      ]
+    },
+    {
+      "id": "floor-projection",
+      "center": [
+        0,
+        -0.004,
+        7.5
+      ],
+      "dimensions": [
+        40,
+        0,
+        23
+      ],
+      "supportNormal": [
+        0,
+        1,
+        0
+      ],
+      "texture": "/bots-art/plates/workshop-interior.png",
+      "uvRepeat": [
+        1,
+        0.333
+      ],
+      "uvOffset": [
+        0,
+        0
+      ]
+    }
+  ],
+  "instances": [
+    {
+      "id": "stand-1",
+      "center": [
+        -8.8,
+        0,
+        1.5
+      ],
+      "topY": 0.44,
+      "dimensions": [
+        3.22,
+        0.44,
+        2.2
+      ],
+      "attachmentFace": "-Y",
+      "semanticFront": "+Z",
+      "role": "Robot support and selection"
+    },
+    {
+      "id": "stand-2",
+      "center": [
+        -4.4,
+        0,
+        1.5
+      ],
+      "topY": 0.44,
+      "dimensions": [
+        3.22,
+        0.44,
+        2.2
+      ],
+      "attachmentFace": "-Y",
+      "semanticFront": "+Z",
+      "role": "Robot support and selection"
+    },
+    {
+      "id": "stand-3",
+      "center": [
+        0.0,
+        0,
+        1.5
+      ],
+      "topY": 0.44,
+      "dimensions": [
+        3.22,
+        0.44,
+        2.2
+      ],
+      "attachmentFace": "-Y",
+      "semanticFront": "+Z",
+      "role": "Robot support and selection"
+    },
+    {
+      "id": "stand-4",
+      "center": [
+        4.4,
+        0,
+        1.5
+      ],
+      "topY": 0.44,
+      "dimensions": [
+        3.22,
+        0.44,
+        2.2
+      ],
+      "attachmentFace": "-Y",
+      "semanticFront": "+Z",
+      "role": "Robot support and selection"
+    },
+    {
+      "id": "stand-5",
+      "center": [
+        8.8,
+        0,
+        1.5
+      ],
+      "topY": 0.44,
+      "dimensions": [
+        3.22,
+        0.44,
+        2.2
+      ],
+      "attachmentFace": "-Y",
+      "semanticFront": "+Z",
+      "role": "Robot support and selection"
+    }
+  ],
+  "productionCamera": {
+    "viewport": [
+      1280,
+      720
+    ],
+    "location": [
+      1,
+      10.5,
+      27
+    ],
+    "target": [
+      0,
+      2.8,
+      0.1
+    ],
+    "verticalFovDegrees": 0,
+    "projection": "orthographic",
+    "minimumVerticalMeters": 10,
+    "minimumHorizontalMeters": 27.5
+  },
+  "mobile": {
+    "positions": [
+      [
+        -4.05,
+        0,
+        -0.8
+      ],
+      [
+        0,
+        0,
+        -0.8
+      ],
+      [
+        4.05,
+        0,
+        -0.8
+      ],
+      [
+        -2.25,
+        0,
+        9.5
+      ],
+      [
+        2.25,
+        0,
+        9.5
+      ]
+    ],
+    "camera": [
+      0.6,
+      16.5,
+      27
+    ],
+    "target": [
+      0,
+      2,
+      2.6
+    ],
+    "minimumHorizontalUnits": 13,
+    "minimumVerticalUnits": 14
+  },
+  "dressing": [
+    "original warm workshop art projected across a wall and floor",
+    "five physical wheeled metal stands with brass number plates and trolley handles",
+    "shallow 3D left corkboard with notes",
+    "real shared shadows over the projected floor"
+  ],
+  "limitations": [
+    "Projected backdrops limit future free-camera exploration; this preview uses fixed production cameras.",
+    "The user said \"keep going please\" on 2026-09-10 after the concrete room previews. The layout and Form visual direction is accepted; Blender, final export and runtime audits remain open.",
+    "Room navigation is menu driven; there is no avatar walkthrough.",
+    "No physical mobile performance result is available."
+  ],
+  "projectionNotes": "This fixed-camera 2.5D set uses existing high-quality artwork as visual dressing; toys, trolleys, contact shadows and selected foreground features are real 3D. The floor split changes its visible horizon correctly with the phone camera. Backdrop image planes are not complete sculpted room meshes.",
+  "lighting": {
+    "environment": "Three.js RoomEnvironment",
+    "keyPosition": [
+      8,
+      13,
+      9
+    ],
+    "keyIntensity": 3.4,
+    "keyColour": "#ffdba6",
+    "fillIntensity": 0.62,
+    "rimIntensity": 1.15,
+    "toneMapping": "ACESFilmic",
+    "exposure": 0.96,
+    "shadowMapSize": 1024,
+    "shadowType": "PCF",
+    "shadowRadius": 2.6,
+    "shadowOpacity": 0.23,
+    "poseHz": 12,
+    "cameraRenderTargetHz": 60
+  },
+  "visualDirectionReview": {
+    "status": "accepted",
+    "userWording": "keep going please",
+    "userResponseDate": "2026-09-10",
+    "recordedAt": "2026-09-10T04:29:42.816072+00:00",
+    "recordedBy": "Codex, following parent task report of user reply after concrete previews",
+    "scope": "Accepted room layout and Form direction in the reviewed game frames. Continue cinematic reference capture from these rooms.",
+    "reviewedImages": [
+      "C:/Users/Mike/Documents/Codex/2026-09-07/i-b/outputs/launch-review/garage-form-desktop.png",
+      "C:/Users/Mike/Documents/Codex/2026-09-07/i-b/outputs/launch-review/garage-form-mobile.png"
+    ],
+    "limits": "Does not certify complete Blender multi-view, structural, export, or runtime audits. No final room asset export or deployment approval is claimed."
+  }
+}

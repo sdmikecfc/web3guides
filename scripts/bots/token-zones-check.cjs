@@ -1,0 +1,24 @@
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),ts=require('typescript');
+require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,f);
+const z=require('../../src/lib/bots/token-zones.ts');
+const assets=z.REWARD_ZONES.map(r=>({symbol:r.symbol,decimals:6,fundedUnits:z.decimalUnits(r.quantity).toString()}));
+const row=(id,volume,qualified=true,score=volume)=>({id,name:id,qualified,scores:{volume:String(volume),roi:String(score),profit:String(score),battles:String(score)}});
+const rows=[row('a',100),row('b',80),row('c',60),row('d',40),row('e',20)];
+assert.equal(z.REWARD_ZONES.reduce((n,r)=>n+r.referenceUsd,0),4000);
+assert.deepEqual(z.tokenAwards('4999.999999',assets,rows),[]);
+for(const zone of z.REWARD_ZONES){const awards=z.tokenAwards(String(zone.threshold),assets,rows);for(const unlocked of z.REWARD_ZONES.filter(r=>r.threshold<=zone.threshold))assert.equal(awards.filter(a=>a.symbol===unlocked.symbol).reduce((n,a)=>n+BigInt(a.units),0n),z.decimalUnits(unlocked.quantity));}
+const first=z.tokenAwards('5000',assets,rows);assert.equal(first.find(a=>a.id==='a').units,'320000000');assert.equal(first.find(a=>a.id==='d').units,'240000000');
+assert.equal(z.tokenAwards('5000',assets,[row('a',1)]).reduce((n,a)=>n+BigInt(a.units),0n),1000000000n);
+assert.deepEqual(z.tokenAwards('5000',assets,[row('a',1,false)]),[]);
+const tied=z.tokenAwards('750000',assets,[row('a',1),row('b',1),row('c',1),row('d',1)]);for(const asset of assets)assert.equal(tied.filter(a=>a.symbol===asset.symbol).reduce((n,a)=>n+BigInt(a.units),0n),BigInt(asset.fundedUnits));
+assert.deepEqual(z.tokenAwards('750000',assets,rows),z.tokenAwards('750000',assets,[...rows].reverse()));
+assert.deepEqual(z.ranked([row('a',1,true,'1.000000000000000001'),row('b',1,true,'1.000000000000000002')],'roi').map(r=>[r.id,r.rank]),[['b',1],['a',2]]);
+assert.deepEqual(z.tokenAwards('750000',assets.map(a=>({...a,fundedUnits:'0'})),rows),z.tokenAwards('750000',assets,rows),'Reward entitlements must not depend on upfront funding.');
+assert.throws(()=>z.decimalUnits('0.0000001'),/precision/);
+const start='2026-10-01T00:00:00.000Z',end='2026-10-29T00:00:00.000Z';
+assert.deepEqual(z.qualificationDays(['2026-10-01T01:00:00Z','2026-10-01T23:00:00Z','2026-10-02T00:00:00Z','2026-10-03T00:00:00Z','2026-10-08T00:00:00Z',end],start,end),[3,1,0,0]);
+assert.deepEqual(z.qualificationDays(['2026-09-30T23:59:59Z',end],start,end),[0,0,0,0]);
+console.log('PASS reward math: all nine unlocks, exact units, separate volume groups, ties, vacancies, exclusions, deferred funding, deterministic rounding and qualification boundaries.');
+const config=ts.readConfigFile(path.resolve('tsconfig.json'),ts.sys.readFile).config,options=ts.convertCompilerOptionsFromJson(config.compilerOptions,process.cwd()).options;options.incremental=false;options.noEmit=true;
+const program=ts.createProgram(['next-env.d.ts','src/app/bots/leaderboard/page.tsx','src/app/api/bots/campaign/zones/route.ts','src/app/api/bots/tracking/zones/route.ts'],options),errors=ts.getPreEmitDiagnostics(program);
+if(errors.length){console.error(ts.formatDiagnosticsWithColorAndContext(errors,{getCanonicalFileName:f=>f,getCurrentDirectory:()=>process.cwd(),getNewLine:()=> '\n'}));process.exitCode=1;}else console.log('PASS zone UI and API TypeScript.');

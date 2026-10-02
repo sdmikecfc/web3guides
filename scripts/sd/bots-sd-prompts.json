@@ -1,0 +1,745 @@
+{
+ "_": "BATTLE BOTS / stable-diffusion lane C: THE PROMPT MATRIX. One table, read by scripts/sd/bots-sd-sweep.py, which enumerates it into runnable jobs and prices it. Nothing here is a taste list: every negative group below is named after a defect that has actually been produced by this project's own generations, and the axes are the knobs that plausibly move those defects. A blind grid over every parameter a sampler exposes would be 40 million renders and would still not answer the question.",
+ "trigger": "bbclay",
+ "skeleton": {
+  "_": "Order matters in a CLIP-conditioned model: the first ~20 tokens dominate. So SUBJECT and VIEW come first, the finish and the light in the middle, and the plate last, because the plate is the part the ControlNet already settles. LENGTH: the assembled full prompt is 234 CLIP tokens (measured with the real tokenizer, 2026-09-05) against a 77-token context. Plain diffusers keeps the first 77 and silently deletes the rest, which is everything from `features` onward: the finish, the neutral law, the light law and the plate. So NOTHING sends this text to a model directly: scripts/sd/bots_sd_prompt.py assembles it, embeds it in full through compel in 77-token chunks, and weights the law clauses up (see `weights`). The matrix, the job files, the smoke test and the runner all read that one module.",
+  "positive": "{trigger}, {subject}, {view}, {form}, {features}, {forehead}, {tier}, {finish}, {neutral}, {light}, {plate}",
+  "_forehead": "THE CLEAR FOREHEAD (lane H, 2026-09-05). `forehead` is carried by the head only (subject.head.forehead; bots_sd_prompt.segments() appends it after `features` for any slot whose subject entry carries the key, and no other slot does). Measured on the production heads: every design-2 pool (t1-2, t2-2, t3-2, t4-2) lost all 24 candidates, 20 to NO FACE and the 4 with a face to THIRD EYE plus MOUTH MISPLACED, with the dark feature always in the central band ABOVE the eye line (0.31 to 0.41 of head height down). The prompt never carried a family motif line; the feature comes from the design-2 placeholder, which is drawn as a cyclops (one big central lens on the forehead plus a ring or a slot on the crown) in public/bots-art/_raw/parts/placeholders/head-t*-2.png, and both control roots trace it. This clause and the `forehead` negative group are the prompt-side answer: the forehead is named as blank clay, the eyes as exactly two, and the family character is placed in the ear cups, the crown silhouette, the cheeks and the mouth grille, never above the eyes. MEASURED (lane H, the same day): with this clause and group, 72 renders of t2-2, t3-2 and t4-2 at the production recipe came back a cyclops on every one (70 NO FACE, plus 2 that rank-part passed only because the importer lit two tiny side nubs as the pair, eye radius 0.024 of head width against the 0.03 floor, a judge blind spot, not survivors); a second pass with the eye count in the first tokens, this clause at 1.40 and the negative led by 'a cyclops head, a single central lens, a robot with one eye' came back 36 NO FACE of 36. No wording beats a circle the lineart draws. The clause stays because it is right for a two-eyed placeholder; the placeholder fix is upstream of this file.",
+  "view": "orthographic front elevation, dead-on, straight on, centred, upright, no perspective, no foreshortening, the whole part inside the frame with clear space around it",
+  "_viewShort": "The terse variant exists to be the ONE arm that fits inside a single CLIP chunk, so it can prove whether chunking is helping or whether a short prompt plus a strong ControlNet is simply better. That only works if it actually fits, so it gets its own short phrasings rather than the full ones.",
+  "viewShort": "front view, dead-on, centred, whole part in frame",
+  "subjectShort": {
+   "head": "a robot toy head alone, no body",
+   "torso": "a robot toy torso alone, no head or limbs",
+   "arm": "a robot toy arm alone, one limb, vertical",
+   "leg": "a robot toy leg alone, one limb, vertical",
+   "weapon": "a tiny toy prop alone, side-on",
+   "leg-wheels": "a robot toy leg alone, one limb, a wheel at the bottom",
+   "leg-springs": "a robot toy leg alone, one limb, a coil at the bottom",
+   "leg-sneakers": "a robot toy leg alone, one limb, a shoe at the bottom",
+   "leg-pegs": "a robot toy leg alone, one limb, a thin peg at the bottom",
+   "head-round-smile": "a robot toy head alone, no body",
+   "head-round-o": "a robot toy head alone, no body",
+   "head-box-smile": "a robot toy head alone, no body",
+   "head-box-o": "a robot toy head alone, no body",
+   "head-bear-smile": "a robot toy head alone, no body",
+   "head-bear-o": "a robot toy head alone, no body",
+   "head-tv-smile": "a robot toy head alone, no body",
+   "head-tv-grille": "a robot toy head alone, no body",
+   "head-bell-o": "a robot toy head alone, no body",
+   "head-bell-smile": "a robot toy head alone, no body",
+   "head-bucket-widegrille": "a robot toy head alone, no body",
+   "head-bucket-smile": "a robot toy head alone, no body",
+   "head-cone-zigzag": "a robot toy head alone, no body",
+   "head-cone-o": "a robot toy head alone, no body",
+   "head-cat-smile": "a robot toy head alone, no body",
+   "head-cat-grille": "a robot toy head alone, no body",
+   "torso-barrel": "a robot toy torso alone, no head or limbs",
+   "torso-toolbox": "a robot toy torso alone, no head or limbs",
+   "torso-teapot": "a robot toy torso alone, no head or limbs",
+   "torso-engine": "a robot toy torso alone, no head or limbs",
+   "arm-mitts": "a robot toy arm alone, one limb, vertical",
+   "arm-claws": "a robot toy arm alone, one limb, vertical",
+   "arm-pincers": "a robot toy arm alone, one limb, vertical",
+   "arm-tube": "a robot toy arm alone, one limb, vertical"
+  },
+  "finishShort": "vinyl toy clay, lit from above",
+  "finish": "designer vinyl toy, moulded clay, soft satin sheen, crisp clean seams, soft rounded forms, no sharp edges",
+  "neutral": "uniform neutral pale grey colour",
+  "light": "one soft key light from directly above, highlight on the centre line, soft cool shading toward the base, no rim light, no coloured light, no reflections"
+ },
+ "weights": {
+  "_": "Per-clause compel weights, applied by scripts/sd/bots_sd_prompt.py build_weighted() and by nothing else. 1.0 is neutral; above 1.0 pulls the embedding toward that clause. These are the house laws that a 77-token cut used to delete outright, so they are embedded in full AND weighted up. Kept moderate: in practice weights past about 1.4 start to burn the image, and the ControlNet already holds the geometry so the prompt only has to win the register. Keys are skeleton segment names; a segment not listed here is 1.0. The plain prompt (no weights) is what the job files and the token counts report; the weighted form is what the model is fed. `forehead` is a head-only segment (see skeleton._forehead), so its weight touches no other slot.",
+  "finish": 1.2,
+  "neutral": 1.2,
+  "light": 1.15,
+  "plate": 1.1,
+  "forehead": 1.25
+ },
+ "subject": {
+  "_": "One line per slot. Every one of them says ALONE, because the single commonest way to lose a part generation is for the model to draw the whole robot the part belongs to.  THE LEG SHAPES (lane B, 2026-09-05): `leg` is the dome boot and stays exactly as it was; `leg-wheels`, `leg-springs`, `leg-sneakers` and `leg-pegs` are the four new rulers scripts/bots-bake-parts.mjs --out v3 draws. They are keyed like slots because a slot key is what scripts/sd/bots_sd_prompt.py looks up, so a shape reaches the model with no code change, and each names its own coral part by its own word (tyre, pad, sole, pad) and says in its features clause that everything above that block is the body's own clay.",
+  "head": {
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, a rounded dome crown, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed slatted grille for a mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "torso": {
+   "subject": "a single robot toy TORSO on its own, no head, no arms, no legs",
+   "form": "a rounded barrel, half again wider than it is tall, shoulders rounded off, no neck",
+   "features": "exactly one brass piece on the whole part, a small wind-up key with a figure-eight handle, set on the chest, and no other metal anywhere"
+  },
+  "arm": {
+   "subject": "a single robot toy ARM on its own, one limb, no body",
+   "form": "a stubby vertical limb, straight up and down, three times as long as it is wide, a plain rounded cap at the top end and a simple rounded mitt hand at the bottom, perfectly symmetric left to right",
+   "features": "smooth unbroken surface, at most one shallow moulded cuff, no hardware of any kind"
+  },
+  "leg": {
+   "_": "THE CORAL SOLE (2026-09-05). The production sweep asked for 'the shoe is a soft coral colour' and got, on 192 of 192 legs, a grey boot with coral rims along its panel lines, coral fills in the heel counter and the side port, and a grey plate under it; the judge rejected every one (NO SOLE, CORAL SPILL). The live legs and the concept boots carry the coral as ONE solid block at the bottom. So the clause names the block the v2 ruler draws in the coral material (a thick sole moulded under the boot, its own shape in the depth and lineart maps) and says where the coral is NOT. THE DOME BOOT (lane B, the same day): the second sweep held the sole on three legs and lost the other five to CORAL SPILL, every time on the boot's side pods (design 2) or its bands (bulldozer), which the render painted coral. So the form clause now names the shape the v2 ruler draws (a short cylinder ankle, a rounded dome boot, one coral sole block that never sticks out wider than the boot) and the features clause says in so many words that everything above the sole is the body's own clay, pods and bands included. The matching negative group is `coral` in negative.groups, carried by the leg in negative.slot.",
+   "subject": "a single robot toy LEG on its own, one limb, no body",
+   "form": "a stubby vertical shaft on a short cylinder ankle, a big rounded dome boot at the bottom, straight up and down, a plain rounded cap at the top end, symmetric left to right except for the boot's toe, one solid coral rubber sole moulded under the boot as one block, never wider than the boot",
+   "features": "one solid coral rubber sole under the boot, a single flat block of soft coral colour with a straight top edge, the only coral on the part, everything above the sole is the body's own clay in one plain neutral grey, the boot, its side pods and its bands included, smooth unbroken surface, no hardware of any kind"
+  },
+  "weapon": {
+   "subject": "a single tiny toy prop on its own, no robot",
+   "form": "seen side-on, lying horizontally, a plain handle on the left and a blunt working head on the right",
+   "features": "a dark rubber grip on the handle, the head is neutral grey"
+  },
+  "leg-wheels": {
+   "_": "WHEELS (lane B, 2026-09-05). One wheel a side. The coral is the TYRE and the tyre is the block the wheel STANDS IN, never a ring round the hub: rank-part.py measures the coral the importer will ship against the run of bottom rows where coral covers half the row's ink, so a ring reads to it as exactly the rim-and-drips defect that rejected 192 of 192 production legs. WAVE TWO (lane L, 2026-09-05). CORAL SPILL was the first rule to fire on 68 of wave one's 96 leg candidates, and the spill was not drips: the median candidate carried its coral 16 rows ABOVE the block in ONE unbroken blob, running straight on up the body. Sorted per shape it tracked exactly one number, the body's width over the block's width at the line where they meet (pegs 0.22 spilled 0.015, springs 0.72 spilled 0.047, wheels 1.00 spilled 0.075, sneakers 1.00 spilled 0.122), so the rulers now stand every body ON its block and the depth map stands the block up as its own slab. These clauses say the same thing in words: the block STEPS OUT PAST the body, and the thing directly above the block, the one a spill lands on, is named as clay in the same breath. The wheel is now a WHOLE circle whose bottom is buried in the tyre, so its hub clears the coral by 11 px and the form clause can say hub and circle without inviting a coral ring.",
+   "subject": "a single robot toy LEG on its own, one limb, no body",
+   "form": "a stubby vertical shaft on a short cylinder ankle, one big round WHEEL at the bottom, a whole circle, a round hub sunk into the middle of it, straight up and down, a plain rounded cap at the top end, the wheel standing IN one solid coral rubber tyre, a block wider than the wheel that steps out past it on both sides",
+   "features": "one solid coral rubber tyre under the wheel, a single flat block of soft coral colour with a straight top edge that steps out past the wheel, the only coral on the part, the wheel above it is the body's own plain neutral grey clay all the way in to its hub, smooth unbroken surface, no spokes, no coral rim round the wheel, no hardware of any kind"
+  },
+  "leg-springs": {
+   "_": "SPRINGS. A clay coil on a coral pad. The turns are named CLAY twice, because the v2 sweep lost five legs of eight to CORAL SPILL on exactly this kind of repeated feature (the boot's side pods and its bands came back coral). The negative also forbids the gaps a drawn helix would leave, which the judge would read as SEE THROUGH. WAVE TWO (lane L, 2026-09-05). CORAL SPILL was the first rule to fire on 68 of wave one's 96 leg candidates, and the spill was not drips: the median candidate carried its coral 16 rows ABOVE the block in ONE unbroken blob, running straight on up the body. Sorted per shape it tracked exactly one number, the body's width over the block's width at the line where they meet (pegs 0.22 spilled 0.015, springs 0.72 spilled 0.047, wheels 1.00 spilled 0.075, sneakers 1.00 spilled 0.122), so the rulers now stand every body ON its block and the depth map stands the block up as its own slab. These clauses say the same thing in words: the block STEPS OUT PAST the body, and the thing directly above the block, the one a spill lands on, is named as clay in the same breath. Wave one's spill on this shape sat in the shadow BETWEEN the turns, which is why the features clause now says every turn and every shadow between them is clay.",
+   "subject": "a single robot toy LEG on its own, one limb, no body",
+   "form": "a stubby vertical shaft that becomes a thick clay COIL of four fat turns at the bottom, every turn the same rounded ring as the one above it, the coil leaning out over its pad, straight up and down, a plain rounded cap at the top end, the coil standing on one solid coral rubber pad, a block much wider than the coil that steps out past it on both sides",
+   "features": "one solid coral rubber pad under the coil, a single flat block of soft coral colour with a straight top edge that steps out past the coil, the only coral on the part, every turn of the coil above it and every shadow between them is the body's own plain neutral grey clay, smooth unbroken surface, solid all the way through, no gaps, no wire, no hardware of any kind"
+  },
+  "leg-sneakers": {
+   "_": "SNEAKERS. A shoe with a tongue on a coral sole. The tongue and the collar are named as clay because they are the two features nearest the coral block and so the two a render would most readily paint with it. Laces, eyelets and stripes are forbidden because each is a thin warm line the importer's pin_coral would pin and the judge would then read as spill. WAVE TWO (lane L, 2026-09-05). CORAL SPILL was the first rule to fire on 68 of wave one's 96 leg candidates, and the spill was not drips: the median candidate carried its coral 16 rows ABOVE the block in ONE unbroken blob, running straight on up the body. Sorted per shape it tracked exactly one number, the body's width over the block's width at the line where they meet (pegs 0.22 spilled 0.015, springs 0.72 spilled 0.047, wheels 1.00 spilled 0.075, sneakers 1.00 spilled 0.122), so the rulers now stand every body ON its block and the depth map stands the block up as its own slab. These clauses say the same thing in words: the block STEPS OUT PAST the body, and the thing directly above the block, the one a spill lands on, is named as clay in the same breath. This shape spilled the most of the four (0.122 at the median, 17 of 24 rejected) and it drew the spill as a SECOND COLOURED BAND above the sole, a mudguard. The ruler now insets the upper from the sole on both sides, so there is a step where that band used to sit.",
+   "subject": "a single robot toy LEG on its own, one limb, no body",
+   "form": "a stubby vertical shaft into a low SHOE at the bottom, a long low toe, a padded collar at the back and a rounded TONGUE standing up in front of it, the shoe dipping between them, straight up and down, a plain rounded cap at the top end, the shoe standing on one solid coral rubber sole, a block wider than the shoe, stepping out past the toe and heel",
+   "features": "one solid coral rubber sole under the shoe, a single flat block of soft coral colour with a straight top edge that steps out past the shoe, the only coral on the part, the shoe above it is the body's own plain neutral grey clay, toe, tongue, collar and heel included, smooth unbroken surface, no laces, no eyelets, no stripes, no hardware of any kind"
+  },
+  "leg-pegs": {
+   "_": "PEGS. A thin peg on a round coral pad. The pad is the widest thing on the part and the peg the thinnest, and that IS the silhouette: at ring size a peg leg is read by the gap either side of the shaft, so the form clause says thin twice and says the pad is much wider than the peg. WAVE TWO (lane L, 2026-09-05). CORAL SPILL was the first rule to fire on 68 of wave one's 96 leg candidates, and the spill was not drips: the median candidate carried its coral 16 rows ABOVE the block in ONE unbroken blob, running straight on up the body. Sorted per shape it tracked exactly one number, the body's width over the block's width at the line where they meet (pegs 0.22 spilled 0.015, springs 0.72 spilled 0.047, wheels 1.00 spilled 0.075, sneakers 1.00 spilled 0.122), so the rulers now stand every body ON its block and the depth map stands the block up as its own slab. These clauses say the same thing in words: the block STEPS OUT PAST the body, and the thing directly above the block, the one a spill lands on, is named as clay in the same breath. This shape already had the step every other one has now been given, and it measured the least spill of the four by four times over. What it still lost was the render running the pad's colour UP the peg, so the features clause now follows the peg down to the pad in clay.",
+   "subject": "a single robot toy LEG on its own, one limb, no body",
+   "form": "a stubby vertical shaft that steps down to a thin round PEG at the bottom, a shallow moulded step where the shaft narrows, the peg thin and plain all the way down, straight up and down, a plain rounded cap at the top end, the peg standing on one solid coral rubber pad, one wide round block much wider than the peg",
+   "features": "one solid coral rubber pad under the peg, a single low round block of soft coral colour with a straight top edge and round ends, the only coral on the part, the peg and its step above it are the body's own plain neutral grey clay all the way down to the pad, smooth unbroken surface, no hardware of any kind"
+  },
+  "head-round-smile": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, a rounded dome crown with a round cup ear high on each side, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed curved smile for a mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "head-round-o": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, a rounded dome crown with a round cup ear high on each side, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed round O mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "head-box-smile": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, a soft box crown with rounded corners and a round cup ear on each side, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed curved smile for a mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "head-box-o": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, a soft box crown with rounded corners and a round cup ear on each side, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed round O mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "head-bear-smile": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, two big round cup ears that form the top of the head, a low rounded crown between them, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed curved smile for a mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "head-bear-o": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, two big round cup ears that form the top of the head, a low rounded crown between them, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed round O mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "head-tv-smile": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, a soft box crown with a short aerial standing on top of it, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed curved smile for a mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "head-tv-grille": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, a soft box crown with a short aerial standing on top of it, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed slatted grille for a mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "head-bell-o": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, a narrow rounded crown that flares out to the full width at the cheeks, like a bell, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed round O mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "head-bell-smile": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, a narrow rounded crown that flares out to the full width at the cheeks, like a bell, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed curved smile for a mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "head-bucket-widegrille": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, a wide flat rim across the top like an upturned bucket, the head narrowing a little below it, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a wide dark recessed slatted grille for a mouth, spanning the face low under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "head-bucket-smile": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, a wide flat rim across the top like an upturned bucket, the head narrowing a little below it, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed curved smile for a mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "head-cone-zigzag": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, a squat cone with a blunt rounded top, widening steadily down to the cheeks, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed zigzag mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "head-cone-o": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, a squat cone with a blunt rounded top, widening steadily down to the cheeks, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed round O mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "head-cat-smile": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, two soft pointed ears at the top with short rounded tips, a rounded crown between them, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed curved smile for a mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "head-cat-grille": {
+   "_": "GENERATED by scripts/sd/bots-sd-shape-slots.py from scripts/bots-shapes.json. Do not hand-edit: edit the shape table and re-run --write. This is the head's own entry with the crown clause and the mouth clause replaced, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy HEAD on its own, two eyes, no body, no neck stump",
+   "form": "wider than it is tall, two soft pointed ears at the top with short rounded tips, a rounded crown between them, the underside is a continuous dome and is never cut flat across its widest row, a low wide lug on each side at the cheek line",
+   "features": "exactly two big round lamp eyes, level and mirrored, set wide apart, each a pale cream frosted bulb glowing softly, warm white never yellow or orange, in its own shallow chrome bezel and the brightest thing on the part, a dark recessed slatted grille for a mouth, low on the face under the eyes",
+   "forehead": "the forehead above the eyes is smooth blank unbroken clay, the two eyes are the only lenses on the head, the head's character is carried by its ear cups, its crown silhouette, its cheeks and its mouth grille"
+  },
+  "torso-barrel": {
+   "_": "GENERATED by scripts/sd/bots-sd-body-slots.py from scripts/bots-shapes.json (bodies). Do not hand-edit: edit the shape table and re-run --write. This is the slot's own entry with the form clause replaced by this shape's, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy TORSO on its own, no head, no arms, no legs",
+   "form": "a rounded barrel body, straight sides and big soft rounded corners, half again wider than it is tall, shoulders rounded off, no neck",
+   "features": "exactly one brass piece on the whole part, a small wind-up key with a figure-eight handle, set on the chest, and no other metal anywhere"
+  },
+  "torso-toolbox": {
+   "_": "GENERATED by scripts/sd/bots-sd-body-slots.py from scripts/bots-shapes.json (bodies). Do not hand-edit: edit the shape table and re-run --write. This is the slot's own entry with the form clause replaced by this shape's, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy TORSO on its own, no head, no arms, no legs",
+   "form": "a squared toolbox body with a wide flat lid across the top that overhangs a much narrower case below it, a seam where the lid meets the case, corners softened but not round, no neck",
+   "features": "exactly one brass piece on the whole part, a small wind-up key with a figure-eight handle, set on the chest, and no other metal anywhere"
+  },
+  "torso-teapot": {
+   "_": "GENERATED by scripts/sd/bots-sd-body-slots.py from scripts/bots-shapes.json (bodies). Do not hand-edit: edit the shape table and re-run --write. This is the slot's own entry with the form clause replaced by this shape's, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy TORSO on its own, no head, no arms, no legs",
+   "form": "a rounded teapot body, narrow at the shoulders and swelling out to a low rounded belly, tucked in to a flat base, with one small spout stub low on its left side, no neck",
+   "features": "exactly one brass piece on the whole part, a small wind-up key with a figure-eight handle, set on the chest, and no other metal anywhere"
+  },
+  "torso-engine": {
+   "_": "GENERATED by scripts/sd/bots-sd-body-slots.py from scripts/bots-shapes.json (bodies). Do not hand-edit: edit the shape table and re-run --write. This is the slot's own entry with the form clause replaced by this shape's, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy TORSO on its own, no head, no arms, no legs",
+   "form": "a squared engine block body, a big flat-sided casting with square shoulders and softly bevelled corners, a raised cover panel across the chest and three ribs below it, the same width all the way down, no neck",
+   "features": "exactly one brass piece on the whole part, a small wind-up key with a figure-eight handle, set on the chest, and no other metal anywhere"
+  },
+  "arm-mitts": {
+   "_": "GENERATED by scripts/sd/bots-sd-body-slots.py from scripts/bots-shapes.json (bodies). Do not hand-edit: edit the shape table and re-run --write. This is the slot's own entry with the form clause replaced by this shape's, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy ARM on its own, one limb, no body",
+   "form": "a stubby vertical limb, straight up and down, a plain rounded cap at the top end, a rounded elbow ball with a band across it, a wrist cuff, and a round mitt hand with a thumb at the bottom",
+   "features": "smooth unbroken surface, at most one shallow moulded cuff, no hardware of any kind"
+  },
+  "arm-claws": {
+   "_": "GENERATED by scripts/sd/bots-sd-body-slots.py from scripts/bots-shapes.json (bodies). Do not hand-edit: edit the shape table and re-run --write. This is the slot's own entry with the form clause replaced by this shape's, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy ARM on its own, one limb, no body",
+   "form": "a plain vertical tube limb with a rounded cap at the top end, no elbow, a shallow collar at the wrist, and a two-finger gripper hand at the bottom whose thick fingers spread outward and then curl back in toward each other",
+   "features": "smooth unbroken surface, at most one shallow moulded cuff, no hardware of any kind"
+  },
+  "arm-pincers": {
+   "_": "GENERATED by scripts/sd/bots-sd-body-slots.py from scripts/bots-shapes.json (bodies). Do not hand-edit: edit the shape table and re-run --write. This is the slot's own entry with the form clause replaced by this shape's, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy ARM on its own, one limb, no body",
+   "form": "a thin vertical stick limb, much slimmer than a normal arm, a small rounded cap at the top end, one narrow band at the elbow and one at the wrist, ending in two long straight thin prongs that open into a wide fork",
+   "features": "smooth unbroken surface, at most one shallow moulded cuff, no hardware of any kind"
+  },
+  "arm-tube": {
+   "_": "GENERATED by scripts/sd/bots-sd-body-slots.py from scripts/bots-shapes.json (bodies). Do not hand-edit: edit the shape table and re-run --write. This is the slot's own entry with the form clause replaced by this shape's, so the runner can rebuild this prompt from the matrix and check_job passes.",
+   "subject": "a single robot toy ARM on its own, one limb, no body",
+   "form": "a chunky concertina bellows limb, a stack of soft rings of two alternating widths so the edge is scalloped, no elbow, no wrist and no fingers, ending in a plain rounded stub",
+   "features": "smooth unbroken surface, at most one shallow moulded cuff, no hardware of any kind"
+  }
+ },
+ "tier": {
+  "_": "Tier is RICHNESS and never size: rig-points.ts fixes one canvas per slot for all four tiers, so a tier that changes the silhouette breaks every mixed bot. These clauses add appointment, not scale.",
+  "1": "very plain, no decoration at all",
+  "2": "one shallow moulded panel line",
+  "3": "a shallow moulded panel and a soft raised trim",
+  "4": "several shallow moulded panels and a raised crest, still no metal beyond what is named"
+ },
+ "plates": {
+  "_": "See scripts/sd/bots-sd-sweep.py for why the pipeline no longer keys by colour at all. These four are a controlled experiment, not four options to pick from by taste: grey is the recommendation, white matches the anchor's own ground, black is the high-contrast control and magenta is the incumbent this lane is arguing against.",
+  "_short": {
+   "grey": "flat mid grey background, no shadow",
+   "white": "plain white background, no shadow",
+   "black": "flat black background, no shadow",
+   "magenta": "flat magenta background, no shadow"
+  },
+  "grey": {
+   "hex": "#808080",
+   "phrase": "isolated on a flat mid grey background, no shadow, no ground, no stand, no plinth, floating"
+  },
+  "white": {
+   "hex": "#F2F2F2",
+   "phrase": "isolated on a plain white studio background, no shadow, no ground, no stand, no plinth, floating"
+  },
+  "black": {
+   "hex": "#101014",
+   "phrase": "isolated on a flat near-black background, no shadow, no ground, no stand, no plinth, floating"
+  },
+  "magenta": {
+   "hex": "#FF00FF",
+   "phrase": "isolated on a flat solid magenta background, no shadow, no ground, no stand, no plinth, floating"
+  }
+ },
+ "negative": {
+  "_": "Grouped by the DEFECT each group exists to kill, and every group cites where the defect was seen. `short` is groups camera+frame+joints, which is what an SDXL-family model can actually hold; `long` is everything. Which of the two wins is an axis, because a negative prompt long enough to cover every defect starts pulling the positive apart, and that trade has to be measured rather than assumed. `slot` names the groups a slot carries IN FRONT of whichever set is chosen, short or long alike; since lane H (2026-09-05) the head is in that map too, with `forehead`.",
+  "groups": {
+   "camera": {
+    "_": "Mike, 2026-09-05: 'wrong zoom'. Named directly, and the earlier waves also drifted to three-quarter and to a tilt.",
+    "text": "three-quarter view, angled, turned, rotated, tilted, dutch angle, perspective, foreshortening, isometric, top-down view, low angle, side view, back view, turnaround sheet, multiple views"
+   },
+   "frame": {
+    "_": "Mike, 2026-09-05: 'wrong zoom' again, from the other side. Measured on the previous wave: the generated arm filled a third of its canvas height and floated at the top.",
+    "text": "cropped, cut off, touching the edge, out of frame, extreme close-up, tiny in frame, tiled, repeated, two objects, duplicate, collage, grid"
+   },
+   "joints": {
+    "_": "rig-points.ts JOIN: 'THERE IS NO JOINT'. Every ball, cup, collar, ring and bolt was deleted from the art on 2026-09-04, and the style anchor B1 still has brass bolts at both shoulders and both hips, so the reference itself argues for the defect.",
+    "text": "ball joint, ball and socket, socket, collar, ring, bolt, rivet, screw, hinge, clamp, bracket, exposed mechanism, gears, cogs, wires, springs, pistons"
+   },
+   "brass": {
+    "_": "FIGURE.brassBudget is 0.04 of a part. The wave before the re-bake measured 18.9 to 21.5 percent metal, which is why it read as clockwork rather than as a vinyl toy.",
+    "text": "gold trim, many gold bolts, ornate, filigree, engraved, steampunk, brass plating, chrome, polished metal, rust, patina"
+   },
+   "lens": {
+    "_": "The eye lens must never take the body colour. Measured on the shipped generated heads: the lens came back the same grey as the face, was classified as paintable body, and would repaint with the player's colour in all eight paints.",
+    "text": "eyes the same colour as the body, painted-on eyes, flat decal eyes, no bezel, glowing eyes, coloured light from the eyes, pupils"
+   },
+   "headcut": {
+    "_": "bots-bake-parts.mjs: 'every collage failure in the whole-bot study had a head cut at its widest row, which left a straight bar lying across the chest'.",
+    "text": "flat cut bottom, sliced, sectioned, cross-section, flat base, standing on a flat plinth"
+   },
+   "scene": {
+    "_": "The concept scenes the style set is cut from are shop and workshop dioramas, so the reference itself carries plinths, price tags and wood grain into every render that uses it.",
+    "text": "shelf, wooden shelf, wood grain, table, plinth, stand, base, display base, price tag, label, paper tag, background clutter, props, tools"
+   },
+   "shadow": {
+    "_": "A cast shadow once fooled the magenta key. The pipeline no longer keys by colour, so this group is belt and braces rather than the fix.",
+    "text": "drop shadow, cast shadow, contact shadow, reflection, mirror, glossy floor, vignette, depth of field, bokeh"
+   },
+   "junk": {
+    "_": "The usual.",
+    "text": "text, letters, numbers, words, watermark, signature, logo, hands, human, person, blurry, low detail, noisy, jpeg artifacts, oversaturated, neon"
+   },
+   "face": {
+    "_": "Measured 2026-09-05 on the limb and weapon renders: an arm came back as a whole robot with eyes and feet, and a mallet grew a pair of eyes. 'robot toy' in the subject line reads as 'draw the character', and the model puts the character's face on whatever part it is handed. Carried by every slot except the head (see `slot`), on the short set and the long set alike, because a face on a limb is fatal whatever the set's length. Nouns only: a negative prompt lists the things to forbid, it does not say 'no'.",
+    "text": "face, eyes, eye, lamp eyes, mouth, grille mouth, nose, facial features, expression, smiling"
+   },
+   "character": {
+    "_": "The other half of the same defect: the part drawn as the whole robot it belongs to. This is the shared part; the beyond-* groups below add the neighbouring parts each slot must not grow, because 'arms' cannot sit in the arm's own negative.",
+    "text": "whole robot, full robot, robot character, character, mascot, figure, toy figure, full body, standing robot"
+   },
+   "beyond-arm": {
+    "_": "The arm rendered on 2026-09-05 grew a head, a body and feet. 'hand' is NOT here: the arm ends in a mitt hand by the form clause.",
+    "text": "robot head, torso, chest, legs, feet, shoes, second arm, two arms, pair of arms"
+   },
+   "beyond-leg": {
+    "_": "The leg's own shoe is in the form clause, so 'feet' and 'shoe' are NOT here.",
+    "text": "robot head, torso, chest, arms, second leg, two legs, pair of legs"
+   },
+   "beyond-weapon": {
+    "_": "The mallet that grew eyes on 2026-09-05 was on its way to being held. 'head' alone is NOT here because the weapon's form clause names its working head; 'robot head' is.",
+    "text": "robot head, torso, arms, legs, feet, held in a hand, a robot holding it, wielded"
+   },
+   "beyond-torso": {
+    "_": "The torso is the one slot whose form clause already says no head, no arms, no legs and no neck; this repeats it on the negative side.",
+    "text": "robot head, neck, arms, legs, feet, attached limbs, limbs"
+   },
+   "coral": {
+    "_": "CORAL SPILL (rank-part.py): coral anywhere on the leg but the sole block. Measured 2026-09-05 on the second leg sweep (stage5-legs-sole-pilot, the v2 rulers with a coral sole material and the sole clause above): three legs held the sole, five failed CORAL SPILL every time, and the spill sat on the boot's side pods (design 2) and its bands (bulldozer), which the render painted coral to match the sole. Carried by the leg only, right after `face` (the two fatal leg defects first). Nouns only, the group's convention; the word sole is kept OUT of it on purpose, because the leg needs its coral sole and a negative pushes away from every noun it names.",
+    "text": "coral pods, coral side pods, coral bands, coral ankle band, coral rim, coral trim, coral panel lines, coral heel, coral toe cap, coral shaft, coral cap, red pods, red bands, orange trim, two-tone boot, coral drips"
+   },
+   "forehead": {
+    "_": "THE THIRD EYE (rank-part.py): a lens, a bezel, a grille or a vent in the central band above the eye line. Measured 2026-09-05 on the production heads: the four design-2 pools lost every candidate to it (20 NO FACE, a cyclops with no mirrored pair; 4 THIRD EYE, two eyes drawn beside the central lens). The head carries this group in front of either set. Nouns only, the group's own convention, and the word eyes is kept OUT of it on purpose: a negative pushes away from every noun it names, and the head needs its pair of eyes (the cyclops nouns keep eye in the singular). The crown silhouette is NOT banned: a cap or a notch on the crown is where a family may carry its character (the shipped t2-2, t3-2 and t4-2 heads do), and a silhouette has no dark edge for the rule to count.",
+    "text": "third eye, cyclops, one eye, single eye, one central eye, forehead lens, forehead window, glass window, porthole, forehead vent, forehead grille, brow slot, brow grille, brow bezel, forehead ring, headlamp, visor, goggles, brow lamp, crown lamp"
+   },
+   "coral-shape": {
+    "_": "CORAL SPILL on the v3 leg shapes (lane B, 2026-09-05). The generic `coral` group names the BOOT's traps: its pods, bands, rim, heel, toe cap and shaft. Each new shape has its own, and every one of them is a feature sitting directly above the coral block, which is where a spill lands: the wheel's hub and rim, the coil's turns, the shoe's tongue, collar, laces and heel, the peg and its step. WAVE TWO (lane L): the 96 renders were looked at and the spill had four faces, one per shape - blotches on the wheel's face, the shadow between the coil's turns, a second coloured band above the sneaker's sole, and the pad's colour run up the peg. Those four are nouns in the text now. NOTHING added here names the sole, the tyre or the pad: a negative pushes away from every noun it names, and the leg needs its block.",
+    "text": "coral hub, coral wheel, coral rim on the wheel, coral spokes, whole wheel coral, coral coil, coral spring, coral turns, coral rings, coral peg, coral shaft, coral step, coral tongue, coral collar, coral laces, coral eyelets, coral heel, coral stripes, two-tone wheel, two-tone shoe, coral drips, coral upper, coral mudguard, coral wheel face, coral between the turns, coral band"
+   }
+  },
+  "slot": {
+   "_": "Which extra groups each slot carries, ahead of the chosen set (the first tokens dominate in CLIP, and for these slots a face is the fatal defect). The head carries `forehead` (lane H, 2026-09-05: the third eye is the head's fatal defect, the way a face is a limb's). The leg carries `coral` second (lane B, the same day: coral on the pods and bands is the leg's second fatal defect, CORAL SPILL). 'a single part only' is the POSITIVE side and the subject line already carries it (on its own, one limb, no body); the negative carries the nouns.",
+   "head": [
+    "forehead"
+   ],
+   "arm": [
+    "face",
+    "character",
+    "beyond-arm"
+   ],
+   "leg": [
+    "face",
+    "coral",
+    "character",
+    "beyond-leg"
+   ],
+   "weapon": [
+    "face",
+    "character",
+    "beyond-weapon"
+   ],
+   "torso": [
+    "face",
+    "character",
+    "beyond-torso"
+   ],
+   "leg-wheels": [
+    "face",
+    "coral",
+    "coral-shape",
+    "character",
+    "beyond-leg"
+   ],
+   "leg-springs": [
+    "face",
+    "coral",
+    "coral-shape",
+    "character",
+    "beyond-leg"
+   ],
+   "leg-sneakers": [
+    "face",
+    "coral",
+    "coral-shape",
+    "character",
+    "beyond-leg"
+   ],
+   "leg-pegs": [
+    "face",
+    "coral",
+    "coral-shape",
+    "character",
+    "beyond-leg"
+   ],
+   "head-round-smile": [
+    "forehead"
+   ],
+   "head-round-o": [
+    "forehead"
+   ],
+   "head-box-smile": [
+    "forehead"
+   ],
+   "head-box-o": [
+    "forehead"
+   ],
+   "head-bear-smile": [
+    "forehead"
+   ],
+   "head-bear-o": [
+    "forehead"
+   ],
+   "head-tv-smile": [
+    "forehead"
+   ],
+   "head-tv-grille": [
+    "forehead"
+   ],
+   "head-bell-o": [
+    "forehead"
+   ],
+   "head-bell-smile": [
+    "forehead"
+   ],
+   "head-bucket-widegrille": [
+    "forehead"
+   ],
+   "head-bucket-smile": [
+    "forehead"
+   ],
+   "head-cone-zigzag": [
+    "forehead"
+   ],
+   "head-cone-o": [
+    "forehead"
+   ],
+   "head-cat-smile": [
+    "forehead"
+   ],
+   "head-cat-grille": [
+    "forehead"
+   ],
+   "torso-barrel": [
+    "face",
+    "character",
+    "beyond-torso"
+   ],
+   "torso-toolbox": [
+    "face",
+    "character",
+    "beyond-torso"
+   ],
+   "torso-teapot": [
+    "face",
+    "character",
+    "beyond-torso"
+   ],
+   "torso-engine": [
+    "face",
+    "character",
+    "beyond-torso"
+   ],
+   "arm-mitts": [
+    "face",
+    "character",
+    "beyond-arm"
+   ],
+   "arm-claws": [
+    "face",
+    "character",
+    "beyond-arm"
+   ],
+   "arm-pincers": [
+    "face",
+    "character",
+    "beyond-arm"
+   ],
+   "arm-tube": [
+    "face",
+    "character",
+    "beyond-arm"
+   ]
+  },
+  "short": [
+   "camera",
+   "frame",
+   "joints"
+  ],
+  "long": [
+   "camera",
+   "frame",
+   "joints",
+   "brass",
+   "lens",
+   "headcut",
+   "scene",
+   "shadow",
+   "junk"
+  ]
+ },
+ "axes": {
+  "_": "Ranges, with the reason each one is a range rather than a number. Cardinalities here are what scripts/sd/bots-sd-sweep.py multiplies.",
+  "checkpoint": {
+   "_": "Screened in stage 1 and then fixed. Licences are recorded in the sweep script and every one of them needs confirming on the model card before anything ships.",
+   "values": [
+    "sdxl-base-1.0",
+    "sdxl-toy-finetune",
+    "sd15-base",
+    "flux1-schnell"
+   ]
+  },
+  "controlStack": {
+   "_": "THE question of this whole lane. Depth carries the form and the accent relief; lineart and canny carry the boundaries. Depth alone tends to soften a seam; canny alone lets the model invent the interior; the pair is the expected winner and has to be shown to be. `values` is the whole axis and the head's; `slot` below narrows it for the other four slots and carries the measurement that did so.",
+   "values": [
+    "depth",
+    "lineart",
+    "depth+canny",
+    "depth+lineart",
+    "depth+lineart+canny"
+   ],
+   "slot": {
+    "_": "MEASURED 2026-09-05 on the v2 limb slice (stage1d-limbs-v2.jsonl: arm-t2-1, leg-t2-1, weapon-t2-1 and torso-t2-1 against the v2 control maps with the slot negatives, 64 renders, lineart against depth+lineart at control 0.7 and 0.85, adapter 0.3 and 0.45 on bot-2). Lineart ALONE at adapter 0.3 often came back as an OUTLINE DRAWING: a white fill with black lines and no shading, so no volume at all (the arm sheet, row two, columns one, two, five and six; the torso sheet, row two, several). Depth plus lineart never did. The judge has a blind spot for exactly this: after the as-shipped normalisation to neutral clay a flat white outline is uniform clay with a perfect silhouette overlap and nothing to repair, so rank-part ranked an outline drawing FIRST for the arm (composite 90.0) and high for the torso, where a person rejects it on sight. So lineart alone is off the arm, the leg, the weapon and the torso. Each carries the three stacks listed, depth alone, depth plus lineart and depth plus lineart plus canny, every one of them with the depth map that puts the volume in. depth+canny is not on the limb list either: it was not in the measured slice and the limb list is the three named; it stays on the head's axis. The head is absent from this map on purpose and keeps `values` whole: an outline was not measured on it and its slice files belong to another lane. bots-sd-sweep.py reads this map for the stage-1 product and for the limb slices (a job for a slot never carries a stack outside its list, and the planned counts exclude them); the runner does not read it, it checks that the maps a job's stack names are on disk.",
+    "arm": [
+     "depth",
+     "depth+lineart",
+     "depth+lineart+canny"
+    ],
+    "leg": [
+     "depth",
+     "depth+lineart",
+     "depth+lineart+canny"
+    ],
+    "weapon": [
+     "depth",
+     "depth+lineart",
+     "depth+lineart+canny"
+    ],
+    "torso": [
+     "depth",
+     "depth+lineart",
+     "depth+lineart+canny"
+    ]
+   }
+  },
+  "controlScale": {
+   "_": "The one knob that answers 'parts out of place'. Under about 0.6 the model wanders off the silhouette; over about 1.1 it traces the placeholder and gives back grey clay with no finish at all. The useful band is narrow and it moves with the checkpoint, which is why it is swept and not set.",
+   "values": [
+    0.55,
+    0.7,
+    0.85,
+    1.0,
+    1.15
+   ]
+  },
+  "controlEnd": {
+   "_": "Where in the denoise the control lets go. Ending early frees the last steps to put the vinyl finish on; ending late holds the geometry harder. This is the knob that trades 'exactly the right shape but it looks like the placeholder' against 'beautiful and the wrong shape'.",
+   "values": [
+    0.6,
+    0.8,
+    1.0
+   ]
+  },
+  "cfg": {
+   "values": [
+    3.5,
+    5.0,
+    6.5,
+    8.0
+   ]
+  },
+  "steps": {
+   "values": [
+    20,
+    30,
+    45
+   ]
+  },
+  "sampler": {
+   "values": [
+    "dpmpp_2m_karras",
+    "euler_a",
+    "dpmpp_sde_karras"
+   ]
+  },
+  "style": {
+   "_": "IP-Adapter scale (ip-adapter-plus_sdxl_vit-h), fed a reference from art-src/sd/style/clean. Zero is the control arm. Measured by hand on the box on 2026-09-05 with a concept crop as the style image: at 0.4 (control 0.6) the head came back as warm pastel clay with chrome bezels, a coral lit lens, the grille mouth and the ear cups, with the shape still bound; at 0.8 the reference photo's background (a crowd, a corkboard) leaked into the render. So the band is 0.3 to 0.6, the references have their backgrounds removed, and 0.7 is gone.",
+   "values": [
+    0.0,
+    0.3,
+    0.45,
+    0.6
+   ]
+  },
+  "styleRef": {
+   "_": "Which cleaned reference the adapter sees (art-src/sd/style/clean/<name>.png, made by bots-sd-stylerefs.py from the concept art; the manifest there says what each one is good for). A whole robot carries proportions and finish, a head carries the face. Names, not paths: the sweep resolves them and the runner refuses a name with no file.",
+   "values": [
+    "bot-2",
+    "head-2",
+    "head-shelf03"
+   ]
+  },
+  "plate": {
+   "values": [
+    "grey",
+    "white",
+    "black",
+    "magenta"
+   ]
+  },
+  "promptVariant": {
+   "_": "terse is subject+view+plate only; full is the whole skeleton; tier adds the richness clause. A long prompt fights a strong ControlNet for the same decisions, and which wins is measurable.",
+   "values": [
+    "terse",
+    "full",
+    "full+tier"
+   ]
+  },
+  "negative": {
+   "values": [
+    "short",
+    "long"
+   ]
+  },
+  "layout": {
+   "_": "single letterboxes one part into the square; sheet packs a kit or a slot row onto one canvas at one shared scale. See bots-sd-controls.py: an arm alone fills 40 percent of a square frame and the model has the rest to invent in, while a sheet enforces one camera and one light across parts by construction and scores several parts per render.",
+   "values": [
+    "single",
+    "sheet"
+   ]
+  }
+ },
+ "gateTargets": {
+  "_": "What the scorer asks of a candidate, drawn from scripts/bots-art-check.mts and rig-points.ts rather than invented, plus the three this lane adds. A candidate failing any HARD row is discarded before a person ever sees it.",
+  "hard": [
+   {
+    "name": "edgeClear",
+    "rule": "no drawn pixel touches a canvas edge",
+    "from": "bots-art-check.mts check 2"
+   },
+   {
+    "name": "pivotOnInk",
+    "rule": "every on-canvas rig point has alpha within 6px",
+    "from": "bots-art-check.mts check 5"
+   },
+   {
+    "name": "burial",
+    "rule": "(pivotY - inkTop) / inkWidth between 0.35 and 0.60 on a limb",
+    "from": "JOIN.burialMin/Max"
+   },
+   {
+    "name": "noJointHardware",
+    "rule": "zero metal pixels within 42px of a joint pivot",
+    "from": "bots-art-check.mts check 6"
+   },
+   {
+    "name": "brassBudget",
+    "rule": "metal at most 4 percent of the part; a torso must carry at least one metal pixel",
+    "from": "FIGURE.brassBudget"
+   },
+   {
+    "name": "paintShare",
+    "rule": "the derived paint mask covers 0.35 to 0.98 of the part",
+    "from": "bots-art-accents.json gate"
+   },
+   {
+    "name": "unmaskedBody",
+    "rule": "at most 120 opaque pixels are neither masked nor a known accent",
+    "from": "bots-art-accents.json gate"
+   },
+   {
+    "name": "rimPurity",
+    "rule": "under 0.5 percent of the pixels inside the eroded silhouette are within deltaE 12 of the plate colour",
+    "from": "lane C, replaces colour keying"
+   },
+   {
+    "name": "lensDistinct",
+    "rule": "the eye lens region is at least 25 percent brighter than the median body value and is classified as an accent",
+    "from": "lane C, the defect measured on the shipped heads"
+   },
+   {
+    "name": "lateralSymmetry",
+    "rule": "a limb's alpha, mirrored about its pivot column, overlaps itself by at least 0.94",
+    "from": "the rig mirrors limbs with scale.x = -1"
+   }
+  ],
+  "ranked": [
+   {
+    "name": "silhouetteIoU",
+    "rule": "intersection over union against the control alpha; the headline number for 'parts out of place'"
+   },
+   {
+    "name": "ratioError",
+    "rule": "mean absolute error of the slot's FIGURE ratios against target, in H units"
+   },
+   {
+    "name": "styleDistance",
+    "rule": "CLIP or DINO distance to the B1 anchor crops for that slot"
+   },
+   {
+    "name": "bandFlatness",
+    "rule": "energy in horizontal stripes, which is what a leaked control-map artifact looks like"
+   }
+  ]
+ }
+}

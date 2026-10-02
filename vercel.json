@@ -9,6 +9,12 @@
       "destination": "/:path*"
     }
   ],
+  "crons": [
+    {
+      "path": "/api/chef/campaign/ingest",
+      "schedule": "0 0,12 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

@@ -1,0 +1,40 @@
+{
+  "schema": "game-room.opening-schedule.v1",
+  "roomId": "model-kombat-community",
+  "openings": [
+    {
+      "id": "arena-portal",
+      "center": [
+        0,
+        2.35,
+        -5.75
+      ],
+      "clearWidth": 5.04,
+      "clearHeight": 4.65,
+      "depth": 4.25,
+      "assembly": "Separate 3D posts, header and threshold in front of a recessed arena image; no Boolean operation.",
+      "role": "Arena destination in the display set; not an avatar navigation portal.",
+      "verifiedInFinalBlenderMesh": false
+    }
+  ],
+  "functionalExceptions": [
+    {
+      "id": "front-cutaway",
+      "reason": "Non-navigable orthographic display diorama; camera looks through an intentionally omitted front wall. No entrance or traversable doorway is represented."
+    }
+  ],
+  "status": "accepted visual direction; final Blender opening verification pending",
+  "visualDirectionReview": {
+    "status": "accepted",
+    "userWording": "keep going please",
+    "userResponseDate": "2026-09-10",
+    "recordedAt": "2026-09-10T04:29:42.816072+00:00",
+    "recordedBy": "Codex, following parent task report of user reply after concrete previews",
+    "scope": "Accepted room layout and Form direction in the reviewed game frames. Continue cinematic reference capture from these rooms.",
+    "reviewedImages": [
+      "C:/Users/Mike/Documents/Codex/2026-09-07/i-b/outputs/launch-review/community-form-desktop.png",
+      "C:/Users/Mike/Documents/Codex/2026-09-07/i-b/outputs/launch-review/community-form-mobile.png"
+    ],
+    "limits": "Does not certify complete Blender multi-view, structural, export, or runtime audits. No final room asset export or deployment approval is claimed."
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "date": "2026-09-13T11:51:09.736Z",
+  "browser": "153.0.4234.32",
+  "source": "isolated actual browser WebGL renderer",
+  "physicalPhoneTested": false,
+  "structural": [],
+  "performance": [
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "requestedDpr": 1.5,
+      "emulatedPhone": false,
+      "gpu": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "frameCount": 600,
+      "medianFrameMs": 16.69999999999709,
+      "p95FrameMs": 16.799999999999272,
+      "meanFPS": 59.9029572093209,
+      "medianRenderSubmitMs": 4.399999976158142,
+      "p95RenderSubmitMs": 8.800000011920929,
+      "renderSubmitIncludesGPUWait": false,
+      "stats": {
+        "dents": 21,
+        "scorches": 0,
+        "vertices": 2187,
+        "gripError": 0,
+        "drawCalls": 235,
+        "triangles": 295558,
+        "drawMs": 5.599999964237213,
+        "crowd": true,
+        "displayFrame": 1104
+      },
+      "canvas": {
+        "width": 1597,
+        "height": 538
+      },
+      "devicePixelRatio": 1.5,
+      "errors": [],
+      "writes": []
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "requestedDpr": 3,
+      "emulatedPhone": true,
+      "gpu": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "frameCount": 600,
+      "medianFrameMs": 16.69999999999891,
+      "p95FrameMs": 16.899999999997817,
+      "meanFPS": 59.90176111177668,
+      "medianRenderSubmitMs": 4.300000011920929,
+      "p95RenderSubmitMs": 6.5,
+      "renderSubmitIncludesGPUWait": false,
+      "stats": {
+        "dents": 22,
+        "scorches": 0,
+        "vertices": 2206,
+        "gripError": 0,
+        "drawCalls": 234,
+        "triangles": 295790,
+        "drawMs": 3.700000047683716,
+        "crowd": true,
+        "displayFrame": 1116
+      },
+      "canvas": {
+        "width": 523,
+        "height": 796
+      },
+      "devicePixelRatio": 3,
+      "errors": [],
+      "writes": []
+    }
+  ]
+}

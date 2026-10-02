@@ -1,0 +1,12 @@
+// Packages the additive game migrations as one atomic SQL Editor paste.
+// Does not connect to or modify a database. Output stays on D:.
+const fs=require('node:fs'),path=require('node:path');
+const out='D:/Temp/modelkombat-launch-guide';fs.mkdirSync(out,{recursive:true});
+const names=['bots-workshop-v8.sql','bots-workshop-journey.sql','bots-workshop-competition.sql','bots-workshop-reporter-read.sql','bots-workshop-wallet-links.sql','bots-token-zones.sql','bots-token-zone-wallets.sql','bots-token-zone-payout-policy.sql'];
+const blocks=names.map(name=>{let sql=fs.readFileSync(path.join(__dirname,'../sql',name),'utf8');
+ if((sql.match(/^begin;\s*$/gmi)||[]).length!==1||(sql.match(/^commit;\s*$/gmi)||[]).length!==1)throw Error('Unexpected transaction structure: '+name);
+ return `-- SOURCE: ${name}\n${sql.replace(/^begin;\s*$/gmi,'').replace(/^commit;\s*$/gmi,'')}`;
+});
+fs.writeFileSync(out+'/01-workshop-setup.sql',`-- Model Kombat ONLY. Eight additive migrations, in dependency order.\n-- One transaction: an error rolls back this entire setup.\n-- Rewards can be funded at payout; no upfront balance requirement.\n-- Does not open the competition. Does not touch Reporter.\nbegin;\n${blocks.join('\n\n')}\ncommit;\n\n-- One visible result: all setup booleans must be true.\nselect to_regprocedure('public.mkz_read(text)') is not null as token_zones_ready,\n to_regprocedure('public.mkz_commit(uuid,uuid,bigint,text,jsonb,date,jsonb,text)') is not null as fight_settlement_ready,\n to_regprocedure('public.mkz_resolve_wallet(jsonb)') is not null as wallet_grouping_ready,\n to_regprocedure('public.mkz_finalize(jsonb,jsonb)') is not null as finalization_ready,\n state, starts_at, ends_at from public.mkz_campaigns where id='model-kombat-zones-1';\n`);
+fs.writeFileSync(out+'/02-check-setup.sql',`-- OPTIONAL READ-ONLY RECHECK. Setup already returns these checks.\nselect to_regprocedure('public.mkz_read(text)') is not null as token_zones_ready,\n to_regprocedure('public.mkz_commit(uuid,uuid,bigint,text,jsonb,date,jsonb,text)') is not null as fight_settlement_ready,\n to_regprocedure('public.mkz_resolve_wallet(jsonb)') is not null as wallet_grouping_ready,\n to_regprocedure('public.mkz_finalize(jsonb,jsonb)') is not null as finalization_ready,\n state,starts_at,ends_at from public.mkz_campaigns where id='model-kombat-zones-1';\n-- New setup: all true, draft and null dates. Never reset an active campaign.\n`);
+console.log(out+'/01-workshop-setup.sql\n'+out+'/02-check-setup.sql');

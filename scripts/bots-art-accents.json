@@ -1,0 +1,57 @@
+{
+  "_": "THE PAINTABLE LAW, one copy, read by scripts/bots-paint-masks.py (which derives every paint mask) and by scripts/bots-art-check.mts (which fails the build when a shipped mask does not satisfy it). Two files, one table, so the gate can never agree with the deriver by sharing its mistake.",
+  "_law": "ADR-0142 section 1: 'Brass is the only metal. Balls, cups, collars, rivets, bolts and trim are brass #d9a441. Rubber #3a3a3f and glass #bfe9ff are the other two accents; everything else is paintable clay.' So the mask is the whole part MINUS those three. It never asks what colour the body is, which is the bug it replaces: the old derivation kept a hue band around whatever colour the anchor happened to be, so every part painted well in mint and left blotches in the other seven paints.",
+  "_units": "hue in degrees 0..360, saturation and value 0..1, both from HSV on the 8 bit RGB. An accent test is hue AND sat AND val together.",
+  "accents": {
+    "rubber": {
+      "_": "#3a3a3f soles, seams, tyre rims and the sunk dark core of every socket. Dark enough that a tint would not read on it anyway.",
+      "valueMax": 0.22
+    },
+    "brass": {
+      "_": "#d9a441 balls, cups, collars, rivets, bolts and trim. Measured hue 39 deg. The band is wide because a brass surface runs from a dark shaded edge to a bright specular and its hue swings with it.",
+      "hueMin": 20,
+      "hueMax": 60,
+      "satMin": 0.18,
+      "valueMin": 0.22,
+      "_deadZone": "valueMin was 0.30 against rubber's 0.22 ceiling, leaving a band from 0.22 to 0.30 that was neither: a dark brass edge or a shaded grille landed in it, was called paintable body, and kept the colour it was drawn in whatever the player bought. Measured at 3,622 such pixels on one head. The two now meet at 0.22 with no gap."
+    },
+    "eye": {
+      "_": "THE FACE. The lit bulb and the ring round it, on every head. This is the accent Mike's question was about: 'can someone look at it and think aww that's so cute'. A toy reads as switched on when its eye keeps ONE warm colour whatever the body is painted, exactly as every scene in art-src/bots/concept/ draws it, and it reads as dead when the eye takes the body colour. Ours took the body colour: measured on the shipped heads, the hue between an eye centre and the cheek beside it was 0.4 degrees on coral, 0.6 on ink and 0.1 on butter.",
+      "_replaces": "A band called 'glass', #bfe9ff, hue 175 to 240, written for a CYAN lens. No pixel in this game was ever cyan. The art's lens is a warm white bulb at hue 40 with saturation 0.06 to 0.10, so the band could not match it, and the only thing it ever did catch was the odd cool specular on a crown: those pixels were classified accent, kept the pale blue the render gave them, and shipped as the unpainted hole Mike found on three crowns. One band, two defects, and the same fix ends both.",
+      "_pinned": "scripts/bots-import-parts.py PINS the whole eye -- ring, glass and catch light -- by scaling all three channels together, so hue and saturation are constants and only value carries the shading. Its three colours were chosen with the SAME hue ratio, (g-b)/(r-b) = 0.597, so every blend of them and every scaling of them lands on hue 35.8 and no part of the feather between glass and ring falls out of this band. Measured over the eight shipped heads the whole eye lives inside hue 32.0 to 40.0, saturation 0.120 to 0.495, value 0.271 to 1.000, anti-aliased rim included; the band below is that envelope with a little air round it.",
+      "_notMetal": "The ceiling of 0.52 is under FIGURE.metalSatMin (0.60), so no eye pixel can be counted against the bot's brass budget, and the wind-up key at saturation 0.70 stays clear on the other side.",
+      "hueMin": 30,
+      "hueMax": 42,
+      "satMin": 0.13,
+      "satMax": 0.52,
+      "valueMin": 0.24
+    },
+    "coral": {
+      "_": "#B46D52 shoes, and hands where a family has them. Coral is NOT one of the eight paint colours: it stays coral whatever the bot is painted, and the study found it is the single thing that makes a mixed bot read as one toy. It sits at hue 16.5, just BELOW the brass floor of 20, so without its own band a coral shoe is classified as paintable clay and repainted in all eight colours.",
+      "_band": "Narrow on purpose. scripts/bots-import-parts.py PINS every shoe to the authored coral by scaling all three channels together, which leaves hue and saturation exactly constant and lets the shading ride on value alone. So the shipped coral sits at hue 16.4 and saturation 0.547 on every family, and a tight band round that separates it from warm clay. Measured over the five generated families: a colour-only rule wide enough to catch unpinned coral also caught 28,014 clay pixels; this band catches 398.",
+      "hueMin": 14.0,
+      "hueMax": 19.0,
+      "satMin": 0.52,
+      "satMax": 0.57
+    }
+  },
+  "accentHoleClose": {
+    "_": "After the three tests, CLOSE the accent set once with a 3x3 (dilate, then erode). A blown specular on a brass ball has almost no saturation left, so the hue test cannot see it and a bare test leaves a scatter of paintable freckles stranded inside the brass; the same goes for the dark seam between two brass faces. Closing puts a hole of one or two pixels back into the accent it sits in. Measured over the 40 parts: 5,915 stranded pixels without it, 205 with it, and the paint share of the most brass-heavy part moves by one tenth of a point. Two closings reach zero but start swallowing three pixel body slivers, so one it is, and the gate carries the headroom instead.",
+    "value": 1
+  },
+  "gate": {
+    "_": "The two numbers the art gate enforces on every shipped part. Both face the PLAYER: number one is the pixel that keeps the anchor's colour whatever the player bought, number two is the family whose whole body was mistaken for an accent and so takes no paint at all.",
+    "unmaskedBodyMax": {
+      "_": "opaque pixels (alpha 200 or more) that are neither masked nor an accent: every one of them keeps the colour the art was drawn in, in all eight paints. Before this wave the worst part carried 5,489 and the 40 parts carried 86,100 between them. The worst now measures 64, on a weapon, which takes no colour at all; the worst body part measures 46.",
+      "value": 120
+    },
+    "paintShareMin": {
+      "_": "share of the part's visible pixels the mask covers. A family whose whole body was mistaken for an accent would take no paint at all and this is what catches it. The most brass-heavy part in the game (weapon t3-1) measures 0.45, and the most brass-heavy BODY part (head t4-1) 0.46.",
+      "value": 0.35
+    },
+    "paintShareMax": {
+      "_": "a mask that covers everything has swallowed the part accent, so this is asked only of the slots the contract puts an accent on: head (two lenses and a grille), torso (the one brass key), leg (the coral shoes) and weapon (its metal). NOT the arm, which carries no accent at all once the joint hardware is deleted: five of eight arms measure 99.0 to 99.7 percent paintable and that is correct. The most clay-heavy part that IS capped measures 0.95.",
+      "value": 0.98
+    }
+  }
+}
