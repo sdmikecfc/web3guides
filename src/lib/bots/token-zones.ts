@@ -65,7 +65,8 @@ export function tokenAwards(volumeUsd:string,assets:ZoneAsset[],rows:ZoneScore[]
  const volume=decimalUnits(volumeUsd),out:ZoneAward[]=[];
  for(const zone of REWARD_ZONES){if(volume<decimalUnits(String(zone.threshold)))continue;
   const asset=assets.find(a=>a.symbol===zone.symbol);if(!asset)continue;
-  const total=decimalUnits(zone.quantity,asset.decimals);if(BigInt(asset.fundedUnits)<total)throw Error('Reward funding incomplete');
+  // Entitlements depend on fixed allocations, not when the organizer funds payouts.
+  const total=decimalUnits(zone.quantity,asset.decimals);
   const categories=apportion(total,ZONE_CATEGORIES.map(id=>({id,weight:BigInt(CATEGORY_WEIGHTS[id])}))),combined=new Map<string,bigint>();
   for(const category of ZONE_CATEGORIES){const eligible=ranked(rows.filter(r=>r.qualified&&(category!=='volume'||decimalUnits(r.scores.volume??'0')>BigInt(0))),category),amount=categories.get(category)??BigInt(0);
    let awards:Map<string,bigint>;

@@ -5,6 +5,7 @@ import {sessionFromRequest} from './session';
 import {sameOrigin} from './workshop-journey';
 import {trackingCredential} from './tracking-credential';
 import {checkZoneBatch,readZoneBatch,readFeedRegistry} from './token-zone-feed';
+import {TOKEN_ACCOUNTING} from '@/lib/bots/token-zone-accounting';
 import {emptyZoneView,ZONE_CAMPAIGN,ZONE_RULES,ZONE_FRESH_MS,ZONE_CATEGORIES,REWARD_ZONES,DAY,decimalUnits,unitsDecimal,ranked,qualificationDays,tokenAwards,type ZoneScore,type ZoneView,type ZoneAsset} from '@/lib/bots/token-zones';
 export const tokenZonesEnabled=()=>process.env.BOTS_TOKEN_ZONES==='1';
 const date=(v:unknown)=>typeof v==='string'&&Number.isFinite(Date.parse(v));
@@ -74,6 +75,7 @@ export async function zoneFeedGet(req:Request){
  authorizeFeed(req);const db=botsDb();const {data,error}=await db.rpc('mkz_read',{p_wallet:null});if(error||!data?.campaign)throw new Refusal(503,'Apply the token-zone setup first.');
  const registry=await readFeedRegistry(db);
  return {schemaVersion:1,campaign:data.campaign,markets:registry.markets,participants:registry.entries,intervalHours:4,
+  accountingContract:data.campaign.financial_method===TOKEN_ACCOUNTING.id?TOKEN_ACCOUNTING:null,
   preflightPath:'/api/bots/tracking/zones/check',
   setupIssues:[...(!registry.markets.length?['No eligible trading markets have been verified.']:[]),...(!data.campaign.financial_method?['ROI/profit methodology is not configured.']:[]),...((data.assets??[]).length!==9?['The nine reward assets have not all been registered.']:[])],
   walletLookup:{path:'/api/bots/tracking/wallets',scopes:['pending','all','monitor'],pagination:'Follow nextCursor as the after query parameter until null.',post:{schemaVersion:1,requestId:'UUID; keep exact request and ID on retries',wallet:'Registered connected wallet, lowercase',mcpWallet:'Verified embedded execution wallet, lowercase; null if not_found',domaUserId:'Doma account ID as a decimal string; null if not_found',privyDid:'Verified did:privy identifier or null',status:'linked | not_found',checkedAt:'Current UTC timestamp in YYYY-MM-DDTHH:mm:ss.SSSZ format',expectedRevision:'The exact revision returned by GET'}},

@@ -3,6 +3,8 @@ const {PGlite}=require(process.env.BOTS_PGLITE_PATH||'D:/Temp/modelkombat-sql-ch
 async function main(){const db=new PGlite();try{
  await db.exec("create role anon;create role authenticated;create role service_role bypassrls;create table battle_bots_players(wallet text primary key,enlisted_at timestamptz,is_test boolean default false,is_operator boolean default false)");
  for(const f of ['bots-workshop-v8.sql','bots-workshop-journey.sql','bots-workshop-competition.sql','bots-workshop-wallet-links.sql','bots-token-zones.sql','bots-token-zone-wallets.sql'])await db.exec(fs.readFileSync(path.join(__dirname,'../sql',f),'utf8'));
+ // Exercise the upgrade independently too; it changes functions, not campaign data.
+ await db.exec(fs.readFileSync(path.join(__dirname,'../sql/bots-token-zone-payout-policy.sql'),'utf8'));
  const q=async(s,a=[])=>(await db.query(s,a)).rows,call=async(n,p)=>(await q(`select ${n}($1::jsonb) v`,[JSON.stringify(p)]))[0].v;
  let view=(await q('select mkz_read(null) v'))[0].v;assert.equal(view.campaign.state,'draft');assert.equal(view.campaign.starts_at,null);assert.equal(view.volume,'0');
  const wallet='0x'+'a'.repeat(40),mcp='0x'+'b'.repeat(40),domain='0x'+'c'.repeat(40),quote='0x'+'d'.repeat(40),cid='model-kombat-zones-1';
@@ -18,9 +20,9 @@ async function main(){const db=new PGlite();try{
  assert.equal((await q('select count(*)::int n from mkz_tracking_wallets where player_wallet=$1',[wallet]))[0].n,2);
  console.log('PASS sign-in-only wallet discovery: stable retry, linked execution wallet, no garage/coins/entry and no public registration access.');
  await assert.rejects(()=>q('select mkz_enter($1)',[wallet]),/NOT_OPEN/);
- await assert.rejects(()=>q("update mkz_campaigns set state='active',financial_method='fixture-reviewed',starts_at=now()-interval '4 days',ends_at=now()+interval '24 days'"),/FUNDING_AND_MARKETS/);
+ await assert.rejects(()=>q("update mkz_campaigns set state='active',financial_method='fixture-reviewed',starts_at=now()-interval '4 days',ends_at=now()+interval '24 days'"),/REWARDS_AND_MARKETS/);
  const fixtures=[['USDC',1000,5000],['DEPIN.ai',3304.58,25000],['ALERT.ai',968.60,50000],['BRAG.com',3440.80,100000],['INVESTORS.xyz',13966.48,175000],['RIDES.com',3543.22,250000],['BONER.com',2261.22,400000],['GOCHUJANG.com',619.06,550000],['SOFTWARE.ai',2437.97,750000]];
- for(let i=0;i<fixtures.length;i++){const [symbol,quantity,threshold]=fixtures[i];await q('insert into mkz_reward_assets(symbol,chain_id,address,decimals,funded_units,required_quantity,threshold,liquid_pair,verified_at) values($1,97477,$2,6,$3,$4,$5,$6,now())',[symbol,'0x'+String(i+1).padStart(40,'0'),Math.round(quantity*1e6),quantity,threshold,'0x'+'e'.repeat(40)]);}
+ for(let i=0;i<fixtures.length;i++){const [symbol,quantity,threshold]=fixtures[i];await q('insert into mkz_reward_assets(symbol,chain_id,address,decimals,funded_units,required_quantity,threshold,liquid_pair,verified_at) values($1,97477,$2,6,$3,$4,$5,$6,now())',[symbol,'0x'+String(i+1).padStart(40,'0'),0,quantity,threshold,'0x'+'e'.repeat(40)]);}
  await q('insert into mkz_markets values(97477,$1,$2,$3,$4,$5,now())',[domain,quote,'fixture.example','USDC','fixture registry']);
  await q("update mkz_campaigns set state='active',financial_method='fixture-reviewed',starts_at=date_trunc('day',now())-interval '4 days',ends_at=date_trunc('day',now())+interval '24 days'");
  await q('select mkz_enter($1)',[wallet]);await q('select mkz_enter($1)',[wallet]);assert.equal((await q('select count(*)::int n from mkz_entries'))[0].n,1);
@@ -80,11 +82,17 @@ async function main(){const db=new PGlite();try{
  await assert.rejects(()=>q('select mkz_finalize($1,$2)',[JSON.stringify({...view,volume:'9000'}),'[]']),/SOURCE_CHANGED/);
  await assert.rejects(()=>q('select mkz_finalize($1,$2)',[JSON.stringify(view),JSON.stringify([{id:'12345',symbol:'USDC',units:'1000000001'}])]),/AWARD_BUDGET/);
  assert.equal((await q('select count(*)::int n from mkz_awards'))[0].n,0);
- // Two remaining eligible days: no participant qualifies, so nothing is awarded.
- assert.equal((await q('select mkz_finalize($1,$2) v',[JSON.stringify(view),'[]']))[0].v.ok,true);
- assert.equal((await q('select mkz_finalize($1,$2) v',[JSON.stringify(view),'[]']))[0].v.replayed,true);
+ // Corrected third trading day qualifies the participant. Awards can be frozen
+ // before the organizer funds the eventual transfer, without changing the budget.
+ await q("update mkz_fills set status='verified' where economic_id='3'");
+ view=(await q('select mkz_read(null) v'))[0].v;
+ assert.equal((await q('select sum(funded_units)::text n from mkz_reward_assets'))[0].n,'0');
+ const earned=JSON.stringify([{id:'12345',symbol:'USDC',units:'1000000000'}]);
+ assert.equal((await q('select mkz_finalize($1,$2) v',[JSON.stringify(view),earned]))[0].v.ok,true);
+ assert.equal((await q('select mkz_finalize($1,$2) v',[JSON.stringify(view),earned]))[0].v.replayed,true);
+ assert.equal((await q('select sum(units)::text n from mkz_awards'))[0].n,'1000000000');
  await assert.rejects(()=>q("update mkz_fills set status='revoked'"),/FINAL_RESULTS_FROZEN/);
  await assert.rejects(()=>q("update mkz_campaigns set complete=false"),/FINAL_RESULTS_FROZEN/);
- console.log('PASS isolated PostgreSQL: migrations, draft/funding gates, corrections, 12 starts across garages, exclusions, settlement retries, rollback, immutable rewards and atomic finalization.');
+ console.log('PASS isolated PostgreSQL: migrations, draft/identity gates with zero prefunding, corrections, 12 starts across garages, exclusions, settlement retries, rollback, immutable rewards and atomic finalization.');
  }finally{await db.close()}}
 main().catch(e=>{console.error(e.stack||e.message);process.exitCode=1});
