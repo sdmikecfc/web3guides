@@ -10,7 +10,22 @@ export function createServiceClient() {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll: () => [], setAll: () => {} } }
+    {
+      cookies: { getAll: () => [], setAll: () => {} },
+      // NEVER LET NEXT CACHE A DATABASE READ (2026-08-17, the empty-feed hunt).
+      // Next 14 defaults fetch() to force-cache inside route handlers, and
+      // supabase-js queries ARE fetches. The live feed's four queries first
+      // ran while the tables were empty; Next cached those empty responses
+      // against their URLs and served them back for hours - 200 OK, zero
+      // rows, no error, immune to a `.error` check and unchanged by a
+      // redeploy. Freshness belongs to unstable_cache/revalidateTag, which
+      // this codebase already uses deliberately; the raw client must always
+      // hit the database.
+      global: {
+        fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+          fetch(input, { ...init, cache: "no-store" }),
+      },
+    }
   );
 }
 

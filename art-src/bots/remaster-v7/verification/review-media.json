@@ -1,0 +1,278 @@
+[
+  {
+    "source": "complete-fights/tank-speed-seed75.webm",
+    "output": "complete-fights/tank-speed-seed75.mp4",
+    "sourceSha256": "2b3f2ecfba6c2305125f2f775931ef781ed3c8a3814558a650f99d5120df3ffc",
+    "outputSha256": "f5dd9283a577cebed8061337615c408028a032409491bbd65dd0f0c849dc2132",
+    "probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 1280,
+          "height": 720,
+          "r_frame_rate": "30/1",
+          "duration": "47.666667",
+          "nb_frames": "1430"
+        },
+        {
+          "codec_name": "aac",
+          "codec_type": "audio",
+          "r_frame_rate": "0/0",
+          "duration": "47.422333",
+          "nb_frames": "2223"
+        }
+      ],
+      "format": {
+        "duration": "47.714333",
+        "size": "25503470"
+      }
+    },
+    "fullDecodePassed": true
+  },
+  {
+    "source": "complete-fights/tank-ranged-seed75.webm",
+    "output": "complete-fights/tank-ranged-seed75.mp4",
+    "sourceSha256": "a0d66288dd5ec85275b4c13313fef4445904ead1c43c77ec5a0ab63f6995705c",
+    "outputSha256": "82fac7054676a08069c58f1407fa00109ef042251305589174fd77af84bebdac",
+    "probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 1280,
+          "height": 720,
+          "r_frame_rate": "30/1",
+          "duration": "48.766667",
+          "nb_frames": "1463"
+        },
+        {
+          "codec_name": "aac",
+          "codec_type": "audio",
+          "r_frame_rate": "0/0",
+          "duration": "48.560833",
+          "nb_frames": "2277"
+        }
+      ],
+      "format": {
+        "duration": "48.832833",
+        "size": "29880090"
+      }
+    },
+    "fullDecodePassed": true
+  },
+  {
+    "source": "complete-fights/speed-ranged-seed75.webm",
+    "output": "complete-fights/speed-ranged-seed75.mp4",
+    "sourceSha256": "b1c8e8dd557e07d5deb512b0d830554af5c6d359473ff9eb76f8d7c5d2cb9e6c",
+    "outputSha256": "e606f19b639e32aa7f1656907d15f9fac824c52ff4e0af8eb635e764b5eaa3df",
+    "probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 1280,
+          "height": 720,
+          "r_frame_rate": "30/1",
+          "duration": "34.333333",
+          "nb_frames": "1030"
+        },
+        {
+          "codec_name": "aac",
+          "codec_type": "audio",
+          "r_frame_rate": "0/0",
+          "duration": "34.400833",
+          "nb_frames": "1613"
+        }
+      ],
+      "format": {
+        "duration": "34.410833",
+        "size": "19391518"
+      }
+    },
+    "fullDecodePassed": true
+  },
+  {
+    "source": "proof-shots/tank-weapon-demo.webm",
+    "output": "proof-shots/tank-weapon-demo.mp4",
+    "sourceSha256": "439c3391361f7d6e2fb82e4208eac83635468bdd0e07244dc2b95bf3f247b906",
+    "outputSha256": "baab8b330aa9e9d2786757d426971b620f43814dc281fbfac35bdc5082585cb3",
+    "probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 1280,
+          "height": 720,
+          "r_frame_rate": "30/1",
+          "duration": "5.966667",
+          "nb_frames": "179"
+        },
+        {
+          "codec_name": "aac",
+          "codec_type": "audio",
+          "r_frame_rate": "0/0",
+          "duration": "6.021000",
+          "nb_frames": "283"
+        }
+      ],
+      "format": {
+        "duration": "6.021000",
+        "size": "2748124"
+      }
+    },
+    "fullDecodePassed": true
+  },
+  {
+    "source": "proof-shots/speed-weapon-demo.webm",
+    "output": "proof-shots/speed-weapon-demo.mp4",
+    "sourceSha256": "645eb6fe2715051c597e62aab1e69e7b51877c7eb480c767704f06cf5c36973d",
+    "outputSha256": "039de6f82c3c75932133b3bb522fb14c166d94efd7da7f8ac7f18e350291c9b1",
+    "probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 1280,
+          "height": 720,
+          "r_frame_rate": "30/1",
+          "duration": "5.933333",
+          "nb_frames": "178"
+        },
+        {
+          "codec_name": "aac",
+          "codec_type": "audio",
+          "r_frame_rate": "0/0",
+          "duration": "6.016000",
+          "nb_frames": "283"
+        }
+      ],
+      "format": {
+        "duration": "6.016000",
+        "size": "3584223"
+      }
+    },
+    "fullDecodePassed": true
+  },
+  {
+    "source": "proof-shots/ranged-weapon-demo.webm",
+    "output": "proof-shots/ranged-weapon-demo.mp4",
+    "sourceSha256": "3b384d076463415c3ad3c1d4679c2812a32e64b3659cbdd082080ad375904654",
+    "outputSha256": "d05c1a209ba7cc3e612597efb482d403b9bf12bb499400b542217104c8bdaa15",
+    "probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 1280,
+          "height": 720,
+          "r_frame_rate": "30/1",
+          "duration": "5.966667",
+          "nb_frames": "179"
+        },
+        {
+          "codec_name": "aac",
+          "codec_type": "audio",
+          "r_frame_rate": "0/0",
+          "duration": "6.001000",
+          "nb_frames": "283"
+        }
+      ],
+      "format": {
+        "duration": "6.001000",
+        "size": "3222509"
+      }
+    },
+    "fullDecodePassed": true
+  },
+  {
+    "source": "turntables/tank-turntable-360.webm",
+    "output": "turntables/tank-turntable-360.mp4",
+    "sourceSha256": "13015261e3a8eb96f522e53399b66ea776f85e70c59f8f908635ca0725c70557",
+    "outputSha256": "9046f23ea583f7076b10b11bdcd2771ecc89a1ff9c1e95ae2eefc1cea36b73a7",
+    "probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 1280,
+          "height": 720,
+          "r_frame_rate": "30/1",
+          "duration": "22.933333",
+          "nb_frames": "688"
+        }
+      ],
+      "format": {
+        "duration": "22.933333",
+        "size": "4320001"
+      }
+    },
+    "fullDecodePassed": true
+  },
+  {
+    "source": "turntables/speed-turntable-360.webm",
+    "output": "turntables/speed-turntable-360.mp4",
+    "sourceSha256": "9151f524efdfff908d48d4e31043547cb126d491d36256fbc74d064d2f50799f",
+    "outputSha256": "f360ef8e5a733c9d698e535da8d1ec0d27ec63517160995a4a0f552033d5dc2c",
+    "probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 1280,
+          "height": 720,
+          "r_frame_rate": "30/1",
+          "duration": "22.933333",
+          "nb_frames": "688"
+        }
+      ],
+      "format": {
+        "duration": "22.933333",
+        "size": "4410103"
+      }
+    },
+    "fullDecodePassed": true
+  },
+  {
+    "source": "turntables/ranged-turntable-360.webm",
+    "output": "turntables/ranged-turntable-360.mp4",
+    "sourceSha256": "1fb7867d47b5a059104a13b45befb134c7ed6977a2c678fa25a11b7220589e06",
+    "outputSha256": "f1e75470abdea7b6b96c19944e649a19561269a49b661572bacc0f92b5b2a2b6",
+    "probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 1280,
+          "height": 720,
+          "r_frame_rate": "30/1",
+          "duration": "22.933333",
+          "nb_frames": "688"
+        }
+      ],
+      "format": {
+        "duration": "22.933333",
+        "size": "4683392"
+      }
+    },
+    "fullDecodePassed": true
+  }
+]

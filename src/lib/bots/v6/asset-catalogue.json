@@ -1,0 +1,809 @@
+{
+  "version": "mk6-art-1",
+  "cards": {
+    "mk6.t1.boiler_knight.head": {
+      "model": "boiler_knight.t1.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t1.head.png"
+    },
+    "mk6.t1.boiler_knight.torso": {
+      "model": "boiler_knight.t1.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t1.torso.png"
+    },
+    "mk6.t1.boiler_knight.arms": {
+      "model": "boiler_knight.t1.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t1.arms.png"
+    },
+    "mk6.t1.boiler_knight.legs": {
+      "model": "boiler_knight.t1.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t1.legs.png"
+    },
+    "mk6.t2.boiler_knight.head": {
+      "model": "boiler_knight.t2.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t2.head.png"
+    },
+    "mk6.t2.boiler_knight.torso": {
+      "model": "boiler_knight.t2.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t2.torso.png"
+    },
+    "mk6.t2.boiler_knight.arms": {
+      "model": "boiler_knight.t2.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t2.arms.png"
+    },
+    "mk6.t2.boiler_knight.legs": {
+      "model": "boiler_knight.t2.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t2.legs.png"
+    },
+    "mk6.t3.boiler_knight.head": {
+      "model": "boiler_knight.t3.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t3.head.png"
+    },
+    "mk6.t3.boiler_knight.torso": {
+      "model": "boiler_knight.t3.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t3.torso.png"
+    },
+    "mk6.t3.boiler_knight.arms": {
+      "model": "boiler_knight.t3.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t3.arms.png"
+    },
+    "mk6.t3.boiler_knight.legs": {
+      "model": "boiler_knight.t3.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t3.legs.png"
+    },
+    "mk6.t4.boiler_knight.head": {
+      "model": "boiler_knight.t4.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t4.head.png"
+    },
+    "mk6.t4.boiler_knight.torso": {
+      "model": "boiler_knight.t4.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t4.torso.png"
+    },
+    "mk6.t4.boiler_knight.arms": {
+      "model": "boiler_knight.t4.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t4.arms.png"
+    },
+    "mk6.t4.boiler_knight.legs": {
+      "model": "boiler_knight.t4.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/boiler_knight.t4.legs.png"
+    },
+    "mk6.t1.scrapyard_bruiser.head": {
+      "model": "scrapyard_bruiser.t1.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t1.head.png"
+    },
+    "mk6.t1.scrapyard_bruiser.torso": {
+      "model": "scrapyard_bruiser.t1.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t1.torso.png"
+    },
+    "mk6.t1.scrapyard_bruiser.arms": {
+      "model": "scrapyard_bruiser.t1.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t1.arms.png"
+    },
+    "mk6.t1.scrapyard_bruiser.legs": {
+      "model": "scrapyard_bruiser.t1.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t1.legs.png"
+    },
+    "mk6.t2.scrapyard_bruiser.head": {
+      "model": "scrapyard_bruiser.t2.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t2.head.png"
+    },
+    "mk6.t2.scrapyard_bruiser.torso": {
+      "model": "scrapyard_bruiser.t2.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t2.torso.png"
+    },
+    "mk6.t2.scrapyard_bruiser.arms": {
+      "model": "scrapyard_bruiser.t2.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t2.arms.png"
+    },
+    "mk6.t2.scrapyard_bruiser.legs": {
+      "model": "scrapyard_bruiser.t2.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t2.legs.png"
+    },
+    "mk6.t3.scrapyard_bruiser.head": {
+      "model": "scrapyard_bruiser.t3.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t3.head.png"
+    },
+    "mk6.t3.scrapyard_bruiser.torso": {
+      "model": "scrapyard_bruiser.t3.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t3.torso.png"
+    },
+    "mk6.t3.scrapyard_bruiser.arms": {
+      "model": "scrapyard_bruiser.t3.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t3.arms.png"
+    },
+    "mk6.t3.scrapyard_bruiser.legs": {
+      "model": "scrapyard_bruiser.t3.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t3.legs.png"
+    },
+    "mk6.t4.scrapyard_bruiser.head": {
+      "model": "scrapyard_bruiser.t4.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t4.head.png"
+    },
+    "mk6.t4.scrapyard_bruiser.torso": {
+      "model": "scrapyard_bruiser.t4.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t4.torso.png"
+    },
+    "mk6.t4.scrapyard_bruiser.arms": {
+      "model": "scrapyard_bruiser.t4.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t4.arms.png"
+    },
+    "mk6.t4.scrapyard_bruiser.legs": {
+      "model": "scrapyard_bruiser.t4.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/scrapyard_bruiser.t4.legs.png"
+    },
+    "mk6.t1.roller_daredevil.head": {
+      "model": "roller_daredevil.t1.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t1.head.png"
+    },
+    "mk6.t1.roller_daredevil.torso": {
+      "model": "roller_daredevil.t1.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t1.torso.png"
+    },
+    "mk6.t1.roller_daredevil.arms": {
+      "model": "roller_daredevil.t1.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t1.arms.png"
+    },
+    "mk6.t1.roller_daredevil.legs": {
+      "model": "roller_daredevil.t1.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t1.legs.png"
+    },
+    "mk6.t2.roller_daredevil.head": {
+      "model": "roller_daredevil.t2.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t2.head.png"
+    },
+    "mk6.t2.roller_daredevil.torso": {
+      "model": "roller_daredevil.t2.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t2.torso.png"
+    },
+    "mk6.t2.roller_daredevil.arms": {
+      "model": "roller_daredevil.t2.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t2.arms.png"
+    },
+    "mk6.t2.roller_daredevil.legs": {
+      "model": "roller_daredevil.t2.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t2.legs.png"
+    },
+    "mk6.t3.roller_daredevil.head": {
+      "model": "roller_daredevil.t3.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t3.head.png"
+    },
+    "mk6.t3.roller_daredevil.torso": {
+      "model": "roller_daredevil.t3.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t3.torso.png"
+    },
+    "mk6.t3.roller_daredevil.arms": {
+      "model": "roller_daredevil.t3.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t3.arms.png"
+    },
+    "mk6.t3.roller_daredevil.legs": {
+      "model": "roller_daredevil.t3.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t3.legs.png"
+    },
+    "mk6.t4.roller_daredevil.head": {
+      "model": "roller_daredevil.t4.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t4.head.png"
+    },
+    "mk6.t4.roller_daredevil.torso": {
+      "model": "roller_daredevil.t4.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t4.torso.png"
+    },
+    "mk6.t4.roller_daredevil.arms": {
+      "model": "roller_daredevil.t4.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t4.arms.png"
+    },
+    "mk6.t4.roller_daredevil.legs": {
+      "model": "roller_daredevil.t4.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/roller_daredevil.t4.legs.png"
+    },
+    "mk6.t1.spring_duelist.head": {
+      "model": "spring_duelist.t1.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t1.head.png"
+    },
+    "mk6.t1.spring_duelist.torso": {
+      "model": "spring_duelist.t1.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t1.torso.png"
+    },
+    "mk6.t1.spring_duelist.arms": {
+      "model": "spring_duelist.t1.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t1.arms.png"
+    },
+    "mk6.t1.spring_duelist.legs": {
+      "model": "spring_duelist.t1.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t1.legs.png"
+    },
+    "mk6.t2.spring_duelist.head": {
+      "model": "spring_duelist.t2.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t2.head.png"
+    },
+    "mk6.t2.spring_duelist.torso": {
+      "model": "spring_duelist.t2.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t2.torso.png"
+    },
+    "mk6.t2.spring_duelist.arms": {
+      "model": "spring_duelist.t2.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t2.arms.png"
+    },
+    "mk6.t2.spring_duelist.legs": {
+      "model": "spring_duelist.t2.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t2.legs.png"
+    },
+    "mk6.t3.spring_duelist.head": {
+      "model": "spring_duelist.t3.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t3.head.png"
+    },
+    "mk6.t3.spring_duelist.torso": {
+      "model": "spring_duelist.t3.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t3.torso.png"
+    },
+    "mk6.t3.spring_duelist.arms": {
+      "model": "spring_duelist.t3.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t3.arms.png"
+    },
+    "mk6.t3.spring_duelist.legs": {
+      "model": "spring_duelist.t3.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t3.legs.png"
+    },
+    "mk6.t4.spring_duelist.head": {
+      "model": "spring_duelist.t4.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t4.head.png"
+    },
+    "mk6.t4.spring_duelist.torso": {
+      "model": "spring_duelist.t4.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t4.torso.png"
+    },
+    "mk6.t4.spring_duelist.arms": {
+      "model": "spring_duelist.t4.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t4.arms.png"
+    },
+    "mk6.t4.spring_duelist.legs": {
+      "model": "spring_duelist.t4.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/spring_duelist.t4.legs.png"
+    },
+    "mk6.t1.owl_ranger.head": {
+      "model": "owl_ranger.t1.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t1.head.png"
+    },
+    "mk6.t1.owl_ranger.torso": {
+      "model": "owl_ranger.t1.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t1.torso.png"
+    },
+    "mk6.t1.owl_ranger.arms": {
+      "model": "owl_ranger.t1.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t1.arms.png"
+    },
+    "mk6.t1.owl_ranger.legs": {
+      "model": "owl_ranger.t1.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t1.legs.png"
+    },
+    "mk6.t2.owl_ranger.head": {
+      "model": "owl_ranger.t2.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t2.head.png"
+    },
+    "mk6.t2.owl_ranger.torso": {
+      "model": "owl_ranger.t2.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t2.torso.png"
+    },
+    "mk6.t2.owl_ranger.arms": {
+      "model": "owl_ranger.t2.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t2.arms.png"
+    },
+    "mk6.t2.owl_ranger.legs": {
+      "model": "owl_ranger.t2.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t2.legs.png"
+    },
+    "mk6.t3.owl_ranger.head": {
+      "model": "owl_ranger.t3.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t3.head.png"
+    },
+    "mk6.t3.owl_ranger.torso": {
+      "model": "owl_ranger.t3.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t3.torso.png"
+    },
+    "mk6.t3.owl_ranger.arms": {
+      "model": "owl_ranger.t3.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t3.arms.png"
+    },
+    "mk6.t3.owl_ranger.legs": {
+      "model": "owl_ranger.t3.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t3.legs.png"
+    },
+    "mk6.t4.owl_ranger.head": {
+      "model": "owl_ranger.t4.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t4.head.png"
+    },
+    "mk6.t4.owl_ranger.torso": {
+      "model": "owl_ranger.t4.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t4.torso.png"
+    },
+    "mk6.t4.owl_ranger.arms": {
+      "model": "owl_ranger.t4.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t4.arms.png"
+    },
+    "mk6.t4.owl_ranger.legs": {
+      "model": "owl_ranger.t4.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/owl_ranger.t4.legs.png"
+    },
+    "mk6.t1.clockwork_gunner.head": {
+      "model": "clockwork_gunner.t1.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t1.head.png"
+    },
+    "mk6.t1.clockwork_gunner.torso": {
+      "model": "clockwork_gunner.t1.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t1.torso.png"
+    },
+    "mk6.t1.clockwork_gunner.arms": {
+      "model": "clockwork_gunner.t1.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t1.arms.png"
+    },
+    "mk6.t1.clockwork_gunner.legs": {
+      "model": "clockwork_gunner.t1.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t1.legs.png"
+    },
+    "mk6.t2.clockwork_gunner.head": {
+      "model": "clockwork_gunner.t2.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t2.head.png"
+    },
+    "mk6.t2.clockwork_gunner.torso": {
+      "model": "clockwork_gunner.t2.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t2.torso.png"
+    },
+    "mk6.t2.clockwork_gunner.arms": {
+      "model": "clockwork_gunner.t2.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t2.arms.png"
+    },
+    "mk6.t2.clockwork_gunner.legs": {
+      "model": "clockwork_gunner.t2.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t2.legs.png"
+    },
+    "mk6.t3.clockwork_gunner.head": {
+      "model": "clockwork_gunner.t3.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t3.head.png"
+    },
+    "mk6.t3.clockwork_gunner.torso": {
+      "model": "clockwork_gunner.t3.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t3.torso.png"
+    },
+    "mk6.t3.clockwork_gunner.arms": {
+      "model": "clockwork_gunner.t3.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t3.arms.png"
+    },
+    "mk6.t3.clockwork_gunner.legs": {
+      "model": "clockwork_gunner.t3.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t3.legs.png"
+    },
+    "mk6.t4.clockwork_gunner.head": {
+      "model": "clockwork_gunner.t4.glb",
+      "node": "slot_head",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t4.head.png"
+    },
+    "mk6.t4.clockwork_gunner.torso": {
+      "model": "clockwork_gunner.t4.glb",
+      "node": "slot_torso",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t4.torso.png"
+    },
+    "mk6.t4.clockwork_gunner.arms": {
+      "model": "clockwork_gunner.t4.glb",
+      "node": "slot_armR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t4.arms.png"
+    },
+    "mk6.t4.clockwork_gunner.legs": {
+      "model": "clockwork_gunner.t4.glb",
+      "node": "slot_legR",
+      "ready": true,
+      "thumbnail": "thumbs/clockwork_gunner.t4.legs.png"
+    },
+    "mk6.t1.weapon.hammer": {
+      "model": "weapons/hammer.t1.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/hammer.t1.png"
+    },
+    "mk6.t1.weapon.sword": {
+      "model": "weapons/sword.t1.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/sword.t1.png"
+    },
+    "mk6.t1.weapon.ap_rifle": {
+      "model": "weapons/ap_rifle.t1.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/ap_rifle.t1.png"
+    },
+    "mk6.t2.weapon.hammer": {
+      "model": "weapons/hammer.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/hammer.t2.png"
+    },
+    "mk6.t2.weapon.sword": {
+      "model": "weapons/sword.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/sword.t2.png"
+    },
+    "mk6.t2.weapon.paired_blades": {
+      "model": "weapons/paired_blades.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/paired_blades.t2.png"
+    },
+    "mk6.t2.weapon.ap_rifle": {
+      "model": "weapons/ap_rifle.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/ap_rifle.t2.png"
+    },
+    "mk6.t2.weapon.shotgun_tight": {
+      "model": "weapons/shotgun_tight.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shotgun_tight.t2.png"
+    },
+    "mk6.t2.weapon.shotgun_wide": {
+      "model": "weapons/shotgun_wide.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shotgun_wide.t2.png"
+    },
+    "mk6.t2.weapon.shock_blade": {
+      "model": "weapons/shock_blade.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shock_blade.t2.png"
+    },
+    "mk6.t2.weapon.flame_sword": {
+      "model": "weapons/flame_sword.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/flame_sword.t2.png"
+    },
+    "mk6.t2.weapon.flamethrower": {
+      "model": "weapons/flamethrower.t2.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/flamethrower.t2.png"
+    },
+    "mk6.t3.weapon.hammer": {
+      "model": "weapons/hammer.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/hammer.t3.png"
+    },
+    "mk6.t3.weapon.sword": {
+      "model": "weapons/sword.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/sword.t3.png"
+    },
+    "mk6.t3.weapon.paired_blades": {
+      "model": "weapons/paired_blades.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/paired_blades.t3.png"
+    },
+    "mk6.t3.weapon.ap_rifle": {
+      "model": "weapons/ap_rifle.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/ap_rifle.t3.png"
+    },
+    "mk6.t3.weapon.shotgun_tight": {
+      "model": "weapons/shotgun_tight.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shotgun_tight.t3.png"
+    },
+    "mk6.t3.weapon.shotgun_wide": {
+      "model": "weapons/shotgun_wide.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shotgun_wide.t3.png"
+    },
+    "mk6.t3.weapon.shock_blade": {
+      "model": "weapons/shock_blade.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shock_blade.t3.png"
+    },
+    "mk6.t3.weapon.flame_sword": {
+      "model": "weapons/flame_sword.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/flame_sword.t3.png"
+    },
+    "mk6.t3.weapon.flamethrower": {
+      "model": "weapons/flamethrower.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/flamethrower.t3.png"
+    },
+    "mk6.t3.weapon.shoulder_cannon": {
+      "model": "weapons/shoulder_cannon.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shoulder_cannon.t3.png"
+    },
+    "mk6.t3.signature.piledriver": {
+      "model": "weapons/piledriver.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/piledriver.t3.png"
+    },
+    "mk6.t3.signature.powered_twins": {
+      "model": "weapons/powered_twins.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/powered_twins.t3.png"
+    },
+    "mk6.t3.signature.shoulder_battery": {
+      "model": "weapons/shoulder_battery.t3.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shoulder_battery.t3.png"
+    },
+    "mk6.t4.weapon.hammer": {
+      "model": "weapons/hammer.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/hammer.t4.png"
+    },
+    "mk6.t4.weapon.sword": {
+      "model": "weapons/sword.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/sword.t4.png"
+    },
+    "mk6.t4.weapon.paired_blades": {
+      "model": "weapons/paired_blades.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/paired_blades.t4.png"
+    },
+    "mk6.t4.weapon.ap_rifle": {
+      "model": "weapons/ap_rifle.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/ap_rifle.t4.png"
+    },
+    "mk6.t4.weapon.shotgun_tight": {
+      "model": "weapons/shotgun_tight.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shotgun_tight.t4.png"
+    },
+    "mk6.t4.weapon.shotgun_wide": {
+      "model": "weapons/shotgun_wide.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shotgun_wide.t4.png"
+    },
+    "mk6.t4.weapon.shock_blade": {
+      "model": "weapons/shock_blade.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shock_blade.t4.png"
+    },
+    "mk6.t4.weapon.flame_sword": {
+      "model": "weapons/flame_sword.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/flame_sword.t4.png"
+    },
+    "mk6.t4.weapon.flamethrower": {
+      "model": "weapons/flamethrower.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/flamethrower.t4.png"
+    },
+    "mk6.t4.weapon.shoulder_cannon": {
+      "model": "weapons/shoulder_cannon.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shoulder_cannon.t4.png"
+    },
+    "mk6.t4.signature.piledriver": {
+      "model": "weapons/piledriver.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/piledriver.t4.png"
+    },
+    "mk6.t4.signature.powered_twins": {
+      "model": "weapons/powered_twins.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/powered_twins.t4.png"
+    },
+    "mk6.t4.signature.shoulder_battery": {
+      "model": "weapons/shoulder_battery.t4.glb",
+      "node": "weapon_kit",
+      "ready": true,
+      "thumbnail": "thumbs/shoulder_battery.t4.png"
+    }
+  }
+}

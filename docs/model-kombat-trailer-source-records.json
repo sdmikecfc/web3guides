@@ -1,0 +1,232 @@
+{
+  "recordedAt": "2026-09-10",
+  "startingCredits": 459.85,
+  "endingCredits": 189.85,
+  "spentCredits": 270,
+  "maximumCredits": 450,
+  "remainingBudgetCredits": 180,
+  "requests": [
+    {
+      "index": 1,
+      "job_id": "89d3f5b5-7d0b-4882-84c4-adc15a8f7189"
+    },
+    {
+      "index": 2,
+      "job_id": "983d5267-2409-401b-aa3b-5b7042dc64e1"
+    },
+    {
+      "index": 3,
+      "job_id": "ed71f477-30fd-4dda-9171-4c5e599ff894"
+    },
+    {
+      "index": 4,
+      "job_id": "87236646-1f57-4b80-9687-9f66576a35a0"
+    },
+    {
+      "index": 5,
+      "job_id": "9061cd2e-681f-49c0-9134-12ff617579dc"
+    },
+    {
+      "index": 6,
+      "job_id": "00e6b35a-7d2d-4231-a48c-1607364b2c8b"
+    }
+  ],
+  "selection": {
+    "budget": 450,
+    "committed": 270,
+    "accepted": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "rejected": [
+      {
+        "index": 5,
+        "reason": "Impact reads as a push; no clear persistent dent."
+      },
+      {
+        "index": 6,
+        "reason": "Changed gripping arm/weapon pose; incomplete wind-up and unconvincing contact."
+      }
+    ],
+    "fallback": "Real gameplay impact insert, actual deformation and saved parts; never substitute generated damage for gameplay."
+  },
+  "music": {
+    "title": "Titan",
+    "artist": "Scott Buckley",
+    "url": "https://www.scottbuckley.com.au/library/titan/",
+    "license": "CC BY 4.0",
+    "attribution": "'Titan' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au"
+  },
+  "acceptedSources": {
+    "shot01": "https://d8j0ntlcm91z4.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/hf_20260910_051104_89d3f5b5-7d0b-4882-84c4-adc15a8f7189.mp4",
+    "shot02": "https://d8j0ntlcm91z4.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/hf_20260910_051103_983d5267-2409-401b-aa3b-5b7042dc64e1.mp4",
+    "shot03": "https://d8j0ntlcm91z4.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/hf_20260910_051103_ed71f477-30fd-4dda-9171-4c5e599ff894.mp4",
+    "shot04": "https://d8j0ntlcm91z4.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/hf_20260910_042559_87236646-1f57-4b80-9687-9f66576a35a0.mp4",
+    "gameplay": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/7fed46b9-f1eb-484d-b9af-86a87961468e.mp4",
+    "portrait": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/d11f5274-8336-4918-a0e1-4f0d461749f5.mp4",
+    "titleWide": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/4754e4c1-8faa-4c90-a7f9-24a970c2c0e4.mp4",
+    "titleVertical": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/fa87ff67-bdc4-47dd-8316-60e8018fab80.mp4",
+    "hero": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/f9025ed1-af71-48a2-a3d5-eda295e78947.jpg",
+    "music": "https://www.scottbuckley.com.au/library/wp-content/uploads/2018/06/sb_titan.mp3"
+  },
+  "editTiming": {
+    "wide": [
+      [
+        0,
+        5,
+        "key"
+      ],
+      [
+        5,
+        10,
+        "assembly"
+      ],
+      [
+        10,
+        15,
+        "street"
+      ],
+      [
+        15,
+        20,
+        "faceoff"
+      ],
+      [
+        20,
+        25,
+        "actual impact223,0.38x and held orbit"
+      ],
+      [
+        25,
+        31,
+        "actual gameplay335–559"
+      ],
+      [
+        31,
+        35,
+        "title"
+      ]
+    ],
+    "vertical": [
+      [
+        0,
+        2,
+        "reframed wake"
+      ],
+      [
+        2,
+        4,
+        "reframed assembly"
+      ],
+      [
+        4,
+        6,
+        "tracked rival"
+      ],
+      [
+        6,
+        9,
+        "native portrait impact223"
+      ],
+      [
+        9,
+        12,
+        "native portrait gameplay447–559"
+      ],
+      [
+        12,
+        15,
+        "portrait title"
+      ]
+    ]
+  },
+  "status": "exported",
+  "outputs": [
+    {
+      "name": "master35s",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/40b9c687-2817-4c4c-a083-a6f61e9bc767.mp4"
+    },
+    {
+      "name": "vertical15s",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/70159a09-22bf-4243-8c8a-7ed9bd8fc768.mp4"
+    },
+    {
+      "name": "masterReview",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/caa40beb-e53b-4a2a-a508-9c2786757ea1.jpg"
+    },
+    {
+      "name": "verticalReview",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/e129937d-a34f-4388-810f-fa2903e2a3ef.jpg"
+    },
+    {
+      "name": "editableProject",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/7ea77bc5-1742-438c-94e8-c55675bc19ef.zip"
+    }
+  ],
+  "website": {
+    "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/7ae7bbde-6cf2-43bc-866f-94814864c9fa.mp4",
+    "bytes": 9608593,
+    "loudnessLUFS": -15.2,
+    "truePeakDbFS": -1,
+    "unintendedBlackIntervals": 0
+  },
+  "limits": [
+    "Fine geometry dents are subtle at fight distance; arm damage and reactions are clearer.",
+    "Impact insert uses slowed presentation and held orbit; no simulation/geometry overrides.",
+    "Physical mobile performance and live signed-wallet round trips remain untested.",
+    "Rooms retain fixed-camera projected backgrounds; complete Blender technical exports remain open."
+  ],
+  "actualCaptureSources": {
+    "impactWide": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/1e353adc-f0ac-4c0c-a281-41c97a907a65.mp4",
+      "seed": 75,
+      "fromFrame": 190,
+      "toFrame": 253,
+      "seconds": 5,
+      "contactAtSeconds": 1.5333333333333334,
+      "presentationSpeed": 0.38,
+      "heldOrbitSeconds": 2
+    },
+    "impactPortrait": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/6de5ebfb-b4b7-485e-b836-69e21d34db3b.mp4",
+      "seed": 75,
+      "fromFrame": 190,
+      "toFrame": 253,
+      "seconds": 3,
+      "contactAtSeconds": 1.5333333333333334,
+      "presentationSpeed": 0.38
+    },
+    "fightWide": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/7fed46b9-f1eb-484d-b9af-86a87961468e.mp4",
+      "seed": 75,
+      "fromFrame": 300,
+      "toFrame": 617,
+      "seconds": 6
+    },
+    "fightPortrait": {
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/d11f5274-8336-4918-a0e1-4f0d461749f5.mp4",
+      "seed": 75,
+      "fromFrame": 420,
+      "toFrame": 584,
+      "seconds": 3
+    }
+  },
+  "playerVerification": {
+    "cycles": 5,
+    "pageErrors": 0,
+    "sizes": [
+      "1280x720",
+      "390x844",
+      "844x390"
+    ],
+    "beforeClickTrailerRequests": 0,
+    "videoCleanup": true,
+    "playbackAdvanced": true
+  },
+  "sha256": {
+    "master": "5E1ED514BE19A20E7E07AE56F226A51EEE64952570E5855C58F1434B67130C6C",
+    "vertical": "06A5407574BF101587BD22A8B786BC89036329D76CAB08870903F550C6670FFE"
+  }
+}

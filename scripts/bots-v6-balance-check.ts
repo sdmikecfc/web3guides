@@ -1,0 +1,20 @@
+import assert from "node:assert/strict";
+import { FAMILIES_V6,MAX_FRAMES_V6,cloneV6,presetV6,runFightV6,snapshotBuildV6,type StyleV6,type TierV6 } from "../src/lib/bots/v6";
+const styles:StyleV6[]=["tank","speed","ranged"],tiers:TierV6[]=[1,2,3,4],count=Number(process.env.BOTS_V6_BALANCE_SEEDS??16);
+assert.ok(Number.isInteger(count)&&count>=2&&count<=64);
+const failures:string[]=[],rows:unknown[]=[],overall=Object.fromEntries(styles.map(s=>[s,{wins:0,games:0}])) as Record<StyleV6,{wins:number;games:number}>;
+let games=0,firstWins=0,timeouts=0;
+for(const split of ["train","heldout"] as const)for(const tier of tiers){const pairs:unknown[]=[],tierScores=styles.map(()=>({wins:0,games:0}));
+  for(let a=0;a<3;a++)for(let b=a+1;b<3;b++){let wins=0,sideWins=0,ties=0;for(let i=0;i<count;i++){const seed=(split==="train"?7919*(i+1):0x69af3000+104729*(i+1))>>>0,build=(style:StyleV6,n:number)=>presetV6(style,tier,{family:FAMILIES_V6.filter(f=>f.style===style)[n%2].id});
+      for(const swap of [0,1]){const left=build(styles[swap?b:a],swap?Math.floor(i/2)%2:i%2),right=build(styles[swap?a:b],swap?i%2:Math.floor(i/2)%2),result=runFightV6(seed,left,right,{autoSpecial:[true,true]});wins+=Number(result.winner===swap);sideWins+=Number(result.winner===0);ties+=Number(result.frames===MAX_FRAMES_V6);const winner=result.winner===0?left.style:right.style;tierScores[styles.indexOf(winner)].wins++;tierScores[a].games++;tierScores[b].games++;overall[winner].wins++;overall[left.style].games++;overall[right.style].games++;games++;firstWins+=Number(result.winner===0);timeouts+=Number(result.frames===MAX_FRAMES_V6);}
+    }
+    const rate=wins/(count*2),pair=`${styles[a]}/${styles[b]}`;pairs.push({pair,firstStyleWinRate:rate,firstSideWinRate:sideWins/(count*2),timeouts:ties,matches:count*2});if(rate<.3||rate>.7)failures.push(`${split} T${tier} ${pair}: ${(rate*100).toFixed(1)}%, expected 30–70%`);
+  }
+  for(let i=0;i<3;i++){const rate=tierScores[i].wins/tierScores[i].games;if(rate<.4||rate>.6)failures.push(`${split} T${tier} ${styles[i]} overall ${(rate*100).toFixed(1)}%, expected 40�60%`);}const row={split,tier,pairs,tierScores};rows.push(row);console.log(JSON.stringify(row));
+}
+// T3/T4 ending kits and genuinely mixed seven-part builds receive their own equal-GP checks.
+for(const tier of [3,4] as const)for(const kind of ["signature","mixed"] as const){for(let a=0;a<3;a++)for(let b=a+1;b<3;b++){let wins=0;for(let i=0;i<count;i++)for(const swap of [0,1]){const build=(style:StyleV6)=>{const base=presetV6(style,tier,{signature:kind==="signature"});if(kind==="signature")return base;const raw=cloneV6(base.appearanceBuild),donor=presetV6(styles[(styles.indexOf(style)+1+i%2)%3],tier).appearanceBuild;raw.head=donor.head;raw.limbs!.armL=donor.limbs!.armL;raw.limbs!.legR=donor.limbs!.legR;return snapshotBuildV6(raw);};const left=build(styles[swap?b:a]),right=build(styles[swap?a:b]);assert.equal(left.gp,right.gp);const result=runFightV6((0x71ac0000+8191*(i+1))>>>0,left,right,{autoSpecial:[true,true]});wins+=Number(result.winner===swap);games++;timeouts+=Number(result.frames===MAX_FRAMES_V6);}const rate=wins/(count*2),label=`T${tier} ${kind} ${styles[a]}/${styles[b]}`;console.log(JSON.stringify({variant:label,winRate:rate,matches:count*2}));if(rate<.3||rate>.7)failures.push(`${label}: ${(rate*100).toFixed(1)}%, expected 30–70%`);}}
+const outcomes=styles.map(style=>({style,...overall[style],rate:overall[style].wins/overall[style].games}));for(const row of outcomes)if(row.rate<.4||row.rate>.6)failures.push(`${row.style} overall ${(row.rate*100).toFixed(1)}%, expected 40–60%`);
+const sideBias=Math.abs(firstWins/(count*2*3*4*2)-.5);if(sideBias>=.05)failures.push(`first-side bias ${(sideBias*100).toFixed(1)}pp, expected <5pp`);if(timeouts)failures.push(`${timeouts} fights reached the 90-second time limit`);
+console.log(JSON.stringify({ok:failures.length===0&&count>=16,scope:count>=16?"train-and-heldout":"reduced-diagnostic",seedsPerSplit:count,games,timeouts,sideBias,outcomes,failures}));
+assert.ok(count>=16,"A reduced diagnostic cannot certify the full balance gate.");assert.equal(failures.length,0,failures.join("\n"));

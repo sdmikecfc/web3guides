@@ -1,0 +1,19 @@
+{
+  "schema": "model-kombat.hero-art-review.v1",
+  "assetVersion": "mk7-art-pilot-1",
+  "rigVersion": "mk7-rig-pilot-1",
+  "authorSource": "scripts/bots-v7-author-heroes.py",
+  "authorSourceSha256": "35d75a945ebe3410b3c26aba43874318649f982e0911b361b3d92dc3cf2b9071",
+  "manifestSha256": "47fe5275c9c1c662acd43b28872d08afc6c1ed179140c06b616304bd0aaca8df",
+  "creation": "Original local Blender geometry and analytically baked original PNG texture maps",
+  "providers": [],
+  "thirdPartyMeshes": [],
+  "paidCredits": 0,
+  "edits": "New remaster-v7 namespace only",
+  "humanVisualApproval": "pending",
+  "staticValidation": "All3 pass; actual exported rest nodes, parents, clay IDs, embedded textures and tangents independently checked",
+  "policy": "Each hero passes game-dev11checks; intentional solid base-colour factors, normal/roughness maps; optional clearcoat inspector limitation noted",
+  "renderEvidence": "Review PNGs rendered after importing final exported GLBs",
+  "runtime": "Integration and motion/rendering verification owned by parent; not certified here",
+  "excluded": "No old robot files, inventory, engine, balance, Reporter, or shared runtime changed"
+}

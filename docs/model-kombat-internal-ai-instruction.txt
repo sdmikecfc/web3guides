@@ -1,0 +1,80 @@
+Update the existing "MCP Trade Receipt Sync (Bot Battle)" collector in place. Keep job f2w7gt5t55 on its four-hour schedule. After the preflight below succeeds, pause duplicate ssi32kxm4n. Preserve the previous script for rollback. Do not create another job or credential.
+
+IMPORTANT CORRECTION TO THE PREVIOUS HANDOFF
+Use the SAME approved Supabase destination and secure connection configuration already used by this collector with BB_SUPABASE_URL and bb_campaign_store_receipt. The original setup grants the doma_ai_mk database login access. You do not need MK_WALLET_RESOLVER_TOKEN, a website API key, a new outbound host, or a Supabase service-role key. Do not call modelkombat.xyz for this task. Do not print connection strings or secrets.
+
+The operator must first run the updated 01-workshop-setup.sql in that same Supabase project. This admin-applied migration gives the EXISTING doma_ai_mk login five narrowly scoped Model Kombat functions. It does not create a login, rotate its password, change Reporter, or grant direct access to game tables. If your existing transport actually uses another database role or RPC identity, stop and report its non-secret role name and transport so the operator can approve the correct grant; do not switch credentials or bypass access controls. If your environment requires approval for the expanded data scope, report that requirement rather than circumventing it.
+
+PREFLIGHT — USE THE EXISTING CONNECTION
+For a direct SQL connection, run SELECT current_user, current_database(); then SELECT public.mkz_collector_manifest(); and SELECT public.mkz_collector_wallets('pending', NULL);. If the existing collector uses Supabase RPC rather than SQL, call these same functions through its existing approved RPC client and credentials. Report the transport and role when known. Do not invent missing authentication. A missing function, permission denial or wrong database is a setup failure, not "no trades".
+
+The manifest returns campaign, verified markets, enrolled participants, rewardAssets, limits and setupIssues. Resolve nonempty setupIssues before reporting tracking ready. The campaign ID is model-kombat-zones-1; rules are mk-token-zones-1. The announced launch is Thursday, October 8, 2026 at 14:00 UTC, for 28 days. That announcement DOES NOT authorize this collector to open the campaign. Read the database's state and dates on every run; never start scoring based on the calendar alone.
+
+After preflight succeeds, replace the kept job's script, pause the duplicate, run once now, then retain the existing four-hour schedule. Source access to Doma/Metabase remains read-only. New writes go exclusively through the functions below into game-only tables. Do not continue the old MCP-receipt sender inside this replacement job, and do not alter or erase its previous receipts. Do not modify, restart or redeploy Doma Reporter.
+
+1. FIND ASSOCIATED WALLETS
+Call mkz_collector_wallets with p_scope='pending', p_after=null. It returns wallets and nextCursor. Follow every page by passing nextCursor as p_after until null. Each row provides wallet, since, status, mcpWallet, expectedRevision and checkedAt.
+
+Resolve registered wallets through doma_wallet.user_id / doma_user.id and, when available, doma_user.privy_id. Verify the connected external wallet and Privy embedded execution wallet belong to that same Doma account; they need not have the same address. Do not infer ownership from transactions, allowances, names or matching balances.
+
+Call mkz_collector_resolve with p_payload containing exactly these fields:
+schemaVersion: 1; requestId: a new UUID; wallet: the registered lowercase address; mcpWallet: the verified embedded lowercase address; domaUserId: the account's numeric ID as a string; privyDid: verified did:privy:... or null; status: "linked"; checkedAt: UTC ISO timestamp; expectedRevision: the number returned by the lookup.
+For a completed lookup finding no embedded wallet, status="not_found" and mcpWallet, domaUserId and privyDid must all be null. A failed source query is unavailable, never not_found. Retain the UUID and exact payload for retries. On MK_LINK_CONFLICT refresh; on MK_LINK_REVIEW_REQUIRED report the identity change instead of overwriting it.
+
+Then call mkz_collector_wallets with p_scope='monitor', following all pages. Its tradeWallets include all execution addresses linked to the account. Group them by Doma account, not wallet address. Periodically recheck existing links with p_scope='all'; identity changes require operator review. Do not create game registrations or enrollments on behalf of people who have not signed up.
+
+2. RECONCILE COMPLETED ECONOMIC FILLS
+Use Doma mainnet EVM chain ID 97477. The source database's internal chain ID 1 is not Ethereum mainnet.
+Include verified domain-token trades against recognized USDC or ETH representations from the returned market registry, across all eligible domain tokens. Exclude ETH/USDC-only trades, transfers, approvals, bridges, failures and unfilled/cancelled orders. Count each economic fill once, not both legs or each routing hop.
+
+Fix the old settlement lookup: an agent_audit_log transaction may create an order or approval; it need not be the eventual swap transaction. Follow defi_order -> blockchain_transaction.defi_order_id -> completed settlement transaction -> token_swap. Attribute the fill to the actual order owner, not the router/operator transaction sender. Verify Strategy attribution through defi_strategy_order.order_id. Audit 43 / order 2645 is the known regression case: privately trace it through to its actual settlement, even if it is ineligible for this campaign. Do not turn a historical diagnostic into a scored fill.
+
+source="strategy" requires Strategy evidence. source="agent_wallet" requires the verified associated embedded execution wallet. Label the latter linked-agent-wallet activity, not proof of an individual MCP command. CLI trades from that wallet are permitted under the current policy. An ordinary manual external-wallet trade is not a Strategy fill.
+
+Use one stable economicId across observations of the same economic fill, including overlapping Strategy and agent evidence. Preserve the actual executedAt, settlement transactionHash, wallet, contracts, source references and valuation evidence. volumeUsd counts the economic fill once, with at most six decimal places. Value ETH quotes at execution time, not today's price. Missing valuation is unresolved, not zero. Corrections retain economicId and increase revision. A revoked fill retains its previous positive notional and sets status="revoked". Reconcile delayed settlements and older corrections; an eight-hour lookback alone cannot prove completeness.
+
+3. EXACT BATCH CONTRACT
+Both mkz_collector_check and mkz_collector_ingest take one JSON argument named p_payload. Use bound SQL parameters, or the existing RPC client's structured arguments, rather than interpolating JSON into SQL. No direct table writes.
+
+The JSON object has:
+schemaVersion: 1
+rules: "mk-token-zones-1"
+campaignId: "model-kombat-zones-1"
+requestId: UUID, stable across retries of identical content
+coverageFrom: audited start in UTC ISO format
+confirmedThrough: audited cutoff in UTC ISO format, no future dates
+complete: boolean
+financialComplete: boolean
+methodology: configured campaign.financial_method when financialComplete is true
+fills: array of fill objects
+financials: array of financial objects, empty when financialComplete is false
+
+Each fill contains:
+chainId: 97477; economicId: nonempty string up to 160 characters; revision: positive integer; wallet: lowercase execution address; transactionHash: lowercase 0x plus 64 hex digits; domainToken and quoteToken: lowercase contract addresses; executedAt: UTC ISO timestamp no later than confirmedThrough; volumeUsd: positive decimal STRING with at most six fractional digits; source: "strategy" or "agent_wallet"; status: "verified" or "revoked"; evidence: nonempty source/valuation references up to 1,000 characters.
+
+Each financial object contains:
+participant: Doma user ID as a numeric STRING; roi: decimal STRING or null; profit: decimal STRING or null; evidence: nonempty reconciliation references up to 1,000 characters. Null means undefined, not zero. Include both roi and profit keys. ROI allows up to 36 fractional digits. Do not send display-rounded scores.
+
+Dates use YYYY-MM-DDTHH:MM:SSZ or YYYY-MM-DDTHH:MM:SS.sssZ. Maximum batch size is 2 MB, 2,000 fills and 20,000 financial records. A batch cannot contain the same economicId or financial participant twice. Changed content requires a new requestId; a corrected fill also needs a higher revision.
+
+4. DRAFT REHEARSAL — NO SCORING WRITES
+Save verified wallet associations now. For real completed trade samples belonging to registered, linked accounts, call mkz_collector_check with the normal batch contract, complete=false, financialComplete=false and financials=[]. coverageFrom may be the beginning of the historical sample window while the campaign is draft. The function returns mapped/registered/eligible counts, issues and writesPerformed=0. It does not save trades, scores or coverage. An empty sample is NOT proof that tracking works.
+
+Do not call mkz_collector_ingest while draft, enter players, set dates or grant rewards. If no registered user has a completed eligible sample, report that honestly; you may reconcile existing historical receipts read-only for source diagnostics, but never invent registration, ownership or a fill. No test trade is authorized.
+
+If an eligible domain/quote combination is missing from the registry, return its verified chain_id, domain_token, quote_token, domain_name, quote_kind (USDC or ETH), evidence and verified_at for operator review. Do not insert a guessed ticker or approve your own market. Continue reporting newly discovered markets this way.
+
+5. FINANCIAL RECONCILIATION
+Use configured methodology mk-fifo-realized-capital-1. Preserve the existing formula: 100 × eligible realized period profit / (actual opening capital + verified external inbound capital), with fee-inclusive FIFO lot costs. Withdrawals do not reduce capital; there is no $50 floor. All trades affect inventory; only eligible automated sells contribute prize profit. Group linked wallets before accounting. Internal transfers retain lot basis and add no capital, volume or profit. Start at the later of opening and enrollment; reconstruct opening holdings and use execution-time valuations, including ETH/WETH capital. Never add wallet ROI percentages.
+
+Keep money in integer micro-USD until serialization and preserve unrounded ROI up to 36 fractional digits. Missing historical lots, prices, capital movements, source coverage or corrections remains pending. Privately supply a worked example showing opening capital, inbound capital, lot cost, eligible proceeds and resulting profit/ROI. Do not assert financialComplete until reconciled for every enrolled participant. Leave Reporter and shared accounting untouched.
+
+6. AFTER AUTHORIZED OPENING
+Only when the manifest's actual state accepts ingestion, call mkz_collector_ingest with p_payload. coverageFrom must equal campaign.starts_at. Backfill eligible post-opening, post-enrollment trades missed during delayed discovery. Prelaunch activity never unlocks zones or earns prizes.
+
+Send chunks with complete=false and financialComplete=false. Only the final reconciled batch may set complete=true, after all enrolled accounts, pages, delayed settlements and corrections are checked through confirmedThrough. Coverage cannot move backward. Financial completeness requires the configured methodology and one complete evidenced snapshot covering every enrolled participant. If a query, source or accounting check fails, leave the relevant flag false and report unavailable; never turn failure into a confirmed zero. The site marks coverage delayed after five hours.
+
+Record returned receipts. On timeout retry the same UUID and exact payload. Stop and report rejected batches. Ingestion already deduplicates retries and revisions; do not award points locally. Continue reconciliation after closing. Do not change campaign state, fixed token quantities, awards, coins or payout status.
+
+REPORT THE FIRST AND NEXT SCHEDULED RUN
+Report UTC run time, source cutoff, existing connection/role preflight, job kept/paused, registrations checked, associations saved, unresolved mappings, completed Strategy/agent-wallet fills, deduplication, corrections, verified sample volume, check/ingestion receipt, market/accounting blockers and whether full source coverage was actually established. Include the audit 43 / order 2645 settlement trace and two or three source-to-payload examples privately. Do not put private account IDs, wallet association lists or credentials in public responses. Confirm the four-hour schedule actually changed, or explicitly say it did not. Receiving these instructions is not a successful feed run.

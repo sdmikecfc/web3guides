@@ -1,0 +1,65 @@
+{
+  "schema": "game-room.prop-manifest.v1",
+  "roomId": "model-kombat-community",
+  "generation": {
+    "provider": "none",
+    "apiModel": null,
+    "pricingSource": null,
+    "pricingVerifiedAt": null,
+    "creditsPerTexturedTask": 0,
+    "hardCreditCeiling": 0,
+    "maxChargedAttemptsPerAsset": 0,
+    "notes": "No paid generation. Review forms are authored in the local Three.js module and are not final runtime exports."
+  },
+  "assets": [
+    {
+      "id": "community-1",
+      "name": "original street concept projected onto two workshop facades and a floor",
+      "source": "../../../../src/app/bots/_view/living-room.ts",
+      "status": "projected art and 3D review form",
+      "approved": false
+    },
+    {
+      "id": "community-2",
+      "name": "recessed arena at z=-10 behind frontage at z=-6",
+      "source": "../../../../src/app/bots/_view/living-room.ts",
+      "status": "projected art and 3D review form",
+      "approved": false
+    },
+    {
+      "id": "community-3",
+      "name": "3D portal posts, trim, threshold and bulbs",
+      "source": "../../../../src/app/bots/_view/living-room.ts",
+      "status": "projected art and 3D review form",
+      "approved": false
+    },
+    {
+      "id": "community-4",
+      "name": "ARENA sign with exact local text",
+      "source": "../../../../src/app/bots/_view/living-room.ts",
+      "status": "projected art and 3D review form",
+      "approved": false
+    },
+    {
+      "id": "community-5",
+      "name": "real shared shadows over the projected street",
+      "source": "../../../../src/app/bots/_view/living-room.ts",
+      "status": "projected art and 3D review form",
+      "approved": false
+    }
+  ],
+  "visualDirectionReview": {
+    "status": "accepted",
+    "userWording": "keep going please",
+    "userResponseDate": "2026-09-10",
+    "recordedAt": "2026-09-10T04:29:42.816072+00:00",
+    "recordedBy": "Codex, following parent task report of user reply after concrete previews",
+    "scope": "Accepted room layout and Form direction in the reviewed game frames. Continue cinematic reference capture from these rooms.",
+    "reviewedImages": [
+      "C:/Users/Mike/Documents/Codex/2026-09-07/i-b/outputs/launch-review/community-form-desktop.png",
+      "C:/Users/Mike/Documents/Codex/2026-09-07/i-b/outputs/launch-review/community-form-mobile.png"
+    ],
+    "limits": "Does not certify complete Blender multi-view, structural, export, or runtime audits. No final room asset export or deployment approval is claimed."
+  },
+  "approvalMeaning": "The separate visualDirectionReview accepts the room appearance. Per-asset approved flags remain false because final asset audits/exports have not been completed."
+}

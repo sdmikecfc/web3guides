@@ -1,0 +1,18 @@
+{
+  "file": "arena-crowd-loop.mp4",
+  "bytes": 143889,
+  "sha256": "39d033dc0ff634e43fa46e108d3f78c51e4c7202e35c0569c4d886196fab3002",
+  "provider": "Higgsfield",
+  "model": "seedance_2_5",
+  "jobId": "de88fa91-fda3-4bf0-b0b0-914803d4cbfc",
+  "created": "2026-09-08",
+  "sourceArtwork": "/bots-art/plates/arena-evening.png",
+  "sourceArtworkSha256": "99f0862939bbf49ce675669779d16f5bcb5d2039aa10a6e1813d71c5835029ff",
+  "sourceVideo": "https://d8j0ntlcm91z4.cloudfront.net/user_3GpJFEywLomryuYxxmZmuYhsCXr/hf_20260908_050511_de88fa91-fda3-4bf0-b0b0-914803d4cbfc.mp4",
+  "brief": "Locked camera, same miniature arena and crowd identities, small asynchronous stop-motion cheering. Keep the empty ring, rail and bulbs still. Return to the initial arrangement for a loop. No added objects or text.",
+  "processing": "Crop the upper 46 percent, resize to 960x248, 24 FPS, H.264 yuv420p CRF24 with faststart. No audio.",
+  "durationSeconds": 8.042,
+  "width": 960,
+  "height": 248,
+  "framesPerSecond": 24
+}

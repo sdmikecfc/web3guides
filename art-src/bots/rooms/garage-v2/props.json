@@ -1,0 +1,58 @@
+{
+  "schema": "game-room.prop-manifest.v1",
+  "roomId": "model-kombat-garage",
+  "generation": {
+    "provider": "none",
+    "apiModel": null,
+    "pricingSource": null,
+    "pricingVerifiedAt": null,
+    "creditsPerTexturedTask": 0,
+    "hardCreditCeiling": 0,
+    "maxChargedAttemptsPerAsset": 0,
+    "notes": "No paid generation. Review forms are authored in the local Three.js module and are not final runtime exports."
+  },
+  "assets": [
+    {
+      "id": "garage-1",
+      "name": "original warm workshop art projected across a wall and floor",
+      "source": "../../../../src/app/bots/_view/living-room.ts",
+      "status": "projected art and 3D review form",
+      "approved": false
+    },
+    {
+      "id": "garage-2",
+      "name": "five physical wheeled metal stands with brass number plates and trolley handles",
+      "source": "../../../../src/app/bots/_view/living-room.ts",
+      "status": "projected art and 3D review form",
+      "approved": false
+    },
+    {
+      "id": "garage-3",
+      "name": "shallow 3D left corkboard with notes",
+      "source": "../../../../src/app/bots/_view/living-room.ts",
+      "status": "projected art and 3D review form",
+      "approved": false
+    },
+    {
+      "id": "garage-4",
+      "name": "real shared shadows over the projected floor",
+      "source": "../../../../src/app/bots/_view/living-room.ts",
+      "status": "projected art and 3D review form",
+      "approved": false
+    }
+  ],
+  "visualDirectionReview": {
+    "status": "accepted",
+    "userWording": "keep going please",
+    "userResponseDate": "2026-09-10",
+    "recordedAt": "2026-09-10T04:29:42.816072+00:00",
+    "recordedBy": "Codex, following parent task report of user reply after concrete previews",
+    "scope": "Accepted room layout and Form direction in the reviewed game frames. Continue cinematic reference capture from these rooms.",
+    "reviewedImages": [
+      "C:/Users/Mike/Documents/Codex/2026-09-07/i-b/outputs/launch-review/garage-form-desktop.png",
+      "C:/Users/Mike/Documents/Codex/2026-09-07/i-b/outputs/launch-review/garage-form-mobile.png"
+    ],
+    "limits": "Does not certify complete Blender multi-view, structural, export, or runtime audits. No final room asset export or deployment approval is claimed."
+  },
+  "approvalMeaning": "The separate visualDirectionReview accepts the room appearance. Per-asset approved flags remain false because final asset audits/exports have not been completed."
+}

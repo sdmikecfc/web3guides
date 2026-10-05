@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>Warden — Model Kombat</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23242925'/%3E%3Cpath d='M7 24V8l9 10 9-10v16' fill='none' stroke='%23d8be88' stroke-width='3'/%3E%3C/svg%3E"><link rel="stylesheet" href="/styles.css"></head>
+<body>
+  <main class="studio">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Model Kombat movement study"><span class="brand-mark" aria-hidden="true">MK</span><span>MODEL KOMBAT<small>CHARACTER STUDIO</small></span></a>
+      <div class="header-actions"><a class="class-link" href="/?view=parts&revision=bible-parts-2">Parts workbench</a><span class="review-label">Approved model</span><button id="concept-toggle" aria-expanded="false" aria-controls="concept-panel">View concept <span aria-hidden="true">↗</span></button></div>
+    </header>
+    <section class="viewport" aria-label="Tank model studio">
+      <canvas id="model-canvas" tabindex="0" aria-label="Warden 3D model. Drag or use arrow keys to turn. Use plus and minus to zoom."></canvas>
+      <div class="model-title"><span class="eyebrow">TIER 03 / TANK</span><h1>Warden</h1><p>Approved model · hammer movement study</p></div>
+      <div class="view-presets" role="group" aria-label="Camera view"><button data-view="front" aria-pressed="false">Front</button><button data-view="three-quarter" aria-pressed="true">Three-quarter</button><button data-view="side" aria-pressed="false">Side</button><button data-view="back" aria-pressed="false">Back</button></div>
+      <p id="load-status" class="load-status" role="status" aria-live="polite">Loading Warden…</p>
+      <button id="retry" class="retry" hidden>Try again</button>
+      <p class="orbit-hint"><span aria-hidden="true">↔</span> Drag to turn <span class="hint-dot">·</span> Scroll or pinch to zoom</p>
+      <aside id="concept-panel" class="concept-panel" aria-label="Approved concept reference" hidden>
+        <div class="concept-heading"><div><span class="eyebrow">THE REFERENCE</span><h2>Approved concept</h2></div><button id="concept-close" aria-label="Close concept reference">×</button></div>
+        <img src="/concept.png" alt="Approved concept of the heavily armoured Warden holding its hammer low, with layered steel shoulders and ivory armour panels." loading="lazy">
+        <p>The model is approved. This study checks the hammer movement.</p>
+      </aside>
+    </section>
+    <footer class="inspection-bar" aria-label="Movement and model controls">
+      <div class="mode-switch" role="group" aria-label="Study mode">
+        <button type="button" data-mode="motion" aria-pressed="true" aria-controls="motion-controls">Hammer strike</button>
+        <button type="button" id="exchange-mode" aria-pressed="false">Combat proof</button>
+        <button type="button" data-mode="inspect" aria-pressed="false" aria-controls="joint-controls">Inspect model</button>
+      </div>
+      <button id="reload-model" class="subtle" title="Load the latest model file">Reload model</button>
+      <div id="motion-controls" class="motion-controls">
+        <button id="play-strike" class="play-strike" type="button" disabled>Watch hammer strike</button>
+        <div class="motion-timeline">
+          <input id="motion-time" type="range" min="0" max="1" step="0.001" value="0" aria-label="Hammer strike position" disabled>
+          <output id="motion-phase" for="motion-time" aria-label="Movement phase" aria-live="off">Ready</output>
+        </div>
+      </div>
+      <div id="joint-controls" class="joint-controls" hidden>
+        <div class="inspection-title"><span class="eyebrow">TAKE A CLOSER LOOK</span><label for="joint-select">Move a joint</label></div>
+        <select id="joint-select" aria-label="Joint to inspect" disabled><option value="head">Head turn</option><option value="elbowL">Left elbow</option><option value="elbowR">Right elbow</option></select>
+        <div class="slider-wrap"><input id="joint-angle" type="range" min="-30" max="30" step="1" value="0" aria-label="Head turn angle" disabled><output id="joint-value" for="joint-angle">0°</output></div>
+        <button id="reset-pose" disabled>Reset pose</button>
+      </div>
+    </footer>
+  </main>
+  <script src="/viewer.js"></script>
+</body></html>

@@ -1,7 +1,10 @@
 import VideoEmbed from "@/components/VideoEmbed";
 
 /* ════════════════════════════════════════════════════════════════════════
-   BotGuidePage — shared layout for /volume-bot and /lp-bot
+   BotGuidePage — shared long-form layout.
+   Used by /volume-bot, /lp-bot, /auto-sniper and (since M10) /domain-kitchen,
+   which is not a bot at all. Every bot-shaped string below is a DEFAULT that
+   a page can override; see BotGuideCta / BotGuideDashboard.
 
    A welcoming, polished landing page that explains a bot to someone
    who may not have run one before. Sections (top to bottom):
@@ -43,6 +46,24 @@ export interface BotGuideRisk {
   body:    string;
 }
 
+/** One call-to-action link. `icon` renders before the label when present. */
+export interface BotGuideCta {
+  href:      string;
+  label:     string;
+  icon?:     string;
+  /** Opens in a new tab. Defaults to true; set false for same-site links. */
+  external?: boolean;
+}
+
+export interface BotGuideDashboard {
+  /** Green pill text, e.g. "Live · real money" */
+  badge: string;
+  title: string;
+  body:  string;
+  /** Button label; the href is `dashboardUrl` */
+  cta:   string;
+}
+
 export interface BotGuideProps {
   /** Tag colour for accent (matches the bot on the dashboard) */
   accent:        string;
@@ -54,14 +75,40 @@ export interface BotGuideProps {
   tagline:       string;
   /** "What does this bot DO?" — one paragraph */
   what:          string;
-  /** GitHub repo URL */
-  githubUrl:     string;
-  /** Public GUIDE.md URL (typically the GitHub raw or blob URL) */
-  fullGuideUrl:  string;
+  /**
+   * GitHub repo URL. OPTIONAL since M10: this shell is no longer only for
+   * open-source bots. A guide to something that is not code has no repo, and a
+   * link labelled "GitHub" pointing anywhere else would be a lie, so the link
+   * is simply omitted when this is absent.
+   */
+  githubUrl?:    string;
+  /** Public GUIDE.md URL. Optional for the same reason. */
+  fullGuideUrl?: string;
   /** Live dashboard URL (defaults to /dashboard but page-overridable) */
   dashboardUrl?: string;
   /** Discord or community link for help */
   communityUrl?: string;
+
+  /**
+   * M10 — the shell used to hardcode a bot-shaped call to action in five
+   * places ("View on GitHub", "Clone the repo", "start in dry-run mode",
+   * "the exact commands to copy-paste"). True for the three bot guides, a
+   * lie for anything else. Each of these overrides one of those strings and
+   * DEFAULTS TO THE OLD LITERAL, so the existing pages are untouched.
+   */
+  ctaPrimary?:   BotGuideCta;
+  ctaSecondary?: BotGuideCta;
+  /** Small link beside the Quickstart heading. */
+  quickstartLink?: BotGuideCta;
+  /** Lead line under the Quickstart heading. */
+  quickstartNote?: string;
+  /**
+   * The accented "live dashboard" band. Pass null to omit it: a guide with
+   * no dashboard behind it should not claim one is running.
+   */
+  dashboard?: BotGuideDashboard | null;
+  /** The closing strip. `links` defaults to GitHub + full guide + community. */
+  closing?: { title: string; body: string; links?: BotGuideCta[] };
 
   /** 4 at-a-glance stats */
   stats:         BotGuideStat[];
@@ -366,7 +413,52 @@ export default function BotGuidePage(props: BotGuideProps) {
     overviewImageCaption,
     setupImageUrl,
     setupImageCaption,
+    ctaPrimary,
+    ctaSecondary,
+    quickstartLink,
+    quickstartNote = "High-level shape so you know what you're in for. Each step in the full guide has the exact commands to copy-paste.",
+    dashboard,
+    closing,
   } = props;
+
+  /* Every CTA below falls back to the pre-M10 literal, so the three bot
+   * guides keep rendering exactly what they rendered before. A page that
+   * passes neither an override nor the URL the default needs gets nothing,
+   * which is the point: no button that goes nowhere. */
+  const heroPrimary: BotGuideCta | null =
+    ctaPrimary ?? (githubUrl ? { href: githubUrl, label: "View on GitHub", icon: "★" } : null);
+  const heroSecondary: BotGuideCta | null =
+    ctaSecondary ?? (fullGuideUrl ? { href: fullGuideUrl, label: "Read the full guide ↗" } : null);
+  const qsLink: BotGuideCta | null =
+    quickstartLink ?? (fullGuideUrl ? { href: fullGuideUrl, label: "Full step-by-step guide ↗" } : null);
+
+  const dash: BotGuideDashboard | null =
+    dashboard === undefined
+      ? {
+          badge: "Live · real money",
+          title: "See it running on the public dashboard",
+          body: "I run this bot with real capital and publish every position, trade, and log line live. Click through to watch it tick.",
+          cta: "Open dashboard →",
+        }
+      : dashboard;
+
+  const closeTitle = closing?.title ?? "Ready to try it?";
+  const closeBody =
+    closing?.body ??
+    "Clone the repo, follow the guide, and start in dry-run mode. If you get stuck, the community is happy to help.";
+  const closeLinks: BotGuideCta[] =
+    closing?.links ??
+    [
+      githubUrl ? { href: githubUrl, label: "GitHub", icon: "★" } : null,
+      fullGuideUrl ? { href: fullGuideUrl, label: "Full guide" } : null,
+      communityUrl ? { href: communityUrl, label: "Community" } : null,
+    ].filter(Boolean) as BotGuideCta[];
+
+  /** target/rel for a CTA: external by default, same-tab when told otherwise. */
+  const linkAttrs = (c: BotGuideCta) =>
+    c.external === false
+      ? {}
+      : { target: "_blank" as const, rel: "noopener noreferrer" };
 
   return (
     <div style={{
@@ -407,10 +499,12 @@ export default function BotGuidePage(props: BotGuideProps) {
               fontSize: 12, color: C.text3, textDecoration: "none",
               fontFamily: "'Space Mono', monospace", letterSpacing: 0.6,
             }}>Dashboard</a>
-            <a href={githubUrl} target="_blank" rel="noopener noreferrer" style={{
-              fontSize: 12, color: C.text3, textDecoration: "none",
-              fontFamily: "'Space Mono', monospace", letterSpacing: 0.6,
-            }}>GitHub ↗</a>
+            {githubUrl && (
+              <a href={githubUrl} target="_blank" rel="noopener noreferrer" style={{
+                fontSize: 12, color: C.text3, textDecoration: "none",
+                fontFamily: "'Space Mono', monospace", letterSpacing: 0.6,
+              }}>GitHub ↗</a>
+            )}
           </div>
         </div>
       </nav>
@@ -465,29 +559,38 @@ export default function BotGuidePage(props: BotGuideProps) {
           <div style={{
             display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" as const,
           }}>
-            <a href={githubUrl} target="_blank" rel="noopener noreferrer" style={{
-              display: "inline-flex", alignItems: "center", gap: 10,
-              background: `linear-gradient(135deg, ${accent}, ${C.pink})`,
-              color: "#fff", textDecoration: "none",
-              padding: "14px 22px", borderRadius: 12,
-              fontFamily: "'Space Mono', monospace", fontSize: 13,
-              fontWeight: 800, letterSpacing: 0.6,
-              boxShadow: `0 10px 30px -10px ${accent}80`,
-            }}>
-              <span style={{ fontSize: 16 }}>★</span>
-              View on GitHub
-            </a>
-            <a href={fullGuideUrl} target="_blank" rel="noopener noreferrer" style={{
-              display: "inline-flex", alignItems: "center", gap: 10,
-              background: "transparent",
-              color: C.text2, textDecoration: "none",
-              padding: "14px 22px", borderRadius: 12,
-              fontFamily: "'Space Mono', monospace", fontSize: 13,
-              fontWeight: 800, letterSpacing: 0.6,
-              border: `1px solid ${C.borderHi}`,
-            }}>
-              Read the full guide ↗
-            </a>
+            {heroPrimary && (
+              <a href={heroPrimary.href} {...linkAttrs(heroPrimary)} style={{
+                display: "inline-flex", alignItems: "center", gap: 10,
+                background: `linear-gradient(135deg, ${accent}, ${C.pink})`,
+                color: "#fff", textDecoration: "none",
+                padding: "14px 22px", borderRadius: 12,
+                fontFamily: "'Space Mono', monospace", fontSize: 13,
+                fontWeight: 800, letterSpacing: 0.6,
+                boxShadow: `0 10px 30px -10px ${accent}80`,
+              }}>
+                {heroPrimary.icon && (
+                  <span style={{ fontSize: 16 }}>{heroPrimary.icon}</span>
+                )}
+                {heroPrimary.label}
+              </a>
+            )}
+            {heroSecondary && (
+              <a href={heroSecondary.href} {...linkAttrs(heroSecondary)} style={{
+                display: "inline-flex", alignItems: "center", gap: 10,
+                background: "transparent",
+                color: C.text2, textDecoration: "none",
+                padding: "14px 22px", borderRadius: 12,
+                fontFamily: "'Space Mono', monospace", fontSize: 13,
+                fontWeight: 800, letterSpacing: 0.6,
+                border: `1px solid ${C.borderHi}`,
+              }}>
+                {heroSecondary.icon && (
+                  <span style={{ fontSize: 16 }}>{heroSecondary.icon}</span>
+                )}
+                {heroSecondary.label}
+              </a>
+            )}
           </div>
         </header>
 
@@ -643,18 +746,20 @@ export default function BotGuidePage(props: BotGuideProps) {
             }}>
               Quickstart
             </h2>
-            <a href={fullGuideUrl} target="_blank" rel="noopener noreferrer" style={{
-              fontSize: 12, color: accent, textDecoration: "none",
-              fontFamily: "'Space Mono', monospace", letterSpacing: 0.6, fontWeight: 800,
-            }}>
-              Full step-by-step guide ↗
-            </a>
+            {qsLink && (
+              <a href={qsLink.href} {...linkAttrs(qsLink)} style={{
+                fontSize: 12, color: accent, textDecoration: "none",
+                fontFamily: "'Space Mono', monospace", letterSpacing: 0.6, fontWeight: 800,
+              }}>
+                {qsLink.label}
+              </a>
+            )}
           </div>
           <p style={{
             margin: "0 0 24px", color: C.text3, fontSize: 14,
             lineHeight: 1.65, maxWidth: 700,
           }}>
-            High-level shape so you know what you&apos;re in for. Each step in the full guide has the exact commands to copy-paste.
+            {quickstartNote}
           </p>
 
           <ol style={{
@@ -704,12 +809,14 @@ export default function BotGuidePage(props: BotGuideProps) {
         </section>
 
         {/* ── Risks callout ─────────────────────────────────────────── */}
-        <section style={{
+        <section id="risks" style={{
           marginBottom: 48,
           background: C.amberBg,
           border: `1px solid ${C.amber}33`,
           borderRadius: 16,
           padding: "26px 26px 22px",
+          /* clears the sticky nav when linked to as #risks */
+          scrollMarginTop: 80,
         }}>
           <div style={{
             display: "flex", alignItems: "center" as const, gap: 10,
@@ -755,6 +862,7 @@ export default function BotGuidePage(props: BotGuideProps) {
         </section>
 
         {/* ── Live dashboard CTA ────────────────────────────────────── */}
+        {dash && (
         <section style={{
           marginBottom: 48,
           background: `linear-gradient(135deg, ${accent}1a, rgba(236,72,153,0.06) 70%, transparent), ${C.surface}`,
@@ -781,7 +889,7 @@ export default function BotGuidePage(props: BotGuideProps) {
                 color: C.green, letterSpacing: 1.3, fontWeight: 800,
                 textTransform: "uppercase" as const,
               }}>
-                Live · real money
+                {dash.badge}
               </span>
             </div>
             <h3 style={{
@@ -789,12 +897,12 @@ export default function BotGuidePage(props: BotGuideProps) {
               fontFamily: "'Bungee', cursive",
               fontSize: 22, color: C.text, letterSpacing: 0.2,
             }}>
-              See it running on the public dashboard
+              {dash.title}
             </h3>
             <p style={{
               margin: 0, color: C.text3, fontSize: 14, lineHeight: 1.6, maxWidth: 520,
             }}>
-              I run this bot with real capital and publish every position, trade, and log line live. Click through to watch it tick.
+              {dash.body}
             </p>
           </div>
           <a href={dashboardUrl} style={{
@@ -804,9 +912,10 @@ export default function BotGuidePage(props: BotGuideProps) {
             fontFamily: "'Space Mono', monospace", fontSize: 13,
             fontWeight: 800, letterSpacing: 0.6,
           }}>
-            Open dashboard →
+            {dash.cta}
           </a>
         </section>
+        )}
 
         {/* ── Bottom CTA strip ──────────────────────────────────────── */}
         <section style={{
@@ -821,53 +930,40 @@ export default function BotGuidePage(props: BotGuideProps) {
             fontFamily: "'Bungee', cursive",
             fontSize: 22, color: C.text, letterSpacing: 0.2,
           }}>
-            Ready to try it?
+            {closeTitle}
           </h3>
           <p style={{
             margin: "0 0 22px", color: C.text3, fontSize: 14,
             lineHeight: 1.6, maxWidth: 520,
             marginLeft: "auto" as const, marginRight: "auto" as const,
           }}>
-            Clone the repo, follow the guide, and start in dry-run mode. If you get stuck, the community is happy to help.
+            {closeBody}
           </p>
           <div style={{
             display: "inline-flex", gap: 10, flexWrap: "wrap" as const,
             justifyContent: "center" as const,
           }}>
-            <a href={githubUrl} target="_blank" rel="noopener noreferrer" style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              background: `linear-gradient(135deg, ${accent}, ${C.pink})`,
-              color: "#fff", textDecoration: "none",
-              padding: "12px 20px", borderRadius: 10,
-              fontFamily: "'Space Mono', monospace", fontSize: 12.5,
-              fontWeight: 800, letterSpacing: 0.5,
-            }}>
-              ★ GitHub
-            </a>
-            <a href={fullGuideUrl} target="_blank" rel="noopener noreferrer" style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              background: "transparent",
-              color: C.text2, textDecoration: "none",
-              padding: "12px 20px", borderRadius: 10,
-              fontFamily: "'Space Mono', monospace", fontSize: 12.5,
-              fontWeight: 800, letterSpacing: 0.5,
-              border: `1px solid ${C.borderHi}`,
-            }}>
-              Full guide
-            </a>
-            {communityUrl && (
-              <a href={communityUrl} target="_blank" rel="noopener noreferrer" style={{
+            {closeLinks.map((c, i) => (
+              <a key={c.href + c.label} href={c.href} {...linkAttrs(c)} style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
-                background: "transparent",
-                color: C.text2, textDecoration: "none",
+                textDecoration: "none",
                 padding: "12px 20px", borderRadius: 10,
                 fontFamily: "'Space Mono', monospace", fontSize: 12.5,
                 fontWeight: 800, letterSpacing: 0.5,
-                border: `1px solid ${C.borderHi}`,
+                ...(i === 0
+                  ? {
+                      background: `linear-gradient(135deg, ${accent}, ${C.pink})`,
+                      color: "#fff",
+                    }
+                  : {
+                      background: "transparent",
+                      color: C.text2,
+                      border: `1px solid ${C.borderHi}`,
+                    }),
               }}>
-                Community
+                {c.icon ? `${c.icon} ${c.label}` : c.label}
               </a>
-            )}
+            ))}
           </div>
         </section>
 

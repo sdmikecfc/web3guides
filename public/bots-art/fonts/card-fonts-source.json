@@ -1,0 +1,27 @@
+{
+  "sourceUrl": "https://github.com/google/fonts/tree/main/ofl/baloo2",
+  "sourceSha256": "d47a6852548059b1db49a1319d06d499d546c3fa2237cf9eee9c43c8abb025c2",
+  "license": "SIL Open Font License 1.1",
+  "tool": "fontTools 4.65.0",
+  "operation": "Static wght instances; no glyph removal or design change",
+  "files": [
+    {
+      "file": "Baloo2-Regular.ttf",
+      "weight": 400,
+      "bytes": 422140,
+      "sha256": "47f1b03806586d148e9bab4fd4b8a547d2891437a6bae0075b6cf887d740766c"
+    },
+    {
+      "file": "Baloo2-Bold.ttf",
+      "weight": 700,
+      "bytes": 422252,
+      "sha256": "a99e8c1e1694b71d320b1c2a5802d1fbb2b4999dda3a6507ea5f681fcce545c0"
+    },
+    {
+      "file": "Baloo2-ExtraBold.ttf",
+      "weight": 800,
+      "bytes": 421800,
+      "sha256": "77331d6c04fba430cb1df065ee6438aff020524a79fb08b54a32b7b2a1507ba6"
+    }
+  ]
+}

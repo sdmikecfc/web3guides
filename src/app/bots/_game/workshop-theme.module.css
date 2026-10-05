@@ -1,0 +1,22 @@
+/* Workshop UI palette. Combat signals and robot paint are independent. */
+.theme {
+ --mk-bg:#20282a;
+ --mk-chrome:#252e30;
+ --mk-surface:#303c3e;
+ --mk-raised:#3c4a4b;
+ --mk-edge:#586766;
+ --mk-text:#e8e4d9;
+ --mk-muted:#b9c3bd;
+ --mk-metal:#c69c70;
+ --mk-teal:#91beb0;
+ --mk-selected:#385b55;
+ --mk-ink:#202b2b;
+ --mk-stage:#798985;
+ --mk-stage-edge:#657774;
+ color-scheme:dark;
+}
+.theme :global(dialog){background:var(--mk-surface);color:var(--mk-text);border-color:var(--mk-edge)}
+.theme :global(dialog)::backdrop{background:#101a1ce3}
+.theme :global(dialog) :global(h1){color:var(--mk-text)}
+.theme :global(dialog) :global(p){color:var(--mk-muted)}
+.theme :global(button:focus-visible),.theme :global(a:focus-visible),.theme :global(input:focus-visible),.theme :global(select:focus-visible),.theme :global(summary:focus-visible){outline:3px solid var(--mk-teal);outline-offset:3px}

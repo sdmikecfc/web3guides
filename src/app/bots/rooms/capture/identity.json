@@ -1,0 +1,208 @@
+{
+  "hero": {
+    "name": "Hammer Biscuit",
+    "build": {
+      "legs": {
+        "id": "legs.sprocketPegs",
+        "s": [
+          2,
+          1,
+          1
+        ],
+        "paint": "mint"
+      },
+      "arms": {
+        "id": "arms.kettleGrips",
+        "s": [
+          2,
+          1,
+          2
+        ],
+        "paint": "butter"
+      },
+      "torso": {
+        "id": "torso.kettleChest",
+        "s": [
+          3,
+          1,
+          4
+        ],
+        "paint": "mint"
+      },
+      "head": {
+        "id": "head.kettleDome",
+        "s": [
+          3,
+          1,
+          2
+        ],
+        "paint": "mint"
+      },
+      "weapon": {
+        "id": "weapon.pistonHammer",
+        "s": [
+          9,
+          3,
+          5
+        ]
+      },
+      "limbs": {
+        "armL": {
+          "id": "arms.kettleGrips",
+          "s": [
+            4,
+            2,
+            2
+          ],
+          "paint": "butter"
+        },
+        "armR": {
+          "id": "arms.peeperHooks",
+          "s": [
+            1,
+            0,
+            3
+          ],
+          "paint": "mint"
+        },
+        "legL": {
+          "id": "legs.sprocketPegs",
+          "s": [
+            2,
+            1,
+            1
+          ],
+          "paint": "mint"
+        },
+        "legR": {
+          "id": "legs.sprocketPegs",
+          "s": [
+            2,
+            1,
+            1
+          ],
+          "paint": "cream"
+        }
+      }
+    },
+    "fallbackPaint": "mint",
+    "look": {
+      "paint": {
+        "head": 9427396,
+        "torso": 9427396,
+        "armL": 16765286,
+        "armR": 9427396,
+        "legL": 9427396,
+        "legR": 15522216,
+        "weapon": 9427396
+      },
+      "face": "calm",
+      "sticker": null,
+      "plate": null,
+      "hat": null
+    }
+  },
+  "opponent": {
+    "name": "Rusty Beetle",
+    "build": {
+      "legs": {
+        "id": "legs.peeperStilts",
+        "s": [
+          2,
+          1,
+          1
+        ],
+        "paint": "ink"
+      },
+      "arms": {
+        "id": "arms.peeperHooks",
+        "s": [
+          2,
+          1,
+          2
+        ],
+        "paint": "coral"
+      },
+      "torso": {
+        "id": "torso.peeperBox",
+        "s": [
+          2,
+          1,
+          1
+        ],
+        "paint": "cream"
+      },
+      "head": {
+        "id": "head.pistonVisor",
+        "s": [
+          4,
+          6,
+          4
+        ],
+        "paint": "coral"
+      },
+      "weapon": {
+        "id": "weapon.rustySpanner",
+        "s": [
+          2,
+          1,
+          1
+        ]
+      },
+      "limbs": {
+        "armL": {
+          "id": "arms.peeperHooks",
+          "s": [
+            1,
+            0,
+            3
+          ],
+          "paint": "coral"
+        },
+        "armR": {
+          "id": "arms.kettleGrips",
+          "s": [
+            4,
+            2,
+            2
+          ],
+          "paint": "cream"
+        },
+        "legL": {
+          "id": "legs.peeperStilts",
+          "s": [
+            1,
+            2,
+            0
+          ],
+          "paint": "ink"
+        },
+        "legR": {
+          "id": "legs.kettleShins",
+          "s": [
+            4,
+            1,
+            3
+          ],
+          "paint": "cream"
+        }
+      }
+    },
+    "fallbackPaint": "coral",
+    "look": {
+      "paint": {
+        "head": 16747130,
+        "torso": 15522216,
+        "armL": 16747130,
+        "armR": 15522216,
+        "legL": 2830138,
+        "legR": 15522216,
+        "weapon": 15522216
+      },
+      "face": "calm",
+      "sticker": null,
+      "plate": null,
+      "hat": null
+    }
+  }
+}

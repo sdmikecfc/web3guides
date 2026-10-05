@@ -1,0 +1,79 @@
+{
+  "version": "side-arenas-2",
+  "provider": "Higgsfield",
+  "model": "seedance_2_5",
+  "creditsSubmitted": 180,
+  "approvedCeiling": 240,
+  "retakeCreditsUsed": 0,
+  "sourceDirectory": "D:/Temp/modelkombat-side-arenas-20260929",
+  "rights": "Generated in the user's existing Higgsfield account under its existing applicable terms; no third-party license assertion.",
+  "assets": [
+    {
+      "name": "spaceship",
+      "id": "65e0cd15-b636-437b-afa9-044228df09b7",
+      "type": "video",
+      "status": "completed",
+      "model": "seedance_2_5",
+      "params": {
+        "prompt": "A stunning premium 2.5D fighting-game environment background for Model Kombat, beautifully crafted miniature set, cinematic materials and atmospheric depth. STRICT locked tripod camera, perfectly side-on elevation, no pan, no zoom, no cuts, no camera shake. A straight horizontal fighting platform stretches left to right across the entire frame, floor surface at 78 percent frame height, floor edge at 88 percent. The middle 65 percent of the image is empty unobstructed fighting space for robots composited later. No fighters, no characters in foreground, no UI, no text, no logos. Soft bright neutral key light across the fighting lane ensures colored robots will read clearly. Rich detailed background with subtle continuous animation, stable architecture and absolutely stationary floor. Seamless five-second ambient loop, beginning and ending with matching lighting and composition. An enormous alien spaceship observation hangar: brushed titanium catwalk, cyan perimeter strips, monumental ribbed arches, a spectacular blue planet and aurora outside panoramic windows, distant docking craft drifting slowly, recessed turbines turning behind safety grilles, occasional tiny vapor wisps confined to background. Indigo and turquoise with restrained amber work lights. Beautiful clean contrast, premium science fiction.",
+        "aspect_ratio": "16:9",
+        "duration": 5,
+        "resolution": "1080p",
+        "generate_audio": false
+      }
+    },
+    {
+      "name": "colosseum",
+      "id": "3a20b4c1-b52d-4faa-a569-9dee4e722218",
+      "type": "video",
+      "status": "completed",
+      "model": "seedance_2_5",
+      "params": {
+        "prompt": "A stunning premium 2.5D fighting-game environment background for Model Kombat, beautifully crafted miniature set, cinematic materials and atmospheric depth. STRICT locked tripod camera, perfectly side-on elevation, no pan, no zoom, no cuts, no camera shake. A straight horizontal fighting platform stretches left to right across the entire frame, floor surface at 78 percent frame height, floor edge at 88 percent. The middle 65 percent of the image is empty unobstructed fighting space for robots composited later. No fighters, no characters in foreground, no UI, no text, no logos. Soft bright neutral key light across the fighting lane ensures colored robots will read clearly. Rich detailed background with subtle continuous animation, stable architecture and absolutely stationary floor. Seamless five-second ambient loop, beginning and ending with matching lighting and composition. A magnificent ancient Roman colosseum terrace at golden twilight: warm travertine fighting platform, sculpted bronze end posts at far frame edges, grand layered arches receding behind, animated tiny crowds far back cheering, deep crimson standards rippling slowly, braziers with graceful flames at far sides, sun shafts and drifting dust in distant air. Ivory stone, burnished bronze, amber light and red fabric. Grand expensive film-set quality.",
+        "aspect_ratio": "16:9",
+        "duration": 5,
+        "resolution": "1080p",
+        "generate_audio": false
+      }
+    },
+    {
+      "name": "basement",
+      "id": "6a4dce96-791b-483c-be23-dc1dca484dfa",
+      "type": "video",
+      "status": "completed",
+      "model": "seedance_2_5",
+      "params": {
+        "prompt": "A stunning premium 2.5D fighting-game environment background for Model Kombat, beautifully crafted miniature set, cinematic materials and atmospheric depth. STRICT locked tripod camera, perfectly side-on elevation, no pan, no zoom, no cuts, no camera shake. A straight horizontal fighting platform stretches left to right across the entire frame, floor surface at 78 percent frame height, floor edge at 88 percent. The middle 65 percent of the image is empty unobstructed fighting space for robots composited later. No fighters, no characters in foreground, no UI, no text, no logos. Soft bright neutral key light across the fighting lane ensures colored robots will read clearly. Rich detailed background with subtle continuous animation, stable architecture and absolutely stationary floor. Seamless five-second ambient loop, beginning and ending with matching lighting and composition. An atmospheric clandestine underground robot fighting basement: worn concrete fighting platform, old riveted iron columns at extreme sides, warm industrial work lamps illuminating empty lane, brick vaults, massive pressure boilers and pipes behind, rotating exhaust fans, slow background steam vents, amber spectator balcony lights and soft neon teal highlights. Gorgeous tactile gritty cinematic miniature, readable bright fight area with rich dark background, never muddy or pitch black.",
+        "aspect_ratio": "16:9",
+        "duration": 5,
+        "resolution": "1080p",
+        "generate_audio": false
+      }
+    }
+  ],
+  "transforms": [
+    "H.264 yuv420p 1080p CRF22, silent MP4 faststart",
+    "H.264 yuv420p 720p CRF24, silent MP4 faststart",
+    "First-frame WebP quality86"
+  ],
+  "validation": {
+    "durationSeconds": 5.041667,
+    "sourceResolution": [
+      1920,
+      1080
+    ],
+    "sourceFrameRate": 24,
+    "browserReview": "All three played in actual browser gameplay; physical phone not tested."
+  },
+  "sha256": {
+    "colosseum-720.mp4": "8ed13aa6b9a365bc394059738babf6f4dc8d594a62e6ac62e89fa76f616c3d5b",
+    "spaceship-720.mp4": "6259481c72d11f0a9a1dda4cea2238229ddca69c37abd82c23a0f83d87a6a2db",
+    "spaceship.webp": "f4716a3ad5503dd37d494892c7cfc41eeb5ad8d28cb8f1dff43b33c2ff4db58b",
+    "basement-720.mp4": "595a46cf07dfd02ae2f61fc8b0cc1dca3eb703582449c4bd19ecc38385147524",
+    "spaceship.mp4": "5d90e688098ee0356eb498eccc4aa75c2f3626d1e4dfe36dbb3751fd3e04dce2",
+    "basement.webp": "de68c4e2ddedcabf4773c77c3e2eca9ac9298fa3ebcae123f95029dc692f53b7",
+    "basement.mp4": "d0a133408511856ab247bb045a84c1eefee89e27ec5e44cf6f9ffba64b14321f",
+    "colosseum.webp": "79ef54cc42de4e443ddbaf55b1935b2c52e855f88b1c632fc22628b0cb7aa984",
+    "colosseum.mp4": "4019765a5758cbe26bbf6fdf71887830c76d6aa576b9af8c652a9b97b05c2190"
+  }
+}

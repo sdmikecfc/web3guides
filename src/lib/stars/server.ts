@@ -20,6 +20,24 @@ const ALLOWED_DOMAINS = new Set(
     "web3guides.com",
     "www.web3guides.com",
     "stars.web3guides.com",
+    "assassin.web3guides.com", // S4 THE HIT LIST subdomain (game session + wallet link)
+    "beach.web3guides.com", // legacy S4 host: middleware still rewrites beach.* -> /s4
+    "tanks.web3guides.com", // S5 IRON SIEGE subdomain (game session + wallet link)
+    // S6 UPRISING. THE RECURRING CLASS (Mike, launch day: "same issue we had
+    // before"): every new season subdomain MUST be added here or every SIWE
+    // on it fails "Domain mismatch" and sign-in loops forever - the session
+    // never opens, the base keeps prompting. S4 and S5 both hit this. When a
+    // season subdomain is born, this line is part of its scaffold.
+    "uprising.web3guides.com",
+    "launchwars.xyz", // the season's own domain (added WITH its middleware branch, per the scaffold law)
+    "www.launchwars.xyz",
+    "chef.web3guides.com", // DOMAIN KITCHEN subdomain (game session for saves)
+    "domainkitchen.xyz", // DOMAIN KITCHEN's own domain (added WITH its middleware branch)
+    "www.domainkitchen.xyz",
+    "domagaming.com", // DOMA GAMING: the studio home, and the robot game's own house
+    "www.domagaming.com",
+    "modelkombat.xyz", // MODEL KOMBAT: the robot game's own apex
+    "www.modelkombat.xyz",
     process.env.WALLET_LINK_DOMAIN_OVERRIDE || "",
   ].filter(Boolean),
 );

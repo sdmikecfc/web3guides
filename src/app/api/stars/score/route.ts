@@ -21,10 +21,10 @@ const GAMES: Record<
   string,
   { maxScore: number; toStardust: (s: number) => number; stardustCap: number; starlightCap: number; attempts: number; floorMs: number }
 > = {
-  rally: { maxScore: 30000, toStardust: (s) => Math.round(s / 50), stardustCap: 120, starlightCap: 15, attempts: 3, floorMs: 20000 },
-  trench: { maxScore: 50000, toStardust: (s) => Math.round(s / 50), stardustCap: 120, starlightCap: 15, attempts: 3, floorMs: 9000 },
-  slingshot: { maxScore: 20000, toStardust: (s) => Math.round(s / 30), stardustCap: 100, starlightCap: 12, attempts: 3, floorMs: 6000 },
-  raid: { maxScore: 40000, toStardust: (s) => Math.round(s / 80), stardustCap: 120, starlightCap: 15, attempts: 3, floorMs: 9000 },
+  rally: { maxScore: 30000, toStardust: (s) => Math.round(s / 50), stardustCap: 120, starlightCap: 10, attempts: 3, floorMs: 20000 },
+  trench: { maxScore: 50000, toStardust: (s) => Math.round(s / 50), stardustCap: 120, starlightCap: 10, attempts: 3, floorMs: 9000 },
+  slingshot: { maxScore: 20000, toStardust: (s) => Math.round(s / 30), stardustCap: 100, starlightCap: 8, attempts: 3, floorMs: 6000 },
+  raid: { maxScore: 40000, toStardust: (s) => Math.round(s / 80), stardustCap: 120, starlightCap: 10, attempts: 3, floorMs: 9000 },
 };
 const NONCE_TTL_MS = 45 * 60 * 1000;
 const dayKey = () => new Date().toISOString().slice(0, 10);

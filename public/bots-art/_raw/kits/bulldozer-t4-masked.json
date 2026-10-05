@@ -1,0 +1,24 @@
+{
+ "model": "gpt-image-2",
+ "size": "1024x1024",
+ "quality": "high",
+ "mode": "masked",
+ "tag": "",
+ "ringR": 31,
+ "prompt": "Paint ONLY the editable regions of the FIRST attached image. Keep each region's exact outline; do not extend past it. The FIRST image is a layout sheet of four grey clay placeholder parts on a magenta plate: a robot HEAD at the top, a robot TORSO in the middle, ONE ARM at the left, ONE LEG at the right. The parts already have their joints drawn in: a ball at the top of the arm and of the leg, a brass collar ring at each shoulder, each hip and the neck of the torso, and a peg under the head. The SECOND attached image is the style and character-family reference. Draw the four placeholders as ONE matching set of toy robot parts from the same model kit, laid out exactly as on the sheet like an unassembled toy figure kit: one part per zone, nothing overlapping, nothing touching, and the magenta plate left empty everywhere else. The set belongs to the bulldozer family: wide flat plates, a blade-like brow, tread-like grooves. Tier 4: premium, brass trim everywhere, one glowing gem. The HEAD has two big round lamp eyes and a friendly grille smile and a short NECK PEG at the bottom with a brass band, which fits the collar on the top of the torso. The TORSO is a chunky body with a brass wind-up key on the chest and a brass COLLAR SOCKET at each shoulder and each hip, exactly where the sheet draws them, each with a sunk dark hole ready to receive a limb ball. The two hip collars hang below the bottom of the body. The ARM hangs straight down: a big round BALL at the top in the body colour with a brass bolt at its centre, a thick upper arm, a knuckle elbow, a thick forearm and a rounded mitt hand at the bottom. The LEG stands straight: the same big round BALL at the top, a thick thigh, a knuckle knee, a thick shin and a big rounded foot with a dark rubber sole. Keep the arm and the leg as THICK as the sheet draws them. Do not slim them into rods. FILL EVERY GREY SHAPE COMPLETELY, right out to its edge. Do not shrink a part, do not float it, do not round its corners in, and do not leave any grey or any magenta inside a part's outline. The torso reaches the bottom of its shape: the two hip collars sit at the very bottom of the body, hanging below it, exactly where the sheet has them, not higher up. The shoulder collars sit at the top corners of the body, at the same height as the sheet's, and the body is as tall as the sheet's body. The far arm and far leg will be mirror copies of these, so keep each limb symmetric with a centered highlight. THE JOINTS ARE THE POINT OF THIS SHEET. Every joint on every part must survive exactly as drawn. Each limb ends in a large round BALL in the body colour, as wide as the sheet's ball, pinned by a small brass BOLT at its centre. Each socket on the torso is a raised brass COLLAR RING with a sunk dark hole in the middle, wide enough for a limb ball to sit in it. Do not flatten a ball into a disc, do not fill a socket in, do not move a joint, and do not make a limb thinner than the sheet draws it. The elbow, the knee and the neck are joints too: a rounded knuckle in the body colour with a small brass bolt. The four brass collar sockets on the torso must stay exactly where the sheet draws them: one at the top left corner of the body and one at the top right corner, at the same height as each other, and two hanging BELOW the bottom edge of the body, as far apart as the sheet has them. Do not move a socket inward, upward or downward, and do not shrink the body away from them. Same clay, same finish and the same colours on all four parts: designer vinyl-clay toy finish, slightly glossy, crisp clean seams, brass for the socket collars, bolts, rivets and fittings, matte black rubber only for the sole under each foot, glass for the lamp eyes. Every part is seen straight on from the front, the same orthographic product view as the reference figure, and all four are lit from directly above by the same warm key light with soft cool shadows, highlights centered and symmetric. The ENTIRE background must be one perfectly flat, solid, uniform bright magenta (#FF00FF) filling the whole frame, no gradient, no shadow on the background, no drawn ground, no text, no logos, no letters, no digits.",
+ "usage": {
+  "input_tokens": 3508,
+  "input_tokens_details": {
+   "image_tokens": 2545,
+   "text_tokens": 963
+  },
+  "output_tokens": 7024,
+  "output_tokens_details": {
+   "image_tokens": 7024,
+   "text_tokens": 0
+  },
+  "total_tokens": 10532
+ },
+ "seconds": 115,
+ "estimated_usd": 0.23589500000000002
+}

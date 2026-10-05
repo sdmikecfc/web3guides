@@ -1,0 +1,2 @@
+import {readPresentation,PRESENTATION_KEY} from '../../../src/lib/bots/workshop8/presentation';
+export function presentationSettings(){let saved;try{saved=JSON.parse(localStorage.getItem(PRESENTATION_KEY)||'null')}catch{}const value=readPresentation(saved),media=matchMedia('(prefers-reduced-motion: reduce)');return {...value,low:value.quality==='low'||value.quality==='auto'&&(innerWidth<650||navigator.hardwareConcurrency<=4),reduced:()=>value.reducedMotion||media.matches};}

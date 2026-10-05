@@ -1,0 +1,228 @@
+{
+ "mode": "v3",
+ "note": "The HEAD SHAPE TABLE, drawn. One ruler per look, ON TARGET (a ControlNet does not carry the unconditioned generator's bias, and the head carries no measured bias anyway). Every ruler is on the contract's head canvas at the contract's seat, keeps the apex row so the figure's H does not move, carries exactly two lamp eyes on the design-one eye row at the design-one radius band, a blank forehead, the crease lugs and the contract's own dome underside, and keeps its ink inside the full head width. Nothing here is shipped and the game never reads this folder. The canvases and pivots are the frozen contract in src/app/bots/_view/rig-points.ts, unchanged. The table is scripts/bots-shapes.json; the drawing is headPartsV3 in this file.",
+ "slot": "head",
+ "tier": 1,
+ "canvas": {
+  "w": 456,
+  "h": 384
+ },
+ "pivots": {
+  "neck": [
+   228,
+   315
+  ]
+ },
+ "apexY": 27,
+ "eyeRow": 159,
+ "coreW": 328,
+ "fullW": 406,
+ "crowns": {
+  "round": {
+   "drop": 0,
+   "dome": true
+  },
+  "box": {
+   "drop": 0,
+   "wFlat": 0.48,
+   "rTop": 0.288,
+   "expo": 1
+  },
+  "bear": {
+   "drop": 0.16,
+   "dome": true
+  },
+  "tv": {
+   "drop": 0.076,
+   "wFlat": 0.457,
+   "rTop": 0.07,
+   "expo": 1
+  },
+  "bell": {
+   "drop": 0,
+   "wFlat": 0.34,
+   "rTop": 0.19,
+   "expo": 1.5
+  },
+  "bucket": {
+   "drop": 0.105,
+   "wFlat": 0.53,
+   "rTop": 0.05,
+   "expo": 1
+  },
+  "cone": {
+   "drop": 0,
+   "wFlat": 0.205,
+   "rTop": 0.075,
+   "expo": 1
+  },
+  "cat": {
+   "drop": 0.139,
+   "dome": true
+  }
+ },
+ "looks": [
+  {
+   "key": "head-round-smile",
+   "shape": "round",
+   "mouth": "smile",
+   "name": "Round",
+   "prompt": "a rounded dome crown with a round cup ear high on each side",
+   "mouthPrompt": "a dark recessed curved smile for a mouth, low on the face under the eyes",
+   "notes": "the shipped design-one head. Its crown is the baseline every other shape is a departure from, so it is in the table with its two new mouths and its own grille look is left alone."
+  },
+  {
+   "key": "head-round-o",
+   "shape": "round",
+   "mouth": "o",
+   "name": "Round",
+   "prompt": "a rounded dome crown with a round cup ear high on each side",
+   "mouthPrompt": "a dark recessed round O mouth, low on the face under the eyes",
+   "notes": "the shipped design-one head. Its crown is the baseline every other shape is a departure from, so it is in the table with its two new mouths and its own grille look is left alone."
+  },
+  {
+   "key": "head-box-smile",
+   "shape": "box",
+   "mouth": "smile",
+   "name": "Box",
+   "prompt": "a soft box crown with rounded corners and a round cup ear on each side",
+   "mouthPrompt": "a dark recessed curved smile for a mouth, low on the face under the eyes",
+   "notes": "the shipped design-two head. Squared above, domed below, as the whole-bot study demands."
+  },
+  {
+   "key": "head-box-o",
+   "shape": "box",
+   "mouth": "o",
+   "name": "Box",
+   "prompt": "a soft box crown with rounded corners and a round cup ear on each side",
+   "mouthPrompt": "a dark recessed round O mouth, low on the face under the eyes",
+   "notes": "the shipped design-two head. Squared above, domed below, as the whole-bot study demands."
+  },
+  {
+   "key": "head-bear-smile",
+   "shape": "bear",
+   "mouth": "smile",
+   "name": "Bear",
+   "prompt": "two big round cup ears that form the top of the head, a low rounded crown between them",
+   "mouthPrompt": "a dark recessed curved smile for a mouth, low on the face under the eyes",
+   "notes": "the ears ARE the crown: their tops are the apex of the whole figure and the head's own dome sits below them. The single biggest silhouette departure in the table and the one a player will name first."
+  },
+  {
+   "key": "head-bear-o",
+   "shape": "bear",
+   "mouth": "o",
+   "name": "Bear",
+   "prompt": "two big round cup ears that form the top of the head, a low rounded crown between them",
+   "mouthPrompt": "a dark recessed round O mouth, low on the face under the eyes",
+   "notes": "the ears ARE the crown: their tops are the apex of the whole figure and the head's own dome sits below them. The single biggest silhouette departure in the table and the one a player will name first."
+  },
+  {
+   "key": "head-tv-smile",
+   "shape": "tv",
+   "mouth": "smile",
+   "name": "TV",
+   "prompt": "a soft box crown with a short aerial standing on top of it",
+   "mouthPrompt": "a dark recessed curved smile for a mouth, low on the face under the eyes",
+   "notes": "the aerial lives INSIDE the head room the canvas already carries: its tip is the apex, so the figure's height does not move and no other part has to be retuned."
+  },
+  {
+   "key": "head-tv-grille",
+   "shape": "tv",
+   "mouth": "grille",
+   "name": "TV",
+   "prompt": "a soft box crown with a short aerial standing on top of it",
+   "mouthPrompt": "a dark recessed slatted grille for a mouth, low on the face under the eyes",
+   "notes": "the aerial lives INSIDE the head room the canvas already carries: its tip is the apex, so the figure's height does not move and no other part has to be retuned."
+  },
+  {
+   "key": "head-bell-o",
+   "shape": "bell",
+   "mouth": "o",
+   "name": "Bell",
+   "prompt": "a narrow rounded crown that flares out to the full width at the cheeks, like a bell",
+   "mouthPrompt": "a dark recessed round O mouth, low on the face under the eyes",
+   "notes": "the only shape whose width grows all the way down. The crease lugs still make the outer edge, so the thing that covers the shoulder cap is unchanged."
+  },
+  {
+   "key": "head-bell-smile",
+   "shape": "bell",
+   "mouth": "smile",
+   "name": "Bell",
+   "prompt": "a narrow rounded crown that flares out to the full width at the cheeks, like a bell",
+   "mouthPrompt": "a dark recessed curved smile for a mouth, low on the face under the eyes",
+   "notes": "the only shape whose width grows all the way down. The crease lugs still make the outer edge, so the thing that covers the shoulder cap is unchanged."
+  },
+  {
+   "key": "head-bucket-widegrille",
+   "shape": "bucket",
+   "mouth": "widegrille",
+   "name": "Bucket",
+   "prompt": "a wide flat rim across the top like an upturned bucket, the head narrowing a little below it",
+   "mouthPrompt": "a wide dark recessed slatted grille for a mouth, spanning the face low under the eyes",
+   "notes": "the rim is the top. It is the only shape that is widest at the crown, which is what makes it read at ring size against the dome."
+  },
+  {
+   "key": "head-bucket-smile",
+   "shape": "bucket",
+   "mouth": "smile",
+   "name": "Bucket",
+   "prompt": "a wide flat rim across the top like an upturned bucket, the head narrowing a little below it",
+   "mouthPrompt": "a dark recessed curved smile for a mouth, low on the face under the eyes",
+   "notes": "the rim is the top. It is the only shape that is widest at the crown, which is what makes it read at ring size against the dome."
+  },
+  {
+   "key": "head-cone-zigzag",
+   "shape": "cone",
+   "mouth": "zigzag",
+   "name": "Cone",
+   "prompt": "a squat cone with a blunt rounded top, widening steadily down to the cheeks",
+   "mouthPrompt": "a dark recessed zigzag mouth, low on the face under the eyes",
+   "notes": "a straight-sided taper, so its silhouette is the one in the table with no curve on the sides at all."
+  },
+  {
+   "key": "head-cone-o",
+   "shape": "cone",
+   "mouth": "o",
+   "name": "Cone",
+   "prompt": "a squat cone with a blunt rounded top, widening steadily down to the cheeks",
+   "mouthPrompt": "a dark recessed round O mouth, low on the face under the eyes",
+   "notes": "a straight-sided taper, so its silhouette is the one in the table with no curve on the sides at all."
+  },
+  {
+   "key": "head-cat-smile",
+   "shape": "cat",
+   "mouth": "smile",
+   "name": "Cat",
+   "prompt": "two soft pointed ears at the top with short rounded tips, a rounded crown between them",
+   "mouthPrompt": "a dark recessed curved smile for a mouth, low on the face under the eyes",
+   "notes": "cuddly, not spiky: the tip of each ear is rounded off at about a bolt head across, and no point stands longer than that, so the head keeps reading as a clay toy and never as a weapon."
+  },
+  {
+   "key": "head-cat-grille",
+   "shape": "cat",
+   "mouth": "grille",
+   "name": "Cat",
+   "prompt": "two soft pointed ears at the top with short rounded tips, a rounded crown between them",
+   "mouthPrompt": "a dark recessed slatted grille for a mouth, low on the face under the eyes",
+   "notes": "cuddly, not spiky: the tip of each ear is rounded off at about a bolt head across, and no point stands longer than that, so the head keeps reading as a clay toy and never as a weapon."
+  }
+ ],
+ "files": [
+  "target/head-round-smile.png",
+  "target/head-round-o.png",
+  "target/head-box-smile.png",
+  "target/head-box-o.png",
+  "target/head-bear-smile.png",
+  "target/head-bear-o.png",
+  "target/head-tv-smile.png",
+  "target/head-tv-grille.png",
+  "target/head-bell-o.png",
+  "target/head-bell-smile.png",
+  "target/head-bucket-widegrille.png",
+  "target/head-bucket-smile.png",
+  "target/head-cone-zigzag.png",
+  "target/head-cone-o.png",
+  "target/head-cat-smile.png",
+  "target/head-cat-grille.png"
+ ]
+}

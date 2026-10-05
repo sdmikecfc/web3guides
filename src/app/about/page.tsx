@@ -82,7 +82,12 @@ export default function AboutPage() {
         </div>
 
         <h2 style={S.h2}>Powered by Doma Protocol</h2>
-        <p style={S.p}>The subdomain infrastructure is powered by <a href="https://doma.xyz" target="_blank" rel="noopener noreferrer" style={{ color: "#ff6b35" }}>Doma Protocol</a> — an on-chain subdomain ownership platform. This means each web3guides.com subdomain can be owned, transferred, and built on by its creator, with no central authority able to revoke access.</p>
+        {/* NOT "an on-chain subdomain ownership platform" (fixed M10). Doma
+            tokenises real DNS domains and works WITH registrars; it is not a
+            registrar, not an alternative namespace, and not a subdomain
+            product. That framing is banned by the fact sheet in
+            api/generate/route.ts, which this page was contradicting. */}
+        <p style={S.p}>The subdomain infrastructure is powered by <a href="https://doma.xyz" target="_blank" rel="noopener noreferrer" style={{ color: "#ff6b35" }}>Doma Protocol</a> — a protocol that brings real DNS domains on-chain, working with existing registrars rather than replacing them. This means each web3guides.com subdomain can be owned, transferred, and built on by its creator, with no central authority able to revoke access.</p>
 
         <p style={S.p}>Want your own subdomain on web3guides.com? <a href="https://app.doma.xyz/domain/web3guides.com/#subdomains" target="_blank" rel="noopener noreferrer" style={{ color: "#ff6b35" }}>Claim one on Doma →</a></p>
 

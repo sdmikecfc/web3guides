@@ -1,0 +1,18 @@
+{
+  "file": "special-sidearm.t3.glb",
+  "sha256": "c16795bd4c1a1b5d5b8ac3c885b99515e925f12bc31047503529c8cb700babbb",
+  "bytes": 20396,
+  "grip": [
+    0,
+    0,
+    0
+  ],
+  "muzzle": [
+    0,
+    120,
+    450
+  ],
+  "units": "millimetres",
+  "source": "owl_ranger.t3.glb",
+  "use": "T3 Ranged Special, counted within the bounded special burst"
+}
