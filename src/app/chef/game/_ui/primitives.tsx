@@ -22,7 +22,7 @@ import { IconClose, IconCoin, IconStar } from "./icons";
 import css from "./ui.module.css";
 
 /* ────────────────────────────────────────────────────────────────────────
-   Sheet — THE modal. Bottom-anchored on every form factor.
+   Sheet — centered game panel, with a fixed header and compact option.
    ──────────────────────────────────────────────────────────────────────── */
 
 export interface SheetProps {
@@ -33,6 +33,7 @@ export interface SheetProps {
   elevated?: boolean;
   /** optional right-hand slot in the title row (tabs, a count, a badge) */
   action?: ReactNode;
+  compact?: boolean;
 }
 
 /**
@@ -43,117 +44,67 @@ export interface SheetProps {
  * above it reads as a mobile game on a laptop, which is the stated target.
  * The 480px cap is what stops it looking like a stretched phone at 1440.
  */
-export function Sheet({ title, onClose, children, elevated, action }: SheetProps) {
-  // Escape closes. Registered per-sheet because only one is ever open.
+// Only the foremost kitchen sheet owns keyboard focus; wallet modals keep theirs.
+const openSheets: HTMLElement[] = [];
+const focusableSelector = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+export function Sheet({ title, onClose, children, elevated, action, compact=false }: SheetProps) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    openSheets.push(dialog);
+    const controls = () => Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector))
+      .filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0 && !element.closest('[inert],[aria-hidden="true"]'));
+    const isTop = () => openSheets[openSheets.length - 1] === dialog;
+    const externalModalHasFocus = () => {
+      const active = document.activeElement;
+      const modal = active instanceof HTMLElement ? active.closest('[role="dialog"][aria-modal="true"]') : null;
+      return !!modal && modal !== dialog && !dialog.contains(modal);
     };
+    const focusFirst = () => (controls()[0] ?? dialog).focus({ preventScroll: true });
+    focusFirst();
+    const onKey = (e: KeyboardEvent) => {
+      if (!isTop() || e.defaultPrevented || externalModalHasFocus()) return;
+      if (e.key === "Escape") {
+        e.preventDefault(); e.stopImmediatePropagation(); closeRef.current(); return;
+      }
+      if (e.key !== "Tab") return;
+      const targets = controls(), first = targets[0], last = targets[targets.length - 1];
+      if (!first) { e.preventDefault(); dialog.focus(); return; }
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === dialog || !dialog.contains(document.activeElement))) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+        e.preventDefault(); first.focus();
+      }
+    };
+    const onFocus = () => { if (isTop() && !externalModalHasFocus() && !dialog.contains(document.activeElement)) focusFirst(); };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+    document.addEventListener("focusin", onFocus);
+    return () => {
+      const wasTop = isTop();
+      const index = openSheets.indexOf(dialog); if (index >= 0) openSheets.splice(index, 1);
+      window.removeEventListener("keydown", onKey); document.removeEventListener("focusin", onFocus);
+      if (wasTop && previous?.isConnected) previous.focus({ preventScroll: true });
+    };
+  }, []);
 
   const z = elevated ? Z.tx : Z.sheet;
-  return (
-    <div style={{ position: "absolute", inset: 0, zIndex: z, fontFamily: FONT }}>
-      <div
-        className={css.scrim}
-        onClick={onClose}
-        style={{ position: "absolute", inset: 0, background: C.overlay }}
-      />
-      <div
-        className={css.sheet}
-        style={{
-          position: "absolute",
-          /**
-           * Centred with auto margins, NOT translateX(-50%). The `rise`
-           * keyframe animates `transform`, and an animation's transform
-           * replaces the inline one outright, so a transform-centred sheet
-           * loses its centering the instant it opens and sits half off the
-           * right edge of a phone.
-           */
-          left: 0,
-          right: 0,
-          marginInline: "auto",
-          bottom: 0,
-          width: "min(480px, 100vw - 16px)",
-          maxHeight: "76dvh",
-          display: "flex",
-          flexDirection: "column",
-          background: C.panelSolid,
-          border: `1px solid ${C.line}`,
-          borderBottom: "none",
-          borderRadius: `${R.sheet}px ${R.sheet}px 0 0`,
-          boxShadow: SHADOW.card,
-          // the phone home bar
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        }}
-      >
-        {/* grab handle: the universal "this is a sheet, it came from below" tell */}
-        <div style={{ display: "flex", justifyContent: "center", paddingTop: S.sm }}>
-          <div style={{ width: 38, height: 4, borderRadius: R.pill, background: C.line }} />
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: S.sm,
-            padding: `${S.sm}px ${S.md}px ${S.sm}px ${S.lg}px`,
-          }}
-        >
-          <div
-            style={{
-              flex: 1,
-              minWidth: 0,
-              fontSize: 17,
-              fontWeight: 800,
-              letterSpacing: 0.2,
-              color: C.cream,
-            }}
-          >
-            {title}
-          </div>
-          {action}
-          <button
-            className={css.press}
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              width: 34,
-              height: 34,
-              display: "grid",
-              placeItems: "center",
-              borderRadius: R.pill,
-              background: C.btnQuiet,
-              border: `1px solid ${C.line}`,
-              color: C.creamDim,
-              cursor: "pointer",
-            }}
-          >
-            <IconClose size={17} />
-          </button>
-        </div>
-
-        <div
-          style={{
-            overflowY: "auto",
-            overscrollBehavior: "contain",
-            padding: `0 ${S.lg}px ${S.lg}px`,
-            scrollbarWidth: "thin",
-            scrollbarColor: `${C.line} transparent`,
-          }}
-        >
-          {children}
-        </div>
-      </div>
-    </div>
-  );
+  return <div className={css.modalLayer} style={{zIndex:z}}>
+    <div className={css.scrim} onClick={onClose}/>
+    <section ref={dialogRef} className={css.sheet} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} data-compact={compact||undefined}>
+      <header className={css.sheetHeader}>
+        <h2>{title}</h2>
+        {action}
+        <button type="button" className={css.sheetClose} onClick={onClose} aria-label="Back to restaurant"><IconClose size={21}/></button>
+      </header>
+      <div className={css.sheetBody}>{children}</div>
+    </section>
+  </div>;
 }
-
-/* ────────────────────────────────────────────────────────────────────────
-   Panel — the floating card, for the few things that stay on the room.
-   ──────────────────────────────────────────────────────────────────────── */
 
 export function Panel({
   children,

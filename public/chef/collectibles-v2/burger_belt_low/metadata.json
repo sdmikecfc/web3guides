@@ -1,0 +1,55 @@
+{
+  "assetId": "burger_belt_low",
+  "displayName": "burger_belt_low",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.8325896263122559,
+        0.7405485753436309,
+        0.18999042384347853
+      ],
+      "min": [
+        -0.8324834704399109,
+        0.12047457657156713,
+        -0.04032215476036072
+      ],
+      "sizeMeters": [
+        1.6650730967521667,
+        0.6200739987720638,
+        0.23031257860383925
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 71256,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 8,
+    "meshCount": 8,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 8,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 1861,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 1236,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

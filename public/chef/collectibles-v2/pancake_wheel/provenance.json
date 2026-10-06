@@ -1,0 +1,11 @@
+{
+  "author": "[redacted]",
+  "notes": "Original Blender geometry authored for this project. Hero designs based on existing authorized cinematic reference artwork.",
+  "origin": "authored",
+  "schema": "game_dev.asset_provenance.v1",
+  "source": {
+    "bytes": 164056,
+    "fileName": "pancake_wheel.glb",
+    "sha256": "f72168af505b4d7affaa757fcec3c5a3940f3d51987f1db1877b488d4f26a912"
+  }
+}

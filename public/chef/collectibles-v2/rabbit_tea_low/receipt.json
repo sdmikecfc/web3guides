@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:21:41.224Z",
+  "destination": {
+    "assetId": "rabbit_tea_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "d75f947c06d4026f6ea89ff4b66767c091ff59f3769db559e0b079caca3cc6cf",
+  "packageId": "pkg_e24896fabece58dcdb0fca27",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 103388,
+    "fileName": "rabbit_tea_low.glb",
+    "sha256": "f064f0a6e0d3eee19b6894166b9c9025f5bd351127830038c1a6c7cde6d0c1e0"
+  }
+}

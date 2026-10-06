@@ -1,0 +1,11 @@
+{
+  "author": "[redacted]",
+  "notes": "Original Blender geometry authored for this project. Hero designs based on existing authorized cinematic reference artwork.",
+  "origin": "authored",
+  "schema": "game_dev.asset_provenance.v1",
+  "source": {
+    "bytes": 668056,
+    "fileName": "disco_burger_jukebox.glb",
+    "sha256": "45d47a9a9b26245d603cf11b0d76f15d1ac0aa2c19a0fc35d25113b3908dea82"
+  }
+}

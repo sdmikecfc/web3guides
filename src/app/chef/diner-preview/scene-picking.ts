@@ -1,8 +1,22 @@
 import type { Intersection, Material, Object3D, Vector3 } from 'three';
+import type { SceneTable } from './scene-types';
 
 export interface ScenePickTarget {id:string;seatId?:string}
 export interface VisibleSceneSurface {target?:ScenePickTarget;tile?:{x:number;y:number};point:Vector3}
 type SurfaceObject=Object3D&{material?:Material|Material[]};
+
+/** A tabletop hit belongs to the nearest place setting, rather than always the
+ * first guest in the table array. Chairs, food and thought bubbles already have
+ * an exact seat and keep it. The exact centre remains a general table action. */
+export function resolveTableSurfaceTarget(hit:VisibleSceneSurface|null,tables:readonly SceneTable[]):ScenePickTarget|undefined {
+  const target=hit?.target;
+  if(!hit||!target||target.seatId)return target;
+  const table=tables.find(table=>table.id===target.id);
+  if(!table?.seats.length)return target;
+  const nearest=table.seats.map(seat=>{const point=seat.surface??seat;return {seat,distance:(point.x-hit.point.x)**2+(point.y-hit.point.z)**2};}).sort((a,b)=>a.distance-b.distance);
+  if(nearest.length>1&&Math.abs(nearest[0].distance-nearest[1].distance)<.000001)return target;
+  return {...target,seatId:nearest[0].seat.id};
+}
 
 /** Truck crew are visual work feedback, not selection surfaces. Mark their root
  * so hats, animated limbs, tools and carried dishes all follow the same rule. */

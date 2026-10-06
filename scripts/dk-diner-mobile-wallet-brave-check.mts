@@ -144,9 +144,9 @@ async function main() {
     'wagmi/connectors': connectors, 'wagmi/chains': chains, viem,
     '@tanstack/react-query': { QueryClient: class {}, QueryClientProvider: () => null }, react: runtime,
   });
-  async function configuration() {
+  async function configuration(connectionMode = 'wallet-browser') {
     const module = loadProviders();
-    const config = module.WalletProviders({ appName: 'Domain Kitchen', connectionMode: 'wallet-browser', children: null }).props.config;
+    const config = module.WalletProviders({ appName: 'Domain Kitchen', connectionMode, children: null }).props.config;
     await core.hydrate(config, { reconnectOnMount: false }).onMount();
     return config;
   }
@@ -298,6 +298,29 @@ async function main() {
     }
   });
 
+  await check('expanded chooser includes uninstalled options without advertising dead direct buttons', async () => {
+    browser();define('navigator',{userAgent:'Desktop',platform:'Win32',maxTouchPoints:0});
+    const config=await configuration('expanded');
+    const ids=new Set(config.connectors.map((connector:any)=>connector.rkDetails?.id));
+    for(const id of ['metaMask','coinbase','rabby','brave','phantom'])assert(ids.has(id),`Chooser includes ${id}.`);
+    assert(!config.connectors.some((connector:any)=>connector.type==='walletConnect'),'No relay connector without a valid project.');
+    const gate=view(config),html=await gate.mount();
+    assert.match(html,/Choose wallet/);assert.equal(gate.findButton(/Connect (MetaMask|Rabby|Brave|Phantom)/i),undefined);
+    gate.dispose();
+  });
+  await check('expanded chooser preserves direct MetaMask approval and beta account access', async () => {
+    const wallet=new MobileWallet(`0x${'cd'.repeat(20)}`,{isMetaMask:true});wallet.requireAuthorizationForChainId=true;
+    browser(wallet);const config=await configuration('expanded'),gate=view(config);await gate.mount();
+    await gate.click(/MetaMask/i);assert.equal(core.getAccount(config).address.toLowerCase(),wallet.address);
+    assert(!wallet.calls.some(method=>/sign|sendTransaction/i.test(method)));gate.dispose();
+  });
+  await check('Phantom Ethereum connects to Phantom instead of another installed extension', async () => {
+    const metamask=new MobileWallet(`0x${'de'.repeat(20)}`,{isMetaMask:true}),phantom=new MobileWallet(`0x${'ef'.repeat(20)}`,{isPhantom:true});
+    const win=browser(metamask);Object.assign(win,{phantom:{ethereum:phantom}});define('navigator',{userAgent:'Desktop',platform:'Win32',maxTouchPoints:0});
+    const config=await configuration('expanded'),gate=view(config);await gate.mount();await gate.click(/Phantom/i);
+    assert.equal(core.getAccount(config).address.toLowerCase(),phantom.address);assert(!metamask.calls.includes('eth_requestAccounts'));
+    gate.dispose();
+  });
   assert.equal(networkCalls, 0, 'Wallet buttons do not start a relay, signature, transaction, or HTTP request in these checks.');
   console.log(`${groups} Brave/mobile gate regression groups passed. Physical mobile app handoff remains a device test.`);
 }

@@ -275,11 +275,12 @@ async function main() {
       const html = view.mount();
       assert.ok(html.includes(`href="${walletBrowser.METAMASK_GAME_LINK}"`));
       assert.ok(html.includes(`href="${walletBrowser.WALLET_HELP_PATH}"`));
-      assert.equal(html.includes('<button'), false, 'An unconfigured phone must not offer a dead connect button.');
+      assert.match(html, /Choose wallet/, 'The full chooser is available even without an injected wallet.');
+      assert.equal(html.includes('Connect Browser Wallet'), false, 'Never advertise a direct browser connection without an actual provider.');
     }
     browser('Desktop', undefined, 'Win32', 0);
     const desktop = renderConnection(loadProviders().config()); desktop.render();
-    assert.match(desktop.mount(), /https:\/\/metamask.io\/download\//);
+    assert.match(desktop.mount(), /Choose wallet/);
   });
 
   await check('the late-wallet button calls real wagmi connect and presents pending/retry states', async () => {

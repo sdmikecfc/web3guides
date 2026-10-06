@@ -1,0 +1,43 @@
+{
+  "assetId": "lunar_oven_low",
+  "displayName": "lunar_oven_low",
+  "files": [
+    {
+      "bytes": 169656,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "081fb647d8141186d06c8b05fce1c228015c55740ae67c56d06dd8bc53099d67"
+    },
+    {
+      "bytes": 1412,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "52145a8b4ddc4a7281f94f8dec04f1562735fa49e17fbf5959689349c8467299"
+    },
+    {
+      "bytes": 394,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "3ace60002810077fbd787530d37f1b5ff825cca4891f6eec7e0667417bc27079"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "6b9810b85af8cf71a45d9133a18c29e8042d327f6f22b0bf264954d0d45bcf0d"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_77c0e7960e5ca6730b170dcf",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

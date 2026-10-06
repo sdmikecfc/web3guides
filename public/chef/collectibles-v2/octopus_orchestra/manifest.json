@@ -1,0 +1,43 @@
+{
+  "assetId": "octopus_orchestra",
+  "displayName": "octopus_orchestra",
+  "files": [
+    {
+      "bytes": 311632,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "4fbda2086eb603e2e1daf67e85949f6a06bd591946e55de250459b1402ac84db"
+    },
+    {
+      "bytes": 1422,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "7ff91b089e7ae55e0a6ecf221f71e1300a1494a5bf8a3dc71f9339363b9a7c9b"
+    },
+    {
+      "bytes": 397,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "a896ca530bf7b20f90f78d30af9344b2bf37528bc20b294b9962f2c41b6d5454"
+    },
+    {
+      "bytes": 2536,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "b974b06075a0a2610346299aa28b1e2f15e376ffdb653db4e7fcfc154665229c"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_ab707684afe6309242515f38",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

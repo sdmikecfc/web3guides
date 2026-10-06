@@ -1,0 +1,22 @@
+'use client';
+import {useEffect,useRef,useState} from 'react';
+import {domainService,journeyReachable,isJourneyService,journeyServiceIndex,type DomainJourneyAttempt} from '@/lib/chef/diner/domain-journeys';
+import {DinerIcon,type DinerIconName} from './DinerIcon';
+import {RECIPE_BY_ID} from '@/lib/chef/diner/content';
+import css from './route-map.module.css';
+export function DomainJourneyMap({attempt:a,choose}:{attempt:DomainJourneyAttempt;choose:(id:string)=>void}){
+ const [selected,setSelected]=useState<string|null>(null),view=useRef<HTMLDivElement>(null),current=useRef<HTMLButtonElement>(null);
+ const available=journeyReachable(a).map(n=>n.id),rows=Math.max(...a.nodes.map(n=>n.row))+1,here=a.current??available[0];
+ const pos=(id:string)=>{const n=a.nodes.find(n=>n.id===id)!;return{x:(n.column+.5)*1000/a.nodes.filter(m=>m.row===n.row).length,y:(rows-1-n.row)*100+45};};
+ const recenter=()=>{if(view.current&&current.current)view.current.scrollTop=current.current.offsetTop-view.current.clientHeight*.7;};
+ useEffect(()=>{setSelected(null);recenter();},[a.current]);
+ const reachable=new Set<string>(),stack=[...available];while(stack.length){const id=stack.pop()!;if(reachable.has(id))continue;reachable.add(id);stack.push(...a.nodes.find(n=>n.id===id)!.next);}
+ const taken=new Set(a.visited.slice(1).map((id,i)=>`${a.visited[i]}:${id}`)),node=a.nodes.find(n=>n.id===selected),hidden=node?.mystery&&!a.visited.includes(node.id);
+ const service=node&&!hidden&&isJourneyService(node.kind)?domainService(a.domain,`${a.seasonId}:journey-v1:${node.id}`,journeyServiceIndex(a.nodes,node),node.kind,a.equipmentTiers,a.helper,a.patienceBoost,a.practice):null;
+ return <section className={css.journey} aria-label="Domain journey map"><div className={css.status}><strong>{a.completed.length} / 8 services</strong><span>Start below · finish above</span><button onClick={recenter}>My spot</button></div>
+ <div className={css.viewport} ref={view}><div className={css.map} style={{height:rows*100}}><svg className={css.roads} viewBox={`0 0 1000 ${rows*100}`} preserveAspectRatio="none" aria-hidden="true">{a.nodes.flatMap(n=>n.next.map(id=>{const p=pos(n.id),q=pos(id),used=taken.has(`${n.id}:${id}`);return <path key={`${n.id}:${id}`} d={`M${p.x},${p.y} C${p.x},${p.y-45} ${q.x},${q.y+45} ${q.x},${q.y}`} fill="none" stroke={used?'#397f73':reachable.has(id)?'#b79a75':'#ddd2bf'} strokeWidth={used?6:3} strokeDasharray={used?undefined:'5 7'} vectorEffect="non-scaling-stroke"/>;}))}</svg>
+ {a.nodes.map(n=>{const p=pos(n.id),visited=a.visited.includes(n.id),mystery=n.mystery&&!visited,icon:DinerIconName=n.kind==='finale'?'star':isJourneyService(n.kind)?n.kind==='busy'||n.kind==='special'?'clock':'plate':n.kind==='shop'?'store':n.kind==='bonus'?'gift':'friends';return <button ref={n.id===here?current:undefined} key={n.id} className={css.node} style={{left:`${p.x/10}%`,top:p.y}} data-current={n.id===here} data-available={available.includes(n.id)} data-visited={visited} data-missed={!reachable.has(n.id)&&!visited} data-finale={n.kind==='finale'} aria-label={`${mystery?'Mystery stop':n.name}, ${available.includes(n.id)?'available':visited?'visited':'ahead'}`} aria-pressed={selected===n.id} onClick={()=>setSelected(n.id)}><span className={css.nodeIcon}>{mystery?'?':<DinerIcon name={icon} size={26}/>}</span>{visited&&<span className={css.visitedMark}>✓</span>}{(n.id===here||n.kind==='finale')&&<small>{n.id===here?'You are here':'Finale'}</small>}</button>;})}</div></div>
+ <div className={css.legend}><span><DinerIcon name="plate" size={16}/>Lunch</span><span><DinerIcon name="clock" size={16}/>Rush</span><span><DinerIcon name="store" size={16}/>Workshop</span><span><DinerIcon name="friends" size={16}/>Encounter</span><span>? Mystery</span></div>
+ {node?<div className={css.briefing}><div><strong>{hidden?'Mystery stop':node.name}</strong><p>{hidden?'Find out when you arrive.':service?`${service.config.customers} guests · ${service.config.menu.map(id=>RECIPE_BY_ID[id].name).join(', ')}`:'Choose a temporary machine improvement or extra patience for this journey.'}</p>{service&&<p>{node.kind==='finale'?'A demanding final rush with recovery gaps.':'Prepare freely before opening.'} Regular rules.</p>}</div><button disabled={!available.includes(node.id)} onClick={()=>choose(node.id)}>{available.includes(node.id)?'Go here':a.visited.includes(node.id)?'Already visited':'Follow the connected road'}</button></div>:<p className={css.prompt}>Choose your next stop.</p>}
+ </section>;
+}

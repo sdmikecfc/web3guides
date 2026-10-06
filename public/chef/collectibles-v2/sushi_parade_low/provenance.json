@@ -1,0 +1,11 @@
+{
+  "author": "[redacted]",
+  "notes": "Original Blender geometry authored for this project. Hero designs based on existing authorized cinematic reference artwork.",
+  "origin": "authored",
+  "schema": "game_dev.asset_provenance.v1",
+  "source": {
+    "bytes": 141516,
+    "fileName": "sushi_parade_low.glb",
+    "sha256": "0ac3dbc684213b87184e835279c4400a713622ba3a753f87122a8454ef479459"
+  }
+}

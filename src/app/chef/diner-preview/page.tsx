@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import BetaEntry from "./BetaEntry";
+import {KITCHEN_DESCRIPTION,KITCHEN_SITE} from '@/lib/chef/site-metadata';
 
 export const metadata: Metadata = {
-  title: "Domain Kitchen · Open beta",
-  description: "Your little diner. A whole road of possibilities.",
+  title: {absolute:"Domain Kitchen · Open beta"},
+  description: KITCHEN_DESCRIPTION,
+  alternates:{canonical:KITCHEN_SITE},
   robots: { index: false, follow: false },
 };
 

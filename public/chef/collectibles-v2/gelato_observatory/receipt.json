@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T16:38:31.661Z",
+  "destination": {
+    "assetId": "gelato_observatory",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "832ad03d5691306f0296670a2e34a271881a6269aace6565b73afb8fcf2b7f36",
+  "packageId": "pkg_5aa51358c1bb7b67a73adcfc",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 655876,
+    "fileName": "gelato_observatory.glb",
+    "sha256": "bc277c7826880bbd71006a23eb846a8012af2c38a4b30e14e2924a0dfac55e85"
+  }
+}

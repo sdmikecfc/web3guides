@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T16:38:14.248Z",
+  "destination": {
+    "assetId": "croissant_mobile",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "ca1cdccf55969b97bf7ec6460352a7b2d193abe5414ab3f2f3a8b26744d8a6c1",
+  "packageId": "pkg_492692e225bfcb558b021080",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 258800,
+    "fileName": "croissant_mobile.glb",
+    "sha256": "334f43f4a879bf30be88b7da44733971dab16b9eec0622541a7f2edda8ab22d8"
+  }
+}

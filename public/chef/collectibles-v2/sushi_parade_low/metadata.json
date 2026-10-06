@@ -1,0 +1,55 @@
+{
+  "assetId": "sushi_parade_low",
+  "displayName": "sushi_parade_low",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.8463617563247681,
+        0.6534599363803864,
+        0.2380175143480301
+      ],
+      "min": [
+        -0.8483625650405884,
+        0.008638322353363037,
+        -0.23636166751384735
+      ],
+      "sizeMeters": [
+        1.6947243213653564,
+        0.6448216140270233,
+        0.47437918186187744
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 141516,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 7,
+    "meshCount": 27,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 27,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 3428,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 2424,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

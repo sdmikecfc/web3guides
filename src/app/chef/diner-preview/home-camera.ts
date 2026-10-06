@@ -21,6 +21,9 @@ export interface HomeCameraFit {
  * the room above onboarding; a taller preview sheet always keeps its full inset. */
 export function homeCameraPresentation(width:number,hasRoomPlan:boolean,previewInset?:number){
   const phone=width<700;
+  // Small insets belong to embedded scenes (rehearsal/art), with no game HUD.
+  // Larger values reserve only the bottom sheet used by live room editing.
+  if(previewInset!==undefined&&previewInset<=32)return {azimuthOffset:phone?(hasRoomPlan?Math.PI/6:Math.PI/12):Math.PI/4,insets:{top:previewInset,bottom:previewInset,left:16,right:16},scaleBoost:1};
   return {azimuthOffset:phone?(hasRoomPlan?Math.PI/6:Math.PI/12):Math.PI/4,
     insets:{bottom:phone&&hasRoomPlan?Math.max(225,previewInset??0):previewInset??125},
     scaleBoost:hasRoomPlan&&!phone&&!previewInset?1.04:1};

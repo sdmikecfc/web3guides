@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:21:29.835Z",
+  "destination": {
+    "assetId": "octopus_orchestra_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "49bc3f336f78b24d9d00490ca395da43b00b6f6e990458d153940c56adf8760f",
+  "packageId": "pkg_c9353fd51b0f4462bbace737",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 156788,
+    "fileName": "octopus_orchestra_low.glb",
+    "sha256": "c5bc8d00b093decbaba70b71c83a51645d327e0d40fcd7bcc09cd5db0107fc1a"
+  }
+}

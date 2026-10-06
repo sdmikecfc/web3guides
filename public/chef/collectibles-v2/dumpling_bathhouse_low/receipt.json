@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:21:09.784Z",
+  "destination": {
+    "assetId": "dumpling_bathhouse_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "61a89175fdf4a8495cbcf1914c31de603e6f44e1946ebdfbb1ebcc2952ae286c",
+  "packageId": "pkg_251888d41de7811aabcfad4f",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 156596,
+    "fileName": "dumpling_bathhouse_low.glb",
+    "sha256": "9d4e96970470a7d02ab9f709ce5dae06b98655a5aae1a035a7755103e1bf4c02"
+  }
+}

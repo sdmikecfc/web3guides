@@ -1,0 +1,43 @@
+{
+  "assetId": "rabbit_tea_low",
+  "displayName": "rabbit_tea_low",
+  "files": [
+    {
+      "bytes": 103388,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "f064f0a6e0d3eee19b6894166b9c9025f5bd351127830038c1a6c7cde6d0c1e0"
+    },
+    {
+      "bytes": 1415,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "814950d5b222ac4292403e74a1cd5ab4e19910dd1a533a927957e438f08c49ae"
+    },
+    {
+      "bytes": 394,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "41d17e34f05a1cc61a16f049c5de4a11ab42af01bd1dd857dc2a31070b4ca510"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "a2ea201876b934f42bd7d305e99ec59032e20dd434a1ec9a93b8c47ec2fb3647"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_e24896fabece58dcdb0fca27",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

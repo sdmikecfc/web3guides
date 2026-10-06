@@ -1,6 +1,6 @@
 import { EQUIPMENT_BY_ID, INGREDIENT_BY_ID, RECIPE_BY_ID, SERVICE_RULES } from '../../../lib/chef/diner/content';
-import { stationAccessPath, tableFootprint, targetPath } from '../../../lib/chef/diner/geometry';
-import { serviceReadyError, serviceSupplyChoices, serviceTargetIntent, serviceMissingIngredients, serviceRecipeSteps } from '../../../lib/chef/diner/service';
+import { stationAccessPath, servicePath, tableFootprint, targetPath } from '../../../lib/chef/diner/geometry';
+import { serviceReadyError, serviceSupplyChoices, serviceTargetIntent, serviceMissingIngredients, serviceRecipeSteps, isPlatableServiceFood, isUsedFriesBox } from '../../../lib/chef/diner/service';
 import { recipeVessel, SERVING_VESSELS, vesselSupplyStation, type VesselKind } from '../../../lib/chef/diner/batch';
 import type { Point, ServiceItem, ServiceState } from '../../../lib/chef/diner/types';
 
@@ -24,11 +24,15 @@ const distance=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 function requestedRecipe(service:ServiceState):string|undefined {
   return service.customers.filter(c=>c.phase==='seated').sort((a,b)=>a.patience-b.patience)[0]?.recipeId??service.config.menu[0];
 }
-const prepared=(service:ServiceState,item:ServiceItem|null):boolean=>!!item&&item.physical===true&&item.kind==='processed'&&item.step>=serviceRecipeSteps(service,item.recipeId).length;
+const prepared=(service:ServiceState,item:ServiceItem|null):boolean=>isPlatableServiceFood(service,item)||!!item&&item.physical===true&&item.kind==='processed'&&service.config.menu.includes('fries')&&service.stations.some(st=>st.slots.some(slot=>slot.item?.id===item.id&&slot.batch?.phase==='raised'));
 const requiredVessel=(service:ServiceState,item:ServiceItem):VesselKind=>service.config.batchVersion===1?recipeVessel(item.recipeId):'plate';
 const matchingVessel=(service:ServiceState,food:ServiceItem|null,vessel:ServiceItem|null):boolean=>!!food&&!!vessel&&vessel.kind==='plate'&&(vessel.vesselKind??'plate')===requiredVessel(service,food);
 const component=(item:ServiceItem|null):boolean=>!!item?.physical&&item.kind==='ingredient'&&item.ingredientId!==RECIPE_BY_ID[item.recipeId].ingredients[0];
 const missingIngredients=(item:ServiceItem|null):string[]=>item?serviceMissingIngredients(item):[];
+// Retained noodle portions are a reserve, not the next task while assembling,
+// serving or clearing the current meal.
+const needsNoodlePortion=(s:ServiceState)=>!s.stations.some(st=>st.kind!=='boiler'&&st.slots.some(slot=>slot.item&&slot.item.kind!=='plate'))&&
+  !s.tables.some(t=>t.seats.some(seat=>seat.item?.kind==='dirty'))&&!(s.served===1&&s.washed===0&&s.customers.some(c=>c.phase==='eating'));
 function neededSupply(service:ServiceState):{recipeId:string;ingredientId:string}|null{
   const slots=service.stations.flatMap(station=>station.slots.map(slot=>({station,slot})));
   const waiting=slots.find(({station,slot})=>station.kind==='prep'&&slot.item&&!slot.job&&missingIngredients(slot.item).length);
@@ -53,27 +57,30 @@ export function nearestTruckInteraction(service:ServiceState,preferredId?:string
     const choice=isSupply?serviceSupplyChoices(service,station.id).find(choice=>choice.recipeId===supply?.recipeId&&choice.ingredientId===supply?.ingredientId):undefined;
     const recipeId=choice?.recipeId??(station.kind==='crate'&&!service.config.physicalSupplies?requestedRecipe(service):undefined);
     const expected=held&&serviceRecipeSteps(service,held.recipeId)[held.step]?.station;
-    let contextual=!held?true:held.kind==='burnt'?station.kind==='bin':held.kind==='dirty'?station.kind==='sink':held.kind==='dish'?false:station.kind===expected;
+    let contextual=!held?true:held.kind==='burnt'||isUsedFriesBox(held)?station.kind==='bin':held.kind==='dirty'?station.kind==='sink':held.kind==='dish'?false:station.kind===expected;
     if(held?.kind==='dish'&&orderNeedsClearing)contextual=['prep','pass'].includes(station.kind)&&station.slots.some(slot=>!slot.item);
     if(held?.kind==='plate')contextual=station.slots.some(slot=>prepared(service,slot.item)&&matchingVessel(service,slot.item,held))||station.kind==='prep';
-    else if(prepared(service,held))contextual=station.slots.some(slot=>matchingVessel(service,held,slot.item))||station.kind==='prep';
+    else if(prepared(service,held))contextual=station.kind===vesselSupplyStation(requiredVessel(service,held!))||station.slots.some(slot=>matchingVessel(service,held,slot.item))||station.kind==='prep';
     else if(component(held))contextual=station.kind==='prep';
     else if(!held&&service.config.physicalSupplies){
       if(isSupply)contextual=!!choice;
       else if(['plates','cups','boxes','bowls'].includes(station.kind))contextual=service.stations.some(s=>s.slots.some(slot=>slot.item&&prepared(service,slot.item)&&(!slot.batch||slot.batch.phase==='raised')&&vesselSupplyStation(requiredVessel(service,slot.item))===station.kind));
       else if(station.slots.some(slot=>slot.batch?.phase==='ready'))contextual=true;
+      else if(station.slots.some(slot=>slot.boil?.phase==='drained'))contextual=needsNoodlePortion(service);
       else if(station.slots.some(slot=>!slot.job&&(component(slot.item)||missingIngredients(slot.item).length>0)))contextual=false;
       else if(station.slots.some(slot=>prepared(service,slot.item)))contextual=false;
     }
     // A shared corner can reach several appliances. Continue real food/washing
     // already in progress before taking another raw portion from the pantry.
     const existingWork=!held&&station.slots.some(slot=>slot.item&&slot.job&&(slot.job.ready||slot.job.action==='hold'||slot.job.action==='wash'));
-    add({targetId:station.id,...(recipeId?{recipeId}:{}),...(choice?{ingredientId:choice.ingredientId}:{})},point,path!==null,contextual,existingWork?0:1);
+    const readyToPlate=!!held&&prepared(service,held)&&(station.kind===vesselSupplyStation(requiredVessel(service,held))||station.kind!=='pass'&&station.slots.some(slot=>matchingVessel(service,held,slot.item)));
+    add({targetId:station.id,...(recipeId?{recipeId}:{}),...(choice?{ingredientId:choice.ingredientId}:{})},point,path!==null,contextual,existingWork||readyToPlate?0:1);
   }
   for(const table of service.tables){
     const reachable=targetPath(service.config.tier,service.stations,service.tables,service.chef,tableFootprint(table))!==null;
     for(const seat of table.seats)add({targetId:table.id,seatId:seat.id},seat,reachable,true,!held&&seat.item?.kind==='dirty'&&['reserved','occupied'].includes(seat.status)?0:1);
   }
+  for(const mess of service.messes??[])add({targetId:mess.id},mess,servicePath(service.config.tier,service.stations,service.tables,service.chef,mess)!==null,!held,0);
   const byDistance=(a:typeof candidates[number],b:typeof candidates[number])=>a.distance-b.distance||a.action.targetId.localeCompare(b.action.targetId)||(a.action.seatId??'').localeCompare(b.action.seatId??'');
   const preferred=preferredId?candidates.filter(candidate=>candidate.action.targetId===preferredId).sort(byDistance)[0]:undefined;
   return preferred?.action??candidates.filter(candidate=>candidate.contextual).sort((a,b)=>a.priority-b.priority||byDistance(a,b))[0]?.action??null;
@@ -91,6 +98,7 @@ export function firstLunchCoach(service:ServiceState):LunchCoach {
   if(!held&&waitingDirty){const name=SERVING_VESSELS[waitingDirty.seat.item!.vesselKind??'plate'].name;return hint(`Clear the used ${name}`,'Your guest is waiting. Remove the old dish before serving their order.',waitingDirty.table.id);}
   const physical=physicalLunchCoach(service);if(physical)return physical;
   if(held){
+    if(isUsedFriesBox(held))return hint('Throw away the used fries box','Take it to the bin. Boxes are not washed.',service.stations.find(s=>s.kind==='bin')?.id??null);
     if(held.kind==='dirty'){const sink=service.stations.find(s=>s.kind==='sink'&&!serviceTargetIntent(service,s.id).disabled),name=SERVING_VESSELS[held.vesselKind??'plate'].name;return hint(`Bring the ${name} to the sink`,sink?'Put it in, then hold to wash.':`Make room in the sink for this ${name}.`,sink?.id??null);}
     if(held.kind==='burnt'){const bin=service.stations.find(s=>s.kind==='bin');return hint('Clear the burnt food','Use the bin, then try a fresh portion.',bin?.id??null);}
     if(held.kind==='dish'){
@@ -105,7 +113,7 @@ export function firstLunchCoach(service:ServiceState):LunchCoach {
     const name=EQUIPMENT_BY_ID[step.station].name.toLowerCase();
     return hint(held.recipeId==='classic_burger'&&held.step===0?'Put the patty on the grill':held.recipeId==='classic_burger'&&held.step===1?'Add the bun':`Take it to the ${name}`,station?`${step.label}. Select the ${name} to put it down.`:`Make room at the ${name}.`,station?.id??null);
   }
-  const ready=service.stations.find(s=>s.slots.some(slot=>slot.item&&(!slot.job||slot.job.ready)&&!(service.config.physicalSupplies&&(component(slot.item)||missingIngredients(slot.item).length>0)&&s.kind==='prep')));
+  const ready=service.stations.find(s=>s.slots.some(slot=>slot.item&&(!slot.job||slot.job.ready)&&!(slot.boil?.phase==='drained'&&!needsNoodlePortion(service))&&!(service.config.physicalSupplies&&(component(slot.item)||missingIngredients(slot.item).length>0)&&s.kind==='prep')));
   if(ready){const item=ready.slots.find(slot=>slot.item&&(!slot.job||slot.job.ready))!.item!;return hint(item.kind==='burnt'?'Remove the burnt food':item.kind==='dish'?'Pick up the finished dish':'Take the cooked food',`Select the ${EQUIPMENT_BY_ID[ready.kind].name.toLowerCase()} to collect it.`,ready.id);}
   const working=service.stations.find(s=>s.slots.some(slot=>slot.item&&slot.job&&!slot.job.ready));
   if(working){
@@ -141,15 +149,17 @@ function physicalLunchCoach(service:ServiceState):LunchCoach|null{
     const readyBoiler=service.stations.find(station=>station.slots.some(slot=>slot.item&&slot.boil?.phase==='ready'));
     if(readyBoiler)return hint('Lift & drain the noodles','Select the boiler to lift its basket out of the water. Then collect the drained noodles.',readyBoiler.id);
     const drainedBoiler=service.stations.find(station=>station.slots.some(slot=>slot.item&&slot.boil?.phase==='drained'));
-    if(drainedBoiler)return hint('Collect the drained noodles','Take them from the boiler to the prep counter, then add the remaining ingredients.',drainedBoiler.id);
+    if(drainedBoiler&&needsNoodlePortion(service))return hint('Collect the drained noodles','Take them from the boiler to the prep counter, then add the remaining ingredients.',drainedBoiler.id);
   }
   if(held?.kind==='plate'){
     const food=service.stations.find(station=>station.slots.some(slot=>prepared(service,slot.item)&&matchingVessel(service,slot.item,held))),name=SERVING_VESSELS[held.vesselKind??'plate'].name;
     return food?hint(held.vesselKind==='fry_box'?'Box one serving of fries':held.vesselKind==='cup'?'Pour into the cup':held.vesselKind==='bowl'?'Fill the bowl':'Plate your finished food',`Bring this ${name} to the prepared food.`,food.id):hint(`Put the ${name} down`,'Leave it on the prep counter until the food is ready.',counter?.id??null);
   }
   if(prepared(service,held)){
-    const plate=service.stations.find(station=>station.slots.some(slot=>matchingVessel(service,held,slot.item))),name=SERVING_VESSELS[requiredVessel(service,held!)].name;
-    return plate?hint(`Use the ${name}`,`Bring the food to its ${name}.`,plate.id):hint('Put the food down first',`Leave it on the prep counter, then fetch a ${name}.`,counter?.id??null);
+    const kind=requiredVessel(service,held!),name=SERVING_VESSELS[kind].name;
+    const plate=service.stations.find(station=>station.kind!=='pass'&&station.slots.some(slot=>matchingVessel(service,held,slot.item)));
+    const rack=service.stations.find(station=>station.kind===vesselSupplyStation(kind)&&!serviceTargetIntent(service,station.id).disabled);
+    return plate?hint(`Use the ${name}`,`Bring the food to its ${name}.`,plate.id):rack?hint(`Use a ${name}`,`Take the food to the ${name} supply to serve it.`,rack.id):hint('Put the food down first',`Leave it on the prep counter while you wash a ${name}.`,counter?.id??null);
   }
   if(component(held))return hint(`Add the ${INGREDIENT_BY_ID[held!.ingredientId!]?.name.toLowerCase()??'ingredient'}`,'Bring it to the prep counter with your food.',counter?.id??null);
   if(held?.physical&&missingIngredients(held).length)return hint('Set it on the prep counter','Put down the cooked food, then collect the remaining ingredients.',counter?.id??null);

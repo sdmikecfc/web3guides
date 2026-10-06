@@ -8,7 +8,7 @@ let groups=0;
 function check(name:string,run:()=>void){run();groups++;console.log(`PASS ${name}`);}
 class Driver {
   s:ServiceState;
-  constructor(options:CreateServiceOptions={}){this.s=dispatchService(createService({physicalSupplies:false,stations:starterStations(options.tier??1).filter(st=>!['fridge','plates'].includes(st.kind)),...options}),{type:'open'});assert.equal(this.s.phase,'playing',this.s.notice);}
+  constructor(options:CreateServiceOptions={}){this.s=dispatchService(createService({physicalSupplies:false,cookingVersion:0,stations:starterStations(options.tier??1).filter(st=>!['fridge','plates'].includes(st.kind)),...options}),{type:'open'});assert.equal(this.s.phase,'playing',this.s.notice);}
   act(action:ServiceAction){this.s=dispatchService(this.s,action);}
   tick(n=1){stepService(this.s,n);}
   until(done:()=>boolean,limit=12000){let n=0;while(!done()&&n++<limit&&['playing','closing'].includes(this.s.phase))this.tick();assert(done(),`Timed out at ${this.s.tick}: ${this.s.notice}`);}
@@ -42,8 +42,8 @@ class Driver {
 }
 
 check('complete versioned diner catalog and reachable geometry at four truck sizes',()=>{
-  assert.equal(CONTENT_VERSION,1);assert.equal(INGREDIENTS.length,33);assert.equal(RECIPES.length,24);assert.equal(ROUTES.length,3);
-  assert.equal(new Set(RECIPES.map(r=>r.id)).size,24);
+  assert.equal(CONTENT_VERSION,1);assert.equal(INGREDIENTS.length,37);assert.equal(RECIPES.length,32);assert.equal(ROUTES.length,5);
+  assert.equal(new Set(RECIPES.map(r=>r.id)).size,32);
   for(const recipe of RECIPES){assert(recipe.ingredients.every(id=>INGREDIENTS.some(i=>i.id===id)));assert(recipe.steps.every(step=>EQUIPMENT_BY_ID[step.station]&&step.ticks>=0));assert(recipePrice(recipe.id,10)>recipe.basePrice);}
   for(const tier of [1,2,3,4] as const){const stations=starterStations(tier),tables=starterTables(tier),g=serviceGeometry(tier);assert.equal(validateServiceLayout(tier,stations,tables),null);assert(servicePath(tier,stations,tables,g.door,g.queue));assert.equal(tables.length,TRUCK_TIERS[tier].tables);}
   const same=starterStations();same.find(s=>s.kind==='grill')!.x=0;assert(validateServiceLayout(1,same,starterTables()));
@@ -68,8 +68,8 @@ check('keyboard interruption preserves physical movement, avoids backtracking, a
   d.act({type:'interact',targetId:'crate',recipeId:'classic_burger'});d.tick();const rounded={x:Math.round(d.s.chef.x),y:Math.round(d.s.chef.y)};d.act({type:'move',...rounded});d.act({type:'move',x:3,y:2});
   assert.equal(d.s.chef.targetId,null);d.until(()=>d.s.chef.path.length===0);assert.deepEqual({x:d.s.chef.x,y:d.s.chef.y},rounded);assert.equal(d.s.chef.held,null);
 });
-check('all 24 recipes execute their real ordered station chains and yield one matching plated item',()=>{
-  for(const recipe of RECIPES){const layout=buildServiceLoadout(1,[recipe.id]);assert.equal(layout.error,null,recipe.id);const d=new Driver({seed:recipe.id,menu:[recipe.id],customers:1,arrivalTicks:2000,queuePatienceTicks:12000,tablePatienceTicks:12000,...layout});d.cook(recipe.id);assert.equal(d.s.chef.held?.stage,`plated_${recipe.id}`);}
+check('all 30 pre-soup recipes retain their legacy ordered station chains',()=>{
+  for(const recipe of RECIPES.filter(r=>!r.id.endsWith('_soup'))){const layout=buildServiceLoadout(1,[recipe.id]);assert.equal(layout.error,null,recipe.id);const d=new Driver({seed:recipe.id,menu:[recipe.id],customers:1,arrivalTicks:2000,queuePatienceTicks:12000,tablePatienceTicks:12000,...layout});d.cook(recipe.id);assert.equal(d.s.chef.held?.stage,`plated_${recipe.id}`);}
 });
 check('hold work stops on release, timed jobs keep cooking, pause/reload preserves exact state',()=>{
   const d=new Driver({seed:'hold',menu:['classic_burger'],customers:2});d.interact('crate','classic_burger');d.interact('grill');d.tick(120);d.interact('grill');d.interact('prep');

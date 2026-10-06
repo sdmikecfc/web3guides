@@ -43,43 +43,43 @@ export const FONT =
  */
 export const C = {
   /** page behind everything, and the text ON a filled amber button */
-  ink: "#1b1310",
+  ink: "#342c25",
   /** floating card / sheet body, translucent so the room shows through */
-  panel: "rgba(27,19,16,0.94)",
+  panel: "rgba(255,252,243,0.97)",
   /** modal body where nothing should show through */
-  panelSolid: "#241812",
+  panelSolid: "#fffaf0",
   /** inset wells: slider tracks, list rows, quiet containers */
-  well: "#1f150f",
-  wellActive: "#2f2016",
-  wellDisabled: "#241a14",
+  well: "#f3ecd9",
+  wellActive: "#e5eedb",
+  wellDisabled: "#eee8db",
   /** the quiet (non-primary) button fill */
-  btnQuiet: "#2a1c14",
+  btnQuiet: "#fffdf6",
   /** progress-bar track */
-  track: "#31241b",
+  track: "#e6dcc8",
 
   /** hairline borders */
-  line: "#4a3626",
-  lineSoft: "rgba(74,54,38,0.6)",
+  line: "#dfd4bb",
+  lineSoft: "rgba(119,97,60,0.15)",
   /** the scrim behind an open sheet */
-  overlay: "rgba(10,6,4,0.55)",
+  overlay: "rgba(43,57,37,0.18)",
 
   /** primary text */
-  cream: "#f3e9d2",
+  cream: "#3c392c",
   /** secondary text */
-  creamDim: "#c9b79a",
+  creamDim: "#706a55",
   /** tertiary text, disabled labels, the PRACTICE badge */
-  muted: "#8a7a63",
+  muted: "#857d69",
 
   /** THE accent. Coins, primary buttons, anything the player should act on. */
-  amber: "#e8a13d",
+  amber: "#df9437",
   /** the deep end of the primary-button gradient */
-  amberDeep: "#d97b29",
+  amberDeep: "#d37b2f",
   amberSoft: "#e0a552",
 
   /** semantic */
-  good: "#6fe3a0",
+  good: "#46744f",
   info: "#6fb0c9",
-  bad: "#ff9a9a",
+  bad: "#b94f3e",
   leaf: "#8fbf6a",
 
   /** quality-bar segments (baseline / hands / upkeep / dishes) */
@@ -127,7 +127,7 @@ export const T = {
 
 /** Card elevation, lifted verbatim from the old cardBase so nothing shifts. */
 export const SHADOW = {
-  card: "0 10px 28px rgba(8,4,2,0.5), inset 0 1px 0 rgba(255,240,214,0.07)",
+  card: "0 8px 28px rgba(64,66,39,0.12), inset 0 1px 0 #fffdf8",
   /** the glow under a primary button */
   primary: "0 1px 6px rgba(232,161,61,0.28)",
 } as const;

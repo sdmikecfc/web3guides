@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:21:18.038Z",
+  "destination": {
+    "assetId": "last_fry_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "22c07efcc4205183696d3c026c848883fc18498fe4d9ec19bbefdd993653c504",
+  "packageId": "pkg_49448ae7bc3cf73a99665566",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 66160,
+    "fileName": "last_fry_low.glb",
+    "sha256": "fac6a8033a8ca6547fe503c7ca0eefd1d18fd8b540234e4e4ae3dedcbd641dfe"
+  }
+}

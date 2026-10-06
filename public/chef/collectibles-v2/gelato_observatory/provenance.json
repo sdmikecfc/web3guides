@@ -1,0 +1,11 @@
+{
+  "author": "[redacted]",
+  "notes": "Original Blender geometry authored for this project. Hero designs based on existing authorized cinematic reference artwork.",
+  "origin": "authored",
+  "schema": "game_dev.asset_provenance.v1",
+  "source": {
+    "bytes": 655876,
+    "fileName": "gelato_observatory.glb",
+    "sha256": "bc277c7826880bbd71006a23eb846a8012af2c38a4b30e14e2924a0dfac55e85"
+  }
+}

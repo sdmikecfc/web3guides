@@ -74,8 +74,8 @@ test('input handlers keep hover, taps and rotation local and expose an explicit 
   const source=readFileSync('src/app/chef/diner-preview/DinerClient.tsx','utf8');
   const rotate=source.slice(source.indexOf('const rotateItem='),source.indexOf('const cancelPlacement='));assert.ok(!rotate.includes('send('));
   const tile=source.slice(source.indexOf('const onTile='),source.indexOf('const onHoverTile='));assert.match(tile,/if\(editing\)\{setPlacement/);assert.ok(!tile.includes("type:'homeLayout'"));assert.ok(!tile.includes("type:'setupLayout'"));
-  assert.match(source,/const confirmPlacement=.*previewPlacement\(current,placement\)/);assert.match(source,/if\(preview.error\)/);assert.match(source,/send\(preview.command\)/);
-  assert.match(source,/disabled=\{!placementPreview\|\|!!placementPreview.error\}/);assert.ok(source.includes('onHoverTile={onHoverTile}'));
+  assert.match(source,/const confirmPlacement=.*previewPlacement\(current,placement\)/);assert.match(source,/if\(preview.error\)/);assert.match(source,/commitEdit\(preview.command/);
+  assert.match(source,/disabled=\{!placementPreview\|\|!!placementPreview.error\|\|/);assert.ok(source.includes('onHoverTile={onHoverTile}'));
 });
 test('staged starter uses its actual grill cell and commits a stored fryer without changing room structure',()=>{
  const state=createDiner(now,'staged-placement');state.equipment.fryer.homeCopies=1;const original=structuredClone(state.home.roomPlan),grill=state.home.layout.find(p=>p.equipmentId==='grill')!;
@@ -86,7 +86,7 @@ test('wall art previews snap to exterior walls, commit facing into the room and 
  let state=createDiner(now,'outer-wall-placement');state.decorOwned.burger_print=Math.max(1,state.decorOwned.burger_print??0);
  const existing=state.home.layout.find(p=>p.equipmentId==='burger_print'),id=existing?.id??'wall-burger-print';
  let draft=createPlacementDraft(state,'home','burger_print',id,!!existing);
- for(const [x,y,targetId,slot,rotation] of [[-.55,4,'outer-side',4,3],[5,-.55,'outer-back',5,0]] as const){
+ for(const [x,y,targetId,slot,rotation] of [[-.55,1,'outer-side',1,3],[5,-.55,'outer-back',5,0]] as const){
   const before=JSON.stringify(state);draft=aimHomeMount(state,draft,x,y,true);const preview=previewPlacement(state,draft);
   assert.equal(preview.error,null);assert.deepEqual(draft.mount,{kind:'wall',targetId,slot});assert.equal(preview.object!.x,x);assert.equal(preview.object!.y,y);assert.equal(preview.object!.rotation,rotation);assert.equal(JSON.stringify(state),before);
   state=act(state,preview.command);const reloaded=sanitizeDinerSave(JSON.stringify(state))!;assert(reloaded);assert.deepEqual(reloaded.home.layout.find(p=>p.id===id)!.mount,draft.mount);

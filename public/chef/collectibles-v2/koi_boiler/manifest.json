@@ -1,0 +1,43 @@
+{
+  "assetId": "koi_boiler",
+  "displayName": "koi_boiler",
+  "files": [
+    {
+      "bytes": 160584,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "51ee501620fff7d7749df58765346385bb5a35d598ddfcce2ac2e118566655e7"
+    },
+    {
+      "bytes": 1404,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "27ac29faeb04bb6fbe77ab9b58efd8bc86f872e70402c5007be7dc93d6abc036"
+    },
+    {
+      "bytes": 390,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "8d7ab19e51f8a98f8e98bfe0a0aaae99862d56494c67edd7149af54b33b0cc60"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "27bd23a79b5a4da9bbd511259c4bc10287de51e95670be861dd942f40791e61a"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_ecc5e27c6d3283172d6a8f72",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

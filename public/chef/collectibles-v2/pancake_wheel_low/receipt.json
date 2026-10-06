@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:21:34.428Z",
+  "destination": {
+    "assetId": "pancake_wheel_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "beab3e5d3e429be1176fe97d6b30a325247403d9aebe52a7bdcd04130da203bd",
+  "packageId": "pkg_29055ece3448b157404a86ff",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 75732,
+    "fileName": "pancake_wheel_low.glb",
+    "sha256": "d21a09e24fe5072f041851981cabb1d2850ff68e1e013cd71ec85a5c58ecd063"
+  }
+}

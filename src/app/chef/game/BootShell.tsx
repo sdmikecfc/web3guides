@@ -1,43 +1,41 @@
 "use client";
 
 /**
- * The Domain Kitchen boot screen: shown while the engine chunk downloads and
+ * The Domain Kitchen boot screen: shown while the engine downloads and
  * the preloader counts real assets (ADR-0101 requires a real loading bar).
  * DOM only — it must render before Pixi exists. Player copy: 6th grade, no
  * em-dashes, never "win $X".
  */
 
 /**
- * Loading tips. These state the CURRENT rules: liquidity and trading pay you
- * coins (ADR-0103), coins buy permanent things, and quality is the one thing
- * money never touches. The old "your stake sets how many tables you have"
- * line was true before the earn-and-spend change and is now simply wrong.
+ * Loading tips stay focused on restaurant play and collecting.
  */
 import { FONT } from "./_ui/tokens";
+import { IconChefHat } from "./_ui/icons";
+import type { ReactNode } from "react";
 
 export const BOOT_TIPS = [
-  "Tip: Money you have working at your market pays coins every hour. Coins buy tables, stoves and staff.",
-  "Tip: What you build stays yours. Taking your money out never un-builds the room.",
-  "Tip: Quality comes from your hands, a tidy room and better dishes. Never from coins.",
-  "Tip: Lend your token and dollars to the market and it pays you every hour. Tap the top-left card.",
-  "Tip: Ingredients arrive every morning. Save the right ones to upgrade a dish.",
-  "Tip: A bench by the door keeps guests waiting instead of walking out.",
-  // M8/M8b: the daily loop. Every one of these has to be true of the game as
-  // it runs today, which is what the old "your stake sets your tables" line
-  // stopped being.
-  "Tip: A new special goes up every day. Cook it and every plate tips better.",
-  "Tip: Tap a guest to say hello, and tap your own chef to rally the whole room.",
-  "Tip: Look after people and some of them become regulars, with a dish they love.",
+  "Tip: Your home crew cooks and serves automatically. Keep their paths clear.",
+  "Tip: Mix furniture collections, paint the floor, and give your storefront its own personality.",
+  "Tip: Finish today's small care jobs to keep your restaurant welcoming.",
+  "Tip: Your cookbook keeps its recipes when you change your restaurant's style.",
+  "Tip: A fresh ingredient delivery waits each day. Save the right ingredients to upgrade a recipe.",
+  "Tip: In your food truck, tap a station to walk over and use it.",
+  "Tip: While your truck's pasta boils, take a tomato to the sauce pan.",
+  "Tip: Pause a truck shift whenever you like. Back home saves it for another visit.",
+  "Tip: A new machine can bring a new dish to your home restaurant. Leave its working side clear.",
 ];
 
 export function BootShell({
   progress,
   tip,
   error,
+  recovery,
 }: {
   progress: number;
   tip: string;
   error?: string;
+  recovery?: ReactNode;
 }) {
   const pct = Math.max(0, Math.min(1, progress));
   return (
@@ -51,45 +49,47 @@ export function BootShell({
         justifyContent: "center",
         gap: 18,
         background:
-          "radial-gradient(120% 90% at 50% 0%, #2a1c14 0%, #1b1310 55%, #140e0b 100%)",
-        color: "#f3e9d2",
+          "radial-gradient(120% 90% at 50% 0%, #fffdf6 0%, #f4eddf 55%, #e0e7cb 100%)",
+        color: "#3c392c",
         fontFamily: FONT,
         textAlign: "center",
         padding: 24,
         zIndex: 10,
       }}
     >
-      <div style={{ fontSize: 40, lineHeight: 1 }}>🍳</div>
+      <div style={{ color: "#537752", lineHeight: 1 }}><IconChefHat size={46}/></div>
       <div
         style={{
-          fontSize: 28,
-          fontWeight: 800,
-          letterSpacing: "0.06em",
+          fontSize: 32,
+          fontWeight: 700,
+          fontFamily: "Georgia, serif",
+          lineHeight: 1.15,
         }}
       >
-        DOMAIN KITCHEN
+        <span style={{display:"block",fontFamily:FONT,fontSize:12,fontWeight:800,letterSpacing:".2em",textTransform:"uppercase",color:"#7a835e",marginBottom:8}}>Welcome home</span>
+        Domain Kitchen
       </div>
       {error ? (
         <>
           <div style={{ fontSize: 15, opacity: 0.9, maxWidth: 420 }}>
-            The kitchen could not open. Check your connection and try again.
+            {error === "boot" ? "The kitchen could not open. Check your connection and try again." : error}
           </div>
-          <button
+          {recovery ?? <button
             onClick={() => window.location.reload()}
             style={{
               marginTop: 6,
               padding: "10px 22px",
               borderRadius: 999,
               border: "1px solid #e8a13d",
-              background: "#2a1c14",
-              color: "#f3e9d2",
+              background: "#fffdf6",
+              color: "#3c392c",
               fontSize: 15,
               fontWeight: 700,
               cursor: "pointer",
             }}
           >
             Try again
-          </button>
+          </button>}
         </>
       ) : (
         <>
@@ -98,11 +98,12 @@ export function BootShell({
               width: "min(360px, 76vw)",
               height: 14,
               borderRadius: 999,
-              background: "#31241b",
-              border: "1px solid #4a3626",
+              background: "#e6dcc8",
+              border: "1px solid #dfd4bb",
               overflow: "hidden",
             }}
             role="progressbar"
+            aria-label="Opening your kitchen"
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(pct * 100)}

@@ -1,0 +1,55 @@
+{
+  "assetId": "last_fry_low",
+  "displayName": "last_fry_low",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.2863616943359375,
+        0.8474031388759613,
+        0.24801751971244812
+      ],
+      "min": [
+        -0.2883625030517578,
+        0.00863831490278244,
+        -0.24636168777942657
+      ],
+      "sizeMeters": [
+        0.5747241973876953,
+        0.8387648239731789,
+        0.4943792074918747
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 66160,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 4,
+    "meshCount": 5,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 5,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 1792,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 1225,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

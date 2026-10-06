@@ -4,7 +4,7 @@
  * player-action tape — headless, the same discipline as scripts/s5-harness.ts.
  *
  * Per-tick invariants for every entity:
- *   1. NO TELEPORTS (bounded by effSpeed — hustle uses the same bound).
+ *   1. NO TELEPORTS during simulation (editor relocation is checked at commit).
  *   2. WALK == MOVE (walkDist grows by exactly the position delta).
  *   3. MOTION => LOCOMOTION STATE (either side of a transition tick).
  *   4. STILLNESS => FROZEN CYCLE.
@@ -20,9 +20,10 @@
  * Run: npx tsx scripts/dk-harness.mts
  */
 
-import { GOAL_BONUS,
+import {
   applyAction,
   collectionUnlocked,
+  cellsOf,
   createWorld,
   deriveService,
   effSpeed,
@@ -45,14 +46,11 @@ import {
   canUpgradeDish,
   CLEAN_MAX,
   earningsMultiplier,
-  FIRST_SERVE_BONUS,
   GUEST_VARIANTS,
-  GUS_BONUS,
   MAX_REGULARS,
   MULT_CAP,
   qualityOf,
   qualityParts,
-  SPECIAL_POT,
   TRASH_VISIBLE_CAP,
 } from "../src/app/chef/game/_engine/world";
 import {
@@ -62,7 +60,9 @@ import {
   RECIPES,
   VOLUME_DROP_CAP,
 } from "../src/app/chef/game/_engine/pantry";
-import { SHELL, SHELL_SIZES, shellAt } from "../src/app/chef/game/_engine/rooms";
+import { LEGACY_STARTER_LAYOUT, SHELL, SHELL_SIZES, shellAt } from "../src/app/chef/game/_engine/rooms";
+import { findPath } from "../src/app/chef/game/_engine/path";
+import { dailyGoals, LAUNCH_RULES } from "../src/app/chef/game/_engine/launch-progression";
 
 // 35 real-minutes = 70 game-hours from 17:00, so the run crosses THREE day
 // rollovers — the minimum needed to prove the ADR-0105 LP-tenure gate opens
@@ -156,8 +156,8 @@ function checkLayoutInvariants(w: WorldState, when: string, room: RoomDef = SHEL
   for (const p of w.layout) {
     const def = itemDef(p.itemId);
     if (!def || !def.solid) continue;
-    for (let i = 0; i < def.cells; i++) {
-      const cell = w.grid.cells[p.gy * room.w + (p.gx + i)];
+    for (const occupied of cellsOf(p.itemId, p.gx, p.gy, p.facing)) {
+      const cell = w.grid.cells[occupied.y * room.w + occupied.x];
       if (cell === 0) fail(`grid says open where ${p.itemId} stands after ${when}`);
     }
   }
@@ -171,8 +171,8 @@ const BUY_PLAN = [
   "toilet_basic",
 ];
 
-function run(seed: string, check: boolean): { w: WorldState; r: TapeResult } {
-  const w = createWorld(seed, SHELL, { parkedUsd: 25, weeklyVolumeUsd: 60 });
+function run(seed: string, check: boolean, legacy = false): { w: WorldState; r: TapeResult } {
+  const w = createWorld(seed, SHELL, { parkedUsd: 25, weeklyVolumeUsd: 60, layout: legacy ? LEGACY_STARTER_LAYOUT : undefined });
   const prev = new Map<number, Prev>();
   const r: TapeResult = {
     brokeRejected: false, bought: [], placed: 0, moved: false, rotated: false,
@@ -196,7 +196,23 @@ function run(seed: string, check: boolean): { w: WorldState; r: TapeResult } {
   let hiredWaiter = false;
   let hiredChef = false;
 
-  const act = (a: Action) => applyAction(w, SHELL, a);
+  const act = (a: Action) => {
+    const positions = new Map(w.entities.map((e) => [e.id, { x: e.x, y: e.y, walkDist: e.walkDist }]));
+    const ok = applyAction(w, SHELL, a);
+    for (const e of w.entities) {
+      const before = positions.get(e.id);
+      if (!before || (before.x === e.x && before.y === e.y)) continue;
+      const wasUnavailable = w.grid.cells[Math.round(before.y) * SHELL.w + Math.round(before.x)] !== 0 ||
+        findPath(w.grid, SHELL.door.x, SHELL.door.y, Math.round(before.x), Math.round(before.y)) === null;
+      if (!ok || !w.editing || !wasUnavailable) fail("actor moved during an action without a covered or disconnected editor tile");
+      if (w.grid.cells[Math.round(e.y) * SHELL.w + Math.round(e.x)] !== 0) fail("editor relocation did not reach open floor");
+      if (e.walkDist !== before.walkDist) fail("editor relocation advanced a walk cycle");
+      // The next simulation tick starts at the new editor position. Movement
+      // after that commit is still subject to every per-tick motion assertion.
+      prev.set(e.id, { x: e.x, y: e.y, walkDist: e.walkDist, state: e.state });
+    }
+    return ok;
+  };
 
   /**
    * THE DAY BUS, compressed (M8).
@@ -229,6 +245,9 @@ function run(seed: string, check: boolean): { w: WorldState; r: TapeResult } {
       if (!act({ type: "buyHire", hire: "chef" })) r.brokeRejected = true;
       else fail("broke hire was ACCEPTED");
     }
+    // This tape exercises an established player's purchases and layout fuzz.
+    // Daily earning pace is checked separately in dk-launch-check.mts.
+    if (t === 301) w.playMoney = 10_000;
     if (t === 600) act({ type: "dials", parkedUsd: 500, weeklyVolumeUsd: 1000 });
 
     // ── ADR-0105: the domain collection is LOCKED until LP tenure ──────────
@@ -284,8 +303,8 @@ function run(seed: string, check: boolean): { w: WorldState; r: TapeResult } {
       // a waiting bench by the door (ADR-0107)
       r.benchPlaced = act({ type: "place", itemId: "bench_basic", gx: 6, gy: 7 });
       if (r.benchPlaced) r.placed++;
-      // a restroom in the corner (ADR-0106)
-      r.toiletPlaced = act({ type: "place", itemId: "toilet_basic", gx: 9, gy: 0 });
+      // An additional purchased restroom; the starter corner already owns two.
+      r.toiletPlaced = act({ type: "place", itemId: "toilet_basic", gx: 9, gy: legacy ? 0 : 6 });
       if (r.toiletPlaced) r.placed++;
       if (check) checkLayoutInvariants(w, "placing the new table set");
 
@@ -311,7 +330,14 @@ function run(seed: string, check: boolean): { w: WorldState; r: TapeResult } {
       // store a plant and put it back down elsewhere
       const plant = w.layout.find((p) => p.itemId === "plant_basic");
       if (plant && act({ type: "store", uid: plant.uid })) {
-        r.storedAndReplaced = act({ type: "place", itemId: "plant_basic", gx: 9, gy: 6 });
+        if (legacy) r.storedAndReplaced = act({ type: "place", itemId: "plant_basic", gx: 9, gy: 6 });
+        for (let gy = SHELL.h - 1; gy >= 0 && !r.storedAndReplaced; gy--) {
+          for (let gx = SHELL.w - 1; gx >= 0 && !r.storedAndReplaced; gx--) {
+            if (previewPlace(w, SHELL, "plant_basic", gx, gy) === "") {
+              r.storedAndReplaced = act({ type: "place", itemId: "plant_basic", gx, gy });
+            }
+          }
+        }
       }
       if (check) checkLayoutInvariants(w, "store and replace");
 
@@ -386,6 +412,12 @@ function run(seed: string, check: boolean): { w: WorldState; r: TapeResult } {
 
     stepWorld(w, SHELL);
     dayBus();
+    if (t % 60 === 0) act({ type: "settlePassive", elapsedMs: 1000, now: busDay * 86_400_000 + (t + 1) * 1000 / 60 });
+    if (!w.editing && t % 42 === 0) {
+      const pending = w.launch.careTasks.find(task => task.progress < task.steps);
+      if (pending) act({ type: "careTask", taskId: pending.id });
+      for (const goal of dailyGoals(w.launch)) if (goal.ready) act({ type: "claimDailyGoal", goalId: goal.id });
+    }
 
     if (w.entities.filter((e) => e.kind === "waiter" && e.state !== "clockOut").length >= 2) {
       r.sawTwoWaiters = true;
@@ -477,6 +509,10 @@ const A = run("dk-m4a", true);
 const t1 = performance.now();
 const B = run("dk-m4a", false);
 const C = run("dk-m4a-other", false);
+const legacy = run("dk-m4a", true, true);
+checkLayoutInvariants(legacy.w, "legacy starter edit tape");
+if (!legacy.r.storedAndReplaced || !legacy.r.toiletPlaced || legacy.r.fuzzAccepted < 1) fail("legacy starter lost editor coverage");
+console.log(`legacy starter tape: ${legacy.r.fuzzAccepted} accepted/${legacy.r.fuzzRejected} refused edits, ${legacy.w.stats.served} plates`);
 
 const s = A.w.stats;
 const svc = deriveService(A.w);
@@ -514,17 +550,13 @@ if (s.departed < 2) fail(`too few departures: ${s.departed}`);
 if (s.busedAuto < 1) fail("staff never auto-bused a table");
 if (s.gusVisits < 1) fail("Gus never visited");
 if (!A.r.sawNight) fail("night never arrived");
-// THE INVERSION: money comes from SERVES now, scaled by the wallet. The drip
-// is dead, so a funded run must show serve income, beat income, and an
-// on-top multiplier share -- and the beats stay bounded by the calendar.
-if (s.coinsFromServes < 300) fail(`serve income too low: ${s.coinsFromServes}`);
-if (s.coinsFromBeats <= 0) fail("no daily beat ever paid in a served, funded run");
-if (s.coinsFromMultiplier <= 0) fail("a funded room earned nothing on top of x1");
+// Passive coins follow elapsed wall time and the shared daily purse; active
+// rewards require completed goals. Financial dials cannot multiply either.
+if (s.coinsFromServes <= 0 || s.coinsFromServes > LAUNCH_RULES.passiveCoinsPerDay * 1.5 * A.w.utcDay) fail(`passive income outside its purse: ${s.coinsFromServes}`);
+if (s.coinsFromBeats <= 0) fail("no earned daily goal was claimed");
+if (s.coinsFromMultiplier !== 0) fail("financial dials minted extra kitchen coins");
 {
-  // three daily goals joined the beats ledger (CUTE+VIRAL): the calendar cap
-  // grows by GOAL_BONUS x3 per day, still a hard once-each bound
-  const beatCap =
-    (FIRST_SERVE_BONUS + SPECIAL_POT + GUS_BONUS + GOAL_BONUS * 3) * MULT_CAP * Math.max(1, A.w.utcDay);
+  const beatCap = LAUNCH_RULES.dailyGoalCoins * 5 * Math.max(1, A.w.utcDay);
   if (s.coinsFromBeats > beatCap) {
     fail(`beats paid ${s.coinsFromBeats} across ${A.w.utcDay} real days, cap ${beatCap}`);
   }
@@ -740,6 +772,7 @@ for (const [id, n] of Object.entries(A.w.pantry.stock)) {
  */
 {
   const w = createWorld("dk-expand", SHELL, { playMoney: 40_000 });
+  w.pantry.levels.margherita = 2; w.pantry.levels.caciopepe = 2;
   const before = {
     layout: JSON.stringify(w.layout),
     seats: w.seats.length,
@@ -786,6 +819,7 @@ for (const [id, n] of Object.entries(A.w.pantry.stock)) {
 
   // the last shell is the last one: no infinite ladder
   const rich = createWorld("dk-expand-max", SHELL, { playMoney: 10_000_000 });
+  rich.pantry.levels.margherita = 3; rich.pantry.levels.caciopepe = 3; rich.pantry.levels.tiramisu = 2;
   let bought = 0;
   for (let i = 0; i < 10; i++) {
     if (applyAction(rich, shellAt(rich.shellIdx), { type: "expand" })) bought++;
@@ -823,21 +857,19 @@ if (q.cleanliness > CLEAN_MAX + 1e-9) fail(`cleanliness ${q.cleanliness} exceeds
 // after itself. No player actions at all, and quality must never sag under
 // the kind baseline.
 {
-  // funded so it can actually own the restroom it is meant to look after
+  // The authored daily job remains for the player; staff handles incidental
+  // breakdowns without collecting the player's active rewards.
   const afk = createWorld("dk-afk", SHELL, {
     parkedUsd: 120,
     weeklyVolumeUsd: 200,
     playMoney: 500,
   });
-  applyAction(afk, SHELL, { type: "edit", on: true });
-  applyAction(afk, SHELL, { type: "buyItem", itemId: "toilet_basic" });
-  applyAction(afk, SHELL, { type: "place", itemId: "toilet_basic", gx: 9, gy: 0 });
-  applyAction(afk, SHELL, { type: "edit", on: false });
   const afkCoins0 = afk.playMoney;
   let minQ = 100;
   let maxLitter = 0;
   for (let t = 0; t < 60 * 60 * 20; t++) {
     stepWorld(afk, SHELL);
+    if (t % 60 === 0) applyAction(afk, SHELL, { type: "settlePassive", elapsedMs: 1000, now: (t + 1) * 1000 / 60 });
     minQ = Math.min(minQ, qualityParts(afk).total);
     maxLitter = Math.max(maxLitter, afk.trash.length);
   }
@@ -848,9 +880,7 @@ if (q.cleanliness > CLEAN_MAX + 1e-9) fail(`cleanliness ${q.cleanliness} exceeds
     `served=${afk.stats.served}, coins ${afkCoins0} -> ${afk.playMoney} ` +
     `(idle rate ${((afk.playMoney - afkCoins0) / 20).toFixed(1)}/min)`
   );
-  // the kindness law survives the inversion (ADR-0102): absence still BANKS.
-  // The autopilot serves, the serves pay, so an untouched room must come out
-  // ahead even with the drip gone.
+  // An untouched operational room earns modest proportional passive coins.
   if (afk.playMoney <= afkCoins0) {
     fail(`an untouched room earned nothing: ${afkCoins0} -> ${afk.playMoney}`);
   }
@@ -863,9 +893,10 @@ if (q.cleanliness > CLEAN_MAX + 1e-9) fail(`cleanliness ${q.cleanliness} exceeds
   if (afk.stats.trashSweptByPlayer > 0 || afk.stats.toiletFixedByPlayer > 0) {
     fail("the AFK soak somehow performed player actions");
   }
-  if (afk.toilets.length !== 1) fail("the AFK room never got its restroom placed");
+  if (afk.toilets.length !== 2) fail("the AFK starter lost one of its two restrooms");
   if (afk.stats.toiletBreaks < 1) fail("the AFK restroom never broke, so upkeep went untested");
-  if (afk.stats.toiletFixedAuto < afk.stats.toiletBreaks - 1) {
+  const outstandingBreaks = afk.toilets.filter((toilet) => toilet.broken && !afk.launch.careTasks.some(task => task.progress < task.steps && task.target.kind === "toilet" && task.target.gx === toilet.gx && task.target.gy === toilet.gy)).length;
+  if (afk.stats.toiletFixedAuto !== afk.stats.toiletBreaks - outstandingBreaks) {
     fail(`AFK staff fixed only ${afk.stats.toiletFixedAuto} of ${afk.stats.toiletBreaks} breaks`);
   }
 }
@@ -899,21 +930,21 @@ if (q.cleanliness > CLEAN_MAX + 1e-9) fail(`cleanliness ${q.cleanliness} exceeds
     prevVol = t;
   }
 
-  // away earnings: capped in hours, floored at zero, scaled by the multiplier
+  // Legacy away helper keeps the shared baseline cap, with no financial boost.
   if (awayEarnings(0, { parkedUsd: 5000, weeklyVolumeUsd: 5000 }) !== 0) {
     fail("zero hours away still paid");
   }
   if (awayEarnings(-3, { parkedUsd: 25, weeklyVolumeUsd: 60 }) !== 0) {
     fail("negative hours away paid out");
   }
-  if (awayEarnings(10, { parkedUsd: 0, weeklyVolumeUsd: 0 }) !== 200) {
-    fail(`10h walletless away expected 200, got ${awayEarnings(10, { parkedUsd: 0, weeklyVolumeUsd: 0 })}`);
+  if (awayEarnings(10, { parkedUsd: 0, weeklyVolumeUsd: 0 }) !== 80) {
+    fail(`10h walletless away expected 80, got ${awayEarnings(10, { parkedUsd: 0, weeklyVolumeUsd: 0 })}`);
   }
-  if (awayEarnings(24, { parkedUsd: 0, weeklyVolumeUsd: 0 }) !== 200) {
+  if (awayEarnings(24, { parkedUsd: 0, weeklyVolumeUsd: 0 }) !== 80) {
     fail("away earnings kept counting past the hour cap");
   }
-  if (awayEarnings(9, { parkedUsd: 25, weeklyVolumeUsd: 60 }) !== 266) {
-    fail(`9h at demo dials expected 266, got ${awayEarnings(9, { parkedUsd: 25, weeklyVolumeUsd: 60 })}`);
+  if (awayEarnings(9, { parkedUsd: 25, weeklyVolumeUsd: 60 }) !== 80) {
+    fail(`9h at demo dials expected 80, got ${awayEarnings(9, { parkedUsd: 25, weeklyVolumeUsd: 60 })}`);
   }
   console.log(
     `multiplier: x1.00 @ $0/$0 · x${mDemo.total.toFixed(2)} @ $25/$60 · x${mMax.total} pinned @ $5000/$5000 · ` +
@@ -931,7 +962,10 @@ if (q.cleanliness > CLEAN_MAX + 1e-9) fail(`cleanliness ${q.cleanliness} exceeds
   const bare = createWorld("dk-walletless", SHELL, { parkedUsd: 0, weeklyVolumeUsd: 0 });
   const coins0 = bare.playMoney;
   const MIN20 = 60 * 60 * 20;
-  for (let t = 0; t < MIN20; t++) stepWorld(bare, SHELL);
+  for (let t = 0; t < MIN20; t++) {
+    stepWorld(bare, SHELL);
+    if (t % 60 === 0) applyAction(bare, SHELL, { type: "settlePassive", elapsedMs: 1000, now: (t + 1) * 1000 / 60 });
+  }
   console.log(
     `walletless (20 real-min, zero input, $0/$0): served=${bare.stats.served} ` +
     `coins ${coins0} -> ${bare.playMoney} (play rate ${((bare.playMoney - coins0) / 20).toFixed(1)}/min at x1)`

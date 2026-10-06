@@ -1,11 +1,9 @@
 /**
  * Domain Kitchen save/sanitizer gate (M6).
  *
- * The server accepts saves from anyone, so `sanitizeSave` IS the security
- * boundary. This proves it holds against the attacks a modified client would
- * actually try — forged coins, invented furniture, out-of-bounds placements,
- * impossible dish levels, unknown markets — and that an honest round trip
- * survives untouched.
+ * Sanitization protects storage shape and migration. Earned progress is
+ * validated by the separate server-command checks; a clamped client balance
+ * is never proof that those coins were earned. Honest data must round-trip.
  *
  * Run: npx tsx scripts/dk-save-check.mts
  */
@@ -22,7 +20,8 @@ import {
 import { DAILY_SPECIALS, RECIPES } from "../src/app/chef/game/_engine/pantry";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { SHELL } from "../src/app/chef/game/_engine/rooms";
+import ts from "typescript";
+import { SHELL, shellAt } from "../src/app/chef/game/_engine/rooms";
 import {
   CHEF_NAME_MAX, ROOM_NAME_MAX,
   CREW_LOOKS,
@@ -96,13 +95,19 @@ console.log("\n── a reload keeps what a save promised ───────�
     playMoney: 30_000,
   });
   applyAction(w, SHELL, { type: "newDay", utcDay: 20_000, banked: 3, tenure: 2 });
+  // Expansion now also requires two upgraded recipes. Earn those upgrades
+  // before testing persistence of the larger room instead of silently staying
+  // in the starter shell after a refused purchase.
+  w.pantry.stock = { ...w.pantry.stock, tomato: 2, herb: 1, cheese: 2, pepper: 1 };
+  ok("first expansion recipe upgraded", applyAction(w, SHELL, { type: "upgradeDish", key: "margherita" }));
+  ok("second expansion recipe upgraded", applyAction(w, SHELL, { type: "upgradeDish", key: "caciopepe" }));
   // a room that has GROWN is the interesting one to reload
-  applyAction(w, SHELL, { type: "expand" });
+  ok("the room genuinely expanded before save", applyAction(w, SHELL, { type: "expand" }));
   // cook the pantry up until dishes have genuinely levelled
   for (let i = 0; i < 30_000; i++) {
-    stepWorld(w, SHELL);
+    stepWorld(w, shellAt(w.shellIdx));
     for (const key of ["margherita", "caciopepe", "tiramisu"]) {
-      applyAction(w, SHELL, { type: "upgradeDish", key });
+      applyAction(w, shellAt(w.shellIdx), { type: "upgradeDish", key });
     }
   }
   // guarantee today's board can actually be cooked, whichever one was rolled
@@ -119,7 +124,7 @@ console.log("\n── a reload keeps what a save promised ───────�
     `${Object.keys(before.pantry.stock).length} kinds in stock, best ${before.bestQuality}`);
 
   const round = sanitizeSave(JSON.parse(JSON.stringify(before)));
-  const reloaded = createWorld("dk-reload", SHELL, {
+  const reloaded = createWorld("dk-reload", shellAt(round.shell), {
     parkedUsd: round.dials.parkedUsd,
     weeklyVolumeUsd: round.dials.weeklyVolumeUsd,
     playMoney: round.coins,
@@ -134,6 +139,7 @@ console.log("\n── a reload keeps what a save promised ───────�
     bestQuality: round.bestQuality,
     utcDay: round.utcDay,
     daily: round.daily,
+    launch: round.launch,
     regulars: round.regulars,
     shellIdx: round.shell,
   });
@@ -158,6 +164,7 @@ console.log("\n── a reload keeps what a save promised ───────�
   ok("the shell survives the reload", after.shell === before.shell, `${after.shell}`);
   ok("today's special is still prepped after a reload",
     after.daily.prepped && after.daily.idx === before.daily.idx);
+  ok("daily activity and reward receipts survive reload", JSON.stringify(after.launch) === JSON.stringify(before.launch));
 }
 
 console.log("\n── the day bus hands over goods, and only once ──────────────");
@@ -207,8 +214,18 @@ console.log("\n── the two intro constants agree ─────────�
     "utf8"
   );
   const m = coach.match(/INTRO_DONE\s*=\s*(\d+)/);
-  const steps = coach.match(/export const INTRO_STEPS[\s\S]*?\n\];/);
-  const stepCount = steps ? (steps[0].match(/^\s{2}\{$/gm) || []).length : -1;
+  const source = ts.createSourceFile("Coach.tsx", coach, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const steps = source.statements
+    .flatMap((statement) => ts.isVariableStatement(statement) ? [...statement.declarationList.declarations] : [])
+    .find((declaration) => ts.isIdentifier(declaration.name) && declaration.name.text === "INTRO_STEPS")?.initializer;
+  const entries = steps && ts.isArrayLiteralExpression(steps) ? [...steps.elements] : [];
+  const stepCount = entries.length;
+  const metadataComplete = entries.every((entry) => ts.isObjectLiteralExpression(entry) && ["title", "body", "action"].every((key) => {
+    const field = entry.properties.find((property) => ts.isPropertyAssignment(property) &&
+      ((ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) && property.name.text === key));
+    return field && ts.isPropertyAssignment(field) && ts.isStringLiteralLike(field.initializer) && field.initializer.text.trim().length > 0;
+  }));
+  ok("every coach step declares title, body, and action metadata", stepCount > 0 && metadataComplete);
   ok("Coach.tsx declares INTRO_DONE", !!m, m?.[1]);
   ok(
     "save.ts INTRO_STEPS_DONE matches Coach.tsx INTRO_DONE",

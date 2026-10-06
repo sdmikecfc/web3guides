@@ -17,7 +17,7 @@ vm.runInNewContext(compiled, {
 });
 const { middleware } = loaded.exports;
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'public/diner-audio/manifest.json'), 'utf8'));
-const assets = ['/diner-audio/manifest.json', ...Object.values(manifest.tracks).flatMap(track => Object.values(track.layers))];
+const assets = ['/diner-audio/manifest.json', ...(manifest.version === 2 ? Object.values(manifest.playlists).flat() : Object.values(manifest.tracks)).flatMap(track => Object.values(track.layers))];
 let checked = 0;
 for (const host of ['domainkitchen.xyz', 'www.domainkitchen.xyz', 'chef.web3guides.com', 'chef.localhost:3010']) {
   for (const asset of assets) {

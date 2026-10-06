@@ -71,7 +71,7 @@ export async function walletForHandle(handle: string): Promise<string | null> {
 export async function topRooms(limit = 25): Promise<BoardRow[]> {
   try {
     const db = dkDb();
-    const { data, error } = await db
+    let query = db
       .from("domain_kitchen_players")
       // state->>name: the room name lives inside the save blob, and JSONB
       // path selection means the board can show it with NO new column and NO
@@ -83,6 +83,10 @@ export async function topRooms(limit = 25): Promise<BoardRow[]> {
       .order("best_quality", { ascending: false })
       .order("seats", { ascending: false })
       .limit(Math.max(1, Math.min(100, limit)));
+    // Legacy best scores remain in snapshots, but are never silently promoted
+    // to a verified leaderboard when command authority rolls out.
+    if (process.env.NEXT_PUBLIC_DK_AUTHORITY_ENABLED === "true") query = query.not("authority_state", "is", null);
+    const { data, error } = await query;
     if (error || !data) return [];
     return data.map((r, i) => {
       const quality = Math.round(Number(r.best_quality) || 0);

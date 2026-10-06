@@ -1,0 +1,11 @@
+{
+  "author": "[redacted]",
+  "notes": "Original Blender geometry authored for this project. Hero designs based on existing authorized cinematic reference artwork.",
+  "origin": "authored",
+  "schema": "game_dev.asset_provenance.v1",
+  "source": {
+    "bytes": 230444,
+    "fileName": "cosmic_carousel_low.glb",
+    "sha256": "744b79a447fd1a31413fb12593c55825f384a96ba09120e0d6f82d1c53edad71"
+  }
+}

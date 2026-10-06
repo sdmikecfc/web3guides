@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:20:55.621Z",
+  "destination": {
+    "assetId": "bento_garden_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "07bf93a8ef5bcd94b5a79758f254c2240853130881be7aef26d3c1ae07740783",
+  "packageId": "pkg_9292351ab7e48dba8b5d9ff8",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 71660,
+    "fileName": "bento_garden_low.glb",
+    "sha256": "59675acc472cac745c5d83c53aeec309aa55f57367abd7c0898775d7e961e204"
+  }
+}

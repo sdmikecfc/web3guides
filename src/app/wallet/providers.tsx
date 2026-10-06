@@ -16,6 +16,9 @@ import {
   injectedWallet,
   rabbyWallet,
   braveWallet,
+  phantomWallet,
+  trustWallet,
+  okxWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import { WagmiProvider, createConfig, createConnector, http, type CreateConnectorFn } from "wagmi";
 import { injected } from "wagmi/connectors";
@@ -29,7 +32,7 @@ const wcProjectId = configuredProjectId && /^[a-f\d]{32}$/i.test(configuredProje
   ? configuredProjectId
   : undefined;
 
-type ConnectionMode = "default" | "wallet-browser";
+type ConnectionMode = "default" | "wallet-browser" | "expanded";
 type CreateWallet = WalletList[number]["wallets"][number];
 type BrowserProvider = EIP1193Provider & {
   providers?: BrowserProvider[];
@@ -123,6 +126,16 @@ function isMobileBrowser() {
 const defaultMetaMaskWallet: CreateWallet = options =>
   wcProjectId || isMobileBrowser() ? metaMaskWallet(options) : browserMetaMaskWallet();
 
+// Use the same SDK/modal path as Launch Wars for external apps. Inside an
+// installed MetaMask browser, keep the direct injected path that also works
+// when its provider does not implement wallet_requestPermissions.
+const expandedMetaMaskWallet: CreateWallet = options => {
+  const browser = browserMetaMaskWallet();
+  if (browser.installed) return browser;
+  if (wcProjectId || isMobileBrowser()) return metaMaskWallet(options);
+  return { ...browser, hidden: undefined, downloadUrls: { browserExtension: 'https://metamask.io/download/' } };
+};
+
 const connectorsForApp = (appName: string, connectionMode: ConnectionMode) => connectorsForWallets(
   [
     {
@@ -130,6 +143,9 @@ const connectorsForApp = (appName: string, connectionMode: ConnectionMode) => co
       wallets: [
         ...(connectionMode === "wallet-browser"
           ? [browserMetaMaskWallet, installedBraveWallet, installedRabbyWallet, installedBrowserWallet]
+          : connectionMode === "expanded"
+          ? [installedBrowserWallet, expandedMetaMaskWallet, coinbaseWallet, rabbyWallet, braveWallet, phantomWallet,
+            ...(wcProjectId ? [trustWallet, okxWallet] : [])]
           : [installedBrowserWallet, defaultMetaMaskWallet, rabbyWallet, coinbaseWallet]),
         ...(wcProjectId ? [rainbowWallet, walletConnectWallet] : []),
       ],

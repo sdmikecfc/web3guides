@@ -1,0 +1,55 @@
+{
+  "assetId": "disco_burger_jukebox",
+  "displayName": "disco_burger_jukebox",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.4000000059604645,
+        1.3667999505996704,
+        0.36000001430511475
+      ],
+      "min": [
+        -0.4000000059604645,
+        0.005000002682209015,
+        -0.36000001430511475
+      ],
+      "sizeMeters": [
+        0.800000011920929,
+        1.3617999479174614,
+        0.7200000286102295
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 668056,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 10,
+    "meshCount": 17,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 17,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 27264,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 16021,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

@@ -1,0 +1,3 @@
+.scene{position:relative;height:55dvh;min-height:320px;border-radius:22px;overflow:hidden;background:#f5ebdc}
+.board{width:100%;text-align:left;border-collapse:collapse}.board td,.board th{padding:12px;border-bottom:1px solid #ddd3bd}
+@media(max-width:600px){.scene{height:51dvh;min-height:270px}}

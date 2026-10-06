@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T16:38:10.050Z",
+  "destination": {
+    "assetId": "rabbit_tea",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "b971054a97b960389bb2dd16c4303e267488ecd7cce7b00e01727dc7e59005bf",
+  "packageId": "pkg_703456868bc8f2cbef5fcca2",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 236568,
+    "fileName": "rabbit_tea.glb",
+    "sha256": "e7722d20145ff83db8fc230d411137e31c368357418ce441878b6c3d5216d8be"
+  }
+}

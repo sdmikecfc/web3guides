@@ -34,6 +34,9 @@ for(const size of [8,10,12,14])for(const [width,height] of [[390,844],[1280,720]
 console.log(`PASS ${cases} real projection fits: four room sizes, four turns, phone/desktop/landscape`);
 
 const bounds=createHomeCameraBounds(initial),before=fitHomeCamera({bounds,width:390,height:844,rotation:0});
+for(const [width,height]of [[280,320],[360,320],[667,190]]){const presentation=homeCameraPresentation(width,true,12),fit=fitHomeCamera({bounds,width,height,rotation:0,...presentation});assert.equal(fit.insets.top,12);assert.equal(fit.insets.bottom,12);assert((fit.projectedBounds.maxY-fit.projectedBounds.minY)*fit.pixelsPerTile>=100,'embedded rehearsal must not shrink to a speck');}
+assert.equal(homeCameraPresentation(390,true,270).insets.top,undefined,'live placement preview must keep its regular header inset');
+console.log('PASS compact rehearsal framing remains separate from live placement sheets');
 const changed=structuredClone(initial);changed.people=[{id:'visitor',role:'customer',x:100,y:100,pose:'walk'}];changed.tick=999;
 changed.objects=changed.objects.filter(object=>object.id!=='home-parcel');
 changed.objects.push({id:'incident:later',kind:'parcel',x:1,y:6,state:'working',progress:.9});

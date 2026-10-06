@@ -16,9 +16,14 @@
  */
 
 import { fnv1a, mulberryNext } from "./rng";
+import { sanitizeTruckProgress, type TruckProgress } from "./truck";
+import { deriveKitchenOperations, reconcileEquipmentLayout, sanitizeEquipment, sellStoredEquipment, homeTechnology, EQUIPMENT_RULES, type EquipmentState, type KitchenOperations } from "./equipment";
 import { buildGrid, findPath, type Grid } from "./path";
-import { COLLECTION_LP_DAYS, itemDef, MARKETS, type ItemKind } from "./items";
+import { COLLECTION_LP_DAYS, comfortOf, footprintCells, interactionCells, itemDef, MARKETS, rotateFacing, type ItemKind, type ItemFacing } from "./items";
+import { AWNINGS, FLOOR_FINISHES, WALL_FINISHES, sanitizeDesign, sanitizeMaintenance, type RestaurantDesign, type MaintenanceState } from "./building";
+import { DISHES, STARTER_DISH_IDS, availableDishes, dishDef, legacyDomainDish, sanitizeSelected } from "./cookbook";
 import { courseById } from "./academy";
+import { LAUNCH_RULES, accruePassiveCoins, advanceCareTask, claimLaunchGoal, dishEarningsMultiplier, expansionRequirements, recordLaunchActivity, rollLaunchDay, sanitizeLaunchProgress, syncCareTasks, type CareTask, type LaunchProgress, type LaunchGoalId } from "./launch-progression";
 import {
   COMMONS,
   DAILY_DELIVERY,
@@ -26,21 +31,18 @@ import {
   dishQualityBonus,
   MAX_DISH_LEVEL,
   nextRecipe,
-  RARE_DROP_CAP,
-  RARES,
   RECIPES,
-  SPECIAL_TIP,
   VOLUME_DROP_CAP,
   volumeDropInterval,
 } from "./pantry";
 import { MAX_BANKED_DAYS } from "./wallclock";
-import { GROWTH_SLOTS, SECOND_STOVE, SHELL, SHELL_SIZES, STARTER_LAYOUT } from "./rooms";
+import { GROWTH_SLOTS, LEGACY_STARTER_LAYOUT, SECOND_STOVE, SHELL, SHELL_SIZES, starterDesign, starterLayout } from "./rooms";
 
 export const WORLD_FIXED_DT = 1 / 60;
 /** 30 real seconds per game hour = a 12 minute game day. */
 export const HOURS_PER_SEC = 1 / 30;
 
-export type Facing = "se" | "sw";
+export type Facing = ItemFacing;
 export type Heading = "se" | "sw" | "ne" | "nw";
 
 /** The room SHELL: what the player cannot move (ADR-0104). */
@@ -62,6 +64,7 @@ export interface PlacedItem {
 }
 /** Placement without an identity yet (starter data, growth slots). */
 export interface PlacedSpec {
+  uid?: number;
   itemId: string;
   gx: number;
   gy: number;
@@ -151,6 +154,8 @@ export interface TableState {
   serveY: number;
   dirty: number;
   busClaim: number;
+  /** Last actual plated recipe, for the in-world food illustration. */
+  servedDish?: string;
 }
 
 /** A placed waiting bench (ADR-0107). One slot per waiting guest. */
@@ -189,6 +194,8 @@ export interface Litter {
 
 export type OrderStage = "queued" | "cooking" | "ready" | "serving";
 export interface Order {
+  dishId: string;
+  stationUid?: number;
   seatIdx: number;
   stage: OrderStage;
   waiterId: number;
@@ -208,6 +215,8 @@ export interface HireState {
 
 export interface MenuState {
   dishes: { key: string; name: string; serves: number }[];
+  selected: string[];
+  unlocked: string[];
   specialUnlocked: boolean;
   specialServes: number;
   specialMastered: boolean;
@@ -335,6 +344,9 @@ export interface Moment {
 export type HireKind = "waiter" | "chef";
 
 export type Action =
+  | { type: "careTask"; taskId: string }
+  | { type: "claimDailyGoal"; goalId: LaunchGoalId }
+  | { type: "settlePassive"; elapsedMs: number; now: number }
   | { type: "bus"; tableIdx: number }
   | { type: "hustle"; entityId: number }
   | { type: "dials"; parkedUsd: number; weeklyVolumeUsd: number }
@@ -344,6 +356,11 @@ export type Action =
   | { type: "completeCourse"; id: string }
   | { type: "market"; id: string }
   | { type: "upgradeDish"; key: string }
+  | { type: "selectMenu"; keys: string[] }
+  | { type: "replaceLayout"; layout: PlacedSpec[] }
+  | { type: "finish"; surface: "floor" | "wall"; id: string; gx?: number; gy?: number; side?: "left" | "right"; index?: number }
+  | { type: "storefront"; awning?: string; sign?: string }
+  | { type: "maintain"; task: "clean" | "repair" }
   | { type: "sweep"; trashId: number }
   | { type: "fixToilet"; uid: number }
   | { type: "place"; itemId: string; gx: number; gy: number; facing?: Facing }
@@ -356,7 +373,7 @@ export type Action =
    * and injected here, so stepWorld never reads a clock and a replay stays
    * reproducible. `banked` is how many days of goods the crew held for you.
    */
-  | { type: "newDay"; utcDay: number; banked: number; tenure: number }
+  | { type: "newDay"; utcDay: number; banked: number; tenure: number; deferDelivery?: boolean }
   /** Cook today's special. Spends the commons it needs; refused if short. */
   | { type: "prepSpecial" }
   /** Take the room next door. Buys FLOOR, and nothing else (M8b). */
@@ -397,6 +414,17 @@ export interface WorldState {
   hires: HireState;
   /** the player's arrangement — the source of truth for furniture */
   layout: PlacedItem[];
+  design: RestaurantDesign;
+  maintenance: MaintenanceState;
+  /** Daily goals, care steps, and the bounded real-time coin purse. */
+  launch: LaunchProgress;
+  truck: TruckProgress;
+  equipment: EquipmentState;
+  operations: KitchenOperations;
+  /** Host-controlled opening-guide gate; never persisted or reward evidence. */
+  careJobsActive: boolean;
+  careReadyAt: number;
+  editStartSignature: string | null;
   /** owned but not placed, by itemId */
   inventory: Record<string, number>;
   nextUid: number;
@@ -479,12 +507,10 @@ export interface WorldState {
     hearts: number;
     purchases: number;
     /**
-     * The inversion's ledger, split three ways so the harness can prove where
-     * money actually comes from now. Serve payouts land in coinsFromServes,
-     * daily beats in coinsFromBeats (both in full, multiplier included), and
-     * coinsFromMultiplier holds only the wallet's on-top share of every
-     * payout (paid minus what a x1 room would have got) -- so walletless play
-     * must show exactly zero here, which is the firewall stated as a number.
+     * Retained diagnostic field names: coinsFromServes now holds bounded
+     * passive settlements; coinsFromBeats holds claimed active daily goals.
+     * coinsFromMultiplier stays zero because financial dials no longer mint
+     * kitchen coins. Existing saves and diagnostic consumers keep their shape.
      */
     coinsFromServes: number;
     coinsFromBeats: number;
@@ -543,18 +569,9 @@ export function tierFor(seatsOwned: number): Tier {
 }
 
 /**
- * THE INVERSION: play EARNS, the wallet MULTIPLIES.
- *
- * incomePerHour printed coins for merely holding a position, so the strongest
- * strategy was "park money, leave the tab open" -- the opposite of a game
- * about running a room, and a straight bribe under the ADR-0043 firewall's
- * spirit even though it never touched quality. Now every coin starts as a
- * serve or a daily beat, and the position scales what the work was worth. A
- * walletless kitchen earns real money at x1 (the ADR-0102 kindness law:
- * absence of a wallet is never a penalty state); a funded one reaches the
- * same goals sooner, and never more than MULT_CAP times sooner. The same log
- * curves as before, so the second dollar still matters more than the five
- * hundredth.
+ * Legacy financial demo readout retained for saved dials and old consumers.
+ * This value does not multiply kitchen rewards. Launch earning rules live in
+ * launch-progression.ts and use only operating condition and selected recipes.
  */
 export const MULT_CAP = 2.5;
 
@@ -570,28 +587,22 @@ export function earningsMultiplier(dials: Dials): {
   return { lp, vol, total: Math.min(MULT_CAP, uncapped), capped: uncapped > MULT_CAP };
 }
 
-/** what every plate is worth before quality, levels and company add to it */
+/** Legacy demo constants: retained for imports, no longer used for payouts. */
 export const SERVE_BASE = 4;
 
-// ── daily beats (DEMO CONFIG): three once-a-REAL-day payments, all paid
-// through the multiplier and reset only by the newDay action. They exist so a
-// short daily session has a shape -- come back, serve someone, cook the board,
-// see Gus -- rather than a grind rate. Paid/armed state lives in w.daily.
-/** paid on the first serve after a newDay */
+// The old daily receipts survive migration so changing progression cannot
+// reopen historic rewards. Current active rewards use w.launch.claimed.
 export const FIRST_SERVE_BONUS = 25;
-/** paid when the prepped special has gone out SPECIAL_POT_SERVES times */
 export const SPECIAL_POT = 60;
 export const SPECIAL_POT_SERVES = 5;
-/** rides Gus's serve; he comes once a real day, so this needs no flag */
 export const GUS_BONUS = 40;
-/** the three daily goals: each pays once, resets with the day */
 export const GOAL_PLATES = 10;
 export const GOAL_BONUS = 15;
 
 // ── away earnings (DEMO CONFIG): the grant for coming back, engine-owned so
 // the DOM stops doing inline math with a deprecated income function ─────────
-export const AWAY_CAP_HOURS = 10;
-export const AWAY_RATE_PER_HOUR = 20;
+export const AWAY_CAP_HOURS = LAUNCH_RULES.passiveHours;
+export const AWAY_RATE_PER_HOUR = LAUNCH_RULES.passiveCoinsPerHour;
 
 /**
  * What the crew banked while the tab was closed. Capped in HOURS, not scaled
@@ -601,7 +612,10 @@ export const AWAY_RATE_PER_HOUR = 20;
  */
 export function awayEarnings(awayHrs: number, dials: Dials): number {
   const hrs = Math.min(Math.max(0, awayHrs), AWAY_CAP_HOURS);
-  return Math.floor(hrs * AWAY_RATE_PER_HOUR * earningsMultiplier(dials).total);
+  // Legacy callers receive the same modest baseline; financial dials no
+  // longer multiply restaurant coins. Current callers use the receipt helper.
+  void dials;
+  return Math.floor(hrs * AWAY_RATE_PER_HOUR);
 }
 
 
@@ -675,7 +689,7 @@ export function qualityParts(w: WorldState): {
     w.toilets.length === 0
       ? NO_TOILET_FACTOR
       : NO_TOILET_FACTOR + (1 - NO_TOILET_FACTOR) * (working / w.toilets.length);
-  const cleanliness = CLEAN_MAX * (1 - litterFrac) * toiletFactor;
+  const cleanliness = CLEAN_MAX * (1 - litterFrac) * toiletFactor * (w.maintenance.cleanliness / 100);
   const total = Math.max(
     0,
     Math.min(100, BASELINE_QUALITY + presence + cleanliness + dishes)
@@ -689,6 +703,7 @@ export function qualityOf(w: WorldState): number {
 
 /** Do we hold everything this dish's next level asks for? */
 export function canUpgradeDish(w: WorldState, key: string): boolean {
+  if (key !== "special" && !availableDishes(w).some((dish) => dish.id === key)) return false;
   const recipe = nextRecipe(key, w.pantry.levels[key] ?? 1);
   if (!recipe) return false;
   for (const [id, n] of Object.entries(recipe)) {
@@ -698,7 +713,63 @@ export function canUpgradeDish(w: WorldState, key: string): boolean {
 }
 
 function addStock(w: WorldState, id: string, n = 1): void {
-  w.pantry.stock[id] = (w.pantry.stock[id] ?? 0) + n;
+  w.pantry.stock[id] = Math.min(999, (w.pantry.stock[id] ?? 0) + n);
+}
+
+function dailyToiletNeedsCare(w: WorldState, gx: number, gy: number): boolean {
+  return w.careJobsActive && w.launch.careTasks.some(task => task.target.kind === "toilet" && task.target.gx === gx && task.target.gy === gy && task.progress < task.steps);
+}
+
+function syncDailyCareCondition(w: WorldState): void {
+  for (const toilet of w.toilets) if (dailyToiletNeedsCare(w, toilet.gx, toilet.gy)) toilet.broken = true;
+}
+
+/** Make authored care visible and actionable together when the guide ends.
+ * The host derives this transient gate from separate onboarding metadata.
+ * Toggling it never completes a job or changes a reward receipt.
+ */
+export function setCareJobsActive(w: WorldState, active: boolean): void {
+  if (w.careJobsActive === active) return;
+  if (!active) {
+    for (const toilet of w.toilets) if (dailyToiletNeedsCare(w, toilet.gx, toilet.gy)) {
+      toilet.broken = false; toilet.breakIn = TOILET_LIFE_SEC; toilet.fixClaim = 0;
+    }
+  }
+  w.careJobsActive = active;
+  syncDailyCareCondition(w);
+}
+
+function completeCareTarget(w: WorldState, task: CareTask, progress: LaunchProgress, restoreMaintenance: boolean): void {
+  const { gx, gy } = task.target;
+  if (restoreMaintenance) {
+    const field = task.kind === "clean" ? "cleanliness" : "equipment";
+    const finishedKind = progress.careTasks.filter(t => t.kind === task.kind).every(t => t.progress >= t.steps);
+    w.maintenance[field] = finishedKind ? 100 : Math.min(100, w.maintenance[field] + 25);
+  }
+  if (task.target.kind === "table") {
+    const table = w.tables.find(t => t.gx === gx && t.gy === gy);
+    if (table) { table.dirty = 0; table.busClaim = 0; }
+  } else if (task.target.kind === "toilet") {
+    const toilet = w.toilets.find(t => t.gx === gx && t.gy === gy);
+    if (toilet) { toilet.broken = false; toilet.breakIn = TOILET_LIFE_SEC; toilet.fixClaim = 0; }
+  } else if (task.target.kind === "floor") w.trash = w.trash.filter(t => t.gx !== gx || t.gy !== gy);
+}
+
+/** Mirror a trusted receipt into the animated room without paying it again.
+ * Copy canonical maintenance separately before calling this. Target cleanup
+ * happens only at the incomplete→complete transition, so subsequent polls do
+ * not erase incidental dirt or breakdowns that occurred after today's job.
+ */
+export function applyCanonicalLaunch(w: WorldState, incoming: LaunchProgress): void {
+  for (const task of incoming.careTasks) {
+    const previous = w.launch.careTasks.find(t => t.id === task.id);
+    if (previous && previous.progress < previous.steps && task.progress >= task.steps) completeCareTarget(w, task, incoming, false);
+  }
+  w.launch = {
+    ...incoming, counts: { ...incoming.counts }, claimed: [...incoming.claimed], passive: { ...incoming.passive },
+    careTasks: incoming.careTasks.map(task => ({ ...task, target: { ...task.target } })),
+  };
+  syncDailyCareCondition(w);
 }
 
 /**
@@ -736,6 +807,7 @@ export function collectionUnlocked(w: WorldState, marketId: string): boolean {
 export function itemPurchasable(w: WorldState, itemId: string): boolean {
   const def = itemDef(itemId);
   if (!def || def.cost <= 0) return false;
+  if(def.machine&&def.machine!=="stove"&&!w.truck.unlockedMachineIds.includes(def.machine))return false;
   if (def.market) return collectionUnlocked(w, def.market);
   return true;
 }
@@ -772,7 +844,7 @@ export function deriveService(w: WorldState): Service {
   const seatsOpen = w.seats.length;
   const stoves = w.stovePos.length;
   const tier = tierFor(seatsOpen);
-  const cookDur = COOK_BASE * (stoves >= 2 ? 0.8 : 1);
+  const cookDur = COOK_BASE * (stoves >= 2 ? 0.8 : 1) / Math.max(0.35, w.maintenance.equipment / 100) / homeTechnology(w.truck.techLevels).cook;
   const speed = (60 / cookDur) * Math.max(1, w.hires.chefs);
   const rating = 1 + (4 * qualityOf(w)) / 100;
   const night = w.clockHrs >= 22 || w.clockHrs < 7;
@@ -833,11 +905,8 @@ const ORTHO = [
 ] as const;
 
 /** Cells a placement occupies. */
-export function cellsOf(itemId: string, gx: number, gy: number): { x: number; y: number }[] {
-  const n = itemDef(itemId)?.cells ?? 1;
-  const out: { x: number; y: number }[] = [];
-  for (let i = 0; i < n; i++) out.push({ x: gx + i, y: gy });
-  return out;
+export function cellsOf(itemId: string, gx: number, gy: number, facing: Facing = "se"): { x: number; y: number }[] {
+  return footprintCells(itemId, gx, gy, facing);
 }
 
 /** BFS of every walkable cell reachable from (sx,sy). Seat cells terminate. */
@@ -884,6 +953,13 @@ function openNeighbor(
   return null;
 }
 
+function workPosition(grid: Grid, reach: Uint8Array, p: PlacedItem): { x: number; y: number } | null {
+  return interactionCells(p.itemId, p.gx, p.gy, p.facing).find((cell) =>
+    cell.x >= 0 && cell.y >= 0 && cell.x < grid.w && cell.y < grid.h &&
+    grid.cells[cell.y * grid.w + cell.x] === 0 && reach[cell.y * grid.w + cell.x]
+  ) ?? null;
+}
+
 /**
  * Validate a hypothetical layout: everything in bounds, no solid overlap, and
  * every station reachable from the door. Returns "" when valid.
@@ -893,8 +969,9 @@ export function validateLayout(room: RoomDef, layout: PlacedItem[]): PlaceError 
   const occupied = new Map<number, boolean>();
   for (const p of layout) {
     const def = itemDef(p.itemId);
-    if (!def) continue;
-    for (const c of cellsOf(p.itemId, p.gx, p.gy)) {
+    if (!def || !Number.isInteger(p.gx) || !Number.isInteger(p.gy) || !["se", "sw", "nw", "ne"].includes(p.facing)) return "That does not fit inside the room.";
+    if (def.layer === "wall" && p.gx !== 0 && p.gy !== 0) return "That does not fit inside the room.";
+    for (const c of cellsOf(p.itemId, p.gx, p.gy, p.facing)) {
       if (c.x < 0 || c.y < 0 || c.x >= room.w || c.y >= room.h) {
         return "That does not fit inside the room.";
       }
@@ -926,15 +1003,8 @@ export function validateLayout(room: RoomDef, layout: PlacedItem[]): PlaceError 
     if (!def) continue;
     if (def.kind === "table") {
       if (!openNeighbor(grid, reach, p.gx, p.gy)) return "Guests could not reach every seat.";
-    } else if (def.kind === "stove" || def.kind === "counter") {
-      let ok = false;
-      for (const c of cellsOf(p.itemId, p.gx, p.gy)) {
-        if (openNeighbor(grid, reach, c.x, c.y)) {
-          ok = true;
-          break;
-        }
-      }
-      if (!ok) return "The crew could not reach the kitchen.";
+    } else if (def.kind === "stove" || def.kind === "counter" || def.kind === "toilet") {
+      if (!workPosition(grid, reach, p)) return "The crew could not reach the kitchen.";
     }
   }
   return "";
@@ -952,6 +1022,10 @@ export function rebuildDerived(w: WorldState, room: RoomDef): void {
 
   const grid = buildGrid(room.w, room.h, w.layout);
   w.grid = grid;
+  w.layout = reconcileEquipmentLayout(w.layout, w.equipment);
+  w.nextUid = Math.max(w.nextUid, ...w.layout.map(p=>p.uid+1), ...Object.values(w.equipment.instances).map(p=>p.uid+1));
+  w.operations = deriveKitchenOperations(w.layout, grid, room.door, w.equipment, availableDishes(w).map(d=>d.id));
+  w.menu.selected = [...w.operations.menu];
   const reach = floodOpen(grid, room.door.x, room.door.y);
 
   // tables, in depth order (closest to the kitchen first)
@@ -970,6 +1044,7 @@ export function rebuildDerived(w: WorldState, room: RoomDef): void {
       serveY: serve ? serve.y : -1,
       dirty: prev ? prev.dirty : 0,
       busClaim: prev ? prev.busClaim : 0,
+      servedDish: prev?.servedDish,
     };
   });
 
@@ -1024,7 +1099,7 @@ export function rebuildDerived(w: WorldState, room: RoomDef): void {
   w.toilets = w.layout
     .filter((p) => itemDef(p.itemId)?.kind === "toilet")
     .map((p) => {
-      const work = openNeighbor(grid, reach, p.gx, p.gy);
+      const work = workPosition(grid, reach, p);
       const prev = prevToilets.get(`${p.gx},${p.gy}`);
       return {
         uid: p.uid,
@@ -1042,21 +1117,14 @@ export function rebuildDerived(w: WorldState, room: RoomDef): void {
   w.trash = w.trash.filter((t) => grid.cells[t.gy * room.w + t.gx] === 0);
 
   // kitchen anchors follow the kitchen wherever the player puts it
-  const stoves = w.layout.filter((p) => itemDef(p.itemId)?.kind === "stove");
+  const stoves = w.layout.filter((p) => w.operations.stations.some(s=>s.uid===p.uid));
   w.stovePos = stoves.map((p) => ({ gx: p.gx, gy: p.gy }));
-  w.stoveAnchors = stoves
-    .map((p) => openNeighbor(grid, reach, p.gx, p.gy, [[0, 1], [1, 0], [-1, 0], [0, -1]]))
-    .filter((a): a is { x: number; y: number } => a !== null);
+  w.stoveAnchors = w.operations.stations.map(s=>({x:s.x,y:s.y}));
   if (w.stoveAnchors.length === 0) w.stoveAnchors = [{ x: room.door.x, y: room.door.y }];
 
   const counter = w.layout.find((p) => itemDef(p.itemId)?.kind === "counter");
   if (counter) {
-    const cells = cellsOf(counter.itemId, counter.gx, counter.gy);
-    let pass: { x: number; y: number } | null = null;
-    for (const c of cells) {
-      pass = openNeighbor(grid, reach, c.x, c.y, [[0, 1], [1, 0], [-1, 0], [0, -1]]);
-      if (pass) break;
-    }
+    const pass = workPosition(grid, reach, counter);
     w.passAnchor = pass ?? { x: room.door.x, y: room.door.y };
   } else {
     w.passAnchor = { x: room.door.x, y: room.door.y };
@@ -1090,6 +1158,12 @@ export function createWorld(
     hires?: Partial<HireState>;
     layout?: PlacedSpec[];
     inventory?: Record<string, number>;
+    design?: RestaurantDesign;
+    maintenance?: MaintenanceState;
+    launch?: LaunchProgress;
+    truck?: TruckProgress;
+    equipment?: EquipmentState;
+    careJobsActive?: boolean;
     market?: string;
     lpDays?: Record<string, number>;
     courses?: string[];
@@ -1106,6 +1180,8 @@ export function createWorld(
     pantry?: { stock: Record<string, number>; levels: Record<string, number> };
     menu?: {
       serves: Record<string, number>;
+      selected?: string[];
+      unlocked?: string[];
       specialUnlocked: boolean;
       specialServes: number;
       specialMastered: boolean;
@@ -1154,6 +1230,17 @@ export function createWorld(
       chefs: Math.max(1, Math.min(HIRE_SHOP.chef.max, opts?.hires?.chefs ?? 1)),
     },
     layout: [],
+    design: opts?.layout === undefined && opts?.design === undefined
+      ? starterDesign(room)
+      : sanitizeDesign(opts?.design, room.w, room.h),
+    maintenance: sanitizeMaintenance(opts?.maintenance),
+    launch: sanitizeLaunchProgress(opts?.launch, opts?.utcDay ?? 0, opts?.layout ?? starterLayout(room), room),
+    truck: sanitizeTruckProgress(opts?.truck),
+    equipment: sanitizeEquipment(opts?.equipment),
+    operations: { stations: [], menu: [], unavailable: [] },
+    careJobsActive: opts?.careJobsActive ?? true,
+    careReadyAt: 0,
+    editStartSignature: null,
     inventory: { ...(opts?.inventory ?? {}) },
     nextUid: 1,
     editing: false,
@@ -1197,11 +1284,9 @@ export function createWorld(
     gusSeatIdx: -1,
     gusVisitDay: -1,
     menu: {
-      dishes: [
-        { key: "margherita", name: "Margherita", serves: 0 },
-        { key: "caciopepe", name: "Cacio e Pepe", serves: 0 },
-        { key: "tiramisu", name: "Tiramisu", serves: 0 },
-      ],
+      dishes: DISHES.map((dish) => ({ key: dish.id, name: dish.name, serves: 0 })),
+      selected: sanitizeSelected(opts?.menu?.selected),
+      unlocked: Array.from(new Set([...(opts?.menu?.unlocked ?? []), ...STARTER_DISH_IDS])).filter((id) => !!dishDef(id)),
       specialUnlocked: false,
       specialServes: 0,
       specialMastered: false,
@@ -1279,7 +1364,12 @@ export function createWorld(
     w.menu.specialUnlocked = opts.menu.specialUnlocked;
     w.menu.specialServes = Math.max(0, Math.floor(opts.menu.specialServes));
     w.menu.specialMastered = opts.menu.specialMastered;
+    if (opts.menu.unlocked === undefined && opts.menu.specialUnlocked) {
+      for (const dish of DISHES.filter((d) => d.domain === w.market)) w.menu.unlocked.push(dish.id);
+    }
   }
+  for (const dish of availableDishes(w)) if (!w.menu.unlocked.includes(dish.id)) w.menu.unlocked.push(dish.id);
+  w.menu.selected = sanitizeSelected(w.menu.selected.filter((id) => w.menu.unlocked.includes(id)));
   // The best-quality mark is a RECORD, not a live reading: it is what the
   // board ranks, so losing it on reload meant the board ranked whatever the
   // current session happened to reach rather than the player's best night.
@@ -1287,17 +1377,19 @@ export function createWorld(
     w.stats.bestQuality = Math.max(0, Math.min(100, opts.bestQuality));
   }
 
-  for (const spec of opts?.layout ?? STARTER_LAYOUT) {
+  for (const spec of opts?.layout ?? starterLayout(room)) {
     w.layout.push({
-      uid: w.nextUid++,
+      uid: spec.uid && Number.isSafeInteger(spec.uid) && spec.uid > 0 && !w.layout.some(p=>p.uid===spec.uid) ? spec.uid : w.nextUid++,
       itemId: spec.itemId,
       gx: spec.gx,
       gy: spec.gy,
       facing: spec.facing ?? "se",
     });
   }
+  w.nextUid = Math.max(w.nextUid, ...w.layout.map(p=>p.uid+1), ...Object.values(w.equipment.instances).map(p=>p.uid+1));
   rebuildDerived(w, room);
 
+  syncDailyCareCondition(w);
   w.entities.push(makeEntity(w, "chef", w.stoveAnchors[0].x, w.stoveAnchors[0].y, "ne"));
   w.entities.push(makeEntity(w, "waiter", w.waiterAnchors[0].x, w.waiterAnchors[0].y, "sw"));
   return w;
@@ -1308,7 +1400,7 @@ export function createWorld(
  * migration: an M3 save's tables/stoves become placed pieces).
  */
 export function layoutForCounts(tables: number, stoves: number): PlacedSpec[] {
-  const specs: PlacedSpec[] = [...STARTER_LAYOUT];
+  const specs: PlacedSpec[] = [...LEGACY_STARTER_LAYOUT];
   if (stoves >= 2) specs.push(SECOND_STOVE);
   const extraTables = Math.max(0, Math.min(3, tables - 2));
   for (let i = 0; i < extraTables; i++) {
@@ -1376,7 +1468,7 @@ function pushMoment(w: WorldState, kind: Moment["kind"], emote = ""): void {
  * and its KEY -- the key is what lets a regular be recognised as having been
  * served the thing they actually came for (M8b).
  */
-function serveDish(w: WorldState, prefer?: string): { level: number; key: string } {
+function serveDish(w: WorldState, dishId: string): { level: number; key: string } {
   const m = w.menu;
   /**
    * A regular ORDERS their favourite. That is what being a regular means, and
@@ -1384,25 +1476,15 @@ function serveDish(w: WorldState, prefer?: string): { level: number; key: string
    * random dish and the line in the book almost never came true. Measured at
    * nine visits before this, exactly one landed on the right plate.
    */
-  if (prefer) {
-    const want = m.dishes.findIndex((d) => d.key === prefer);
-    if (want >= 0) {
-      m.dishes[want].serves += 1;
-      return { level: w.pantry.levels[prefer] ?? 1, key: prefer };
-    }
-  }
-  const n = m.dishes.length + (m.specialUnlocked && !m.specialMastered ? 2 : m.specialUnlocked ? 1 : 0);
-  const pick = Math.floor(roll(w) * n) % n;
-  if (pick >= m.dishes.length) {
+  const dish = m.dishes.find(candidate=>candidate.key===dishId)!;
+  dish.serves += 1;
+  if (dishDef(dish.key)?.domain) {
     m.specialServes += 1;
     if (!m.specialMastered && m.specialServes >= SPECIAL_MASTERY) {
       m.specialMastered = true;
       pushMoment(w, "mastered");
     }
-    return { level: w.pantry.levels["special"] ?? 1, key: "special" };
   }
-  const dish = m.dishes[pick];
-  dish.serves += 1;
   return { level: w.pantry.levels[dish.key] ?? 1, key: dish.key };
 }
 
@@ -1418,8 +1500,15 @@ function pathTo(
   return p || [];
 }
 
-function moveEntity(e: Entity, dt: number): void {
-  let budget = effSpeed(e) * dt;
+/** Editor reroutes may interrupt a step: reach its tile center before turning. */
+function editorPath(w: WorldState, e: Entity, gx: number, gy: number): { x: number; y: number }[] {
+  const x = Math.round(e.x), y = Math.round(e.y);
+  const path = pathTo(w, x, y, gx, gy);
+  return Math.abs(e.x - x) > 1e-6 || Math.abs(e.y - y) > 1e-6 ? [{ x, y }, ...path] : path;
+}
+
+function moveEntity(e: Entity, dt: number, technology = 1): void {
+  let budget = effSpeed(e) * dt * technology;
   while (budget > 0 && e.path.length > 0) {
     const wp = e.path[0];
     const dx = wp.x - e.x;
@@ -1566,7 +1655,6 @@ function clearFloorForEdit(w: WorldState, room: RoomDef): void {
   for (const e of w.entities) {
     if (e.kind === "guest") {
       if (e.state !== "leave") {
-        const from = { x: Math.round(e.x), y: Math.round(e.y) };
         e.state = "leave";
         e.stateT = 0;
         e.emote = "";
@@ -1574,7 +1662,7 @@ function clearFloorForEdit(w: WorldState, room: RoomDef): void {
         const seat = w.seats[e.seatIdx];
         if (seat && seat.occupiedBy === e.id) seat.occupiedBy = 0;
         e.path = [
-          ...pathTo(w, from.x, from.y, w.door.x, w.door.y),
+          ...editorPath(w, e, w.door.x, w.door.y),
           { x: w.door.x, y: room.h + 0.9 },
         ];
       }
@@ -1587,7 +1675,7 @@ function clearFloorForEdit(w: WorldState, room: RoomDef): void {
       e.state = "toAnchor";
       e.stateT = 0;
       const anchor = e.kind === "chef" ? w.stoveAnchors[0] : w.waiterAnchors[0];
-      e.path = pathTo(w, e.x, e.y, anchor.x, anchor.y);
+      e.path = editorPath(w, e, anchor.x, anchor.y);
     }
   }
   for (const t of w.tables) t.busClaim = 0;
@@ -1611,31 +1699,147 @@ function sendStaffHome(w: WorldState): void {
     e.state = "toAnchor";
     e.stateT = 0;
     const anchor = e.kind === "chef" ? w.stoveAnchors[0] : w.waiterAnchors[0];
-    e.path = anchor ? pathTo(w, e.x, e.y, anchor.x, anchor.y) : [];
+    e.path = anchor ? editorPath(w, e, anchor.x, anchor.y) : [];
   }
 }
 
 /**
- * Everything that must happen after the layout changes: derived state is
- * rebuilt, and (while arranging) staff step out from under whatever just
- * landed on them — you can drop a table on the chef, and he moves aside
- * rather than standing inside it.
+ * A committed edit can cover an actor with furniture. Reposition that
+ * actor on the closest reachable floor tile before resuming their
+ * route. This is an editor state change, not a service movement or walk cycle.
+ * Players can furnish the whole room without waiting for staff to get clear.
  */
 function afterLayoutChange(w: WorldState, room: RoomDef): void {
+  const previousGrid = w.grid;
   rebuildDerived(w, room);
-  if (w.editing) sendStaffHome(w);
+  syncCareTasks(w.launch, w.layout, room);
+  syncDailyCareCondition(w);
+  if (!w.editing) return;
+  const reach = floodOpen(w.grid, room.door.x, room.door.y);
+  for (const e of w.entities) {
+    if (e.dead) continue;
+    const x = Math.round(e.x), y = Math.round(e.y);
+    if (x < 0 || y < 0 || x >= room.w || y >= room.h) continue;
+    if (w.grid.cells[y * room.w + x] === 0 && reach[y * room.w + x]) continue;
+    // Departing guests may still be standing up from their original chair.
+    if (e.kind === "guest" && w.grid.cells[y * room.w + x] === 2 && previousGrid.cells[y * previousGrid.w + x] === 2 && openNeighbor(w.grid, reach, x, y)) continue;
+    let nearest = -1, bestDistance = Infinity;
+    for (let i = 0; i < reach.length; i++) {
+      if (!reach[i]) continue;
+      const distance = (i % room.w - e.x) ** 2 + (Math.floor(i / room.w) - e.y) ** 2;
+      if (distance < bestDistance) { nearest = i; bestDistance = distance; }
+    }
+    if (nearest >= 0) { e.x = nearest % room.w; e.y = Math.floor(nearest / room.w); }
+  }
+  sendStaffHome(w);
+  // Guests already on the way out must follow the edited grid too. Staff who
+  // are clocking out share that exit route and must not retain stale waypoints.
+  for (const e of w.entities) {
+    if (e.dead || (e.kind !== "guest" && e.state !== "clockOut")) continue;
+    const x = Math.round(e.x), y = Math.round(e.y);
+    if (x < 0 || y < 0 || x >= room.w || y >= room.h) continue;
+    e.path = [...editorPath(w, e, room.door.x, room.door.y), { x: room.door.x, y: room.h + 0.9 }];
+  }
 }
 
 /** The ONLY door for player input (determinism = seed + action tape). */
 export function applyAction(w: WorldState, room: RoomDef, action: Action): boolean {
+  if (action.type === "settlePassive") {
+    if (!Number.isFinite(action.now) || !Number.isFinite(action.elapsedMs) || action.elapsedMs <= 0) return false;
+    const works = !w.editing && w.seats.length > 0 && w.stovePos.length > 0 && w.layout.some(p => itemDef(p.itemId)?.kind === "counter");
+    const efficiency = works ? (w.maintenance.cleanliness + w.maintenance.equipment) / 200 : 0;
+    const before = w.launch.passive.lastSettledAt;
+    const coins = accruePassiveCoins(w.launch, action.elapsedMs, action.now, efficiency, dishEarningsMultiplier(w.pantry.levels, w.menu.selected));
+    w.playMoney += coins;
+    w.stats.coinsFromServes += coins;
+    return w.launch.passive.lastSettledAt > before;
+  }
+  if (action.type === "claimDailyGoal") {
+    if (w.editing) return false;
+    const reward = claimLaunchGoal(w.launch, action.goalId);
+    if (!reward) return false;
+    w.playMoney += reward.coins;
+    w.stats.coinsFromBeats += reward.coins;
+    for (const [id, n] of Object.entries(reward.stock)) addStock(w, id, n);
+    return true;
+  }
+  if (action.type === "careTask") {
+    if (!w.careJobsActive || w.editing || w.timeSec < w.careReadyAt) return false;
+    syncCareTasks(w.launch, w.layout, room);
+    const result = advanceCareTask(w.launch, action.taskId);
+    if (!result) return false;
+    w.careReadyAt = w.timeSec + LAUNCH_RULES.careStepCooldownMs / 1000;
+    if (result.done) {
+      completeCareTarget(w, result.task, w.launch, true);
+      w.presence = Math.min(PRESENCE_CAP, w.presence + 2);
+    }
+    return true;
+  }
+  if (action.type === "selectMenu") {
+    if (!Array.isArray(action.keys) || action.keys.length === 0 || action.keys.length > 4 || new Set(action.keys).size !== action.keys.length) return false;
+    const available = new Set(availableDishes(w).map((dish) => dish.id));
+    if (action.keys.some((id) => !available.has(id))) return false;
+    w.menu.selected = [...action.keys];
+    return true;
+  }
+  if (action.type === "maintain") {
+    if (action.task !== "clean" && action.task !== "repair") return false;
+    const field = action.task === "clean" ? "cleanliness" : "equipment";
+    if (w.maintenance[field] >= 100) return false;
+    w.maintenance[field] = Math.min(100, w.maintenance[field] + 20);
+    w.presence = Math.min(PRESENCE_CAP, w.presence + 2);
+    return true;
+  }
+  if (action.type === "finish") {
+    if (!w.editing) return false;
+    const catalog = action.surface === "floor" ? FLOOR_FINISHES : action.surface === "wall" ? WALL_FINISHES : [];
+    if (!catalog.some((finish) => finish.id === action.id)) return false;
+    if (action.surface === "floor" && (action.gx !== undefined || action.gy !== undefined)) {
+      if (!Number.isInteger(action.gx) || !Number.isInteger(action.gy) || action.gx! < 0 || action.gy! < 0 || action.gx! >= room.w || action.gy! >= room.h) return false;
+      w.design.tiles[`${action.gx},${action.gy}`] = action.id;
+    } else if (action.surface === "wall" && (action.side !== undefined || action.index !== undefined)) {
+      if (action.side !== "left" && action.side !== "right") return false;
+      if (!Number.isInteger(action.index) || action.index! < 0 || action.index! >= (action.side === "left" ? room.h : room.w)) return false;
+      w.design.wallTiles[`${action.side},${action.index}`] = action.id;
+    } else {
+      w.design[action.surface] = action.id;
+      if (action.surface === "floor") w.design.tiles = {};
+      else w.design.wallTiles = {};
+    }
+    return true;
+  }
+  if (action.type === "storefront") {
+    if (!w.editing || (action.awning !== undefined && !AWNINGS.some((a) => a.id === action.awning))) return false;
+    w.design = sanitizeDesign({ ...w.design, storefront: { ...w.design.storefront, ...action } }, room.w, room.h);
+    return true;
+  }
+  if (action.type === "replaceLayout") {
+    if (!w.editing || !Array.isArray(action.layout) || action.layout.length > 120) return false;
+    const owned = { ...w.inventory };
+    for (const p of w.layout) owned[p.itemId] = (owned[p.itemId] ?? 0) + 1;
+    const layout: PlacedItem[] = reconcileEquipmentLayout(action.layout.map((p) => ({ ...p, facing: p.facing ?? "se" })), w.equipment);
+    for (const p of layout) {
+      if (!itemDef(p.itemId) || (owned[p.itemId] ?? 0) < 1) return false;
+      owned[p.itemId] -= 1;
+    }
+    if (validateLayout(room, layout)) return false;
+    w.layout = layout;
+    w.nextUid = Math.max(w.nextUid, ...layout.map(p=>p.uid+1));
+    w.inventory = Object.fromEntries(Object.entries(owned).filter(([, count]) => count > 0));
+    afterLayoutChange(w, room);
+    return true;
+  }
   if (action.type === "newDay") {
     // A real day turned over. The clock was read in wallclock.ts; by the time
     // it gets here it is just numbers, so this stays replayable.
     if (action.utcDay <= w.utcDay) return false;
     w.utcDay = action.utcDay;
+    rollLaunchDay(w.launch, w.utcDay, w.layout, room);
+    syncDailyCareCondition(w);
     const banked = Math.max(1, Math.min(MAX_BANKED_DAYS, Math.floor(action.banked)));
 
     // ── the delivery (ADR-0106), now REAL-daily and banked while you are away
+    if (!action.deferDelivery) {
     const delivered: string[] = [];
     for (let d = 0; d < banked; d++) {
       for (let i = 0; i < DAILY_DELIVERY; i++) {
@@ -1659,6 +1863,7 @@ export function applyAction(w: WorldState, room: RoomDef, action: Action): boole
     w.pantry.lastDelivery = delivered;
     w.pantry.lastDeliveryDay = w.day;
     pushMoment(w, "delivery", delivered.join(","));
+    }
 
     // budgets are per REAL day now, so idling with the tab open no longer
     // farms six commons and a rare every twelve minutes
@@ -1719,7 +1924,7 @@ export function applyAction(w: WorldState, room: RoomDef, action: Action): boole
     const next = w.shellIdx + 1;
     const shell = SHELL_SIZES[next];
     if (!shell) return false;
-    if (w.playMoney < shell.cost) return false;
+    if (!expansionRequirements(w.shellIdx, w.pantry.levels, w.playMoney)?.allowed) return false;
     w.playMoney -= shell.cost;
     w.shellIdx = next;
     w.stats.purchases += 1;
@@ -1740,14 +1945,9 @@ export function applyAction(w: WorldState, room: RoomDef, action: Action): boole
       if (w.pantry.stock[id] <= 0) delete w.pantry.stock[id];
     }
     w.daily.prepped = true;
-    if (!w.daily.goalSpecialPaid) {
-      w.daily.goalSpecialPaid = true;
-      const mult = earningsMultiplier(w.dials).total;
-      const got = Math.round(GOAL_BONUS * mult);
-      w.playMoney += got;
-      w.stats.coinsFromBeats += got;
-      w.stats.coinsFromMultiplier += got - GOAL_BONUS;
-    }
+    recordLaunchActivity(w.launch, "prep");
+    // Old receipts remain valid; new rewards are claimed from the launch goal.
+    w.daily.goalSpecialPaid = true;
     // presence, not quality: prep is a thing you DID, and doing things is what
     // the hands segment measures. It must never touch the quality total.
     w.presence = Math.min(PRESENCE_CAP, w.presence + 3);
@@ -1765,8 +1965,8 @@ export function applyAction(w: WorldState, room: RoomDef, action: Action): boole
     t.dirty = 0;
     t.busClaim = 0;
     w.presence = Math.min(PRESENCE_CAP, w.presence + 3);
-    w.playMoney += 1;
     w.stats.busedByPlayer += 1;
+    recordLaunchActivity(w.launch, "clean");
     return true;
   }
   if (action.type === "hustle") {
@@ -1804,14 +2004,7 @@ export function applyAction(w: WorldState, room: RoomDef, action: Action): boole
     if (e.state !== "sit" && e.state !== "wait" && e.state !== "eat") return false;
     if (e.hustleT > 0) return false;
     w.daily.greeted = true;
-    if (!w.daily.goalGreetPaid) {
-      w.daily.goalGreetPaid = true;
-      const mult = earningsMultiplier(w.dials).total;
-      const got = Math.round(GOAL_BONUS * mult);
-      w.playMoney += got;
-      w.stats.coinsFromBeats += got;
-      w.stats.coinsFromMultiplier += got - GOAL_BONUS;
-    }
+    w.daily.goalGreetPaid = true;
     e.emote = "heart";
     e.emoteT = 1.8;
     e.hustleT = 45;
@@ -1861,16 +2054,19 @@ export function applyAction(w: WorldState, room: RoomDef, action: Action): boole
     w.trash.splice(i, 1);
     w.presence = Math.min(PRESENCE_CAP, w.presence + 2);
     w.stats.trashSweptByPlayer += 1;
+    recordLaunchActivity(w.launch, "clean");
+    w.maintenance.cleanliness = Math.min(100, w.maintenance.cleanliness + 5);
     return true;
   }
   if (action.type === "fixToilet") {
     const t = w.toilets.find((x) => x.uid === action.uid);
-    if (!t || !t.broken) return false;
+    if (!t || !t.broken || dailyToiletNeedsCare(w, t.gx, t.gy)) return false;
     t.broken = false;
     t.breakIn = TOILET_LIFE_SEC;
     t.fixClaim = 0;
     w.presence = Math.min(PRESENCE_CAP, w.presence + 3);
     w.stats.toiletFixedByPlayer += 1;
+    w.maintenance.equipment = Math.min(100, w.maintenance.equipment + 10);
     return true;
   }
   if (action.type === "upgradeDish") {
@@ -1882,7 +2078,9 @@ export function applyAction(w: WorldState, room: RoomDef, action: Action): boole
       if (w.pantry.stock[id] <= 0) delete w.pantry.stock[id];
     }
     w.pantry.levels[action.key] = Math.min(MAX_DISH_LEVEL, level + 1);
+    for (const dish of availableDishes(w)) if (!w.menu.unlocked.includes(dish.id)) w.menu.unlocked.push(dish.id);
     w.stats.dishUpgrades += 1;
+    recordLaunchActivity(w.launch, "upgrade");
     pushMoment(w, "dish", action.key);
     return true;
   }
@@ -1902,6 +2100,7 @@ export function applyAction(w: WorldState, room: RoomDef, action: Action): boole
     const def = itemDef(action.itemId);
     if (!def || def.cost <= 0) return false;
     w.inventory[action.itemId] = held - 1;
+    sellStoredEquipment(w.equipment,w.layout,action.itemId);
     if (w.inventory[action.itemId] <= 0) delete w.inventory[action.itemId];
     w.playMoney += Math.floor(def.cost * SELL_BACK);
     return true;
@@ -1912,6 +2111,7 @@ export function applyAction(w: WorldState, room: RoomDef, action: Action): boole
     // switching is free and carries everything (ADR-0039); tenure already
     // banked at the old market stays banked
     w.market = action.id;
+    for (const dish of availableDishes(w)) if (!w.menu.unlocked.includes(dish.id)) w.menu.unlocked.push(dish.id);
     return true;
   }
   if (action.type === "buyItem") {
@@ -1927,6 +2127,15 @@ export function applyAction(w: WorldState, room: RoomDef, action: Action): boole
   }
   if (action.type === "edit") {
     if (w.editing === action.on) return false;
+    const signature = JSON.stringify({
+      layout: w.layout.map(({ itemId, gx, gy, facing }) => JSON.stringify({ itemId, gx, gy, facing })).sort(),
+      design: w.design,
+    });
+    if (action.on) w.editStartSignature = signature;
+    else {
+      if (w.editStartSignature !== null && w.editStartSignature !== signature) recordLaunchActivity(w.launch, "decorate");
+      w.editStartSignature = null;
+    }
     w.editing = action.on;
     if (action.on) clearFloorForEdit(w, room);
     else sendStaffHome(w);
@@ -1947,10 +2156,11 @@ export function applyAction(w: WorldState, room: RoomDef, action: Action): boole
 
   if (action.type === "place") {
     if ((w.inventory[action.itemId] ?? 0) <= 0) return false;
+    const storedMachine = itemDef(action.itemId)?.kind === "stove" ? Object.values(w.equipment.instances).filter(e=>e.itemId===action.itemId&&!w.layout.some(p=>p.uid===e.uid)).sort((a,b)=>a.condition-b.condition||a.uid-b.uid)[0] : undefined;
     const next: PlacedItem[] = [
       ...w.layout,
       {
-        uid: w.nextUid,
+        uid: storedMachine?.uid ?? w.nextUid,
         itemId: action.itemId,
         gx: action.gx,
         gy: action.gy,
@@ -1984,7 +2194,7 @@ export function applyAction(w: WorldState, room: RoomDef, action: Action): boole
     const i = w.layout.findIndex((p) => p.uid === action.uid);
     if (i < 0) return false;
     const next = w.layout.map((p) =>
-      p.uid === action.uid ? { ...p, facing: (p.facing === "se" ? "sw" : "se") as Facing } : p
+      p.uid === action.uid ? { ...p, facing: rotateFacing(p.facing) } : p
     );
     if (validateLayout(room, next) !== "") return false;
     w.layout = next;
@@ -2011,13 +2221,14 @@ export function previewPlace(
   itemId: string,
   gx: number,
   gy: number,
-  movingUid?: number
+  movingUid?: number,
+  previewFacing?: Facing
 ): PlaceError {
   if (movingUid === undefined && (w.inventory[itemId] ?? 0) <= 0) {
     return "You do not own one of those yet.";
   }
   const base = movingUid === undefined ? w.layout : w.layout.filter((p) => p.uid !== movingUid);
-  const facing = movingUid !== undefined ? w.layout.find((p) => p.uid === movingUid)?.facing ?? "se" : "se";
+  const facing = previewFacing ?? (movingUid !== undefined ? w.layout.find((p) => p.uid === movingUid)?.facing ?? "se" : "se");
   return validateLayout(room, [...base, { uid: -1, itemId, gx, gy, facing }]);
 }
 
@@ -2062,7 +2273,7 @@ function stepWaiter(w: WorldState, e: Entity): void {
     }
     // ── chores (ADR-0106): a broken restroom first, then litter. This is
     // what keeps an absent player's room presentable (ADR-0102's law).
-    const broken = w.toilets.find((t) => t.broken && t.fixClaim === 0 && t.workX >= 0);
+    const broken = w.toilets.find((t) => t.broken && t.fixClaim === 0 && t.workX >= 0 && !dailyToiletNeedsCare(w, t.gx, t.gy));
     if (broken) {
       broken.fixClaim = e.id;
       e.taskToilet = broken.uid;
@@ -2086,7 +2297,7 @@ function stepWaiter(w: WorldState, e: Entity): void {
     const toilet = e.taskToilet >= 0 ? w.toilets.find((t) => t.uid === e.taskToilet) : undefined;
     const litter = e.taskTrash >= 0 ? w.trash.find((t) => t.id === e.taskTrash) : undefined;
     // the player may have beaten them to it: stand down without fuss
-    if ((e.taskToilet >= 0 && (!toilet || !toilet.broken)) || (e.taskTrash >= 0 && !litter)) {
+    if ((e.taskToilet >= 0 && (!toilet || !toilet.broken || dailyToiletNeedsCare(w, toilet.gx, toilet.gy))) || (e.taskTrash >= 0 && !litter)) {
       if (toilet && toilet.fixClaim === e.id) toilet.fixClaim = 0;
       e.taskToilet = -1;
       e.taskTrash = -1;
@@ -2177,11 +2388,12 @@ function stepWaiter(w: WorldState, e: Entity): void {
            * stock are forbidden to buy (ADR-0043/0103). An unprepped day just
            * uses the ordinary window, so skipping prep is never a penalty.
            */
-          const heartWindow = w.daily.prepped ? 34 : 25;
+          const heartWindow = (w.daily.prepped ? 34 : 25) * (1 + comfortOf(w.layout).patienceBonus);
           // the plate goes out FIRST, because who is at the table and what
           // landed in front of them together decide how the meal went
           const reg = guest.regularIdx >= 0 ? w.regulars[guest.regularIdx] : undefined;
-          const plate = serveDish(w, reg?.fav);
+          const plate = serveDish(w, order.dishId);
+          if (seat && w.tables[seat.tableIdx]) w.tables[seat.tableIdx].servedDish = plate.key;
           /**
            * A regular who got their dish at a reasonable pace leaves happy
            * whatever the room's score (M8b): they already know the place, and
@@ -2212,7 +2424,7 @@ function stepWaiter(w: WorldState, e: Entity): void {
               const taken = new Set(w.regulars.map((r) => r.n));
               const free = REGULAR_NAMES.map((_, i) => i).filter((i) => !taken.has(i));
               if (free.length > 0) {
-                const dishes = w.menu.dishes.map((d) => d.key);
+                const dishes = w.menu.selected;
                 const reg: Regular = {
                   n: free[Math.floor(roll(w) * free.length) % free.length],
                   // keep the face they already have, so the person the player
@@ -2225,65 +2437,24 @@ function stepWaiter(w: WorldState, e: Entity): void {
                 pushMoment(w, "regular", REGULAR_NAMES[reg.n]);
               }
             }
-            // RARES ARE PLAY-EARNED ONLY (ADR-0043/0106): they fall out of
-            // genuinely good service, never out of money, and are capped.
-            if (w.pantry.rareDrops < RARE_DROP_CAP) {
-              const id = RARES[Math.floor(roll(w) * RARES.length) % RARES.length];
-              addStock(w, id);
-              w.pantry.rareDrops += 1;
-              w.stats.raresDropped += 1;
-            }
+            // Rare ingredients now come from the bounded active daily shift.
           }
-          /**
-           * THE SERVE PAYOUT (the inversion). The plate is priced by PLAY --
-           * quality, dish level, who is at the table, whether today's board
-           * was cooked -- and the wallet multiplies the whole thing. A better
-           * dish still tips better, an unlevelled kitchen still cooks a solid
-           * B (ADR-0053's softening), and the ADR-0043 firewall stands: money
-           * scales the payout, never the quality that priced it.
-           */
-          const mult = earningsMultiplier(w.dials).total;
-          let rawPlate =
-            SERVE_BASE +
-            Math.round(q / 20) +
-            2 * (plate.level - 1) +
-            (favourite ? 3 : 0) +
-            (guest.name === "Gus" ? 8 : 0);
+          // The animation records real service goals. Coins are settled from
+          // elapsed wall time into a capped purse; faster rendering, financial
+          // dials, and recurring visitors cannot mint additional income.
           if (w.daily.prepped) {
-            rawPlate += SPECIAL_TIP;
             w.daily.served += 1;
+            recordLaunchActivity(w.launch, "special");
           }
-          const paid = Math.round(rawPlate * mult);
-          w.playMoney += paid;
-          w.stats.coinsFromServes += paid;
-          w.stats.coinsFromMultiplier += paid - Math.round(rawPlate * 1);
-
-          /**
-           * THE DAILY BEATS ride the serve that earns them, so a payment is
-           * always attached to a moment the player can see. Each pays once a
-           * REAL day (newDay resets the flags); Gus needs no flag because he
-           * only walks in once a real day.
-           */
-          const payBeat = (base: number) => {
-            const got = Math.round(base * mult);
-            w.playMoney += got;
-            w.stats.coinsFromBeats += got;
-            w.stats.coinsFromMultiplier += got - base;
-          };
-          if (!w.daily.firstServePaid) {
-            w.daily.firstServePaid = true;
-            payBeat(FIRST_SERVE_BONUS);
-          }
+          w.daily.firstServePaid = true;
           w.daily.plates += 1;
+          recordLaunchActivity(w.launch, "serve");
           if (!w.daily.goalPlatesPaid && w.daily.plates >= GOAL_PLATES) {
             w.daily.goalPlatesPaid = true;
-            payBeat(GOAL_BONUS);
           }
           if (!w.daily.potPaid && w.daily.prepped && w.daily.served >= SPECIAL_POT_SERVES) {
             w.daily.potPaid = true;
-            payBeat(SPECIAL_POT);
           }
-          if (guest.name === "Gus") payBeat(GUS_BONUS);
         }
         if (seat) {
           const t = w.tables[seat.tableIdx];
@@ -2348,19 +2519,15 @@ function stepChef(w: WorldState, e: Entity, chefSlot: number): void {
   }
   if (e.state === "idle") {
     if (w.editing) return;
-    const order = w.orders.find((o) => o.stage === "queued");
+    const occupied = new Set(w.orders.filter(o=>o.stage==="cooking").map(o=>o.stationUid));
+    const order = w.orders.find(o=>o.stage==="queued"&&w.operations.stations.some(s=>s.dishes.includes(o.dishId)&&!occupied.has(s.uid)));
     if (order) {
+      const station = w.operations.stations.find(s=>s.dishes.includes(order.dishId)&&!occupied.has(s.uid))!;
       order.stage = "cooking";
       order.chefId = e.id;
+      order.stationUid = station.uid;
       e.cookT = deriveService(w).cookDur * (0.9 + roll(w) * 0.2);
-      let anchorIdx: number;
-      if (w.hires.chefs === 1 && w.stoveAnchors.length >= 2) {
-        w.stoveFlip = 1 - w.stoveFlip;
-        anchorIdx = w.stoveFlip;
-      } else {
-        anchorIdx = Math.min(chefSlot, w.stoveAnchors.length - 1);
-      }
-      const anchor = w.stoveAnchors[anchorIdx % w.stoveAnchors.length];
+      const anchor = station;
       if (Math.abs(e.x - anchor.x) + Math.abs(e.y - anchor.y) > 0.01) {
         e.state = "toStove";
         e.path = pathTo(w, e.x, e.y, anchor.x, anchor.y);
@@ -2393,7 +2560,13 @@ function stepChef(w: WorldState, e: Entity, chefSlot: number): void {
     if (e.hustleT > 0) e.stateT += WORLD_FIXED_DT * 0.5;
     if (e.stateT >= e.cookT) {
       const order = w.orders.find((o) => o.chefId === e.id && o.stage === "cooking");
-      if (order) order.stage = "ready";
+      if (order) {
+        const machine = w.equipment.instances[String(order.stationUid)];
+        if (machine && machine.condition > 0) {
+          order.stage = "ready";
+          machine.condition = Math.max(0, machine.condition - EQUIPMENT_RULES.wearPerPlate);
+        } else { order.stage = "queued"; order.chefId = 0; order.stationUid = undefined; }
+      }
       w.stats.cooked += 1;
       e.state = "idle";
       e.heading = "ne";
@@ -2407,6 +2580,10 @@ export function stepWorld(w: WorldState, room: RoomDef): void {
   const dt = WORLD_FIXED_DT;
   w.tick += 1;
   w.timeSec += dt;
+  if (w.tick % 120 === 0) {
+    w.operations = deriveKitchenOperations(w.layout, w.grid, w.door, w.equipment, availableDishes(w).map(d=>d.id));
+    w.menu.selected = [...w.operations.menu];
+  }
 
   w.clockHrs += dt * HOURS_PER_SEC;
   if (w.clockHrs >= 24) {
@@ -2440,16 +2617,16 @@ export function stepWorld(w: WorldState, room: RoomDef): void {
 
   if (!w.menu.specialUnlocked && (w.dials.parkedUsd > 0 || w.dials.weeklyVolumeUsd > 0)) {
     w.menu.specialUnlocked = true;
+    for (const dish of DISHES.filter((d) => d.domain === w.market)) if (!w.menu.unlocked.includes(dish.id)) w.menu.unlocked.push(dish.id);
+    for (const dish of availableDishes(w)) if (!w.menu.unlocked.includes(dish.id)) w.menu.unlocked.push(dish.id);
+    if (w.menu.selected.length < 4) w.menu.selected.push(legacyDomainDish(w.market));
     pushMoment(w, "special");
   }
 
   /**
-   * THE DRIP IS GONE (the inversion). This is where the position printed
-   * coins per tick; with the tab open a room now earns only through real
-   * serves, and the wallet's whole effect is the earningsMultiplier on those
-   * payouts. coinFloat stays in state (removing a field would shift the sim
-   * hash and every replay) but it holds 0 forever. Do not put a grant back
-   * here -- the same law as the game-day rollover above.
+   * No coins are minted by simulation ticks or animated plates. The host
+   * supplies elapsed wall time to settlePassive; completed daily goals have
+   * explicit claim receipts. coinFloat remains zero for legacy compatibility.
    */
 
   const svc = deriveService(w);
@@ -2651,11 +2828,12 @@ export function stepWorld(w: WorldState, room: RoomDef): void {
   }
 
   // ── movement + timers + guests ───────────────────────────────────────────
+  const staffTechnology = homeTechnology(w.truck.techLevels).service;
   for (const e of w.entities) {
     e.stateT += dt;
     if (e.hustleT > 0) e.hustleT = Math.max(0, e.hustleT - dt);
     if (e.emoteT > 0) e.emoteT = Math.max(0, e.emoteT - dt);
-    if (e.path.length > 0) moveEntity(e, dt);
+    if (e.path.length > 0) moveEntity(e, dt, e.kind === "guest" ? 1 : staffTechnology);
 
     if (e.kind === "guest") {
       if (e.state === "sit" || e.state === "wait") e.waitT += dt;
@@ -2714,7 +2892,15 @@ export function stepWorld(w: WorldState, room: RoomDef): void {
           e.x = seat.gx;
           e.y = seat.gy;
           e.heading = seat.facing;
-          w.orders.push({ seatIdx: e.seatIdx, stage: "queued", waiterId: 0, chefId: 0 });
+          const menu = w.operations.menu;
+          if (menu.length) {
+            const favorite = e.regularIdx >= 0 ? w.regulars[e.regularIdx]?.fav : undefined;
+            const dishId = favorite && menu.includes(favorite) ? favorite : menu[Math.floor(roll(w) * menu.length) % menu.length];
+            w.orders.push({ seatIdx: e.seatIdx, stage: "queued", waiterId: 0, chefId: 0, dishId });
+          } else {
+            e.state = "leave";
+            e.path = [...pathTo(w,e.x,e.y,w.door.x,w.door.y),{x:w.door.x,y:room.h+0.9}];
+          }
         }
       } else if (e.state === "eat" && e.stateT >= e.eatT) {
         e.state = "leave";

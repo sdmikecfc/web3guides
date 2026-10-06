@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:21:49.944Z",
+  "destination": {
+    "assetId": "world_on_plate_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "4c75ce202db179333ea16870f3b276d7208515ae471d2bc5506e148324ccaedc",
+  "packageId": "pkg_22909887034321605c5cf49d",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 238284,
+    "fileName": "world_on_plate_low.glb",
+    "sha256": "a900f990b5b7c1772d8488314fb56cac7c58349a4fa55f9743e0576c29e7c24b"
+  }
+}

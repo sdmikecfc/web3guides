@@ -27,6 +27,7 @@ import { join } from "node:path";
 // die on "navigator is not defined". This is the same list the game loads.
 import {
   CREW_LOOKS,
+  DISH_ART_IDS,
   FILE_OF,
   GUEST_LOOKS,
   ITEM_SET_ARTS,
@@ -38,6 +39,7 @@ import {
   wallFile,
 } from "../src/app/chef/game/_view/art-manifest";
 import { SHELL_SIZES } from "../src/app/chef/game/_engine/rooms";
+import { ITEMS } from "../src/app/chef/game/_engine/items";
 
 const PUB = join(process.cwd(), "public", "chef-art");
 const fails: string[] = [];
@@ -82,6 +84,11 @@ const FRAMES: Record<string, string[]> = {
     "sizzle_0", "sizzle_1", "sizzle_2", "sizzle_3",
     "sparkle_0", "sparkle_1", "sparkle_2", "sparkle_3"],
 };
+// These poses are used for actual cleaning, repair and acknowledgements in v2.
+for (const family of ["guest", "chef", "waiter"]) {
+  for (const pose of ["z_clean", "z_repair", "z_greet", "z_celebrate"]) FRAMES[family].push(`${pose}_0`, `${pose}_1`);
+}
+FRAMES.guest.push("z_sit_b_0", "z_eat_b_0", "z_eat_b_1");
 
 let bytes = 0;
 function need(rel: string): boolean {
@@ -119,9 +126,29 @@ function need(rel: string): boolean {
 // ── 1. room art: every theme x every asset ─────────────────────────────────
 for (const theme of THEME_IDS) {
   for (const file of ROOM_FILES) need(`room/${theme}/${file}`);
+  for (const file of ["table.png", "chair.png", "chair-back.png", "stove.png", "stove-back.png", "bench.png", "bench-back.png", "plant.png", "partition.png", "wall-art.png"]) {
+    const path = join(PUB, "room", theme, file);
+    if (!existsSync(path)) continue;
+    const bytes = readFileSync(path);
+    if (bytes.length >= 24 && (bytes.readUInt32BE(16) !== 192 || bytes.readUInt32BE(20) !== 224)) fails.push(`${theme}/${file} breaks the 192x224 furniture anchor contract`);
+  }
+  for (const file of ["counter.png", "counter-back.png"]) {
+    const path = join(PUB, "room", theme, file);
+    if (!existsSync(path)) continue;
+    const bytes = readFileSync(path);
+    if (bytes.length >= 24 && (bytes.readUInt32BE(16) !== 320 || bytes.readUInt32BE(20) !== 240)) fails.push(`${theme}/${file} breaks the 320x240 counter anchor contract`);
+  }
 }
 for (const set of ITEM_SET_IDS) {
   for (const file of ITEM_SET_FILES) need(`room/${set}/${file}`);
+}
+for (const id of DISH_ART_IDS) {
+  for (const suffix of ["", "-mastered"]) need(`dishes/${id}${suffix}.png`);
+}
+for(const item of ITEMS)for(const path of [item.artPath,item.artBackPath]){
+  if(!path)continue;
+  if(!path.startsWith("/chef-art/")){fails.push(`Invalid equipment art path for ${item.id}`);continue;}
+  need(path.slice("/chef-art/".length));
 }
 
 // ── 2. character + fx atlases, and the frames inside them ──────────────────

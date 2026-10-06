@@ -1,0 +1,43 @@
+{
+  "assetId": "phoenix_fryer",
+  "displayName": "phoenix_fryer",
+  "files": [
+    {
+      "bytes": 207564,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "512d836b4c346f71aa757dee93b8386cf6992ee23363b221b2a9e0963c304c46"
+    },
+    {
+      "bytes": 1412,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "70d2114180a07998f45a2fd30df7d2b38ed867f6135459abf8f08cc3fe676ae8"
+    },
+    {
+      "bytes": 393,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "518664b92d829588efceb982f877d07c96fcfd793354de04cede01b55210594d"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "ce860f21709e4ca0df42f2e24ca8496c53b1a165c315546dfe259d58881d785d"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_8d8121e28653e7ceb649f622",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

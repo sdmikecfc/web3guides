@@ -4,29 +4,32 @@
  * leaks NOTHING it should not: no money, no full wallets, no save contents.
  * Cleans up after itself.
  *
- * Start the dev server, then: npx tsx scripts/dk-board-check.mts [baseUrl]
+ * LOCAL disposable database only. Start a local dev server using that database.
+ * Set DK_TEST_DATABASE_URL and DK_TEST_SERVICE_KEY explicitly, then run:
+ * node scripts/dk-check-runner.cjs scripts/dk-board-check.mts [localBaseUrl]
+ * Never reads .env.local. Both URLs must be loopback URLs before any DB call.
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { starterLayout } from "../src/app/chef/game/_engine/rooms";
 
-function loadEnv(): Record<string, string> {
-  const out: Record<string, string> = {};
-  try {
-    const raw = readFileSync(join(process.cwd(), ".env.local"), "utf8");
-    for (const line of raw.split(/\r?\n/)) {
-      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i);
-      if (m) out[m[1]] = m[2].replace(/^["']|["']$/g, "");
-    }
-  } catch {}
-  return out;
+function localUrl(value: string | undefined, name: string): string {
+  let parsed: URL;
+  try { parsed = new URL(value ?? ""); } catch { throw new Error(`${name} must be an explicit local URL.`); }
+  if (!["http:", "https:"].includes(parsed.protocol) || !["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname) || parsed.username || parsed.password)
+    throw new Error(`${name} must point to disposable loopback services; remote services are refused.`);
+  return parsed.origin;
 }
-const env = { ...loadEnv(), ...process.env } as Record<string, string>;
-const BASE = process.argv[2] || "http://localhost:3000";
-const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+// Validate arguments BEFORE creating a DB client, let alone inserting fixtures.
+const BASE = localUrl(process.argv[2] || "http://localhost:3000", "App URL");
+const DATABASE = localUrl(process.env.DK_TEST_DATABASE_URL, "DK_TEST_DATABASE_URL");
+if (!process.env.DK_TEST_SERVICE_KEY) throw new Error("Set DK_TEST_SERVICE_KEY for the disposable local database.");
+const db = createClient(DATABASE, process.env.DK_TEST_SERVICE_KEY, {
   auth: { persistSession: false },
 });
+function checked(result: { error: { code?: string } | null }, operation: string) {
+  if (result.error) throw new Error(`${operation} failed (${result.error.code || "transport error"}).`);
+}
 
 let failures = 0;
 const ok = (label: string, cond: boolean, detail = "") => {
@@ -46,8 +49,14 @@ const ROOMS = [
 const WALLETS = ROOMS.map((r) => r.wallet);
 
 (async () => {
-  await db.from("domain_kitchen_players").delete().in("wallet", WALLETS);
-  await db.from("domain_kitchen_players").insert(
+  // Never erase a preexisting row, even in a local developer database.
+  const existing = await db.from("domain_kitchen_players").select("wallet").eq("game_key", "dk").in("wallet", WALLETS);
+  checked(existing, "Fixture collision check");
+  if (existing.data?.length) throw new Error("Synthetic fixture wallets already exist. Use a fresh disposable database; existing rows were left untouched.");
+  let cleanupEligible = false;
+  try {
+  cleanupEligible = true;
+  checked(await db.from("domain_kitchen_players").insert(
     ROOMS.map((r) => ({
       game_key: "dk",
       wallet: r.wallet,
@@ -66,7 +75,7 @@ const WALLETS = ROOMS.map((r) => r.wallet);
       seats: r.seats,
       is_test: r.is_test,
     }))
-  );
+  ), "Fixture insert");
 
   /**
    * WAIT FOR THE SEEDED ROWS TO BE VISIBLE, don't just fetch once.
@@ -126,8 +135,10 @@ const WALLETS = ROOMS.map((r) => r.wallet);
   const iB = html.indexOf(short(ROOMS[1].wallet));
   ok("ranked best first", iA >= 0 && iB >= 0 && iA < iB, `${iA} < ${iB}`);
 
-  await db.from("domain_kitchen_players").delete().in("wallet", WALLETS);
-  const { data } = await db.from("domain_kitchen_players").select("id").in("wallet", WALLETS);
+  checked(await db.from("domain_kitchen_players").delete().eq("game_key", "dk").in("wallet", WALLETS), "Board fixture cleanup");
+  const remaining = await db.from("domain_kitchen_players").select("id").eq("game_key", "dk").in("wallet", WALLETS);
+  checked(remaining, "Board fixture cleanup verification");
+  const { data } = remaining;
   ok("seeded rows removed", (data?.length ?? 0) === 0);
 
   /**
@@ -137,19 +148,31 @@ const WALLETS = ROOMS.map((r) => r.wallet);
    * exactly, and what can NEVER be there: wallets, money, the private chef
    * name.
    */
-  const { handleOf } = await import("../src/lib/chef/board");
+  const handleOf = (wallet: string) => `${wallet.slice(0, 6)}…${wallet.slice(-4)}`;
   const starWallet = "0x" + "a1".repeat(20);
   const handle = handleOf(starWallet);
+  const visibleLayout = [
+    ...starterLayout().map((piece, index) => ({ ...piece, uid: index + 1 })),
+    { uid: 201, itemId: "drinks_basic", gx: 4, gy: 0, facing: "se" },
+    { uid: 202, itemId: "fryer_basic", gx: 3, gy: 0, facing: "se" },
+  ];
 
   // re-seed just the star (the main pass cleaned up after itself)
-  await db.from("domain_kitchen_players").insert({
+  checked(await db.from("domain_kitchen_players").insert({
     game_key: "dk",
     wallet: starWallet,
     state: {
-      v: 6,
+      v: 7,
       coins: 9999,
       theme: "izakaya",
-      layout: [{ itemId: "table_basic", gx: 2, gy: 3, facing: "se" }],
+      layout: visibleLayout,
+      inventory: { drinks_basic: 3 },
+      equipment: { instances: {
+        1: { uid: 1, itemId: "stove_basic", condition: 64 },
+        201: { uid: 201, itemId: "drinks_basic", condition: 57 },
+        202: { uid: 202, itemId: "fryer_basic", condition: 0 },
+        999: { uid: 999, itemId: "drinks_basic", condition: 73 },
+      } },
       name: "<img src=x>Casa‮ Mia",
       crew: { chef: 1, waiter: 2, chefName: "PRIVATE NAME" },
       dials: { parkedUsd: 777, weeklyVolumeUsd: 888 },
@@ -159,7 +182,7 @@ const WALLETS = ROOMS.map((r) => r.wallet);
     best_quality: 92,
     seats: 10,
     is_test: false,
-  });
+  }), "Visit fixture insert");
   try {
     const res = await fetch(`${BASE}/api/chef/visit/${handle}`, { cache: "no-store" });
     ok("visit: a seeded kitchen answers", res.status === 200, `${res.status}`);
@@ -169,28 +192,39 @@ const WALLETS = ROOMS.map((r) => r.wallet);
     const keys = Object.keys(body).sort().join(",");
     ok(
       "visit: the response is EXACTLY the allowlist",
-      keys === "crew,hires,layout,name,ok,shell,theme,tier",
+      keys === "condition,crew,design,equipment,hires,interactions,layout,menu,name,ok,shell,theme,tier",
       keys
     );
     ok("visit: no wallet anywhere in the raw body", !raw.toLowerCase().includes(starWallet.slice(2, 10)));
-    ok("visit: no coins, dials, or pantry", !/"coins"|"dials"|"parkedUsd"|"pantry"/.test(raw));
+    ok("visit: no coins, dials, pantry, inventory, or truck progress", !/"coins"|"dials"|"parkedUsd"|"pantry"|"inventory"|"truck"|"firstClears"/.test(raw));
     ok("visit: the private chef name stays private", !raw.includes("PRIVATE NAME"));
     ok(
       "visit: the forged room name comes out defanged",
       String(body.name).includes("Casa") && !String(body.name).includes("‮"),
       String(body.name)
     );
-    ok("visit: layout survives the scrub", Array.isArray(body.layout) && (body.layout as unknown[]).length === 1);
+    ok("visit: layout survives the scrub with stable identities", Array.isArray(body.layout) && (body.layout as {uid:number}[]).length === visibleLayout.length && (body.layout as {uid:number}[]).every((piece, index) => piece.uid === visibleLayout[index].uid));
+    const equipment = body.equipment as { instances: Record<string, { uid: number; itemId: string; condition: number }> };
+    ok("visit: equipment publishes only placed machines", Object.keys(equipment.instances).sort().join(",") === "1,201,202");
+    ok("visit: broken and worn machine conditions survive", equipment.instances[202].condition === 0 && equipment.instances[201].condition === 57 && equipment.instances[1].condition === 64);
+    ok("visit: no stored machine leaks", !raw.includes('"999"'));
+    const menu = body.menu as { selected: string[]; levels: Record<string, number> };
+    ok("visit: effective menu is not truncated to four dishes", menu.selected.length > 4 && menu.selected.includes("lemonade") && !menu.selected.includes("fries"));
+    ok("visit: only operating dish mastery is public", Object.keys(menu.levels).sort().join(",") === [...menu.selected].sort().join(","));
 
     const bogus = await fetch(`${BASE}/api/chef/visit/zz-not-a-handle-zz`, { cache: "no-store" });
     ok("visit: a bogus handle is a plain 404", bogus.status === 404, `${bogus.status}`);
   } finally {
-    await db.from("domain_kitchen_players").delete().eq("wallet", starWallet);
+    checked(await db.from("domain_kitchen_players").delete().eq("game_key", "dk").eq("wallet", starWallet), "Visit fixture cleanup");
   }
 
   if (failures > 0) {
     console.error(`\nboard check FAIL (${failures})`);
-    process.exit(1);
+    throw new Error(`Board check failed (${failures} assertions).`);
   }
   console.log("\nboard check PASS");
-})();
+  } finally {
+    // Reached only after proving these fixture keys were absent initially.
+    if (cleanupEligible) checked(await db.from("domain_kitchen_players").delete().eq("game_key", "dk").in("wallet", WALLETS), "Final fixture cleanup");
+  }
+})().catch((error) => { console.error(error instanceof Error ? error.message : "Board check failed."); process.exitCode = 1; });

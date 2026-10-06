@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:21:03.641Z",
+  "destination": {
+    "assetId": "disco_burger_jukebox_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "f9221f028a03b1c921eb06a9eb5bf1745c4bdaaa34c1b16f967232f435aa579f",
+  "packageId": "pkg_4df27c9a188400d78fc7c076",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 302344,
+    "fileName": "disco_burger_jukebox_low.glb",
+    "sha256": "aed05dc924a6c85210f448b64573d04e5077d816dd6205a3a36a06bc667d2552"
+  }
+}

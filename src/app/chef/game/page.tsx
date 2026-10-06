@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
 import GameClient from "./GameClient";
 
-/**
- * Domain Kitchen — the real engine build (ADR-0101), M0: preloader + the
- * ref_B trattoria on the iso grid. Unlinked and noindexed while under
- * construction; the /chef demo stays the public surface until this replaces it.
- */
+/** Alternate entry to the same restaurant and food-truck game as /chef. */
 
 export const metadata: Metadata = {
   title: "Domain Kitchen",
-  description: "Your restaurant on Doma. Park a position, trade, and cook.",
+  description: "Build a restaurant to call home, cook through a food-truck adventure, and bring new equipment back. Play free on desktop or phone.",
   robots: { index: false, follow: false },
 };
 

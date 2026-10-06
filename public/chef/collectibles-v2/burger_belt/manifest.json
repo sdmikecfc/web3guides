@@ -1,0 +1,43 @@
+{
+  "assetId": "burger_belt",
+  "displayName": "burger_belt",
+  "files": [
+    {
+      "bytes": 156476,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "5c879e6bff1dd37c14a14c951fa31800db2764b01472182819eb59a222b8a5d4"
+    },
+    {
+      "bytes": 1407,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "cda8b1798dce8e947212f926bbc35515df5f28fc376b8609a6d33e9f8249cb8e"
+    },
+    {
+      "bytes": 391,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "168d5c8754e4ed1835ae1bd24e24ce1e3c1f7aa376ea406836ef002c6df15861"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "5a33f8b2d8a35d5a6c8e8454464162b60cfd4c268aadb207ddb7dc1852fcaadc"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_7a5444b048b98e21191cb1f3",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

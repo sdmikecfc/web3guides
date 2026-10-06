@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {createDiner,dispatchDiner,dinerStopService,type DinerState,type DinerCommand} from '../src/lib/chef/diner/progression';
+import {serviceQueueSlots,makeStation,makeTable,buildServiceLoadout} from '../src/lib/chef/diner/geometry';
+import {Kitchen} from './dk-diner-reference-kitchen';
+const now=Date.UTC(2026,8,23),act=(s:DinerState,c:DinerCommand)=>{const r=dispatchDiner(s,c,{now});assert.equal(r.error,undefined,r.error);return r.state;};
+let state=act(createDiner(now,'onboarding-receipt'),{type:'startRun'});
+const first=state.run!.map.find(n=>state.run!.available.includes(n.id))!,snapshot=JSON.stringify(state),forecast=dinerStopService(state,state.run!,first);
+assert.equal(JSON.stringify(state),snapshot,'forecast must be read-only');state=act(state,{type:'chooseNode',nodeId:first.id});assert.deepEqual(state.run!.service!.config,forecast.config);
+state=act(state,{type:'starterLayout'});const kitchen=new Kitchen(state.run!.service!,0);kitchen.lunch();state.run!.service=kitchen.s;
+state=act(state,{type:'service',action:{type:'tick',ticks:1}});assert.equal(state.onboarding!.completed,true);
+const pantry=structuredClone(state.pantry);state=act(state,{type:'finishService'});assert.equal(state.onboarding!.burgerBundle,true);for(const id of ['beef','bun'])assert.equal(state.pantry[id],(pantry[id]??0)+1);
+const duplicate=dispatchDiner(state,{type:'finishService'},{now});assert(duplicate.error);assert.deepEqual(duplicate.state.pantry,state.pantry);
+const level=state.recipes.classic_burger.level;assert(dispatchDiner(state,{type:'upgradeRecipe',recipeId:'classic_burger'},{now}).error);const carried=state.run!.haul;state=act(state,{type:'visitRestaurant'});state=act(state,{type:'upgradeRecipe',recipeId:'classic_burger'});assert.equal(state.recipes.classic_burger.level,level+1);state=act(state,{type:'resumeTrip'});assert.equal(state.run!.haul,carried);
+const old=structuredClone(state);delete old.onboarding;assert.equal(dispatchDiner(old,{type:'settle'},{now}).error,undefined,'old account acquires additive onboarding defaults');
+console.log('PASS real first-service bundle upgrades a burger exactly once; retries and old accounts are safe');
+console.log('PASS route forecast equals the actual next service configuration without changing state');
+
+const layout=buildServiceLoadout(1,['classic_burger']),before=serviceQueueSlots(1,layout.stations,layout.tables);assert(before.length);
+const blocked=before[0];layout.stations.push(makeStation('test-bin','bin',blocked.x,blocked.y));const changed=serviceQueueSlots(1,layout.stations,layout.tables);assert(!changed.some(p=>p.x===blocked.x&&p.y===blocked.y));
+layout.stations.pop();assert.deepEqual(serviceQueueSlots(1,layout.stations,layout.tables),before);const returned=serviceQueueSlots(1,layout.stations,layout.tables);returned[0].x=900;assert.deepEqual(serviceQueueSlots(1,layout.stations,layout.tables),before);
+layout.tables[0]=makeTable('moved',5,5,2,1,1);const rotated=serviceQueueSlots(1,layout.stations,layout.tables),fresh=serviceQueueSlots(1,structuredClone(layout.stations),structuredClone(layout.tables));assert.deepEqual(rotated,fresh);
+console.log('PASS queue geometry invalidates after placement/rotation and cannot be mutated by callers');

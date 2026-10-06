@@ -1,0 +1,43 @@
+{
+  "assetId": "gelato_observatory_low",
+  "displayName": "gelato_observatory_low",
+  "files": [
+    {
+      "bytes": 289640,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "04b8f1eae53021c52ed517cfede5d2cfc64af680fbba14edc21b68b422f5191d"
+    },
+    {
+      "bytes": 1429,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "b9e050810bcabbc58f7b786e2a426998c93401836c1460e06555cb9cdb58b1fd"
+    },
+    {
+      "bytes": 402,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "462e9ce633397cb86fb8f41ab59fa44a5bb4b208802e2fda37b2d7b557b83f61"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "2399d01905df228ad9144e6f8ffd6ebe1fbdcf3db33f14a62681e214d45578ef"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_a5949ed42736fb3e5201ad0d",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

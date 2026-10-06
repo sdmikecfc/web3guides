@@ -1,0 +1,55 @@
+{
+  "assetId": "noodle_theatre_low",
+  "displayName": "noodle_theatre_low",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.40320760011672974,
+        0.7471006810665131,
+        0.2833223268389702
+      ],
+      "min": [
+        -0.40332233905792236,
+        0.03363829851150513,
+        -0.07636167854070663
+      ],
+      "sizeMeters": [
+        0.8065299391746521,
+        0.7134623825550079,
+        0.3596840053796768
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 44448,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 5,
+    "meshCount": 6,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 6,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 968,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 769,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

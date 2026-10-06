@@ -1,0 +1,11 @@
+{
+  "author": "[redacted]",
+  "notes": "Original Blender geometry authored for this project. Hero designs based on existing authorized cinematic reference artwork.",
+  "origin": "authored",
+  "schema": "game_dev.asset_provenance.v1",
+  "source": {
+    "bytes": 272992,
+    "fileName": "dragonfire_grill_low.glb",
+    "sha256": "5aec91734f546242da8f41289c9e8851d1c139109a78f492fd3797c4387bea88"
+  }
+}

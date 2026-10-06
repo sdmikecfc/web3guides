@@ -1,0 +1,43 @@
+{
+  "assetId": "noodle_theatre",
+  "displayName": "noodle_theatre",
+  "files": [
+    {
+      "bytes": 89292,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "832fcd739f7523aaa74a73495f798f251c5da73e1cf8354402fdaefb90022ba6"
+    },
+    {
+      "bytes": 1399,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "1113f72661694865b3a92125a94744146294a0fd533aa084eb582e27579a3050"
+    },
+    {
+      "bytes": 393,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "68755d8b8fd250e713f8ab34d915d766a98b16f24ae8b27bb7d89a4bd037ae5e"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "91c29e2671136289e041f493840fa46c6cd8663b581439b7eca55a2977323740"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_aef95f5ec75802f89c1433a3",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

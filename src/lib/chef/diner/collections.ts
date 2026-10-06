@@ -1,8 +1,13 @@
+import { PRESTIGE_DECOR } from './prestige-decor';
+import {DOMAIN_KIT_DECOR} from './domain-room-kit-defs';
 import type { DinerState } from "./progression";
 import type { Course } from "./types";
+import { SHOP_DECOR, COLLECTIBLE_DECOR } from './decor-catalog';
+import { COLLECTION_DISPLAY_SPOTS } from './collection-display-spots';
 
-export interface DecorDef { id: string; name: string; footprint: [number, number]; price: number; setId: string; wall?: boolean; counter?: boolean; ceiling?:boolean; passable?: boolean; memento?: boolean }
+export interface DecorDef { id: string; name: string; description?:string; footprint: [number, number]; price: number; setId: string; wall?: boolean; counter?: boolean; ceiling?:boolean; passable?: boolean; memento?: boolean; collectible?:boolean; displaySurface?:number; waitingSeats?:number; prestige?:boolean; displaySlot?:'floor'|'wall'|'counter'|'ceiling' }
 export const DECOR: DecorDef[] = [
+  ...SHOP_DECOR, ...COLLECTIBLE_DECOR, ...PRESTIGE_DECOR, ...DOMAIN_KIT_DECOR, ...COLLECTION_DISPLAY_SPOTS,
   { id: "red_planter", name: "Cherry-red planter", footprint: [1, 1], price: 150, setId: "fifties", counter: true },
   { id: "chrome_clock", name: "Chrome wall clock", footprint: [1, 1], price: 150, setId: "fifties", wall: true },
   { id: "milkshake_sign", name: "Milkshake print", footprint: [1, 1], price: 150, setId: "fifties", wall: true },
@@ -44,7 +49,7 @@ export const STARTER_TRINKETS = ['burger_mascot', 'retro_radio', 'condiment_cadd
 /** One spare slot preserves the welcome gift for old collections at their cap. */
 export const MAX_DECOR_COPIES = 1001;
 /** Fixed coin prices only; earned friendship keepsakes cannot be sold. */
-export function decorResaleValue(id:string):number|null {const item=Object.hasOwn(DECOR_BY_ID,id)?DECOR_BY_ID[id]:null;return item&&!item.memento?Math.floor(item.price/2):null;}
+export function decorResaleValue(id:string):number|null {const item=Object.hasOwn(DECOR_BY_ID,id)?DECOR_BY_ID[id]:null;return item&&!item.memento&&!item.collectible?Math.floor(item.price/2):null;}
 export const REGULARS = [
   { id: "old_pete", name: "Old Pete", favourite: "classic_burger", quirk: "A friendly word for every road ahead.", hint: "He has been here since opening day.", memento: "pete_postcard" },
   { id: "marge", name: "Marge", favourite: "coffee", quirk: "The night nurse always appreciates a fresh coffee.", hint: "Put coffee on your menu.", memento: "marge_badge" },
@@ -75,8 +80,9 @@ export function regularAvailable(state: DinerState, id: string) {
   return !!REGULARS.find(r => r.id === id);
 }
 export function charmOf(state: DinerState) {
-  const ids = new Set(state.home.layout.map(p => p.equipmentId).filter(id => !!DECOR_BY_ID[id]));
-  const sets = ["fifties", "garden"].filter(set => DECOR.filter(d => d.setId === set).every(d => ids.has(d.id)));
+  const ids = new Set(state.home.layout.map(p => p.equipmentId).filter(id => !!DECOR_BY_ID[id]&&!DECOR_BY_ID[id].collectible&&!DECOR_BY_ID[id].prestige));
+  const originalSets:Record<string,string[]>={fifties:["red_planter","chrome_clock","milkshake_sign","checkered_shelf"],garden:["daisy_pot","garden_poster"]};
+  const sets=Object.keys(originalSets).filter(set=>originalSets[set].every(id=>ids.has(id)));
   return { score: Math.min(100, ids.size * 2 + sets.length * 10), sets };
 }
 export const COSMETICS = {
@@ -103,6 +109,6 @@ export const ROOM_PALETTES={
 } as const;
 export const ROOM_FINISH_DEFAULTS:Record<RoomFinishSlot,string>={counter:'tomato',worktop:'porcelain',upholstery:'cherry',sign:'cream'};
 export function roomFinishPrice(slot:RoomFinishSlot,id:string):number|null {return Object.hasOwn(ROOM_PALETTES,slot)?ROOM_PALETTES[slot].find(f=>f.id===id)?.price??null:null;}
-export interface DinerStaff { id: string; name: string; role: "chef" | "waiter" | "cashier"; named: boolean; outfit: string; look: number }
+export interface DinerStaff { priority?:import('./personal-touches').ServerPriority; id: string; name: string; role: "chef" | "waiter" | "cashier"; named: boolean; outfit: string; look: number }
 export const RECRUITS = [{ id: "jo", name: "Jo", role: "waiter" }, { id: "bea", name: "Bea", role: "chef" }, { id: "gus", name: "Gus", role: "waiter" }] as const;
-export interface SavedDinerLayout { id: string; name: string; layout: DinerState["home"]["layout"]; menu: Record<Course, string[]>; room?:Pick<DinerState["home"],"w"|"h"|"roomPlan"> }
+export interface SavedDinerLayout { id: string; name: string; layout: DinerState["home"]["layout"]; menu: Record<Course, string[]>; room?:Pick<DinerState["home"],"w"|"h"|"roomPlan">; finishes?:Record<RoomFinishSlot,string>; surfaces?:Record<FinishSlot,string>; appearances?:Record<string,string> }

@@ -30,13 +30,21 @@ export function tableFootprint(table: Pick<ServiceTable,'x'|'y'|'capacity'> & Pa
 export function blockedCells(stations: ServiceStation[],tables: ServiceTable[]): Set<string> { return new Set([...stations.flatMap(stationFootprint),...tables.flatMap(tableFootprint)].map(pointKey)); }
 /** A real waiting line on the pavement. The exit, ramp and chairs stay free.
  * Extra perimeter spots let an older checkpoint with a crowd recover safely. */
+const queueGeometryCache=new WeakMap<ServiceStation[],{key:string;points:Point[]}>();
 export function serviceQueueSlots(tier:DinerTier,stations:ServiceStation[],tables:ServiceTable[]):Point[]{
+  // Occupancy and dishes never affect this static route geometry. Include
+  // coordinates/rotation so moving an existing array invalidates the cache too.
+  const key=JSON.stringify([tier,stations.map(s=>[s.kind,s.x,s.y,s.facing]),tables.map(t=>[t.x,t.y,t.capacity,t.rotation,t.seats.map(s=>[s.x,s.y])])]);
+  const cached=queueGeometryCache.get(stations);
+  if(cached?.key===key)return cached.points.map(p=>({...p}));
   const g=serviceGeometry(tier),blocked=blockedCells(stations,tables),seats=new Set(tables.flatMap(t=>t.seats).map(pointKey));
   const points:Point[]=[];
   for(let y=g.pavement.y;y<g.exit.y;y++)points.push({x:g.queue.x,y});
   for(let x=g.pavement.x+1;x<g.pavement.x+g.pavement.w;x++)points.push({x,y:g.exit.y});
   for(let y=g.exit.y-1;y>=g.pavement.y;y--)points.push({x:g.pavement.x+g.pavement.w-1,y});
-  return points.filter(p=>!blocked.has(pointKey(p))&&!seats.has(pointKey(p))&&!(p.x===g.ramp.x&&p.y===g.ramp.y+1)&&servicePath(tier,stations,tables,g.door,p)!==null);
+  const reachable=points.filter(p=>!blocked.has(pointKey(p))&&!seats.has(pointKey(p))&&!(p.x===g.ramp.x&&p.y===g.ramp.y+1)&&servicePath(tier,stations,tables,g.door,p)!==null);
+  queueGeometryCache.set(stations,{key,points:reachable});
+  return reachable.map(p=>({...p}));
 }
 const neighbors = (p:Point):Point[] => [{x:p.x,y:p.y-1},{x:p.x+1,y:p.y},{x:p.x,y:p.y+1},{x:p.x-1,y:p.y}];
 export function servicePath(tier: DinerTier,stations: ServiceStation[],tables: ServiceTable[],from:Point,to:Point):Point[] | null {
@@ -145,7 +153,7 @@ export function validateServiceLayout(tier:DinerTier,stations:ServiceStation[],t
   if(stations.length>40 || tables.length>SERVICE_RULES.maxTables) return 'This truck cannot hold that many fixtures.';
   const g=serviceGeometry(tier), used=new Set<string>(),ids=new Set<string>();
   for(const station of stations) {
-    if(!/^[a-zA-Z0-9_-]{1,64}$/.test(station.id) || ids.has(station.id) || !['crate','fridge','plates','cups','boxes','bowls','grill','prep','fryer','boiler','sink','bin','oven','blender','coffee','drinks','waffle','pass'].includes(station.kind) || !EQUIPMENT_BY_ID[station.kind]?.tiers[station.tier-1] || !Number.isInteger(station.facing) || station.facing<0 || station.facing>3 || ![1,2,3].includes(station.tier)) return 'Invalid station.';
+    if(!/^[a-zA-Z0-9_-]{1,64}$/.test(station.id) || ids.has(station.id) || !['crate','fridge','plates','cups','boxes','bowls','grill','prep','fryer','boiler','sink','bin','oven','blender','coffee','drinks','waffle','pass','steamer','griddle','juicer','wine_station'].includes(station.kind) || !EQUIPMENT_BY_ID[station.kind]?.tiers[station.tier-1] || !Number.isInteger(station.facing) || station.facing<0 || station.facing>3 || ![1,2,3].includes(station.tier)) return 'Invalid station.';
     ids.add(station.id);
     for(const p of stationFootprint(station)) {
       const outside=OUTDOOR_STATION_KINDS.includes(station.kind)&&p.x>=0&&p.x<g.pavement.x+g.pavement.w&&p.y>=g.pavement.y&&p.y<g.pavement.y+g.pavement.h;

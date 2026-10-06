@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T16:38:12.147Z",
+  "destination": {
+    "assetId": "disco_lobster",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "dda81b3ae78c54e2dfa2414669726dd9a5b480e3a09b837ab3bb53f9cfc5889e",
+  "packageId": "pkg_f5abfe2d78979107b3294e91",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 237372,
+    "fileName": "disco_lobster.glb",
+    "sha256": "347444677aaa34f6fc9039aef4a74379f640d66725499e6000a436d46d43c090"
+  }
+}

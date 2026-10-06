@@ -1,0 +1,11 @@
+{
+  "author": "[redacted]",
+  "notes": "Original Blender geometry authored for this project. Hero designs based on existing authorized cinematic reference artwork.",
+  "origin": "authored",
+  "schema": "game_dev.asset_provenance.v1",
+  "source": {
+    "bytes": 187388,
+    "fileName": "phoenix_fryer_low.glb",
+    "sha256": "cfdca3f3a910fb1d58260763cc1649b67857211ba931e046ccb31e7d075cbeb1"
+  }
+}

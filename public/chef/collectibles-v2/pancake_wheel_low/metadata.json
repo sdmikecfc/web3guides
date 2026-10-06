@@ -1,0 +1,55 @@
+{
+  "assetId": "pancake_wheel_low",
+  "displayName": "pancake_wheel_low",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.3722972571849823,
+        0.9959866882153614,
+        0.2080175131559372
+      ],
+      "min": [
+        -0.3722972571849823,
+        0.008638322353363037,
+        -0.20636168122291565
+      ],
+      "sizeMeters": [
+        0.7445945143699646,
+        0.9873483658619984,
+        0.41437919437885284
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 75732,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 5,
+    "meshCount": 7,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 7,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 1854,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 1398,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

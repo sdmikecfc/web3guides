@@ -15,6 +15,11 @@ const s4Locked = (pathname: string): boolean =>
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if(pathname==='/chef/dev/reports'||pathname==='/dev/reports'){
+    const user=process.env.DINER_REPORTS_ADMIN_USER,pass=process.env.DINER_REPORTS_ADMIN_PASSWORD;
+    if(process.env.DINER_REPORTS_ENABLED!=='true'||!user||!pass)return new NextResponse('Not found',{status:404});
+    if(request.headers.get('authorization')!==`Basic ${btoa(`${user}:${pass}`)}`)return new NextResponse('Authentication required',{status:401,headers:{'WWW-Authenticate':'Basic realm="Domain Kitchen reports", charset="UTF-8"','Cache-Control':'no-store'}});
+  }
 
   // ── Ambassador dashboard gate (/dash) — HTTP Basic Auth, team-only ───────
   // Sits BEFORE all host branches so it wins on every host. Basic auth is
@@ -303,6 +308,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|api/.*|go/.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|eot|otf|css|js|map|mp4|webm)).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|api/.*|go/.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|eot|otf|css|js|map|mp4|webm|mp3|ogg|wav)).*)",
   ],
 };

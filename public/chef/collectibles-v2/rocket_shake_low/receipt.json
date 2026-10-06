@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:21:43.658Z",
+  "destination": {
+    "assetId": "rocket_shake_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "ef7df0d253bcaf62c24f94db16c348e069f4803098f6b723f614bd53e4f4693c",
+  "packageId": "pkg_d33af3ceb58844976f243e82",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 220776,
+    "fileName": "rocket_shake_low.glb",
+    "sha256": "adc1786e175955b9cb4de22a212b184914f5f1a746255424b061f3ba4fa3a5e0"
+  }
+}

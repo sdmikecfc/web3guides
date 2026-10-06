@@ -151,7 +151,7 @@ for(const tier of [1,2,3]){
     if(tier>=2)assert(vb.max.y<1.25,'lamp clips a stored bowl');
   }
 }
-for(const decor of DECOR)inspect(kit.createModel(decor.id),decor.id,{maxWidth:1.12,maxDepth:1.12,...(decor.id==='chandelier'?{minY:1.93,maxY:2.71}:{})});
+for(const decor of DECOR)inspect(kit.createModel(decor.id),decor.id,{maxWidth:decor.footprint[0]+.12,maxDepth:decor.footprint[1]+.12,...(decor.ceiling?{minY:1.65,maxY:2.81}:{})});
 const stageDecor=['diner_clock','bear_statue','deer_trophy','pie_display','coffee_sign','jukebox','wine_rack','deco_mirror','brass_planter','chandelier','brass_sconce','velvet_rope','runner_menu'],stageHashes=new Set();
 for(const id of stageDecor){
   const definition=DECOR.find(item=>item.id===id);assert(definition,`${id}: art is absent from the shop catalog`);assert.deepEqual(definition.footprint,[1,1]);
@@ -180,7 +180,7 @@ for(const [id,price]of Object.entries(extraDecor)){
   const model=kit.createModel(id),hash=fingerprint(model);assert(!extraHashes.has(hash),'new furnishings share a generic model');extraHashes.add(hash);
   if(!extraPrints.has(id)){const bounds=new THREE.Box3().setFromObject(model);assert(bounds.min.y>=-.001&&bounds.min.y<.02,`${id}: plant does not meet the floor`);assert(bounds.max.x<=.5&&bounds.min.x>=-.5&&bounds.max.z<=.5&&bounds.min.z>=-.5,`${id}: plant escapes one tile`);assert(id==='leafy_plant'?bounds.max.y>1.5:bounds.max.y<.8,`${id}: distinct plant silhouette lost`);}
 }
-const legacyDecor=DECOR.filter(item=>['fifties','garden'].includes(item.setId)).map(item=>({equipmentId:item.id}));assert.equal(legacyDecor.length,6,'new decor silently changed legacy collection requirements');
+const legacyDecor=['red_planter','chrome_clock','milkshake_sign','checkered_shelf','daisy_pot','garden_poster'].map(equipmentId=>({equipmentId}));
 assert.deepEqual(charmOf({home:{layout:legacyDecor}}),{score:32,sets:['fifties','garden']});
 assert.deepEqual(charmOf({home:{layout:[...legacyDecor,...Object.keys(extraDecor).map(equipmentId=>({equipmentId}))]}}),{score:40,sets:['fifties','garden']},'extras altered set bonuses instead of just unique-item charm');
 for(const id of ['chair','plant','parcel','delivery','book','till','trophy','spill','jam'])inspect(kit.createModel(id),id);

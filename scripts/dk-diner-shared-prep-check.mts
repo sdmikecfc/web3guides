@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import {RECIPES} from '../src/lib/chef/diner/content';
+import {buildServiceLoadout,makeStation} from '../src/lib/chef/diner/geometry';
+import {createService,dispatchService,sanitizeService,serviceAssemblyChoices,serviceSupplyChoices} from '../src/lib/chef/diner/service';
+import {Cook} from './dk-diner-cook-fixture';
+import type {ServiceState} from '../src/lib/chef/diner/types';
+function kitchen(menu:string[],tier:1|2|3|4=1){const layout=buildServiceLoadout(tier,menu);assert.equal(layout.error,null);let s=createService({...layout,tier,menu,customers:1,tablePatienceTicks:12000,queuePatienceTicks:12000,tutorialLearning:true});s=dispatchService(s,{type:'open'});const cook=new Cook(()=>s,action=>{s=dispatchService(s,action);});return {get s(){return s;},set s(v:ServiceState){s=v;},cook,slot:(kind:string)=>s.stations.find(st=>st.kind===kind)!.slots[0]};}
+for(const recipe of RECIPES){const k=kitchen([recipe.id]);k.cook.until(()=>k.s.customers[0]?.phase==='seated');k.cook.dish(recipe.id);assert.equal(k.s.chef.held?.kind,'dish',recipe.id);assert.equal(k.s.chef.held?.recipeId,recipe.id);assert(sanitizeService(k.s),`${recipe.id} checkpoint`);const guest=k.s.customers[0];k.cook.touch(guest.tableId!,undefined,guest.seatId!);assert.equal(k.s.served,1,recipe.id);console.log('PASS real physical cooking and serving: '+recipe.id);}
+{
+  const k=kitchen(['classic_burger','bbq_burger','cheeseburger'],2),choices=serviceSupplyChoices(k.s,'fridge');assert.equal(choices.filter(c=>c.ingredientId==='beef').length,1);assert.equal(choices.find(c=>c.ingredientId==='beef')!.recipeIds.length,3);
+  k.cook.touch('fridge','classic_burger',undefined,'beef');const original=k.s.chef.held!.id;k.cook.touch('grill');k.cook.until(()=>!!k.slot('grill').job?.ready);k.cook.touch('grill');assert.deepEqual(serviceAssemblyChoices(k.s),['classic_burger','bbq_burger','cheeseburger']);
+  k.cook.touch('prep');assert.equal(k.s.chef.held!.id,original,'multiple recipes require an explicit choice');k.cook.touch('prep','bbq_burger');assert.equal(k.slot('prep').item!.id,original);assert.equal(k.slot('prep').item!.recipeId,'bbq_burger');assert.equal(k.slot('prep').job,null);
+  k.cook.touch('crate','bbq_burger',undefined,'bun');k.cook.touch('prep');k.cook.touch('crate','bbq_burger',undefined,'bbq_sauce');k.cook.touch('prep');k.cook.send({type:'hold',active:true});k.cook.until(()=>!!k.slot('prep').job?.ready);k.cook.touch('plates');k.cook.touch('prep');assert.equal(k.s.chef.held!.id,original);assert.equal(k.s.chef.held!.recipeId,'bbq_burger');assert(sanitizeService(k.s));console.log('PASS shared patty, unique supply choices, selected-menu assembly and conserved item identity');
+}
+{
+  const k=kitchen(['tomato_pasta','pesto_pasta'],2);k.cook.touch('crate','tomato_pasta',undefined,'pasta');k.cook.touch('boiler');k.cook.until(()=>!!k.slot('boiler').job?.ready);k.cook.touch('boiler');k.cook.touch('boiler');assert.deepEqual(serviceAssemblyChoices(k.s),['tomato_pasta','pesto_pasta']);
+  for(let i=0;i<17;i++)k.cook.tick(100);const heat=k.s.chef.held!.warmthTicks!;assert(heat>0&&heat<100);k.cook.touch('prep','pesto_pasta');k.cook.touch('crate','pesto_pasta',undefined,'pesto');k.cook.touch('prep');k.cook.send({type:'hold',active:true});k.cook.until(()=>!!k.slot('prep').job?.ready);assert(k.slot('prep').item!.warmthTicks!<=heat);k.cook.tick(100);assert.equal(k.slot('prep').item!.cold,true);k.cook.touch('bowls');k.cook.touch('prep');assert.equal(k.s.chef.held!.cold,true);assert(sanitizeService(k.s));console.log('PASS 90-second components, 45-second dishes and no reheating during assembly or plating');
+}
+{
+  const k=kitchen(['fries','cheese_fries'],2);k.cook.touch('crate','fries',undefined,'potato');k.cook.touch('prep');k.cook.send({type:'hold',active:true});k.cook.until(()=>!!k.slot('prep').job?.ready);k.cook.touch('prep');k.cook.touch('fryer');k.cook.until(()=>!!k.slot('fryer').job?.ready);k.cook.touch('fryer');
+  const ids=new Set<string>();for(let i=0;i<3;i++){k.cook.touch('fryer');ids.add(k.s.chef.held!.id);assert.deepEqual(serviceAssemblyChoices(k.s),['fries','cheese_fries']);k.cook.touch('bin');assert(sanitizeService(k.s));}assert.equal(ids.size,3);assert.equal(k.slot('fryer').item,null);k.cook.touch('fryer');assert.equal(k.s.chef.held,null);console.log('PASS one basket yields exactly three distinct shared portions');
+}
+{
+  const k=kitchen(['classic_burger'],4);k.s.stations.push(makeStation('warming','pass',8,6,2));k.cook.touch('fridge','classic_burger',undefined,'beef');k.cook.touch('grill');k.cook.until(()=>!!k.slot('grill').job?.ready);k.cook.touch('grill');k.cook.tick(100);k.cook.touch('warming');const remaining=k.slot('pass').item!.warmthTicks!;for(let i=0;i<20;i++)k.cook.tick(100);assert.equal(k.slot('pass').item!.warmthTicks,remaining);assert(remaining<1800);assert(sanitizeService(k.s));k.cook.touch('warming');for(let i=0;i<18;i++)k.cook.tick(100);assert.equal(k.s.chef.held!.cold,true);k.cook.touch('warming');k.cook.tick(100);assert.equal(k.slot('pass').item!.warmthTicks,0);assert.equal(k.slot('pass').item!.cold,true);console.log('PASS heat lamp freezes remaining component warmth and cannot reheat cold food');
+}
+console.log(`PASS all ${RECIPES.length} recipes and shared-preparation conservation`);

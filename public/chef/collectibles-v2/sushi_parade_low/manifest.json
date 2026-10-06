@@ -1,0 +1,43 @@
+{
+  "assetId": "sushi_parade_low",
+  "displayName": "sushi_parade_low",
+  "files": [
+    {
+      "bytes": 141516,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "0ac3dbc684213b87184e835279c4400a713622ba3a753f87122a8454ef479459"
+    },
+    {
+      "bytes": 1420,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "81338b300647da6bf0176b9f228ec9c0c59d1921861136bb8dacade2b5d143be"
+    },
+    {
+      "bytes": 396,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "9449db098505a95e2c61b51801d4c509d53a93db56bca97df18b2144d80ddf40"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "62213be0c57fef083121fef2e662f9e0b7382b173ca28ab22ccb46e7cafae661"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_36fae1d910741b45705307f4",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

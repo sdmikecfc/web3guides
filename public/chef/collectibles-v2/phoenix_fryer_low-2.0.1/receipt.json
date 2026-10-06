@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:48:21.164Z",
+  "destination": {
+    "assetId": "phoenix_fryer_low",
+    "version": "2.0.1"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "530196136046303e303bdd7ff4513ce805a684a07e1dafa08c0039cda7276d6a",
+  "packageId": "pkg_39635eec9c58501d699fc344",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 187388,
+    "fileName": "phoenix_fryer_low.glb",
+    "sha256": "cfdca3f3a910fb1d58260763cc1649b67857211ba931e046ccb31e7d075cbeb1"
+  }
+}

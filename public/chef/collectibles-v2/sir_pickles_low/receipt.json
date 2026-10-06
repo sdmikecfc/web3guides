@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:21:45.734Z",
+  "destination": {
+    "assetId": "sir_pickles_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "2612dece08963cd0406d864992b20074be471adc43aa6385963720a1ba6a05cf",
+  "packageId": "pkg_29fe8207fd80360ec8791bc1",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 84504,
+    "fileName": "sir_pickles_low.glb",
+    "sha256": "a604df545b0eab531019e32eb1145f91954f9f0826caff831947f42041fab9f1"
+  }
+}

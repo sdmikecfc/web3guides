@@ -1,0 +1,7 @@
+import {spawnSync} from 'node:child_process';
+import {mkdirSync,writeFileSync} from 'node:fs';
+const output=process.argv[2];if(!output||!/^D:[\\/]/i.test(output))throw Error('Verification output must be on D:');mkdirSync(output,{recursive:true});
+const tests=['first-shift','first-shift-receipts','pacing','table-service','shared-prep','audience-batches','batch','noodle','physical-cooking','regular-stories','rehearsal','route-chain','destinations','service-migration','renovation','room-plan','room-editor','public-scene','social','packs','placement'];
+const results=[];const selected=process.argv.slice(3);if(selected.length){const previous=JSON.parse((await import('node:fs')).readFileSync(`${output}/results.json`,'utf8'));results.push(...previous.filter(r=>!selected.includes(r.name)));}
+for(const name of tests.filter(n=>!selected.length||selected.includes(n))){const script=`scripts/dk-diner-${name}-check.mts`,start=Date.now();const run=spawnSync(process.execPath,['scripts/dk-check-runner.cjs',script],{encoding:'utf8',maxBuffer:4e6,env:{...process.env,TEMP:'D:/Temp',TMP:'D:/Temp'}});writeFileSync(`${output}/${name}.log`,run.stdout+'\n'+run.stderr);results.push({name,passed:run.status===0,seconds:Math.round((Date.now()-start)/1000)});console.log(`${run.status===0?'PASS':'FAIL'} ${name} (${results.at(-1).seconds}s)`);}
+writeFileSync(`${output}/results.json`,JSON.stringify(results,null,2));if(results.some(r=>!r.passed))process.exitCode=1;

@@ -1,0 +1,7 @@
+import type {DomainId} from '@/lib/chef/diner/domain-worlds';
+/** Original domain motifs, shared by foil packs and the delivery seal. */
+export default function PackEmblem({domain}:{domain:DomainId}){
+ return <svg viewBox="0 0 120 120" fill="none" aria-hidden="true"><circle cx="60" cy="60" r="53" stroke="currentColor" strokeWidth="1"/><circle cx="60" cy="60" r="47" stroke="currentColor" strokeWidth=".5"/>
+ {domain==='gochujang'?<g stroke="currentColor" strokeWidth="3" strokeLinecap="round"><ellipse cx="60" cy="78" rx="14" ry="17"/><ellipse cx="60" cy="55" rx="9" ry="11"/><ellipse cx="60" cy="35" rx="15" ry="13"/><path d="M52 23 44 14M68 23l8-9M48 52 33 46 26 56M48 65 30 64 22 76M49 80 38 89 30 99M72 52l15-6 7 10M72 65l18-1 8 12M71 80l11 9 8 10"/><circle cx="55" cy="33" r="1.5"/><circle cx="65" cy="33" r="1.5"/></g>:domain==='smoothie'?<g stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="m36 39 7 55h34l7-55ZM33 39h54M63 37l8-20h14M39 58h42M60 67v17M51 75h18"/><path d="M37 18c-14-4-17 10-10 17M37 18c1 12 13 17 20 8-5-10-12-12-20-8Z"/><circle cx="91" cy="72" r="9"/><path d="m87 63 4-6 5 6"/></g>:<g stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M38 22h44l-4 25c-3 19-33 19-36 0ZM60 63v31M44 95h32M43 43h34"/><path d="M29 54C13 66 28 91 40 77M89 27l5-11M91 44l11-4"/><circle cx="26" cy="64" r="4"/><circle cx="26" cy="76" r="4"/><circle cx="35" cy="71" r="4"/></g>}
+ </svg>;
+}

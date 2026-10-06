@@ -47,7 +47,7 @@ export async function makePostcard(
   const g = card.getContext("2d")!;
 
   // warm card ground, a hair lighter than the page so the room pops
-  g.fillStyle = "#241812";
+  g.fillStyle = "#f4eddf";
   g.fillRect(0, 0, W, H);
 
   // the room, fitted with a margin band for the caption
@@ -66,17 +66,19 @@ export async function makePostcard(
   const fontStack = "'Baloo 2', 'Segoe UI', system-ui, sans-serif";
   g.textAlign = "left";
   g.textBaseline = "middle";
-  g.fillStyle = "#f3e9d2";
+  g.fillStyle = "#3c5141";
   g.font = `800 40px ${fontStack}`;
   g.fillText(name.toUpperCase(), pad + 8, H - capH / 2 - 14, W * 0.6);
-  g.fillStyle = "#c9b79a";
+  g.fillStyle = "#756c5b";
   g.font = `700 22px ${fontStack}`;
   g.fillText(info.tier, pad + 8, H - capH / 2 + 22, W * 0.5);
 
   g.textAlign = "right";
-  g.fillStyle = "#e8a13d";
-  g.font = `800 26px ${fontStack}`;
-  g.fillText("chef.web3guides.com", W - pad - 8, H - capH / 2 + 4);
+  g.fillStyle = "#9c674c";
+  g.font = `800 24px ${fontStack}`;
+  g.fillText("DOMAIN KITCHEN", W - pad - 8, H - capH / 2 - 10, W * .36);
+  g.font = `600 20px ${fontStack}`;
+  g.fillText("A little place. A lot of heart.", W - pad - 8, H - capH / 2 + 22, W * .36);
 
   return new Promise<Blob>((resolve, reject) => {
     card.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
@@ -84,7 +86,7 @@ export async function makePostcard(
 }
 
 /** Share on platforms with a native sheet, download everywhere else. */
-export async function sharePostcard(blob: Blob, name: string): Promise<"shared" | "saved"> {
+export async function sharePostcard(blob: Blob, name: string, visitUrl?: string): Promise<"shared" | "saved" | "cancelled"> {
   const file = new File([blob], "my-kitchen.png", { type: "image/png" });
   const nav = navigator as Navigator & {
     canShare?: (d: { files: File[] }) => boolean;
@@ -95,11 +97,11 @@ export async function sharePostcard(blob: Blob, name: string): Promise<"shared" 
       await nav.share({
         files: [file],
         title: name || "Domain Kitchen",
-        text: "My restaurant runs on a real domain. chef.web3guides.com",
+        text: `Come visit ${name || "my little restaurant"}. ${visitUrl || "https://chef.web3guides.com"}`,
       });
       return "shared";
-    } catch {
-      // the player closed the sheet; fall through to a quiet download
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return "cancelled";
     }
   }
   const url = URL.createObjectURL(blob);

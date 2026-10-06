@@ -9,7 +9,7 @@ import type {CreateServiceOptions,ServiceAction,ServiceState} from '../src/lib/c
 let groups=0;function test(name:string,fn:()=>void){fn();groups++;console.log(`PASS ${name}`);}
 class Cook{
   s:ServiceState;
-  constructor(options:CreateServiceOptions={}){const menu=options.menu??['classic_burger'];this.s=dispatchService(createService({...buildServiceLoadout(options.tier??1,menu),menu,customers:4,tutorialLearning:true,...options}),{type:'open'});assert.equal(this.s.phase,'playing',this.s.notice);}
+  constructor(options:CreateServiceOptions={}){const menu=options.menu??['classic_burger'];this.s=dispatchService(createService({cookingVersion:0,boilerVersion:0,...buildServiceLoadout(options.tier??1,menu),menu,customers:4,tutorialLearning:true,...options}),{type:'open'});assert.equal(this.s.phase,'playing',this.s.notice);}
   send(action:ServiceAction){this.s=dispatchService(this.s,action);}
   until(fn:()=>boolean,limit=12000){let n=0;while(!fn()&&n++<limit&&['playing','closing'].includes(this.s.phase))stepService(this.s,1);assert(fn(),this.s.notice);}
   touch(targetId:string,recipeId?:string,ingredientId?:string,seatId?:string){this.send({type:'interact',targetId,recipeId,ingredientId,seatId});this.until(()=>!this.s.chef.path.length);}
@@ -24,12 +24,12 @@ class Cook{
       if(i===serviceRecipeSteps(this.s,recipeId).length-1){if(recipeId==='fries'&&this.s.config.batchVersion)this.touch(station.id);this.touch(this.s.config.batchVersion?vesselSupplyStation(recipeVessel(recipeId))!:'plates');assert.equal(this.s.chef.held?.kind,'plate');this.touch(station.id);}else this.touch(station.id);
       assert.equal(this.s.chef.held?.step,i+1,`${recipeId} step${i}`);
     }
-    assert.equal(this.s.chef.held?.kind,'dish');assert(this.s.chef.held?.plateId);assert(sanitizeService(this.s),'physical meal must be checkpointable');
+    assert.equal(this.s.chef.held?.kind,'dish');assert(this.s.chef.held?.plateId);assert(sanitizeService(this.s),`${recipeId}: physical meal must be checkpointable`);
   }
   wash(){this.touch('sink');this.send({type:'hold',active:true});this.until(()=>this.s.stations.find(st=>st.kind==='sink')!.slots.every(slot=>!slot.item));this.send({type:'hold',active:false});}
 }
 test('one burger has separate fridge patty, pantry bun and a visible two-plate rack',()=>{
-  const d=new Cook();assert.deepEqual(serviceSupplyChoices(d.s,'fridge'),[{ingredientId:'beef',recipeId:'classic_burger',name:'Raw patty'}]);assert.deepEqual(serviceSupplyChoices(d.s,'crate'),[{ingredientId:'bun',recipeId:'classic_burger',name:'Bun'}]);assert.equal(d.s.cleanPlates,2);
+  const d=new Cook();assert.deepEqual(serviceSupplyChoices(d.s,'fridge'),[{ingredientId:'beef',recipeId:'classic_burger',recipeIds:['classic_burger'],name:'Raw patty'}]);assert.deepEqual(serviceSupplyChoices(d.s,'crate'),[{ingredientId:'bun',recipeId:'classic_burger',recipeIds:['classic_burger'],name:'Bun'}]);assert.equal(d.s.cleanPlates,2);
   d.supply('classic_burger');const patty=d.s.chef.held!.id;d.touch('grill');d.until(()=>!!d.s.stations.find(st=>st.kind==='grill')!.slots[0].job?.ready);d.touch('grill');assert.equal(d.s.chef.held?.stage,'cooked_patty');d.touch('prep');
   let prep=d.s.stations.find(st=>st.kind==='prep')!;assert.equal(prep.slots[0].item?.id,patty);assert.equal(prep.slots[0].job,null);d.send({type:'hold',active:true});stepService(d.s,100);assert.equal(prep.slots[0].item?.kind,'processed');assert.equal(d.s.served,0);
   d.supply('classic_burger','bun');const bun=d.s.chef.held!.id;assert.match(serviceTargetIntent(d.s,'prep').label,/combine/i);d.touch('prep');prep=d.s.stations.find(st=>st.kind==='prep')!;assert.deepEqual(prep.slots[0].item?.components,[{id:bun,ingredientId:'bun'}]);assert.equal(d.s.chef.held,null);
@@ -71,12 +71,14 @@ test('the whole first slow lunch is playable with one chair and two circulating 
   }
   assert.equal(d.s.phase,'complete');assert.equal(d.s.served,4);assert.equal(d.s.paid,4);assert.equal(d.s.strikes,0);assert.equal(d.s.washed,3);assert.equal(d.s.config.plateCount,2);assert(sanitizeService(d.s));console.log(`  first lunch: ${d.s.tick/20}s, four physical burgers, three washed plates`);
 });
-test('every recipe uses a physical primary ingredient and the correct serving vessel, with cold food remaining cold',()=>{
-  for(const recipe of RECIPES){const d=new Cook({menu:[recipe.id],customers:1,tutorialLearning:true});d.dish(recipe.id);assert.equal(d.s.cleanPlates,d.s.config.plateCount-(recipeVessel(recipe.id)==='plate'?1:0));assert.equal(d.s.chef.held!.vesselKind,recipeVessel(recipe.id));assert.equal(d.s.chef.held!.ingredientId,recipe.ingredients[0]);assert.equal(d.s.chef.held!.stage,`plated_${recipe.id}`);}
+test('every legacy recipe uses a physical primary ingredient and the correct serving vessel, with cold food remaining cold',()=>{
+  // This fixture deliberately uses the original cooking rules. Domain dishes have
+  // no legacy saves; their current workflows and batch reloads live in dk-domain-cooking-check.
+  for(const recipe of RECIPES.filter(r=>!r.domain&&!['bbq_burger','cheese_fries','pesto_pasta','creamy_mushroom_pasta','chicken_ramen','spicy_miso_ramen','tomato_soup','mushroom_soup'].includes(r.id))){const d=new Cook({menu:[recipe.id],customers:1,tutorialLearning:true});d.dish(recipe.id);assert.equal(d.s.cleanPlates,d.s.config.plateCount-(recipeVessel(recipe.id)==='plate'?1:0));assert.equal(d.s.chef.held!.vesselKind,recipeVessel(recipe.id));assert.equal(d.s.chef.held!.ingredientId,recipe.ingredients[0]);assert.equal(d.s.chef.held!.stage,`plated_${recipe.id}`);}
   const d=new Cook({menu:['fries'],...buildServiceLoadout(1,['classic_burger','fries'])});d.supply('fries');d.touch('prep');d.send({type:'hold',active:true});d.until(()=>!!d.s.stations.find(st=>st.kind==='prep')!.slots[0].job?.ready);d.touch('prep');d.touch('fryer');d.until(()=>!!d.s.stations.find(st=>st.kind==='fryer')!.slots[0].job?.ready);d.touch('fryer');stepService(d.s,SERVICE_RULES.coldTicks);d.touch('boxes');d.touch('fryer');assert.equal(d.s.chef.held?.kind,'dish');assert.equal(d.s.chef.held?.cold,true);
 });
 test('legacy recipe portions resume with their original meaning and do not conjure a physical plate pool',()=>{
-  let s=createService({physicalSupplies:false,menu:['classic_burger']});s=dispatchService(s,{type:'open'});s=dispatchService(s,{type:'interact',targetId:'crate',recipeId:'classic_burger'});while(s.chef.path.length)stepService(s,1);assert.equal(s.chef.held?.kind,'raw');delete (s.config as any).physicalSupplies;delete (s.config as any).plateCount;delete (s as any).plateStock;delete (s as any).cleanPlates;
+  let s=createService({cookingVersion:0,boilerVersion:0,physicalSupplies:false,menu:['classic_burger']});s=dispatchService(s,{type:'open'});s=dispatchService(s,{type:'interact',targetId:'crate',recipeId:'classic_burger'});while(s.chef.path.length)stepService(s,1);assert.equal(s.chef.held?.kind,'raw');delete (s.config as any).physicalSupplies;delete (s.config as any).plateCount;delete (s as any).plateStock;delete (s as any).cleanPlates;
   const restored=sanitizeService(s)!;assert(restored);assert.equal(restored.config.physicalSupplies,false);assert.equal(restored.cleanPlates,0);assert.equal(restored.chef.held?.kind,'raw');assert.deepEqual(restored.chef.held,s.chef.held);
 });
 console.log(`PASS ${groups} physical cooking and plate conservation groups`);

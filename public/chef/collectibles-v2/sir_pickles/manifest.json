@@ -1,0 +1,43 @@
+{
+  "assetId": "sir_pickles",
+  "displayName": "sir_pickles",
+  "files": [
+    {
+      "bytes": 183240,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "d9f68ea0a81f3bbf30dd5bd3756095e94ffcf8191ec72f4b8cb67ace5e3d22ac"
+    },
+    {
+      "bytes": 1408,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "b026918d0c8df7a352d2018001aa42f20daa1f3e47f7f27e479abd24b6c4e294"
+    },
+    {
+      "bytes": 391,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "c790cfb06a217c97bf4e2633ad47ebc31fd2f7dd845af5d17d1f7fb0f13afc4d"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "ce2ab5021ab9d9e72c1821dc9cce7ada8eec3ac1e8a50f2b88821af4742c793e"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_b32cd862b2305056c6bc3f3b",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

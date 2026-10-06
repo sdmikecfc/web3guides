@@ -1,4 +1,5 @@
 import { DECOR_BY_ID, FRIENDSHIP_LEVELS, REGULARS, regularAvailable, regularFavourite, regularLevel } from '@/lib/chef/diner/collections';
+import {routeAccess} from '@/lib/chef/diner/routes';
 import { EQUIPMENT_BY_ID, RECIPE_BY_ID, ROUTES, TRUCK_TIERS } from '@/lib/chef/diner/content';
 import { DINER_RULES, type DinerState, type NodeKind } from '@/lib/chef/diner/progression';
 
@@ -18,10 +19,10 @@ export function regularBookEntry(state:DinerState,id:string){
   if(id==='kiki')requirements.push({label:'Visit a Boardwalk stop',met:state.collections.stamps.some(stamp=>stamp.startsWith('boardwalk:')),action:'cook'});
   if(id==='hendersons')requirements.push({label:'A table for four placed in the restaurant',met:state.home.layout.some(item=>item.equipmentId==='table_4'),action:'decorate'});
   const count=state.collections.regulars[id]??0,level=regularLevel(count),nextAt=FRIENDSHIP_LEVELS[level]??null;
-  const available=regularAvailable(state,id),served=(state.daily.regularProgress[id]??0)+1e-9>=DINER_RULES.regularDailyServings,greeted=state.daily.regularServed.includes(id);
+  const visit=state.regularStories?.pending,available=regularAvailable(state,id),served=visit?.regularId===id&&visit.ready,greeted=false;
   const missingMachines=recipe?[...new Set(recipe.steps.map(step=>step.station))].filter(station=>!state.home.layout.some(item=>item.equipmentId===station)):[];
-  const wait=missingMachines.length?`Place ${missingMachines.map(id=>EQUIPMENT_BY_ID[id]?.name.toLowerCase()??id).join(' and ')} at home so your staff can cook this dish.`:'Your restaurant staff serve automatically. Keep the cooking stations, tables and sink reachable, then check back after a meal.';
-  return {regular,favourite,recipe,requirements,count,level,nextAt,available,served,greeted,ready:available&&served&&!greeted,wait,
+  const wait=missingMachines.length?`Place ${missingMachines.map(id=>EQUIPMENT_BY_ID[id]?.name.toLowerCase()??id).join(' and ')} at home so your staff can cook this dish.`:'Your restaurant staff serve automatically. Keep the cooking stations, tables and sink reachable, then say hello after their named visit. Visits advance while you play at home.';
+  return {regular,favourite,recipe,requirements,count,level,nextAt,available,served,greeted,visitId:visit?.regularId===id?visit.id:undefined,ready:available&&served&&!greeted,wait,
     mementoName:DECOR_BY_ID[regular.memento]?.name??'Personal keepsake',mementoOwned:state.collections.mementos.includes(regular.memento)||(state.decorOwned[regular.memento]??0)>0,
     nextReward:nextAt===15?'A personal keepsake':nextAt===40?'One secret recipe scrap':nextAt?'Friendship recognition':'A friend for life'};
 }
@@ -36,6 +37,6 @@ export function passportRoute(state:DinerState,routeId:string){
   const route=ROUTES.find(entry=>entry.id===routeId);if(!route)return null;
   const stamps=[...new Set(state.collections.stamps)].flatMap(value=>{const stamp=passportStamp(value);return stamp?.routeId===routeId?[stamp]:[];}).sort((a,b)=>a.stop-b.stop||a.name.localeCompare(b.name));
   const recipes=route.recipeIds.map(id=>({id,name:RECIPE_BY_ID[id].name,owned:Object.hasOwn(state.recipes,id)})),owned=recipes.filter(recipe=>recipe.owned).length;
-  const won=state.collections.routeWins.includes(route.id),earned=won&&owned===recipes.length,nextTier=TRUCK_TIERS[(route.tier+1) as keyof typeof TRUCK_TIERS];
-  return {route,stamps,recipes,owned,won,earned,nextTier,open:state.truckTier>=route.tier,upgraded:state.truckTier>=nextTier.tier};
+  const won=state.collections.routeWins.includes(route.id),earned=won,nextTier=route.truckReward?TRUCK_TIERS[route.truckReward]:null;
+  return {route,stamps,recipes,owned,won,earned,nextTier,open:!routeAccess(state,route.id),upgraded:nextTier?state.truckTier>=nextTier.tier:won};
 }

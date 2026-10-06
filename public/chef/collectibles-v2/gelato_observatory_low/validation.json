@@ -1,0 +1,79 @@
+{
+  "policy": {
+    "maxDimensionMeters": 3,
+    "maxMaterials": 16,
+    "maxTriangles": 40000,
+    "minDimensionMeters": 0.01,
+    "requireBaseColorTexture": false,
+    "requireNormals": true,
+    "requirePowerOfTwoTextures": true,
+    "requireUVs": false
+  },
+  "report": {
+    "checks": [
+      {
+        "actual": "every primitive has NORMAL",
+        "consequence": "Missing normals leave lighting to a renderer guess, usually reading as faceted or black.",
+        "expected": "every primitive carries normals",
+        "id": "normals_present",
+        "passed": true,
+        "severity": "error"
+      },
+      {
+        "actual": "8869 triangles",
+        "consequence": "Over budget costs frame time on every instance drawn.",
+        "expected": "at most 40000",
+        "id": "triangle_budget",
+        "passed": true,
+        "severity": "error"
+      },
+      {
+        "actual": "6 materials",
+        "consequence": "Each material is a separate draw call unless the pipeline batches them.",
+        "expected": "at most 16",
+        "id": "material_count",
+        "passed": true,
+        "severity": "warning"
+      },
+      {
+        "actual": "0.791 x 1.416 x 0.787 m",
+        "consequence": "Non-finite bounds produce a NaN view matrix in anything that frames the asset.",
+        "expected": "finite bounds",
+        "id": "bounding_box_finite",
+        "passed": true,
+        "severity": "error"
+      },
+      {
+        "actual": "largest edge 1.416 m",
+        "consequence": "An asset far larger than expected usually means the export used the wrong unit scale.",
+        "expected": "at most 3 m",
+        "id": "max_dimension",
+        "passed": true,
+        "severity": "warning"
+      },
+      {
+        "actual": "smallest edge 0.787175 m",
+        "consequence": "A collapsed axis means the mesh is flat or empty, whatever its triangle count says.",
+        "expected": "at least 0.01 m",
+        "id": "min_dimension",
+        "passed": true,
+        "severity": "error"
+      },
+      {
+        "actual": "8869 triangles",
+        "consequence": "A file can parse cleanly and still contain nothing to draw.",
+        "expected": "at least one triangle",
+        "id": "has_geometry",
+        "passed": true,
+        "severity": "error"
+      }
+    ],
+    "errorCount": 0,
+    "inspectorWarnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ],
+    "passed": true,
+    "warningCount": 0
+  },
+  "schema": "game_dev.asset_validation.v1"
+}

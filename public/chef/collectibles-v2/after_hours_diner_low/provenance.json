@@ -1,0 +1,11 @@
+{
+  "author": "[redacted]",
+  "notes": "Original Blender geometry authored for this project. Hero designs based on existing authorized cinematic reference artwork.",
+  "origin": "authored",
+  "schema": "game_dev.asset_provenance.v1",
+  "source": {
+    "bytes": 56912,
+    "fileName": "after_hours_diner_low.glb",
+    "sha256": "380d82bf29c2db6099f2f5e4e5aa31305ffafbf66c066b6a41a74606b4d4546e"
+  }
+}

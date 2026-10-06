@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {createDiner,dispatchDiner,sanitizeDinerSave,homeSimulationConfig} from '../src/lib/chef/diner/progression';
+import {createHomeWorld,stepHomeWorld,homeCrewMember} from '../src/lib/chef/diner/home-simulation';
+import {createService,dispatchService} from '../src/lib/chef/diner/service';
+import {controlPreferences,manualWorkKey} from '../src/lib/chef/diner/controls';
+import {GameplayRecorder,validateProblemReport,replayProblem} from '../src/lib/chef/diner/problem-reports';
+import {quietRestaurantScene} from '../src/app/chef/diner-preview/quiet-view';
+import {physicalHomeScene} from '../src/app/chef/diner-preview/physical-home-scene';
+const now=1800000000000;
+let state=createDiner(now,'personal-touches');state.recipes.classic_burger.level=1;
+const menu=structuredClone(state.home.menu),balance=state.coins;
+let r=dispatchDiner(state,{type:'setSignature',signature:{version:1,recipeId:'classic_burger',name:'Midnight Melt',style:'cherry'}},{now});assert(!r.error,r.error);state=r.state;
+assert.deepEqual(state.home.menu,menu);assert.equal(state.coins,balance);assert(sanitizeDinerSave(state));
+assert(dispatchDiner(state,{type:'setSignature',signature:{version:1,recipeId:'fries',name:'Free fries',style:'cream'}},{now}).error);
+r=dispatchDiner(state,{type:'setCrew',staffId:'waiter-1',name:'Robin Red',outfit:'cherry',priority:'clear'},{now});assert(!r.error,r.error);state=r.state;
+const world=createHomeWorld({...homeSimulationConfig(state),arrivalLimit:6,arrivalRate:180});
+assert.equal(homeCrewMember(world,world.actors.find(a=>a.role==='waiter')!)?.name,'Robin Red');
+const before=JSON.stringify(state);const scene=quietRestaurantScene(state);assert.equal(JSON.stringify(state),before);assert(scene.people.every(p=>!p.held&&p.pose==='idle'));assert(!scene.objects.some(o=>o.kind==='spill'));
+stepHomeWorld(world,14000);assert(world.metrics.plates>=3,`Crew cannot complete lunch: ${JSON.stringify(world.metrics)}`);
+const rendered=physicalHomeScene(state,world,null);assert.equal(rendered.people.find(p=>p.role==='waiter')?.outfit,'cherry');
+for(const priority of ['balanced','serve','clear'] as const){const copy=structuredClone(state);copy.staffMembers.find(m=>m.role==='waiter')!.priority=priority;const w=createHomeWorld({...homeSimulationConfig(copy),arrivalLimit:6,arrivalRate:120});stepHomeWorld(w,24000);assert.equal(w.metrics.plates,6,`${priority} left guests unfinished`);assert(w.actors.every(a=>!a.held));}
+console.log('PASS crew identity, all priorities complete a real lunch, signature ownership/menu independence, quiet copy isolation.');
+assert.equal(controlPreferences({text:999,work:'oops'}).text,100);assert.equal(controlPreferences({work:'toggle',hand:'left',large:true,text:150}).work,'toggle');
+let service=createService({seed:'private-player-seed',menu:['classic_burger']});assert.equal(manualWorkKey(service),null);
+const recorder=new GameplayRecorder();for(let i=0;i<120;i++){const action={type:'tick' as const,ticks:1};recorder.before(service,action,i*50);service=dispatchService(service,action);}
+const report=validateProblemReport({version:1,id:'c01e3a71-44a3-4373-a1be-992e9f9dd523',category:'interaction',note:'Cannot reach seat',build:'test',replay:recorder.snapshot(),diagnostics:[]})!;assert(report);assert(!JSON.stringify(report).includes('private-player-seed'));assert.deepEqual(replayProblem(report)?.tables,service.tables);
+const old=validateProblemReport({...report,replay:{...report.replay,version:99}})!;assert(old);assert.equal(old.replay!.checkpoint,null);assert.equal(replayProblem(old),null);
+assert.equal(validateProblemReport({...report,note:'a'.repeat(601)}),null);assert.equal(validateProblemReport({...report,replay:{...report.replay,actions:[{type:'tick',ticks:999999}]}}),null);
+for(let i=0;i<6000;i++)recorder.before(service,{type:'hold',active:true},10000+i);assert((recorder.snapshot()?.actions.length??0)<=1600);
+console.log('PASS bounded report replay, unsupported-version logs, input limits, scrubbed checkpoint and control preference defaults.');

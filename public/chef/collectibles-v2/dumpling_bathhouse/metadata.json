@@ -1,0 +1,55 @@
+{
+  "assetId": "dumpling_bathhouse",
+  "displayName": "dumpling_bathhouse",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.46410882472991943,
+        0.9187764227390289,
+        0.3199999928474426
+      ],
+      "min": [
+        -0.46410879492759705,
+        0.005000002682209015,
+        -0.3199999928474426
+      ],
+      "sizeMeters": [
+        0.9282176196575165,
+        0.9137764200568199,
+        0.6399999856948853
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 344404,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 7,
+    "meshCount": 10,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 10,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 13092,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 7970,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

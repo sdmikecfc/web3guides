@@ -1,0 +1,55 @@
+{
+  "assetId": "cosmic_carousel",
+  "displayName": "cosmic_carousel",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.8500000238418579,
+        1.1550001204013824,
+        0.7039999961853027
+      ],
+      "min": [
+        -0.8500000238418579,
+        0.005000002682209015,
+        -0.7039999961853027
+      ],
+      "sizeMeters": [
+        1.7000000476837158,
+        1.1500001177191734,
+        1.4079999923706055
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 516772,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 8,
+    "meshCount": 9,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 9,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 19712,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 12140,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

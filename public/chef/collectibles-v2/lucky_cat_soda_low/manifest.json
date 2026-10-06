@@ -1,0 +1,43 @@
+{
+  "assetId": "lucky_cat_soda_low",
+  "displayName": "lucky_cat_soda_low",
+  "files": [
+    {
+      "bytes": 138952,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "f7843175eae9c1a5e133b391ed12dc2e2ed23e8d553849573e1a4f878181a804"
+    },
+    {
+      "bytes": 1424,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "8c84971f9c5cf3dfaa52080e70b95c6fbf5727507253e9c7a08271681230c084"
+    },
+    {
+      "bytes": 398,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "ac3def24f35b34a561037c7b1a338de440c3419a607c46f5d0b15327efb36626"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "584570435d293aba140cec4697c6dc2170c2a2fe4d8ca11402d2d01031a8c166"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_222320ac9c74386b8420756f",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

@@ -36,8 +36,14 @@ import {
   FURN2_H,
   FURN2_W,
 } from "../_engine/iso";
-import { itemDef } from "../_engine/items";
-import type { Entity, RoomDef, WorldState } from "../_engine/world";
+import { itemDef, footprintCells } from "../_engine/items";
+import type { Entity, Facing, RoomDef, WorldState } from "../_engine/world";
+import { defaultDesign, type RestaurantDesign } from "../_engine/building";
+import { buildNeighborhood, drawFloor, drawWalls } from "./neighborhood";
+import { wallArtMount, pickWallMount, hitsWallArt, WALL_ART_ANCHOR } from "./wall-mount";
+import { furnitureAnchor as anchorFor } from "./furniture-placement";
+import { prepareSpriteHitMask, spriteContainsPoint } from "./sprite-hit-test";
+import { findPath, type Grid } from "../_engine/path";
 import { fnv1a } from "../_engine/rng";
 import type { DkSave } from "../_engine/save";
 import { GUEST_LOOKS } from "./preload";
@@ -64,13 +70,16 @@ export interface EditView {
   /** false = red tint (placement would be refused) */
   valid: boolean;
   /** which way the piece in hand is turned, so Turn is visible before it lands */
-  facing: "se" | "sw";
+  facing: Facing;
+  showRoutes?: boolean;
 }
 
 export interface Scene {
-  sync: (world: WorldState, edit?: EditView | null) => void;
+  sync: (world: WorldState, edit?: EditView | null, showCare?: boolean) => void;
   resize: (hostW: number, hostH: number, insetTop?: number, insetBottom?: number) => void;
   pick: (px: number, py: number) => { x: number; y: number };
+  pickWall: (px: number, py: number) => { x: number; y: number; facing: Facing } | null;
+  tileToScreen: (gx: number, gy: number) => { x: number; y: number };
   /** uid of the placed item drawn under this screen point, or -1 */
   pickItem: (px: number, py: number) => number;
   /** entity id whose sprite is drawn under this screen point, or -1 */
@@ -87,6 +96,7 @@ export interface Scene {
   /** false at zoom 1, where there is no slack and a drag should do nothing */
   canPan: () => boolean;
   setTheme: (theme: ThemeId) => void;
+  setAppearance: (design: RestaurantDesign) => void;
   /** the restaurant's name on a sign by the door; "" hides it */
   setSign: (name: string) => void;
   /** swap the chef/waiter looks (M7d): textures only, never the sim */
@@ -101,9 +111,15 @@ export interface Scene {
 }
 
 const WALK_FRAMES_PER_TILE = 8;
-const SIT_LIFT = 9;
+// The cast uses a foot anchor at atlas y116; its seated hip contour ends at
+// y96 (including the outline), leaving space for bent legs within the cell.
+// Register that contour on the actual cushion:
+// dk-bake-neighborhood authors chair/bench tops at z56.2/z55.1, at 2× scale.
+const SEATED_HIP_FROM_ANCHOR = (116 - 96) * 0.5;
+const CHAIR_SIT_LIFT = 56.2 * 0.5 - SEATED_HIP_FROM_ANCHOR;
+const BENCH_SIT_LIFT = 55.1 * 0.5 - SEATED_HIP_FROM_ANCHOR;
 const CHAR_ANCHOR_Y = 116 / 128;
-const DISH_LIFT = 50;
+const DISH_LIFT = 48;
 
 /**
  * WHAT THE ROOM SAYS (M8).
@@ -184,6 +200,8 @@ const LOCOMOTION: Record<string, boolean> = {
 function animFor(e: Entity): { name: string; flip: boolean } {
   const front = e.heading === "se" || e.heading === "sw";
   const flip = e.heading === "sw" || e.heading === "nw";
+  if (e.emote === "heart" && e.emoteT > 1.2 && e.state !== "eat") return { name: `z_celebrate_${Math.floor(e.emoteT * 5) % 2}`, flip };
+  if (e.hustleT > 7.3) return { name: `z_greet_${Math.floor(e.hustleT * 7) % 2}`, flip };
   if (LOCOMOTION[e.state]) {
     const base = e.carrying ? "carry" : "walk";
     const frame = Math.floor(e.walkDist * WALK_FRAMES_PER_TILE) % 4;
@@ -192,9 +210,9 @@ function animFor(e: Entity): { name: string; flip: boolean } {
   switch (e.state) {
     case "sit":
     case "wait":
-      return { name: "sit_0", flip: e.heading === "sw" };
+      return { name: front ? "sit_0" : "z_sit_b_0", flip };
     case "eat":
-      return { name: `eat_${Math.floor(e.stateT / 0.45) % 2}`, flip: e.heading === "sw" };
+      return { name: `${front ? "eat" : "z_eat_b"}_${Math.floor(e.stateT / 0.45) % 2}`, flip };
     case "cook":
       return { name: `cook_${Math.floor(e.stateT / 0.7) % 2}`, flip: false };
     case "serve":
@@ -202,7 +220,7 @@ function animFor(e: Entity): { name: string; flip: boolean } {
     case "pickup":
     case "bus":
     case "chore":
-      return { name: `walk_${front ? "f" : "b"}_0`, flip };
+      return { name: `z_${e.taskToilet >= 0 ? "repair" : "clean"}_${Math.floor(e.stateT * 3) % 2}`, flip };
     case "idle":
     default: {
       const frame = Math.floor(e.stateT / 0.8) % 2;
@@ -238,13 +256,9 @@ interface FurnSprite {
   artSet?: ItemSetId;
   /** dirty-dish overlay for tables */
   dish?: Sprite;
-}
-
-/** Where a placement's sprite sits: multi-cell art registers on its far tile. */
-function anchorFor(itemId: string, gx: number, gy: number): { x: number; y: number } {
-  const cells = itemDef(itemId)?.cells ?? 1;
-  const ax = gx + (cells - 1);
-  return { x: isoX(ax, gy), y: isoY(ax, gy) + TILE_H };
+  itemId: string;
+  facing: string;
+  broken?: boolean;
 }
 
 export function buildScene(
@@ -257,22 +271,32 @@ export function buildScene(
   let tex: RoomTextures = themes[initialTheme];
 
   /** Texture for an item: a domain piece uses its fixed set (ADR-0105). */
-  function artOf(itemId: string): Texture | undefined {
+  function artOf(itemId: string, facing: string = "se", broken = false): Texture | undefined {
     const def = itemDef(itemId);
     if (!def) return undefined;
+    const back = facing === "nw" || facing === "ne";
+    if(def.artPath)return assets.equipment[itemId+(back?"_back":"")]??assets.equipment[itemId];
+    const base = def.art === "toilet" && broken ? "toiletBroken" : def.art;
+    const key = back && ["chair", "stove", "counter", "bench", "toilet"].includes(def.art) ? `${base}Back` as RoomAssetKey : base as RoomAssetKey;
     if (def.artSet) {
       const set = itemSets[def.artSet as ItemSetId];
-      return set ? set[def.art as keyof typeof set] : undefined;
+      return set ? set[key as keyof typeof set] : undefined;
     }
-    return tex[def.art as RoomAssetKey];
+    if (def.collection in themes) return themes[def.collection as ThemeId][key];
+    return tex[key];
   }
 
   const root = new Container();
   app.stage.addChild(root);
+  const neighborhood = buildNeighborhood(room);
+  root.addChild(neighborhood.back);
 
   const floorC = new Container();
   const gridG = new Graphics();
+  const routeG = new Graphics();
   const wallC = new Container();
+  const paintedFloor = new Graphics();
+  const paintedWalls = new Graphics();
   const decorC = new Container();
   const objC = new Container();
   objC.sortableChildren = true;
@@ -299,7 +323,8 @@ export function buildScene(
   const uiC = new Container();
   const uiG = new Graphics();
   uiC.addChild(uiG);
-  root.addChild(floorC, gridG, wallC, decorC, shadowG, objC, lightG, flameC, fxGlow, fxSteam, uiC);
+  root.addChild(floorC, gridG, routeG, wallC, decorC, shadowG, objC, lightG, flameC, fxGlow, fxSteam, uiC);
+  root.addChild(neighborhood.front);
 
   // ── floor (fixed shell) ──────────────────────────────────────────────────
   const floorSprites: { sprite: Sprite; art: RoomAssetKey }[] = [];
@@ -310,6 +335,7 @@ export function buildScene(
       s.anchor.set(0.5, 0);
       s.scale.set(0.5);
       s.position.set(isoX(gx, gy), isoY(gx, gy));
+      s.visible = false; // the editable vector finish is the visible floor
       floorC.addChild(s);
       floorSprites.push({ sprite: s, art });
     }
@@ -330,6 +356,19 @@ export function buildScene(
   wallR.scale.set(0.5);
   wallR.position.set(0, -WALL_H);
   wallC.addChild(wallL, wallR);
+  floorC.addChild(paintedFloor);
+  wallC.addChild(paintedWalls);
+  wallL.visible = false; wallR.visible = false;
+  let designSignature = "";
+  function setAppearance(design: RestaurantDesign): void {
+    const signature = JSON.stringify(design);
+    if (signature === designSignature) return;
+    designSignature = signature;
+    drawFloor(paintedFloor, room, design);
+    drawWalls(paintedWalls, room, design);
+    neighborhood.setAppearance(design);
+  }
+  setAppearance(defaultDesign());
 
   // ── furniture, reconciled from world.layout each sync ────────────────────
   const furn = new Map<number, FurnSprite>();
@@ -340,13 +379,22 @@ export function buildScene(
   ghost.visible = false;
   objC.addChild(ghost);
 
+  function mountWallArt(sprite: Sprite, gx: number, gy: number, facing: string): void {
+    const mount = wallArtMount(room, gx, gy, facing);
+    sprite.anchor.set(WALL_ART_ANCHOR.x, WALL_ART_ANCHOR.y);
+    sprite.scale.set(mount.mirror ? -.5 : .5, .5);
+    sprite.position.set(mount.x, mount.y);
+  }
+
+  let showCareJobs = false;
   function makeFurnSprite(itemId: string, facing: string): FurnSprite | null {
     const def = itemDef(itemId);
     if (!def) return null;
     const art = def.art as RoomAssetKey;
-    const t = artOf(itemId);
+    const t = artOf(itemId, facing);
     if (!t) return null;
     const s = new Sprite(t);
+    prepareSpriteHitMask(t);
     if (def.cells > 1) {
       s.anchor.set(FURN2_BX / FURN2_W, FURN2_BY / FURN2_H);
     } else if (def.kind === "rug" || def.kind === "doormat") {
@@ -354,9 +402,9 @@ export function buildScene(
     } else {
       s.anchor.set(FURN_BX / FURN_W, FURN_BY / FURN_H);
     }
-    const flip = facing === "sw" && def.kind !== "rug" && def.kind !== "doormat";
+    const flip = (facing === "sw" || facing === "ne") && def.kind !== "rug" && def.kind !== "doormat";
     s.scale.set(flip ? -0.5 : 0.5, 0.5);
-    const entry: FurnSprite = { sprite: s, art, artSet: def.artSet as ItemSetId | undefined };
+    const entry: FurnSprite = { sprite: s, art, artSet: def.artSet as ItemSetId | undefined, itemId, facing };
     if (def.kind === "table") {
       const d = new Sprite(tex.dishes);
       d.anchor.set(0.5, 0.5);
@@ -384,24 +432,39 @@ export function buildScene(
         furn.set(p.uid, entry);
       }
       const s = entry.sprite;
-      const flip = p.facing === "sw" && def.kind !== "rug" && def.kind !== "doormat";
+      entry.facing = p.facing;
+      s.texture = artOf(p.itemId, p.facing) ?? s.texture;
+      const flip = (p.facing === "sw" || p.facing === "ne") && def.kind !== "rug" && def.kind !== "doormat";
       s.scale.set(flip ? -0.5 : 0.5, 0.5);
-      const a = anchorFor(p.itemId, p.gx, p.gy);
-      if (def.kind === "rug") {
-        s.position.set(isoX(p.gx, p.gy), isoY(p.gx, p.gy) + TILE_H);
-      } else if (def.kind === "doormat") {
-        s.position.set(isoX(p.gx, p.gy), isoY(p.gx, p.gy) + TILE_H / 2);
+      const a = anchorFor(p.itemId, p.gx, p.gy, p.facing);
+      if (def.layer === "wall") {
+        mountWallArt(s, p.gx, p.gy, p.facing);
+        s.zIndex = (p.gx + p.gy) * 10;
       } else {
         s.position.set(a.x, a.y);
-        s.zIndex = (p.gx + (def.cells - 1) + p.gy) * 10;
+        if (def.kind !== "rug" && def.kind !== "doormat") s.zIndex = Math.max(...footprintCells(p.itemId, p.gx, p.gy, p.facing).map(c => c.x + c.y)) * 10;
       }
       s.alpha = world.editing ? 0.92 : 1;
+      s.tint = world.operations.unavailable.some(machine=>machine.uid===p.uid) ? 0xba9383 : 0xffffff;
       s.visible = true;
       if (entry.dish) {
         const t = world.tables.find((tb) => tb.uid === p.uid);
+        const occupied = world.seats.some(seat => seat.tableIdx === world.tables.indexOf(t!) && seat.occupiedBy > 0);
+        const dishId = t?.servedDish ?? "";
+        const plated = !!dishId && occupied;
+        let plateTexture = tex.dishes;
+        if (plated) {
+          const mastered = (world.pantry.levels[dishId] ?? 1) >= 3;
+          plateTexture = (mastered ? assets.dishes[`${dishId}-mastered`] : undefined)
+            ?? assets.dishes[dishId] ?? tex.dishes;
+        }
+        entry.dish.texture = plateTexture;
+        entry.dish.scale.set(plated ? 0.16 : 0.5);
+        // Mastery is authored plating and garnish; preserve the food's colors.
+        entry.dish.tint = 0xffffff;
         entry.dish.position.set(a.x, a.y - DISH_LIFT);
         entry.dish.zIndex = (p.gx + p.gy) * 10 + 2;
-        entry.dish.visible = !!t && t.dirty > 0;
+        entry.dish.visible = !!t && (t.dirty > 0 || plated);
       }
     }
     furn.forEach((entry, uid) => {
@@ -416,7 +479,9 @@ export function buildScene(
     for (const t of world.toilets) {
       const entry = furn.get(t.uid);
       if (!entry) continue;
-      entry.sprite.texture = t.broken ? tex.toiletBroken : tex.toilet;
+      const careBroken=showCareJobs&&world.launch.careTasks.some(job=>job.target.kind==="toilet"&&job.target.gx===t.gx&&job.target.gy===t.gy&&job.progress<job.steps);
+      entry.broken = t.broken || careBroken;
+      entry.sprite.texture = artOf(entry.itemId, entry.facing, entry.broken) ?? entry.sprite.texture;
     }
 
     // litter on the floor
@@ -450,7 +515,7 @@ export function buildScene(
     wallR.texture = set.wallRight[room.w];
     furn.forEach((entry) => {
       // domain pieces keep their own look when the country style changes
-      if (!entry.artSet) entry.sprite.texture = set[entry.art];
+      entry.sprite.texture = artOf(entry.itemId, entry.facing, entry.broken) ?? set[entry.art];
       if (entry.dish) entry.dish.texture = set.dishes;
     });
     trashSprites.forEach((s) => {
@@ -566,7 +631,7 @@ export function buildScene(
           fontFamily: "system-ui, sans-serif",
           fontSize: 11,
           fontWeight: "600",
-          fill: 0xf3e9d2,
+          fill: 0x625748,
         },
       });
       t.anchor.set(0.5, 1);
@@ -606,10 +671,16 @@ export function buildScene(
       s.texture = textureFor(sheet, name);
       s.scale.set(flip ? -0.5 : 0.5, 0.5);
       const seated = e.state === "sit" || e.state === "eat" || e.state === "wait";
+      const sitLift = e.state === "wait" ? BENCH_SIT_LIFT : CHAIR_SIT_LIFT;
       const sx = (e.x - e.y) * 32;
-      const sy = (e.x + e.y) * 16 + TILE_H / 2 - (seated ? SIT_LIFT : 0);
+      const sy = (e.x + e.y) * 16 + TILE_H / 2 - (seated ? sitLift : 0);
       s.position.set(sx, sy);
-      s.zIndex = (e.x + e.y) * 10 + 5;
+      // On a rear view the backrest is between the camera and the guest.
+      // Seats and bench slots share their furniture's grid-depth sum, so a
+      // small offset places the actor behind that backrest without moving it
+      // behind furniture on the previous tile. Front views stay above seats.
+      const behindBackrest = seated && (e.heading === "nw" || e.heading === "ne");
+      s.zIndex = (e.x + e.y) * 10 + (behindBackrest ? -1 : 5);
 
       /**
        * NAME CHIPS. Gus has always had one. M8 gives the same chip to YOUR
@@ -741,7 +812,9 @@ export function buildScene(
       vw,
       band,
       insetTop,
-      scale: Math.min((vw * 0.94) / bw, (band * 0.94) / bh),
+      // Fit the complete floor on phones too: corner fixtures must not start
+      // cropped. Players can still zoom in to inspect or rearrange furniture.
+      scale: Math.min((vw * (vw < 680 ? 0.98 : 0.91)) / bw, (band * 0.84) / bh),
     };
     applyCamera();
   }
@@ -766,39 +839,9 @@ export function buildScene(
     applyCamera();
   }
 
-  /**
-   * THE DOOR SIGN (CUTE+VIRAL). The player's restaurant name floats on a
-   * small plate above the doormat. uiC layer like the name chips, so it never
-   * fights the day/night wash; view-only, cannot move hashWorld.
-   */
-  let signText: Text | null = null;
+  /** The restaurant's name belongs on its storefront. */
   function setSign(name: string): void {
-    const label = (name || "").trim();
-    if (!label) {
-      if (signText) {
-        signText.destroy();
-        signText = null;
-      }
-      return;
-    }
-    if (!signText) {
-      signText = new Text({
-        text: "",
-        style: {
-          fontFamily: "system-ui, sans-serif",
-          fontSize: 15,
-          fontWeight: "800",
-          fill: 0xffe9c2,
-          stroke: { color: 0x5f3a1f, width: 4 },
-          letterSpacing: 1.2,
-        },
-      });
-      signText.anchor.set(0.5, 1);
-      uiC.addChild(signText);
-    }
-    signText.text = label.toUpperCase();
-    // above the door tile, clear of guests walking in
-    signText.position.set(isoX(room.door.x, room.door.y), isoY(room.door.x, room.door.y) - 26);
+    neighborhood.setSign(name);
   }
 
   function resetCamera(): void {
@@ -808,12 +851,18 @@ export function buildScene(
     applyCamera();
   }
 
-  const canPan = (): boolean => zoom > 1;
+  const canPan = (): boolean => zoom > 1 || bw * curScale > fit.vw;
 
   function pick(px: number, py: number): { x: number; y: number } {
     const lx = (px - root.position.x) / curScale;
     const ly = (py - root.position.y) / curScale - TILE_H / 2;
     return { x: lx / 64 + ly / 32, y: ly / 32 - lx / 64 };
+  }
+  function pickWall(px: number, py: number): { x: number; y: number; facing: Facing } | null {
+    return pickWallMount(room, (px - root.position.x) / curScale, (py - root.position.y) / curScale);
+  }
+  function tileToScreen(gx: number, gy: number): { x: number; y: number } {
+    return { x: root.position.x + isoX(gx, gy) * curScale, y: root.position.y + (isoY(gx, gy) + TILE_H / 2) * curScale };
   }
 
   /**
@@ -828,28 +877,24 @@ export function buildScene(
    * covered by the table. Hence "I cannot move the original two tables".
    *
    * So hit-test the sprites the player can actually see, frontmost first.
-   * Bounding boxes rather than per-pixel: they overlap in an isometric view,
-   * which is exactly what the zIndex tiebreak is for — the thing drawn on top
-   * is the thing you meant.
+   * Transparent canvas margins and shadows are not hit targets. Among painted
+   * pixels, the current Pixi child order decides what is visibly on top.
    */
   function pickItem(px: number, py: number): number {
     const lx = (px - root.position.x) / curScale;
     const ly = (py - root.position.y) / curScale;
     let bestUid = -1;
-    let bestZ = -Infinity;
+    let bestLayer = -1, bestChild = -1;
+    objC.sortChildren();
+    decorC.sortChildren();
     furn.forEach((entry, uid) => {
       const s = entry.sprite;
-      if (!s.visible || !s.texture) return;
-      const w = s.texture.width * Math.abs(s.scale.x);
-      const h = s.texture.height * Math.abs(s.scale.y);
-      // a flipped sprite mirrors about its anchor, so the anchor swaps sides
-      const ax = s.scale.x < 0 ? 1 - s.anchor.x : s.anchor.x;
-      const left = s.position.x - ax * w;
-      const top = s.position.y - s.anchor.y * h;
-      if (lx < left || lx > left + w || ly < top || ly > top + h) return;
-      const z = s.zIndex ?? 0;
-      if (z >= bestZ) {
-        bestZ = z;
+      if (!s.visible || s.alpha <= 0 || !s.parent || !spriteContainsPoint(s, lx, ly)) return;
+      if (itemDef(entry.itemId)?.layer === "wall" && !hitsWallArt({ x: s.position.x, y: s.position.y, mirror: s.scale.x < 0, side: s.scale.x < 0 ? "left" : "right", index: 0 }, lx, ly)) return;
+      const layer = root.children.indexOf(s.parent), child = s.parent.children.indexOf(s);
+      if (layer > bestLayer || (layer === bestLayer && child > bestChild)) {
+        bestLayer = layer;
+        bestChild = child;
         bestUid = uid;
       }
     });
@@ -867,24 +912,19 @@ export function buildScene(
    * spark landed there too, faithfully marking the wrong spot. The clay cast
    * made it worse: the new figures are nearly all head.
    *
-   * Bounding boxes, frontmost wins, same law as pickItem.
+   * Painted pixels and actual draw order, using the same rule as pickItem.
    */
   function pickEntity(px: number, py: number): number {
     const lx = (px - root.position.x) / curScale;
     const ly = (py - root.position.y) / curScale;
     let bestId = -1;
-    let bestZ = -Infinity;
+    let bestChild = -1;
+    objC.sortChildren();
     charSprites.forEach((s, id) => {
-      if (!s.visible || !s.texture) return;
-      const w = s.texture.width * Math.abs(s.scale.x);
-      const h = s.texture.height * Math.abs(s.scale.y);
-      const ax = s.scale.x < 0 ? 1 - s.anchor.x : s.anchor.x;
-      const left = s.position.x - ax * w;
-      const top = s.position.y - s.anchor.y * h;
-      if (lx < left || lx > left + w || ly < top || ly > top + h) return;
-      const z = s.zIndex ?? 0;
-      if (z >= bestZ) {
-        bestZ = z;
+      if (!s.visible || s.alpha <= 0 || !s.parent || !spriteContainsPoint(s, lx, ly)) return;
+      const child = s.parent.children.indexOf(s);
+      if (child > bestChild) {
+        bestChild = child;
         bestId = id;
       }
     });
@@ -910,6 +950,24 @@ export function buildScene(
    */
   const flameSprites = new Map<number, Sprite>();
   const sizzleSprites = new Map<number, Sprite>();
+  let routeGrid: Grid | null = null;
+  function syncRoutes(world: WorldState, visible: boolean): void {
+    routeG.visible = visible;
+    if (!visible || routeGrid === world.grid) return;
+    routeGrid = world.grid;
+    routeG.clear();
+    const targets = [...world.tables.map(t => ({ x: t.serveX, y: t.serveY })), ...world.stoveAnchors];
+    for (const target of targets) {
+      const route = findPath(world.grid, room.door.x, room.door.y, target.x, target.y);
+      const x = isoX(target.x, target.y), y = isoY(target.x, target.y) + TILE_H / 2;
+      if (!route) { routeG.circle(x,y,5).stroke({color:0xb7614f,width:2}); continue; }
+      const points = [{x:room.door.x,y:room.door.y},...route];
+      routeG.moveTo(isoX(points[0].x,points[0].y),isoY(points[0].x,points[0].y)+TILE_H/2);
+      for (const p of points.slice(1)) routeG.lineTo(isoX(p.x,p.y),isoY(p.x,p.y)+TILE_H/2);
+      routeG.stroke({color:0x598f82,width:2.5,alpha:.7});
+      routeG.circle(x,y,3.5).fill(0x598f82).stroke({color:0xfff4d9,width:1.2});
+    }
+  }
   function syncFlames(world: WorldState, lit: Map<number, number>): void {
     const dead: number[] = [];
     flameSprites.forEach((s, i) => {
@@ -968,12 +1026,17 @@ export function buildScene(
     });
   }
 
-  function sync(world: WorldState, edit?: EditView | null): void {
+  function sync(world: WorldState, edit?: EditView | null, showCare = false): void {
+    showCareJobs=showCare&&!world.editing;
     // self-heal: if the camera never got a real size (host measured 0 before
     // layout), fit to the renderer now rather than rendering nothing forever
     if (!(curScale > 0)) resize(0, 0);
     const a = world.ambient;
     const dark = darkness(world.clockHrs);
+    setAppearance(world.design);
+    neighborhood.sync(a.lampPhase, dark);
+    neighborhood.front.alpha = world.editing ? 0.28 : 1;
+    syncRoutes(world, world.editing && !!edit?.showRoutes);
     syncFurniture(world);
     syncEntities(world);
 
@@ -997,7 +1060,7 @@ export function buildScene(
         world.layout.find((p) => p.uid === edit.liftUid)?.itemId ||
         "";
       const def = itemId ? itemDef(itemId) : undefined;
-      const ghostTex = itemId ? artOf(itemId) : undefined;
+      const ghostTex = itemId ? artOf(itemId, edit.facing) : undefined;
       if (def && ghostTex) {
         ghost.visible = true;
         ghost.texture = ghostTex;
@@ -1006,16 +1069,17 @@ export function buildScene(
         else ghost.anchor.set(FURN_BX / FURN_W, FURN_BY / FURN_H);
         // the ghost must SHOW its facing, or the Turn button looks broken
         const flat = def.kind === "rug" || def.kind === "doormat";
-        const ghostFlip = edit.facing === "sw" && !flat;
+        const ghostFlip = (edit.facing === "sw" || edit.facing === "ne") && !flat;
         ghost.scale.set(ghostFlip ? -0.5 : 0.5, 0.5);
-        const g = anchorFor(itemId, edit.gx, edit.gy);
+        const g = anchorFor(itemId, edit.gx, edit.gy, edit.facing);
         ghost.position.set(g.x, g.y);
+        if (def.layer === "wall") mountWallArt(ghost, edit.gx, edit.gy, edit.facing);
         ghost.zIndex = 9999;
         ghost.tint = edit.valid ? 0x9effb0 : 0xff9a9a;
         // footprint highlight
-        for (let i = 0; i < def.cells; i++) {
+        for (const cell of footprintCells(itemId, edit.gx, edit.gy, edit.facing)) {
           gridG
-            .poly(tileDiamond(edit.gx + i, edit.gy))
+            .poly(tileDiamond(cell.x, cell.y))
             .fill({ color: edit.valid ? 0x6fe3a0 : 0xff6b6b, alpha: 0.3 });
         }
         // hide the piece being lifted so the ghost reads as "in hand"
@@ -1033,7 +1097,7 @@ export function buildScene(
      * CONTACT SHADOWS. Computed straight from world state rather than from the
      * sprites, so nothing depends on which sync ran first, and so a SEATED
      * guest keeps their shadow on the floor instead of lifting it with them
-     * (charSprites subtract SIT_LIFT; the floor does not move).
+     * (charSprites subtract their seated lift; the floor does not move).
      *
      * Read-only over WorldState like the rest of the view layer: it cannot
      * move hashWorld.
@@ -1072,22 +1136,24 @@ export function buildScene(
       const def = itemDef(p.itemId);
       // flat decor lies ON the floor, so it has nothing to cast
       if (!def || !def.solid) continue;
-      const cx = isoX(p.gx, p.gy) + ((def.cells - 1) * 32) / 2;
-      const cy = isoY(p.gx, p.gy) + TILE_H / 2 + ((def.cells - 1) * 16) / 2;
-      blob(cx, cy, 20 + (def.cells - 1) * 14, 10 + (def.cells - 1) * 7, 0.2);
+      const cells = footprintCells(p.itemId, p.gx, p.gy, p.facing);
+      const centerX = cells.reduce((sum,c)=>sum+c.x,0)/cells.length, centerY = cells.reduce((sum,c)=>sum+c.y,0)/cells.length;
+      const cx = isoX(centerX, centerY), cy = isoY(centerX, centerY) + TILE_H / 2;
+      blob(cx, cy, 20 + (def.cells - 1) * 14, 10 + (def.cells - 1) * 7, 0.1);
     }
     for (const e of world.entities) {
       if (e.dead) continue;
-      blob(isoX(e.x, e.y), isoY(e.x, e.y) + TILE_H / 2, 13, 6.5, 0.28);
+      blob(isoX(e.x, e.y), isoY(e.x, e.y) + TILE_H / 2, 13, 6.5, 0.14);
     }
 
     lightG.clear();
     const dusk = dark * (1 - dark) * 4;
+    const roomSilhouette = [0,-WALL_H, isoX(room.w,0),isoY(room.w,0)-WALL_H, isoX(room.w,0),isoY(room.w,0), isoX(room.w,room.h),isoY(room.w,room.h), isoX(0,room.h),isoY(0,room.h), isoX(0,room.h),isoY(0,room.h)-WALL_H];
     if (dusk > 0.01) {
-      lightG.rect(minX, minY, bw, bh).fill({ color: 0x4a2c14, alpha: dusk * 0.14 });
+      lightG.poly(roomSilhouette).fill({ color: 0xcf9263, alpha: dusk * 0.08 });
     }
     if (dark > 0.01) {
-      lightG.rect(minX, minY, bw, bh).fill({ color: 0x141c33, alpha: dark * 0.3 });
+      lightG.poly(roomSilhouette).fill({ color: 0x59647b, alpha: dark * 0.2 });
     }
 
     fxGlow.clear();
@@ -1176,11 +1242,11 @@ export function buildScene(
     for (const b of bubbleTails) {
       uiG
         .roundRect(b.x - b.w / 2, b.y - b.h + 2, b.w, b.h, 7)
-        .fill({ color: 0x2a1c14, alpha: 0.92 })
-        .stroke({ color: 0x4a3626, width: 1, alpha: 0.9 });
+        .fill({ color: 0xfff5de, alpha: 0.98 })
+        .stroke({ color: 0xc5ad87, width: 1, alpha: 0.9 });
       uiG
         .poly([b.x - 4, b.y + 1, b.x + 4, b.y + 1, b.x, b.y + 7])
-        .fill({ color: 0x2a1c14, alpha: 0.92 });
+        .fill({ color: 0xfff5de, alpha: 0.98 });
     }
     for (const e of world.entities) {
       if (e.emote && e.emoteT > 0) {
@@ -1234,10 +1300,13 @@ export function buildScene(
     sync,
     resize,
     pick,
+    pickWall,
+    tileToScreen,
     pickItem,
     pickEntity,
     spark,
     setTheme,
+    setAppearance,
     setSign,
     setCrew,
     destroy,

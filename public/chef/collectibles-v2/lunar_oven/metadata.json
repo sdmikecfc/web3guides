@@ -1,0 +1,55 @@
+{
+  "assetId": "lunar_oven",
+  "displayName": "lunar_oven",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.4000000059604645,
+        1.1400000154972076,
+        0.3724999949336052
+      ],
+      "min": [
+        -0.4000000059604645,
+        0.005000002682209015,
+        -0.36000001430511475
+      ],
+      "sizeMeters": [
+        0.800000011920929,
+        1.1350000128149986,
+        0.7325000092387199
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 377120,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 7,
+    "meshCount": 8,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 8,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 14852,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 8762,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

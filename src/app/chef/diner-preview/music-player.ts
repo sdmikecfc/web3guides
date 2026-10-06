@@ -1,4 +1,4 @@
-import { DINER_MUSIC_SCORE, layerGain, validMusicManifest, type MusicContext, type MusicManifest, type MusicTrack, type MusicLayer } from '@/lib/chef/diner/music-score';
+import { DINER_MUSIC_SCORE, layerGain, validMusicManifest, musicPlaylist, musicTrackKey, shuffledMusic, type MusicContext, type MusicManifest, type MusicTrack, type MusicLayer } from '@/lib/chef/diner/music-score';
 
 type TrackId='home'|'truck';
 type Decoded={layer:MusicLayer;buffer:AudioBuffer};
@@ -11,6 +11,8 @@ export function createDinerMusic(){
   let context:AudioContext|null=null,bus:GainNode|null=null,enabled=true,volume=.35,active=false,disposed=false,hidden=false;
   let scene:MusicContext='home',manifest:MusicManifest={version:1,tracks:{}},manifestLoaded=false,manifestLoading=false;
   let current:Session|null=null,pending:(Session&{at:number})|null=null,loading:TrackId|null=null,generation=0,serial=0;
+  let queued:Session|null=null,advanceLoading=false,bridging=false;
+  const playlists=new Map<TrackId,{bag:MusicTrack[];last:string|null}>(),failedSongs=new Set<string>();
   let timer:ReturnType<typeof setInterval>|null=null,nextNote=0,noteIndex=0,fallback=true;
   let contextSync:Promise<void>|null=null;
   const voices=new Set<Voice>(),notes=new Set<{source:OscillatorNode;gain:GainNode}>(),buffers=new Map<string,Promise<AudioBuffer>>(),failedTracks=new Set<TrackId>(),abort=new AbortController();
@@ -22,6 +24,29 @@ export function createDinerMusic(){
   const legacyGain=.32;
   const amplitude=()=>enabled?volume:0;
   const assetGain=(layer:MusicLayer)=>layerGain(scene,layer)*(layer==='mix'?1:legacyGain);
+  function playlistState(id:TrackId){
+    let state=playlists.get(id);if(state)return state;
+    let last:string|null=null;try{last=localStorage.getItem(`domain-kitchen:music:last:${id}`);}catch{/* Storage may be unavailable. Shuffle still works within this session. */}
+    state={bag:[],last};playlists.set(id,state);return state;
+  }
+  function nextSong(id:TrackId):MusicTrack|undefined{
+    const list=musicPlaylist(manifest,id);if(manifest.version===1)return list[0];
+    const state=playlistState(id);state.bag=state.bag.filter(song=>!failedSongs.has(musicTrackKey(song)));
+    if(!state.bag.length)state.bag=shuffledMusic(list.filter(song=>!failedSongs.has(musicTrackKey(song))),state.last,Math.random);
+    return state.bag[0];
+  }
+  function rememberSong(session:Session){
+    if(manifest.version!==2)return;
+    const state=playlistState(session.id),key=musicTrackKey(session.spec);state.last=key;state.bag=state.bag.filter(song=>musicTrackKey(song)!==key);
+    try{localStorage.setItem(`domain-kitchen:music:last:${session.id}`,key);}catch{/* Private browsing must not prevent music. */}
+  }
+  function trimBuffers(next?:MusicTrack){
+    if(manifest.version!==2)return;
+    // Four-minute stereo recordings are large after decoding. Keep only the
+    // current performance and the next song, never the entire soundtrack.
+    const keep=new Set([current?.spec,pending?.spec,queued?.spec,next].flatMap(spec=>spec?Object.values(spec.layers):[]));
+    for(const url of buffers.keys())if(!keep.has(url))buffers.delete(url);
+  }
   function ramp(node:GainNode,value:number,at:number,seconds:number){
     const param=node.gain;
     if(typeof param.cancelAndHoldAtTime==='function')param.cancelAndHoldAtTime(at);
@@ -56,12 +81,13 @@ export function createDinerMusic(){
     if(session.spec.mode==='mix')return context!.currentTime+.04;
     const phrase=4*session.spec.beatsPerBar*60/session.spec.bpm;return session.epoch+Math.ceil(Math.max(0,context!.currentTime+.03-session.epoch)/phrase)*phrase;
   }
-  function begin(next:Session&{at:number}){
-    if(!context||!playable())return;const fade=(next.spec.mode==='mix'||current?.spec.mode==='mix') ? .8 : 1.5;
+  function begin(next:Session&{at:number},automatic=false){
+    if(!context||!playable())return;const fade=automatic&&current?crossfade(current.spec):(next.spec.mode==='mix'||current?.spec.mode==='mix') ? .8 : 1.5;
     for(const voice of voices)stopVoice(voice,next.at,fade);
-    silenceNotes(next.at);fallback=false;current={...next,epoch:next.at,nextStart:next.at};pending=null;
+    silenceNotes(next.at);fallback=false;current={...next,epoch:next.at,nextStart:next.at};pending=null;queued=null;bridging=false;
     for(const entry of next.decoded)addVoice(current,entry,next.at,Math.min(fade,(next.spec.loopEnd-next.spec.loopStart)/4));
     if(next.spec.mode==='mix')current.nextStart=next.at+next.spec.loopEnd-next.spec.loopStart-crossfade(next.spec);
+    rememberSong(current);trimBuffers();
   }
   function updateLayers(){
     if(!context||!current)return;const at=current.spec.mode==='mix'?context.currentTime:phraseBoundary(current),seconds=current.spec.mode==='mix'?.35:60/current.spec.bpm;
@@ -72,7 +98,16 @@ export function createDinerMusic(){
     if(pending&&pending.at<now+.3)begin({...pending,at:Math.max(pending.at,now+.015)});
     if(current?.spec.mode==='mix'&&!fallback){
       if(current.nextStart<now-.3)current.nextStart=now+.03;
-      while(current.nextStart<now+.3){for(const entry of current.decoded)addVoice(current,entry,current.nextStart,crossfade(current.spec));current.nextStart+=current.spec.loopEnd-current.spec.loopStart-crossfade(current.spec);}
+      if(manifest.version===2){
+        if(current.id===trackId()&&(bridging||current.nextStart<now+15)&&!queued&&!advanceLoading)void queueNextSong(current);
+        if(queued&&current.id===trackId()&&(bridging||current.nextStart<now+.3))begin({...queued,at:bridging?now+.04:Math.max(current.nextStart,now+.015)},true);
+        else if(current.nextStart<now+.3){
+          // A slow download cannot stop the music. Briefly continue the current
+          // recording, then crossfade as soon as its replacement is decoded.
+          for(const entry of current.decoded)addVoice(current,entry,current.nextStart,crossfade(current.spec));
+          current.nextStart+=current.spec.loopEnd-current.spec.loopStart-crossfade(current.spec);bridging=true;
+        }
+      }else while(current.nextStart<now+.3){for(const entry of current.decoded)addVoice(current,entry,current.nextStart,crossfade(current.spec));current.nextStart+=current.spec.loopEnd-current.spec.loopStart-crossfade(current.spec);}
     }
     if(!fallback)return;if(nextNote<now-.5)nextNote=now+.03;
     while(nextNote<now+.3){tone(DINER_MUSIC_SCORE.melody[noteIndex%24],nextNote,.56,.24);if(noteIndex%3===0)tone(DINER_MUSIC_SCORE.bass[Math.floor(noteIndex/6)%4],nextNote,1.4,scene==='truck-prep'?.1:.18);noteIndex++;nextNote+=DINER_MUSIC_SCORE.noteSeconds;}
@@ -81,6 +116,23 @@ export function createDinerMusic(){
     let result=buffers.get(url);if(result)return result;
     result=(async()=>{const response=await fetch(url,{signal:abort.signal});if(!response.ok)throw new Error('Music unavailable');const bytes=await response.arrayBuffer();if(disposed||ctx!==context)throw new Error('Music session ended');return ctx.decodeAudioData(bytes);})();
     buffers.set(url,result);void result.catch(()=>{if(buffers.get(url)===result)buffers.delete(url);});return result;
+  }
+  async function decodeSong(spec:MusicTrack,ctx:AudioContext):Promise<Decoded[]>{
+    trimBuffers(spec);
+    return Promise.all((Object.entries(spec.layers) as [MusicLayer,string][]).map(async([layer,url])=>{const buffer=await decode(url,ctx);if(!Number.isFinite(buffer.duration)||buffer.duration+.005<spec.loopEnd)throw new Error('Music loop exceeds its audio');return {layer,buffer};}));
+  }
+  async function queueNextSong(from:Session){
+    const ctx=context,request=generation;if(!ctx||advanceLoading)return;advanceLoading=true;
+    try{
+      for(let attempt=0;attempt<musicPlaylist(manifest,from.id).length;attempt++){
+        const spec=nextSong(from.id);if(!spec)return;
+        try{
+          const decoded=await decodeSong(spec,ctx);
+          if(disposed||request!==generation||ctx!==context||current?.serial!==from.serial||trackId()!==from.id||!playable())return;
+          queued={id:from.id,spec,decoded,epoch:0,serial:++serial,nextStart:0};return;
+        }catch{if(request!==generation||disposed)return;failedSongs.add(musicTrackKey(spec));}
+      }
+    }finally{if(request===generation){advanceLoading=false;schedule();}}
   }
   function useFallback(id:TrackId){
     if(!context)return;
@@ -96,14 +148,19 @@ export function createDinerMusic(){
     if(!context||!bus||!manifestLoaded||!playable()||context.state!=='running')return;
     const id=trackId();if(current?.id===id){pending=null;updateLayers();return;}if(loading===id||pending?.id===id)return;
     if(failedTracks.has(id)){useFallback(id);return;}
-    const spec=manifest.tracks[id],request=++generation,ctx=context;loading=id;
-    if(!spec){loading=null;useFallback(id);return;}
+    const request=++generation,ctx=context;loading=id;
     try{
-      const decoded=await Promise.all((Object.entries(spec.layers) as [MusicLayer,string][]).map(async([layer,url])=>{const buffer=await decode(url,ctx);if(!Number.isFinite(buffer.duration)||buffer.duration+.005<spec.loopEnd)throw new Error('Music loop exceeds its audio');return {layer,buffer};}));
-      if(disposed||request!==generation||ctx!==context||!playable()||ctx.state!=='running')return;
-      const at=current&&current.spec.mode!=='mix'&&spec.mode!=='mix'?phraseBoundary(current):ctx.currentTime+.04;
-      pending={id,spec,decoded,at,epoch:at,serial:++serial,nextStart:at};schedule();
-    }catch{if(request===generation&&!disposed&&context)useFallback(id);}
+      for(let attempt=0;attempt<musicPlaylist(manifest,id).length;attempt++){
+        const spec=nextSong(id);if(!spec)break;
+        try{
+          const decoded=await decodeSong(spec,ctx);
+          if(disposed||request!==generation||ctx!==context||!playable()||ctx.state!=='running')return;
+          const at=current&&current.spec.mode!=='mix'&&spec.mode!=='mix'?phraseBoundary(current):ctx.currentTime+.04;
+          pending={id,spec,decoded,at,epoch:at,serial:++serial,nextStart:at};schedule();return;
+        }catch{if(request!==generation||disposed)return;failedSongs.add(musicTrackKey(spec));}
+      }
+      if(request===generation&&!disposed&&context)useFallback(id);
+    }
     finally{if(request===generation)loading=null;}
   }
   function syncContext():Promise<void>{
@@ -123,7 +180,7 @@ export function createDinerMusic(){
     })().catch(()=>{/* A browser audio restriction must not interrupt play. */}).finally(()=>{if(contextSync===work)contextSync=null;});
     contextSync=work;return work;
   }
-  function cancelSelection(){generation++;loading=null;pending=null;}
+  function cancelSelection(){generation++;loading=null;pending=null;queued=null;advanceLoading=false;}
   async function activate(){
     if(disposed)return;active=true;if(!enabled||!visible())return;
     // Pointer/keyboard listeners only unlock browser audio. Once running, they

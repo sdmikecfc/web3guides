@@ -27,10 +27,10 @@ import { FONT } from "./_ui/tokens";
 const card: React.CSSProperties = {
   width: 250,
   flexShrink: 0,
-  background: "rgba(27,19,16,0.94)",
-  border: "1px solid #4a3626",
+  background: "rgba(255,252,243,0.97)",
+  border: "1px solid #dfd4bb",
   borderRadius: 14,
-  color: "#f3e9d2",
+  color: "#3c392c",
   fontFamily: FONT,
   fontSize: 12,
   padding: "10px 12px",
@@ -97,9 +97,9 @@ function ActionBlock({
     marginTop: 6,
     padding: "9px 12px",
     borderRadius: 10,
-    border: `1px solid ${primary ? "#e8a13d" : "#4a3626"}`,
-    background: primary ? "#e8a13d" : "#2a1c14",
-    color: primary ? "#1b1310" : "#f3e9d2",
+    border: `1px solid ${primary ? "#e8a13d" : "#dfd4bb"}`,
+    background: primary ? "#e8a13d" : "#fffdf6",
+    color: primary ? "#f4eddf" : "#3c392c",
     fontFamily: FONT,
     fontSize: 13,
     fontWeight: 800,
@@ -115,7 +115,7 @@ function ActionBlock({
   // it is the link that carries our referral code.
   if (!connected) {
     return (
-      <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(74,54,38,0.6)" }}>
+      <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(119,97,60,0.15)" }}>
         <a href={JOIN_LINK} target="_blank" rel="noopener noreferrer" style={btn(true)}>
           Get set up on Doma ↗
         </a>
@@ -128,7 +128,7 @@ function ActionBlock({
   }
 
   return (
-    <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(74,54,38,0.6)" }}>
+    <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid rgba(119,97,60,0.15)" }}>
       <a
         href={tradeLink(market.id)}
         target="_blank"
@@ -186,14 +186,14 @@ export function LpPanel({
     <div
       style={
         bare
-          ? { fontFamily: FONT, fontSize: 12, color: "#f3e9d2", marginBottom: 10 }
+          ? { fontFamily: FONT, fontSize: 12, color: "#3c392c", marginBottom: 10 }
           : fullWidth
           ? { ...card, width: "auto", alignSelf: "stretch", maxHeight: "58vh" }
           : card
       }
     >
       {bare && live && (
-        <div style={{ color: "#6fe3a0", fontWeight: 800, fontSize: 11, marginBottom: 4 }}>LIVE</div>
+        <div style={{ color: "#46744f", fontWeight: 800, fontSize: 11, marginBottom: 4 }}>LIVE</div>
       )}
       {!bare && (
       <div
@@ -212,7 +212,7 @@ export function LpPanel({
               important card, while "position" was never defined anywhere in
               Domain Kitchen. This says what the card is for instead. */}
           🔗 YOUR MONEY HERE
-          {live && <span style={{ color: "#6fe3a0", marginLeft: 6 }}>LIVE</span>}
+          {live && <span style={{ color: "#46744f", marginLeft: 6 }}>LIVE</span>}
         </span>
         <span style={{ opacity: 0.7 }}>{collapsed ? "▸" : "▾"}</span>
       </div>
@@ -241,7 +241,7 @@ export function LpPanel({
           {status === "loading" && <div style={{ opacity: 0.65 }}>Looking at your money…</div>}
 
           {status === "error" && (
-            <div style={{ color: "#ff9a9a", lineHeight: 1.4 }}>
+            <div style={{ color: "#b94f3e", lineHeight: 1.4 }}>
               Could not reach the market just now. Your restaurant keeps running on the practice
               dials.
             </div>
@@ -280,11 +280,11 @@ export function LpPanel({
                     alignItems: "center",
                     gap: 6,
                     padding: "5px 0",
-                    borderTop: "1px solid rgba(74,54,38,0.6)",
+                    borderTop: "1px solid rgba(119,97,60,0.15)",
                   }}
                 >
                   <span style={{ minWidth: 0 }}>
-                    <span style={{ color: p.inRange ? "#6fe3a0" : "#e0a552" }}>
+                    <span style={{ color: p.inRange ? "#46744f" : "#e0a552" }}>
                       {p.inRange ? "● Selling" : "○ Off the street"}
                     </span>
                     <span style={{ opacity: 0.55 }}> · {p.width}</span>
@@ -296,7 +296,7 @@ export function LpPanel({
                 style={{
                   marginTop: 7,
                   paddingTop: 7,
-                  borderTop: "1px solid rgba(74,54,38,0.6)",
+                  borderTop: "1px solid rgba(119,97,60,0.15)",
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
@@ -321,10 +321,10 @@ export function LpPanel({
           )}
 
           {/* saves: optional, and never a gate on playing (M6) */}
-          <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(74,54,38,0.6)" }}>
+          <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(119,97,60,0.15)" }}>
             {cloud.status === "on" ? (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
-                <span style={{ color: "#6fe3a0", fontWeight: 700 }}>
+                <span style={{ color: "#46744f", fontWeight: 700 }}>
                   ✓ Saving to your wallet
                 </span>
                 <button
@@ -332,9 +332,9 @@ export function LpPanel({
                   style={{
                     padding: "4px 9px",
                     borderRadius: 999,
-                    border: "1px solid #4a3626",
-                    background: "#1f150f",
-                    color: "#f3e9d2",
+                    border: "1px solid #dfd4bb",
+                    background: "#f3ecd9",
+                    color: "#3c392c",
                     fontFamily: FONT,
                     fontSize: 11,
                     fontWeight: 700,
@@ -357,8 +357,8 @@ export function LpPanel({
                     padding: "6px 12px",
                     borderRadius: 999,
                     border: "1px solid #e8a13d",
-                    background: "#2a1c14",
-                    color: "#f3e9d2",
+                    background: "#fffdf6",
+                    color: "#3c392c",
                     fontFamily: FONT,
                     fontSize: 12,
                     fontWeight: 800,
@@ -368,7 +368,7 @@ export function LpPanel({
                   {cloud.status === "signing" ? "Check your wallet…" : "Save to my wallet"}
                 </button>
                 {cloud.error && (
-                  <div style={{ marginTop: 5, color: "#ff9a9a", lineHeight: 1.35 }}>{cloud.error}</div>
+                  <div style={{ marginTop: 5, color: "#b94f3e", lineHeight: 1.35 }}>{cloud.error}</div>
                 )}
               </>
             )}

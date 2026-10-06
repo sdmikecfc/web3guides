@@ -1,0 +1,43 @@
+{
+  "assetId": "sir_pickles_low",
+  "displayName": "sir_pickles_low",
+  "files": [
+    {
+      "bytes": 84504,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "a604df545b0eab531019e32eb1145f91954f9f0826caff831947f42041fab9f1"
+    },
+    {
+      "bytes": 1413,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "67c2c6845b89fcc11153a8694ba2b91a1d91fabf8a3acc8c79df69f80a3b7210"
+    },
+    {
+      "bytes": 394,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "78e54b5120e55c6ac13b172464c67ac1d73c4dac804f7548f8253190dc4b3e0a"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "0127bedcdde2e646ed7afa9246301bf8b32208b7c6da4e082067f96f057a09be"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_29fe8207fd80360ec8791bc1",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

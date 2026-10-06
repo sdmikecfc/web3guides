@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T16:38:41.903Z",
+  "destination": {
+    "assetId": "cosmic_carousel",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "a60a6ddb7ae02be7744c781d3c0543bc634507243b00d7a2d06b3ba76d3ff632",
+  "packageId": "pkg_7e545e960564418ac03889a2",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 516772,
+    "fileName": "cosmic_carousel.glb",
+    "sha256": "e5acdb97719dfd0cab7feb5b368c8566fdb056b918a31e72caec77093d099a44"
+  }
+}

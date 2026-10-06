@@ -1,0 +1,43 @@
+{
+  "assetId": "kraken_espresso",
+  "displayName": "kraken_espresso",
+  "files": [
+    {
+      "bytes": 493872,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "2667885cec24b5b529ab72268e412c54c564df62db5736e58b91ce7b90b93e2e"
+    },
+    {
+      "bytes": 1420,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "04f3fead380bfa3c3d7119e1bd9a2b64fb58b2af263d18297dc6a451e463a59d"
+    },
+    {
+      "bytes": 395,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "b6f10d15a3da8bb723b2d67c59a339bcff3464e10fd52a52e4014cb33ca3152a"
+    },
+    {
+      "bytes": 2536,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "5197bd6ff8a9f9f23bca34bb8faaaee90e0823071399da4e419e3f880b1f25b9"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_fcffeb9d584f45fddd8216e5",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

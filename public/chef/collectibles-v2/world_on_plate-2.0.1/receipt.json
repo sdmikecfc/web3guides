@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:42:46.536Z",
+  "destination": {
+    "assetId": "world_on_plate",
+    "version": "2.0.1"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "8a12db03773b65c2ed6521a3cb299384ec9d5e231f7d30f03fb4ee56fe801775",
+  "packageId": "pkg_232318cea864f1b41672a54f",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 785104,
+    "fileName": "world_on_plate.glb",
+    "sha256": "41c1e012f9ea110dcb07ba9fc80aaa64fd317829d06922edfbee6f716dedd786"
+  }
+}

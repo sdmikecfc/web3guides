@@ -17,7 +17,7 @@ const GameStage = dynamic(() => import("./GameStage"), {
         position: "relative",
         width: "100%",
         height: "100dvh",
-        background: "#1b1310",
+        background: "#f4eddf",
       }}
     >
       <BootShell progress={0.03} tip={BOOT_TIPS[0]} />
@@ -25,6 +25,6 @@ const GameStage = dynamic(() => import("./GameStage"), {
   ),
 });
 
-export default function GameClient() {
-  return <GameStage />;
+export default function GameClient({ openingPreview = false }: { openingPreview?: boolean } = {}) {
+  return <GameStage openingPreview={openingPreview} />;
 }

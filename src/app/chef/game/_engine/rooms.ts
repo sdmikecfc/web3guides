@@ -19,6 +19,8 @@
  */
 
 import type { PlacedSpec, RoomDef } from "./world";
+import { defaultDesign, type RestaurantDesign } from "./building";
+import { LAUNCH_RULES } from "./launch-progression";
 
 /**
  * The shells, in the order they unlock. Index 0 is where everyone starts.
@@ -53,7 +55,7 @@ export const SHELL_SIZES: ShellDef[] = [
   {
     // no leading article: the shop renders "Take the <label>"
     label: "Long Room",
-    cost: 5_000,
+    cost: LAUNCH_RULES.expansions[1].coins,
     blurb: "Knock through to the next unit. Four more tiles across, one more deep.",
     w: 14,
     h: 9,
@@ -63,7 +65,7 @@ export const SHELL_SIZES: ShellDef[] = [
   },
   {
     label: "Big Room",
-    cost: 14_000,
+    cost: LAUNCH_RULES.expansions[2].coins,
     blurb: "The whole floor. Room for a proper dining room and a real kitchen.",
     w: 18,
     h: 12,
@@ -82,14 +84,13 @@ export function shellAt(idx: number): ShellDef {
 }
 
 /**
- * A brand-new restaurant: one stove, the pass counter, two tables with a
- * chair each side, a rug, a plant, and a doormat. Everything else is bought
- * in the shop and placed by hand (ADR-0103 + 0104).
+ * The original starter footprint, retained only for count-based saves.
+ * Migrating a saved restaurant must never insert new furniture into it.
  *
  * Facing note: "sw" renders the mirrored sprite, so chairs on the +gy side of
  * a table face back toward it.
  */
-export const STARTER_LAYOUT: PlacedSpec[] = [
+export const LEGACY_STARTER_LAYOUT: PlacedSpec[] = [
   { itemId: "stove_basic", gx: 2, gy: 0 },
   { itemId: "counter_basic", gx: 5, gy: 0 }, // 2 cells: (5,0) and (6,0)
   { itemId: "table_basic", gx: 2, gy: 3 },
@@ -102,6 +103,31 @@ export const STARTER_LAYOUT: PlacedSpec[] = [
   { itemId: "plant_basic", gx: 0, gy: 1 },
   { itemId: "doormat_basic", gx: 4, gy: 7 },
 ];
+
+/** A simple dining room with two restrooms tucked into the back-right corner. */
+export function starterLayout(room: RoomDef = SHELL): PlacedSpec[] {
+  return [
+    ...LEGACY_STARTER_LAYOUT.map((piece) => piece.itemId === "doormat_basic"
+      ? { ...piece, gx: room.door.x, gy: room.door.y }
+      : { ...piece }),
+    { itemId: "toilet_basic", gx: room.w - 3, gy: 0, facing: "sw" },
+    { itemId: "toilet_basic", gx: room.w - 1, gy: 0, facing: "sw" },
+    { itemId: "partition_basic", gx: room.w - 2, gy: 0, facing: "sw" },
+    { itemId: "partition_basic", gx: room.w - 2, gy: 1, facing: "sw" },
+  ];
+}
+
+export const STARTER_LAYOUT: PlacedSpec[] = starterLayout(SHELL);
+
+/** Neutral finishes keep the starter open; sage tiles mark just the bathroom nook. */
+export function starterDesign(room: RoomDef = SHELL): RestaurantDesign {
+  const design = defaultDesign();
+  for (let x = room.w - 3; x < room.w; x++) {
+    for (let y = 0; y < 2; y++) design.tiles[`${x},${y}`] = "sage";
+    design.wallTiles[`right,${x}`] = "sage";
+  }
+  return design;
+}
 
 /** Extra pieces an M3 save's counts convert into, in the order they fill. */
 export const GROWTH_SLOTS: { itemId: string; gx: number; gy: number; facing?: "se" | "sw" }[] = [

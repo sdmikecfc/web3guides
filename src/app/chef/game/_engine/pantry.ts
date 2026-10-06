@@ -10,6 +10,8 @@
  * Renderer-free: no Pixi, no React. Every number is DEMO CONFIG (ADR-0048).
  */
 
+import { DISHES } from "./cookbook";
+
 export type Rarity = "common" | "rare";
 
 export interface Ingredient {
@@ -41,6 +43,7 @@ export function ingredient(id: string): Ingredient | undefined {
 /** What a dish needs to reach the NEXT level. Level 3 always costs a rare. */
 export type Recipe = Record<string, number>;
 export const RECIPES: Record<string, [Recipe, Recipe]> = {
+  ...Object.fromEntries(DISHES.map((dish) => [dish.id, dish.recipes])),
   //            level 1 -> 2                  level 2 -> 3
   margherita: [{ tomato: 2, herb: 1 }, { tomato: 3, cheese: 2, saffron: 1 }],
   caciopepe: [{ cheese: 2, pepper: 1 }, { cheese: 3, flour: 2, truffle: 1 }],
@@ -105,10 +108,8 @@ export const DAILY_SPECIALS: DailySpecial[] = [
 ];
 
 /**
- * Extra tip a plate earns while today's special is on (never quality).
- * 1 -> 2 with the inversion: it now rides SERVE_BASE 4 instead of base 1, and
- * a prepped board also feeds the SPECIAL_POT beat, so prep stays worth the
- * commons it spends.
+ * Legacy demo tip retained for old imports. Current specials advance the
+ * bounded prep/service goals in launch-progression.ts; plates do not pay it.
  */
 export const SPECIAL_TIP = 2;
 
@@ -117,7 +118,7 @@ export const SPECIAL_TIP = 2;
 export const DAILY_DELIVERY = 2;
 /** most commons a day of trading can drop */
 export const VOLUME_DROP_CAP = 6;
-/** most rares a day of good service can drop */
+/** Legacy cap retained for diagnostics; automatic rare service drops retired. */
 export const RARE_DROP_CAP = 1;
 /** seconds between trading drops at full volume, stretched when quiet */
 export function volumeDropInterval(weeklyVolumeUsd: number): number {

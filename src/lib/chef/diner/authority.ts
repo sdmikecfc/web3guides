@@ -31,7 +31,7 @@ export function validateDinerEnvelope(value: unknown): DinerEnvelope {
 }
 
 /** Ordered replay preserves input/tick timing. An error never commits a partial tape. */
-export function replayDiner(current: DinerRecord, commands: DinerCommand[], now: number): { record: DinerRecord; accepted: DinerCommand[]; interrupted: boolean } {
+export function replayDiner(current: DinerRecord, commands: DinerCommand[], now: number, verifiedRallyTrophy=false, verifiedCommunityPlaque=false, verifiedJourneyRewards?:import("./domain-journey-rewards").JourneyRewardEvidence): { record: DinerRecord; accepted: DinerCommand[]; interrupted: boolean } {
   validateDinerEnvelope({ id: "00000000-0000-4000-8000-000000000000", revision: current.revision, commands });
   const record = structuredClone(current);
   if (!Number.isSafeInteger(now) || now < 0) throw new DinerAuthorityError("invalid_clock", "The diner clock is unavailable.");
@@ -62,7 +62,7 @@ export function replayDiner(current: DinerRecord, commands: DinerCommand[], now:
     }
     // A recent server-observed request interval earns the online rate. Absences
     // settle at 60%; a browser cannot submit a presence flag or elapsed reward.
-    const result = dispatchDiner(record.state, command, { now: record.clock.lastAt, online: elapsed <= DINER_AUTHORITY_RULES.presenceGapMs });
+    const result = dispatchDiner(record.state, command, { now: record.clock.lastAt, verifiedRallyTrophy, verifiedCommunityPlaque, verifiedJourneyRewards, online: elapsed <= DINER_AUTHORITY_RULES.presenceGapMs });
     if (result.error) throw new DinerAuthorityError(result.code ?? "invalid_command", result.error);
     record.state = result.state;
     if (previousMode !== activeDinerMode(record.state)) record.clock.creditMs = 0;

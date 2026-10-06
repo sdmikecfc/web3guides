@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T16:38:38.003Z",
+  "destination": {
+    "assetId": "sushi_parade",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "270a20a535470335052f47f7b0e9f247841c2a8c01ebf69499362233fb3aa8e5",
+  "packageId": "pkg_e2ca6296c01b38b4bbe0ae3e",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 282512,
+    "fileName": "sushi_parade.glb",
+    "sha256": "a3a03947f96f8a366c7509cb745dca255ca26f7e271739b31e6f496677dee693"
+  }
+}

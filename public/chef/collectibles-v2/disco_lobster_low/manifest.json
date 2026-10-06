@@ -1,0 +1,43 @@
+{
+  "assetId": "disco_lobster_low",
+  "displayName": "disco_lobster_low",
+  "files": [
+    {
+      "bytes": 106784,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "8043c8a86600de05f5b9dc23be78be391e5751982e98a4daae3299186c6bbc36"
+    },
+    {
+      "bytes": 1420,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "cd033871574f3bf34dcfe060c6a956983ea7bc713a5f3caf83aa631f1daba837"
+    },
+    {
+      "bytes": 397,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "06694a8c701b624e7bd2b4ff8fbc82de31cb8af3d07c3c52c1662f004775dfeb"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "34c8d643b3e51a2486cdc86ec5a5c695e3ddc2c121ac9fc5571da127e9b10a55"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_a2c3cfeb75e3d58f5053a62f",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

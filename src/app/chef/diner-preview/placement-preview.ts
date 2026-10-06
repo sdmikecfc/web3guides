@@ -1,3 +1,4 @@
+import {reservedWallMount} from '@/lib/chef/diner/mount-reservations';
 /** Local editor drafts produce a command only when the player confirms. */
 import { DECOR_BY_ID } from '../../../lib/chef/diner/collections';
 import { EQUIPMENT_BY_ID, TRUCK_TIERS } from '../../../lib/chef/diner/content';
@@ -6,7 +7,7 @@ import { createHomeWorld } from '../../../lib/chef/diner/home-simulation';
 import { homeSimulationConfig, truckStorage, validateDinerHomePlacement, type DinerCommand, type DinerState, type HomePlacement } from '../../../lib/chef/diner/progression';
 import type { ServiceState } from '../../../lib/chef/diner/types';
 import type { SceneObject, SceneTable } from './scene-types';
-import { resolveRoomMount, roomModuleGeometry, roomTableSeats } from '../../../lib/chef/diner/room-plan';
+import { alignRoomMounts, resolveRoomMount, resolveDecorationMount, validateRoomMount, roomModuleGeometry, roomTableSeats,roomMountAnchors } from '../../../lib/chef/diner/room-plan';
 
 export interface PlacementDraft { mode:'home'|'truck'; id:string; equipmentId:string; x:number;y:number;rotation:0|1|2|3;existing:boolean;pinned:boolean;mount?:HomePlacement['mount'] }
 export interface PlacementPreview { command:DinerCommand; error:string|null; object?:SceneObject; table?:SceneTable }
@@ -15,14 +16,23 @@ export function movePlacementDraft(draft:PlacementDraft,x:number,y:number,pinned
 /** A mounted decoration snaps to a real surface, without reserving floor space. */
 export function aimHomeMount(state:DinerState,draft:PlacementDraft,x:number,y:number,pinned=draft.pinned):PlacementDraft {
   const plan=state.home.roomPlan;if(!plan||!draft.mount)return movePlacementDraft(draft,x,y,pinned);
+  const candidates=homeMountCandidates(state,draft);
+  const available=candidates.filter(m=>!roomMountAnchors({...draft,mount:m},plan).some(a=>reservedWallMount(plan,a))&&!validateRoomMount(plan,{...draft,mount:m},state.home.layout));
+  available.sort((a,b)=>{const pa=resolveRoomMount(plan,a,state.home.layout)!,pb=resolveRoomMount(plan,b,state.home.layout)!;return Math.hypot(pa.x-x,pa.y-y)-Math.hypot(pb.x-x,pb.y-y);});
+  const mount=available[0];if(!mount)return {...draft,pinned};const point=resolveRoomMount(plan,mount,state.home.layout)!;return {...draft,mount,x:Math.floor(point.x),y:Math.floor(point.y),rotation:point.rotation,pinned};
+}
+export function homeMountCandidates(state:DinerState,draft:PlacementDraft):NonNullable<HomePlacement['mount']>[] {
+ const plan=state.home.roomPlan;if(!plan||!draft.mount)return [];
   const candidates:NonNullable<HomePlacement['mount']>[]=draft.mount.kind==='wall'?[
     ...plan.edges.filter(e=>e.kind==='wall').map(e=>({kind:'wall' as const,targetId:e.id,slot:0})),
     ...Array.from({length:plan.w},(_,slot)=>({kind:'wall' as const,targetId:'outer-back',slot})),
     ...Array.from({length:plan.h},(_,slot)=>({kind:'wall' as const,targetId:'outer-side',slot})),
-  ]:draft.mount.kind==='ceiling'?Array.from({length:plan.w*plan.h},(_,slot)=>({kind:'ceiling' as const,targetId:'ceiling',slot})):plan.modules.filter(m=>['display_counter','internal_pass','console','chef_bar'].includes(m.kind)).flatMap(m=>roomModuleGeometry(m).cells.map((_,slot)=>({kind:'counter' as const,targetId:m.id,slot})));
-  const available=candidates.filter(m=>!!resolveRoomMount(plan,m)&&!state.home.layout.some(p=>p.id!==draft.id&&p.mount?.kind===m.kind&&p.mount.targetId===m.targetId&&p.mount.slot===m.slot));
-  available.sort((a,b)=>{const pa=resolveRoomMount(plan,a)!,pb=resolveRoomMount(plan,b)!;return Math.hypot(pa.x-x,pa.y-y)-Math.hypot(pb.x-x,pb.y-y);});
-  const mount=available[0];if(!mount)return {...draft,pinned};const point=resolveRoomMount(plan,mount)!;return {...draft,mount,x:Math.floor(point.x),y:Math.floor(point.y),rotation:point.rotation,pinned};
+  ]:draft.mount.kind==='ceiling'?Array.from({length:plan.w*plan.h},(_,slot)=>({kind:'ceiling' as const,targetId:'ceiling',slot})):[...plan.modules.filter(m=>['display_counter','internal_pass','console','chef_bar'].includes(m.kind)).flatMap(m=>roomModuleGeometry(m).cells.map((_,slot)=>({kind:'counter' as const,targetId:m.id,slot}))),...state.home.layout.filter(p=>!p.mount&&DECOR_BY_ID[p.equipmentId]?.displaySurface!==undefined).flatMap(p=>Array.from({length:DECOR_BY_ID[p.equipmentId].footprint[0]*DECOR_BY_ID[p.equipmentId].footprint[1]},(_,slot)=>({kind:'counter' as const,targetId:p.id,slot})))];
+ return candidates;
+}
+export function homeMountSurfaces(state:DinerState,draft:PlacementDraft):import('./scene-types').SceneMountSurface[]{
+ const plan=state.home.roomPlan;if(!plan)return [];
+ return homeMountCandidates(state,draft).flatMap(mount=>{const p=resolveRoomMount(plan,mount,state.home.layout);return p?[{...p,mount,error:roomMountAnchors({...draft,mount},plan).map(a=>reservedWallMount(plan,a)).find(Boolean)??validateRoomMount(plan,{...draft,mount},state.home.layout)}]:[];});
 }
 function serviceOf(state:DinerState):ServiceState|null{return state.run?.service??null;}
 export function previewPlacement(state:DinerState,draft:PlacementDraft):PlacementPreview {
@@ -30,7 +40,8 @@ export function previewPlacement(state:DinerState,draft:PlacementDraft):Placemen
   if(draft.mode==='home'){
     const existing=state.home.layout.find(p=>p.id===id);
     const item:HomePlacement={...(existing??{}),id,equipmentId,x,y,rotation,mount:draft.mount};
-    const layout=draft.existing?state.home.layout.map(p=>p.id===id?item:p):[...state.home.layout,item];
+    let layout=draft.existing?state.home.layout.map(p=>p.id===id?item:p):[...state.home.layout,item];
+    if(state.home.roomPlan)layout=alignRoomMounts(layout,state.home.roomPlan);
     const error=draft.existing&&(!existing||existing.equipmentId!==equipmentId)?'This furnishing is no longer placed.':validateDinerHomePlacement(state,layout);
     const command:DinerCommand={type:'homeLayout',layout};
     if(capacity){
@@ -43,8 +54,8 @@ export function previewPlacement(state:DinerState,draft:PlacementDraft):Placemen
       return {command,error,table:{id,x,y,capacity,rotation,seats,kind:equipmentId==='booth_2'?'booth':undefined,tableStyle:state.home.roomPlan?.stage==='restaurant'?'restaurant':'cafe'}};
     }
     const colors:Record<string,string>={cherry:'#b66751',mint:'#91b29a',cream:'#ede1bc'};
-    const mounted=draft.mount&&state.home.roomPlan?resolveRoomMount(state.home.roomPlan,draft.mount):null;
-    return {command,error,object:{id,kind:equipmentId,x:mounted?.x??x,y:mounted?.y??y,rotation:mounted?.rotation??rotation,elevation:mounted?.surfaceHeight===undefined?undefined:.095+mounted.surfaceHeight-(draft.mount?.kind==='wall'?(equipmentId==='chrome_clock'?1.54:1.49):draft.mount?.kind==='ceiling'?2.7:0),mount:mounted&&draft.mount?{kind:draft.mount.kind,targetId:draft.mount.targetId,surfaceHeight:mounted.surfaceHeight}:undefined,tier:state.equipment[equipmentId]?.tier,footprint:(EQUIPMENT_BY_ID[equipmentId]??DECOR_BY_ID[equipmentId])?.footprint,color:item.skin?colors[item.skin]:undefined}};
+    const mounted=draft.mount&&state.home.roomPlan?resolveDecorationMount(state.home.roomPlan,item,layout):null;
+    return {command,error,object:{id,kind:equipmentId,x:mounted?.x??x,y:mounted?.y??y,rotation:mounted?.rotation??rotation,elevation:mounted?.surfaceHeight===undefined?undefined:.095+mounted.surfaceHeight-(draft.mount?.kind==='wall'?(equipmentId==='chrome_clock'?1.54:1.49):draft.mount?.kind==='ceiling'?2.7:0),mount:mounted&&draft.mount?{kind:draft.mount.kind,targetId:draft.mount.targetId,surfaceHeight:mounted.surfaceHeight}:undefined,tier:state.equipment[equipmentId]?.tier,footprint:mounted?[1,1]:(EQUIPMENT_BY_ID[equipmentId]??DECOR_BY_ID[equipmentId])?.footprint,color:item.skin?colors[item.skin]:undefined}};
   }
   const service=serviceOf(state),stations=(service?.stations??[]).filter(s=>s.id!==id),tables=(service?.tables??[]).filter(t=>t.id!==id);
   const tier=Math.min(3,state.equipment[equipmentId]?.tier??1) as 1|2|3;
@@ -57,8 +68,9 @@ export function previewPlacement(state:DinerState,draft:PlacementDraft):Placemen
 }
 export function createPlacementDraft(state:DinerState,mode:PlacementDraft['mode'],equipmentId:string,id:string,existing=false):PlacementDraft {
   const service=serviceOf(state),old=mode==='home'?state.home.layout.find(p=>p.id===id):service?.stations.find(s=>s.id===id)??service?.tables.find(t=>t.id===id);
-  const draft:PlacementDraft={mode,id,equipmentId,x:old?.x??0,y:old?.y??0,rotation:old?('facing'in old?old.facing:old.rotation??0):0,existing,pinned:false};
+  const draft:PlacementDraft={mode,id,equipmentId,x:old?.x??0,y:old?.y??0,rotation:old?('facing'in old?old.facing:old.rotation??0):0,existing,pinned:existing};
   if(mode==='home'&&old&&'mount'in old)draft.mount=old.mount;
+  if(existing)return draft;
   if(mode==='home'&&state.home.roomPlan&&DECOR_BY_ID[equipmentId]?.ceiling){draft.mount??={kind:'ceiling',targetId:'ceiling',slot:0};return aimHomeMount(state,draft,draft.x,draft.y);}
   if(mode==='home'&&state.home.roomPlan&&DECOR_BY_ID[equipmentId]?.wall){draft.mount??={kind:'wall',targetId:'',slot:0};return aimHomeMount(state,draft,draft.x,draft.y);}
   if(mode==='home'&&!existing&&state.home.roomPlan&&DECOR_BY_ID[equipmentId]?.counter){draft.mount={kind:'counter',targetId:'',slot:0};return aimHomeMount(state,draft,draft.x,draft.y);}

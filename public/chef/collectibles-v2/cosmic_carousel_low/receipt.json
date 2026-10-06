@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:20:59.603Z",
+  "destination": {
+    "assetId": "cosmic_carousel_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "609f4993d6f3b639f020e2e2270ece3b6b47692a6f1c4ba12caedff772a2e8f9",
+  "packageId": "pkg_d0e14d549b622a466ea63e58",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 230444,
+    "fileName": "cosmic_carousel_low.glb",
+    "sha256": "744b79a447fd1a31413fb12593c55825f384a96ba09120e0d6f82d1c53edad71"
+  }
+}

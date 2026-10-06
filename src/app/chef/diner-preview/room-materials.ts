@@ -4,10 +4,10 @@ import { roomZoneAt,type RoomPlan } from '../../../lib/chef/diner/room-plan';
 
 const GOLD='#bca474';
 /** Materials stay in the public dining area: the working rooms keep washable tiles. */
-export function createDiningFloorFinish(plan:RoomPlan,finish?:string){
+export function createDiningFloorFinish(plan:RoomPlan,finish?:string,defaultFinish=finish){
  const root=new THREE.Group();root.name=`dining-floor:${finish}`;root.userData.inputPassthrough=true;
  if(finish!=='wood'&&finish!=='terrazzo')return root;
- const cells:Array<{x:number;y:number}>=[];for(let y=0;y<plan.h;y++)for(let x=0;x<plan.w;x++)if(!roomZoneAt(plan,{x,y})||roomZoneAt(plan,{x,y})?.kind==='dining')cells.push({x,y});
+ const cells:Array<{x:number;y:number}>=[];for(let y=0;y<plan.h;y++)for(let x=0;x<plan.w;x++){const surface=plan.surfaces?.find(s=>s.x===x&&s.y===y),publicTile=!roomZoneAt(plan,{x,y})||roomZoneAt(plan,{x,y})?.kind==='dining';if(plan.version===2&&!plan.legacyShell?surface?.kind==='indoor'&&(surface.finish!==undefined||publicTile)&&(surface.finish??defaultFinish)===finish:publicTile)cells.push({x,y});}
  const matrix=new THREE.Matrix4(),color=new THREE.Color();
  if(finish==='wood'){
   const boards=new THREE.InstancedMesh(new THREE.BoxGeometry(.992,.006,.323),material('#fff'),cells.length*3),tones=['#ad835b','#a77c52','#9d734d','#b28a64','#a67d59'];boards.name='dining-wood-planks';boards.receiveShadow=true;

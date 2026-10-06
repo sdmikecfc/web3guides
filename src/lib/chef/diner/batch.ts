@@ -30,16 +30,24 @@ export function takeFryPortion(batch: FryBatch): { batch: FryBatch | null; porti
 }
 
 /** Boiling finishes independently; draining remains a deliberate player action. */
-export type BoilBasket = { version:1; recipeId:'tomato_pasta'|'vegetable_ramen'; phase:'cooking'|'ready'|'drained'; createdTick:number };
-export function createBoilBasket(recipeId:string,tick:number):BoilBasket|null {
-  return recipeId==='tomato_pasta'||recipeId==='vegetable_ramen'?{version:1,recipeId,phase:'cooking',createdTick:tick}:null;
+export const NOODLE_RECIPES=['tomato_pasta','vegetable_ramen','pesto_pasta','creamy_mushroom_pasta','chicken_ramen','spicy_miso_ramen','spicy_ramyeon'];
+export type BoilBasket = { version:1; recipeId:string; phase:'cooking'|'ready'|'drained'; createdTick:number };
+export type BoilerBatch = {version:2;recipeId:string;phase:'cooking'|'ready'|'drained';createdTick:number;total:number;remaining:number};
+export const SOUP_RECIPES=['tomato_soup','mushroom_soup'];
+export const boilerPortions=(tier:number)=>Math.max(2,Math.min(4,tier+1));
+export const isSoup=(id:string)=>SOUP_RECIPES.includes(id);
+export function createBoilBasket(recipeId:string,tick:number,tier=1,version=0):BoilBasket|BoilerBatch|null {
+  if(!NOODLE_RECIPES.includes(recipeId)&&!isSoup(recipeId))return null;
+  return version===1?{version:2,recipeId,phase:'cooking',createdTick:tick,total:boilerPortions(tier),remaining:boilerPortions(tier)}:{version:1,recipeId,phase:'cooking',createdTick:tick};
 }
-export function validateBoilBasket(raw:unknown):BoilBasket|null {
+export function validateBoilBasket(raw:unknown):BoilBasket|BoilerBatch|null {
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
-  const basket=raw as BoilBasket,keys=['version','recipeId','phase','createdTick'];
-  if(keys.some(key=>!Object.hasOwn(basket,key))||Object.keys(basket).some(key=>!keys.includes(key))||basket.version!==1||!['tomato_pasta','vegetable_ramen'].includes(basket.recipeId)||!['cooking','ready','drained'].includes(basket.phase)||!Number.isSafeInteger(basket.createdTick)||basket.createdTick<0)return null;
+  const basket=raw as BoilBasket|BoilerBatch,keys=['version','recipeId','phase','createdTick',...(basket.version===2?['total','remaining']:[])];
+  if(keys.some(key=>!Object.hasOwn(basket,key))||Object.keys(basket).some(key=>!keys.includes(key))||![1,2].includes(basket.version)||(!NOODLE_RECIPES.includes(basket.recipeId)&&!isSoup(basket.recipeId))||!['cooking','ready','drained'].includes(basket.phase)||!Number.isSafeInteger(basket.createdTick)||basket.createdTick<0)return null;
+  if(basket.version===2&&(!Number.isInteger(basket.total)||basket.total<2||basket.total>4||!Number.isInteger(basket.remaining)||basket.remaining<1||basket.remaining>basket.total||basket.phase==='cooking'&&basket.remaining!==basket.total))return null;
   return {...basket};
 }
+export function takeBoilerPortion(batch:BoilerBatch):BoilerBatch|null {return batch.remaining>1?{...batch,remaining:batch.remaining-1}:null;}
 export type VesselKind = 'plate' | 'cup' | 'fry_box' | 'bowl' | 'pizza_dish';
 export const SERVING_VESSELS: Record<VesselKind, { name: string; reusable: boolean; supply: 'plates' | 'cups' | 'boxes' | 'bowls' | null; available: boolean }> = {
   plate: { name: 'plate', reusable: true, supply: 'plates', available: true },
@@ -48,7 +56,7 @@ export const SERVING_VESSELS: Record<VesselKind, { name: string; reusable: boole
   bowl: { name: 'bowl', reusable: true, supply: 'bowls', available: true },
   pizza_dish: { name: 'pizza dish', reusable: true, supply: null, available: false },
 };
-const CUP_RECIPES = new Set(['lemonade', 'coffee', 'vanilla_shake', 'strawberry_shake']);
-export function recipeVessel(recipeId: string): VesselKind { return recipeId === 'fries' ? 'fry_box' : ['tomato_pasta','vegetable_ramen'].includes(recipeId)?'bowl':CUP_RECIPES.has(recipeId) ? 'cup' : 'plate'; }
+const CUP_RECIPES = new Set(['lemonade', 'coffee', 'vanilla_shake', 'strawberry_shake','mango_smoothie','citrus_cooler','house_red']);
+export function recipeVessel(recipeId: string): VesselKind { return ['fries','cheese_fries'].includes(recipeId) ? 'fry_box' : NOODLE_RECIPES.includes(recipeId)||isSoup(recipeId)||recipeId==='berry_smoothie_bowl'?'bowl':CUP_RECIPES.has(recipeId) ? 'cup' : 'plate'; }
 export function vesselReusable(kind: VesselKind): boolean { return SERVING_VESSELS[kind]?.reusable === true; }
 export function vesselSupplyStation(kind: VesselKind): 'plates' | 'cups' | 'boxes' | 'bowls' | null { return SERVING_VESSELS[kind]?.supply ?? null; }

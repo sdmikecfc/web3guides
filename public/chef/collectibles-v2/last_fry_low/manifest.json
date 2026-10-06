@@ -1,0 +1,43 @@
+{
+  "assetId": "last_fry_low",
+  "displayName": "last_fry_low",
+  "files": [
+    {
+      "bytes": 66160,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "fac6a8033a8ca6547fe503c7ca0eefd1d18fd8b540234e4e4ae3dedcbd641dfe"
+    },
+    {
+      "bytes": 1408,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "bb47382dc3b49b279189026b341f94952f3a9edbd78b596dc9baacf69a7c12fd"
+    },
+    {
+      "bytes": 391,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "bbf012a9d33d367fc4bdbb28b883770d87b71d269bb4e9f30fbd796cd0414427"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "d1262e4b09e80dfdb7e1f14b771d40f2d44d352f47bffb4b7d1873a906ca666e"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_49448ae7bc3cf73a99665566",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createModel, PALETTE,configureRoomMount } from './models';
+import { createModel, createEquipmentAppearance, PALETTE,configureRoomMount } from './models';
 import type { ScenePlacement, SceneTable } from './scene-types';
 import { diningPlaceSettings } from './table-presentation';
 
@@ -21,11 +21,13 @@ export function projectPlacementTile(ray:THREE.Ray,mode:'home'|'truck',width:num
  * Shared kit geometry stays shared; disposing this preview cannot fade the diner. */
 export function createPlacementGhost(placement:ScenePlacement,floorHeight:(x:number,y:number)=>number,mode:'home'|'truck'){
   const root=new THREE.Group();root.name='placement-ghost';root.userData.inputPassthrough=true;
+  let pending:Promise<unknown>|undefined;
   const cells:Array<{x:number;y:number;chair?:boolean}>=[],color=placement.valid?'#529b72':'#cc6250';
   if(placement.object){
     const object=placement.object,facing=object.rotation??0,footprint=object.footprint??(object.kind==='pass'||object.kind==='queue_bench'?[2,1]:[1,1]);
     const width=footprint[facing%2?1:0],height=footprint[facing%2?0:1];
-    const model=createModel(object.kind,{tier:object.tier,color:object.color,stock:object.stock,fixtureWidth:object.footprint?.[0]});
+    const model=createEquipmentAppearance(object.kind,object.appearance,{tier:object.tier,color:object.color,stock:object.stock,fixtureWidth:object.footprint?.[0]});
+    pending=model.userData.ready;
     model.name='placement-object';model.rotation.y=Math.PI-facing*Math.PI/2;
     if(object.mount){const holder=new THREE.Group();holder.position.set(object.x+(width-1)/2,object.elevation??floorHeight(object.x,object.y),object.y+(height-1)/2);holder.add(model);configureRoomMount(model,object);root.add(holder);}
     else{model.position.set(object.x+(width-1)/2,object.elevation??floorHeight(object.x,object.y),object.y+(height-1)/2);root.add(model);}
@@ -39,12 +41,22 @@ export function createPlacementGhost(placement:ScenePlacement,floorHeight:(x:num
     for(const seat of table.seats){if(table.kind!=='booth'){const chair=createModel(table.kind?'stool':'chair',{color:mode==='truck'?PALETTE.tomato:PALETTE.mint,seatStyle:seat.style??'classic'});chair.name=`placement-seat:${seat.id}`;chair.position.set(seat.x,floorHeight(seat.x,seat.y),seat.y);chair.lookAt(seat.surface?.x??center.x,chair.position.y,seat.surface?.y??center.y);chair.rotateY(Math.PI);root.add(chair);}cells.push({x:seat.x,y:seat.y,chair:true});}
   }
   const materials=new Map<THREE.Material,THREE.Material>();
-  root.traverse(object=>{
+  const paintGhost=()=>root.traverse(object=>{
     delete object.userData.pick;object.userData.inputPassthrough=true;object.raycast=()=>{};
-    if(!(object instanceof THREE.Mesh))return;
-    const clone=(source:THREE.Material)=>{let copy=materials.get(source);if(!copy){copy=source.clone();copy.userData={...source.userData,sharedKitResource:false};copy.transparent=true;copy.opacity=.56;copy.depthWrite=false;if('color' in copy)(copy as THREE.MeshToonMaterial).color.lerp(new THREE.Color(color),.13);materials.set(source,copy);}return copy;};
-    object.material=Array.isArray(object.material)?object.material.map(clone):clone(object.material);object.castShadow=false;object.receiveShadow=false;
+    if(!(object instanceof THREE.Mesh)||object.userData.ghostPainted)return;object.userData.ghostPainted=true;
+    // Keep collectible surfaces fully readable; the outline/footprint already
+    // communicates validity. Transparent glass/enamel previews showed backs
+    // through fronts and hid the small character details.
+    if(placement.object?.appearance)return;
+    const clone=(source:THREE.Material)=>{let copy=materials.get(source);if(!copy){copy=source.clone();copy.userData={...source.userData,sharedKitResource:false};copy.transparent=true;copy.opacity=.88;copy.depthWrite=false;copy.depthTest=true;if('color' in copy)(copy as THREE.MeshToonMaterial).color.lerp(new THREE.Color(color),.13);materials.set(source,copy);}return copy;};
+    object.material=Array.isArray(object.material)?object.material.map(clone):clone(object.material);object.renderOrder=100;object.castShadow=false;object.receiveShadow=false;
   });
+  paintGhost();
+  root.updateMatrixWorld(true);
+  const outline=new THREE.Box3Helper(new THREE.Box3().setFromObject(root).expandByScalar(.045),new THREE.Color(color));
+  (outline.material as THREE.LineBasicMaterial).depthTest=false;outline.renderOrder=110;outline.raycast=()=>{};root.add(outline);
+  if(pending)void pending.then(()=>{if(root.userData.disposed)return;paintGhost();root.remove(outline);root.updateMatrixWorld(true);outline.box.setFromObject(root).expandByScalar(.045);root.add(outline);}).catch(()=>{});
+  if(placement.object?.mount)cells.length=0;
   const footprint=new THREE.Group();footprint.name='placement-footprint';footprint.userData.inputPassthrough=true;
   const padMaterial=new THREE.MeshBasicMaterial({color,transparent:true,opacity:.24,depthWrite:false,side:THREE.DoubleSide}),edgeMaterial=new THREE.MeshBasicMaterial({color,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide});
   for(const cell of cells){

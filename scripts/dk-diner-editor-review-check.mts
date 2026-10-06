@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import {createDiner,dispatchDiner,sanitizeDinerSave,homeSimulationConfig} from '../src/lib/chef/diner/progression';
+import {editableConstruction} from '../src/lib/chef/diner/room-construction';
+import {roomDesignCommand,roomDesignPreview,quoteRoomPurchases,type RoomDesign} from '../src/lib/chef/diner/room-building-draft';
+import {createPlacementDraft} from '../src/app/chef/diner-preview/placement-preview';
+import {moveRoomDraft,validateRoomDraft} from '../src/app/chef/diner-preview/room-editor';
+import {roomChairSelection} from '../src/app/chef/diner-preview/room-selection';
+import {freeRoomSeats} from '../src/lib/chef/diner/room-plan-v2';
+
+const state=createDiner(0,'editor-review');state.coins=10000;
+const before=structuredClone(state);
+const draft:RoomDesign={...editableConstruction({roomPlan:state.home.roomPlan!,layout:state.home.layout}),purchases:{table_1:1},finishes:{counter:'sage'},surfaces:{floor:'wood'}};
+const placement=createPlacementDraft(roomDesignPreview(state,draft),'home','table_1','new-table');
+draft.layout.push({id:placement.id,equipmentId:placement.equipmentId,x:placement.x,y:placement.y,rotation:placement.rotation});
+assert.equal(validateRoomDraft(state,draft),null);
+const quote=quoteRoomPurchases(state,draft),preview=roomDesignPreview(state,draft),command=roomDesignCommand(state,draft);
+assert.equal(quote.cost,720+600+250);
+assert.equal(preview.equipment.table_1.homeCopies,(state.equipment.table_1?.homeCopies??0)+1);
+assert.equal(preview.cosmetics.floor,'wood');assert.equal(preview.home.finishes!.counter,'sage');
+assert(homeSimulationConfig(preview).layout.some(p=>p.id==='new-table'));
+assert.deepEqual(state,before,'preview and rehearsal never spend or grant ownership');
+const saved=dispatchDiner(state,{type:'saveRoomDraft',...draft},{now:0});assert(!saved.error,saved.error);
+const reloaded=sanitizeDinerSave(saved.state)!;assert.equal(reloaded.home.draft!.finishes!.counter,'sage');assert.equal(reloaded.home.draft!.surfaces!.floor,'wood');
+assert(dispatchDiner(state,{type:'saveLayout',name:'Unpaid room',design:draft},{now:0}).error,'named designs cannot grant unpurchased pieces');
+const applied=dispatchDiner(state,command,{now:0});assert(!applied.error,applied.error);
+assert.equal(applied.state.coins,10000-quote.cost);assert.equal(applied.state.home.finishes!.counter,'sage');assert(applied.state.finishOwned.floor.includes('wood'));
+const repeated=dispatchDiner(applied.state,command,{now:0});assert(repeated.error);assert.deepEqual(repeated.state,applied.state);
+assert.deepEqual(dispatchDiner({...state,coins:0},command,{now:0}).state,{...state,coins:0},'insufficient funds are atomic');
+assert(quoteRoomPurchases(state,{finishes:{counter:'invented'}}).error);
+assert(quoteRoomPurchases(state,{surfaces:{sign:'cream'} as any}).error);
+console.log('PASS rehearsal/apply parity, atomic furniture and finishes, draft reload and forged finish rejection');
+
+const ownedDesign:RoomDesign={...draft,purchases:undefined};
+const named=dispatchDiner(applied.state,{type:'saveLayout',name:'Garden café',design:ownedDesign},{now:0});assert(!named.error,named.error);
+assert.deepEqual(named.state.home,applied.state.home,'saving a design does not apply or change production');
+assert.equal(named.state.savedLayouts[0].finishes!.counter,'sage');assert.equal(named.state.savedLayouts[0].surfaces!.floor,'wood');assert(sanitizeDinerSave(named.state));
+const changed=dispatchDiner(named.state,{type:'homeRoomPlan',...ownedDesign,finishes:{counter:'tomato'},surfaces:{floor:'checker'},expectedCost:0},{now:0});assert(!changed.error,changed.error);
+const restored=dispatchDiner(changed.state,{type:'loadLayout',layoutId:named.state.savedLayouts[0].id},{now:0});assert(!restored.error,restored.error);
+assert.equal(restored.state.cosmetics.floor,'wood');assert.equal(restored.state.home.finishes!.counter,'sage');assert.equal(restored.state.coins,applied.state.coins);
+console.log('PASS named design saves without applying, restoration and finish ownership');
+
+const table=draft.layout.find(p=>p.id==='new-table')!,seat=freeRoomSeats(draft.roomPlan,table)[0];
+const next=moveRoomDraft(draft,'chair:new-table:0',table.x-1,table.y),newSeat=freeRoomSeats(next.roomPlan,table)[0];
+assert.deepEqual(newSeat,{x:table.x-1,y:table.y});assert.deepEqual(freeRoomSeats(draft.roomPlan,table)[0],seat);
+assert.deepEqual(roomChairSelection('chair:import:table:2'),{tableId:'import:table',index:2});
+assert.equal(roomChairSelection('edge:wall-1'),null);assert.equal(roomChairSelection(null),null);
+console.log('PASS exact chair identity, movement and unchanged source draft');

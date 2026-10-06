@@ -1,0 +1,55 @@
+{
+  "assetId": "disco_lobster_low",
+  "displayName": "disco_lobster_low",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.3328649699687958,
+        0.815000057220459,
+        0.07199616999920855
+      ],
+      "min": [
+        -0.33398717641830444,
+        0.06642843606877458,
+        -0.06031239374773811
+      ],
+      "sizeMeters": [
+        0.6668521463871002,
+        0.7485716211516844,
+        0.13230856374694666
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 106784,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 4,
+    "meshCount": 6,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 6,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 2949,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 2032,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

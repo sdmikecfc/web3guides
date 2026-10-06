@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T16:01:50.766Z",
+  "destination": {
+    "assetId": "lucky_cat_soda",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "ae638dc2467dd0e35dbb32f3d231402161d19f9b62f1cbf066bf4cb56b003746",
+  "packageId": "pkg_03bff93aba8d5a74b34153e9",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 305448,
+    "fileName": "lucky_cat_soda.glb",
+    "sha256": "e4a8e87735543074ded8927f7398e977b2fe1bb092cead76db59117dfda96ab1"
+  }
+}

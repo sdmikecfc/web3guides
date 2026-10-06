@@ -1,0 +1,43 @@
+{
+  "assetId": "dragonfire_grill_low",
+  "displayName": "dragonfire_grill_low",
+  "files": [
+    {
+      "bytes": 272992,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "5aec91734f546242da8f41289c9e8851d1c139109a78f492fd3797c4387bea88"
+    },
+    {
+      "bytes": 1425,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "944f996c83115fa0f209b42c1d0085767c6b4d573d2ece783a67327058324b94"
+    },
+    {
+      "bytes": 400,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "b6f758884ae2574b7f863f4b6f9df62a3afebd3a94076958a9a2e07f7f9fe411"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "b8f5aedb1c145efe81e12f0ce58a58e585dc54aac24895ad84347cc336a28a67"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_6a3bd18c84adc93d31caed6d",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

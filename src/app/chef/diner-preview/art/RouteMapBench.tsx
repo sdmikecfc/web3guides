@@ -5,6 +5,7 @@ import { RouteMap } from '../RouteMap';
 
 /** Visual fixture only; the parent route is unavailable outside development. */
 export function RouteMapBench() {
+  const [fixture] = useState(() => createDiner(1_800_000_000_000, 'road-art-bench'));
   const [run, setRun] = useState<DinerRun>(() => {
     const state = createDiner(1_800_000_000_000, 'road-art-bench');
     state.tutorial.finished = true;
@@ -14,6 +15,6 @@ export function RouteMapBench() {
   });
   return <section aria-label="Route map art preview" style={{ maxWidth: 780, margin: '32px auto', background: '#fff8e9', borderRadius: 24, padding: 20 }}>
     <p style={{ fontSize: 12 }}>Route artwork preview. These choices do not change a restaurant save.</p>
-    <RouteMap run={run} strikeLimit={3} choose={id => setRun(current => ({ ...current, visited: [...current.visited, id], available: current.map.find(node => node.id === id)!.next }))} />
+    <RouteMap state={{...fixture,run}} run={run} strikeLimit={3} choose={id => setRun(current => ({ ...current, visited: [...current.visited, id], available: current.map.find(node => node.id === id)!.next }))} />
   </section>;
 }

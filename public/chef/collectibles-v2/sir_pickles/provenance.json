@@ -1,0 +1,11 @@
+{
+  "author": "[redacted]",
+  "notes": "Original Blender geometry authored for this project. Hero designs based on existing authorized cinematic reference artwork.",
+  "origin": "authored",
+  "schema": "game_dev.asset_provenance.v1",
+  "source": {
+    "bytes": 183240,
+    "fileName": "sir_pickles.glb",
+    "sha256": "d9f68ea0a81f3bbf30dd5bd3756095e94ffcf8191ec72f4b8cb67ace5e3d22ac"
+  }
+}

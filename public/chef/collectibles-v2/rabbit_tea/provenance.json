@@ -1,0 +1,11 @@
+{
+  "author": "[redacted]",
+  "notes": "Original Blender geometry authored for this project. Hero designs based on existing authorized cinematic reference artwork.",
+  "origin": "authored",
+  "schema": "game_dev.asset_provenance.v1",
+  "source": {
+    "bytes": 236568,
+    "fileName": "rabbit_tea.glb",
+    "sha256": "e7722d20145ff83db8fc230d411137e31c368357418ce441878b6c3d5216d8be"
+  }
+}

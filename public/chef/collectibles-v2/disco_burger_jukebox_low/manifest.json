@@ -1,0 +1,43 @@
+{
+  "assetId": "disco_burger_jukebox_low",
+  "displayName": "disco_burger_jukebox_low",
+  "files": [
+    {
+      "bytes": 302344,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "aed05dc924a6c85210f448b64573d04e5077d816dd6205a3a36a06bc667d2552"
+    },
+    {
+      "bytes": 1436,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "7d6945066f3bb2bb28f59f34a9c8cb4e02d9d3239d451c48196ce4987e15520b"
+    },
+    {
+      "bytes": 404,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "b2476424385ccb9741a86b2024dd1e3b2c96379af9a13daf1615aabb50eaba9c"
+    },
+    {
+      "bytes": 2535,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "318a537cc45fec57f3c4c9e4f3550195a016ee6163460983654ef1877d6070c4"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_4df27c9a188400d78fc7c076",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

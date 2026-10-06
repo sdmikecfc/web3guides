@@ -1,19 +1,59 @@
 {
-  "version": 1,
-  "tracks": {
-    "home": {
-      "mode": "mix",
-      "loopStart": 0,
-      "loopEnd": 118.865,
-      "crossfadeSeconds": 2,
-      "layers": { "mix": "/diner-audio/cafe-swing-v1.mp3" }
-    },
-    "truck": {
-      "mode": "mix",
-      "loopStart": 0,
-      "loopEnd": 147.531,
-      "crossfadeSeconds": 2,
-      "layers": { "mix": "/diner-audio/sunlit-groove-v1.mp3" }
-    }
+  "version": 2,
+  "playlists": {
+    "home": [
+      {
+        "mode": "mix",
+        "title": "Café Swing",
+        "loopStart": 0,
+        "loopEnd": 118.865,
+        "crossfadeSeconds": 2,
+        "layers": {
+          "mix": "/diner-audio/cafe-swing-v1.mp3"
+        }
+      },
+      {
+        "mode": "mix",
+        "title": "Luz nas Mesas",
+        "loopStart": 0,
+        "loopEnd": 239.96,
+        "crossfadeSeconds": 2,
+        "layers": {
+          "mix": "/diner-audio/luz-nas-mesas-v1.mp3"
+        }
+      }
+    ],
+    "truck": [
+      {
+        "mode": "mix",
+        "title": "Sunlit Groove",
+        "loopStart": 0,
+        "loopEnd": 147.531,
+        "crossfadeSeconds": 2,
+        "layers": {
+          "mix": "/diner-audio/sunlit-groove-v1.mp3"
+        }
+      },
+      {
+        "mode": "mix",
+        "title": "Lunchtime Groove",
+        "loopStart": 0,
+        "loopEnd": 237.849,
+        "crossfadeSeconds": 2,
+        "layers": {
+          "mix": "/diner-audio/lunchtime-groove-v1.mp3"
+        }
+      },
+      {
+        "mode": "mix",
+        "title": "Food Truck Adventure",
+        "loopStart": 0,
+        "loopEnd": 238.515,
+        "crossfadeSeconds": 2,
+        "layers": {
+          "mix": "/diner-audio/food-truck-adventure-v1.mp3"
+        }
+      }
+    ]
   }
 }

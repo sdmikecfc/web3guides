@@ -1,0 +1,43 @@
+{
+  "assetId": "rocket_shake_low",
+  "displayName": "rocket_shake_low",
+  "files": [
+    {
+      "bytes": 220776,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "adc1786e175955b9cb4de22a212b184914f5f1a746255424b061f3ba4fa3a5e0"
+    },
+    {
+      "bytes": 1418,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "40a29fc5fa5e4be056c50b6f753ff8336c14186ba7f6adb209135ef286e4c616"
+    },
+    {
+      "bytes": 396,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "61a3fccc336037dfd99d09f37aefc2b877e59eeacf486809ccfe95ddad398613"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "5c904fb6367f1347fbc2f3e9644d55bf6a1edb51fc439c5522407fd480f4aac0"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_d33af3ceb58844976f243e82",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

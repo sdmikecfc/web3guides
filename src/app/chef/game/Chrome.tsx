@@ -53,9 +53,9 @@ const chip: React.CSSProperties = {
   flexShrink: 0,
   whiteSpace: "nowrap",
   background: "rgba(27,19,16,0.92)",
-  border: "1px solid #4a3626",
+  border: "1px solid #dfd4bb",
   borderRadius: 999,
-  color: "#f3e9d2",
+  color: "#3c392c",
   fontFamily: FONT,
   fontSize: 13,
   fontWeight: 700,
@@ -159,8 +159,8 @@ export function ChipBar({
       <button
         style={{
           ...chipFor(narrow),
-          borderColor: editing ? "#e8a13d" : "#4a3626",
-          background: editing ? "#2f2016" : "rgba(27,19,16,0.92)",
+          borderColor: editing ? "#e8a13d" : "#dfd4bb",
+          background: editing ? "#e5eedb" : "rgba(27,19,16,0.92)",
         }}
         onClick={onEdit}
         aria-label={editing ? "Finish arranging" : "Arrange the room"}
@@ -174,7 +174,7 @@ export function ChipBar({
         👩‍🍳 Crew
       </button>
       <button
-        style={{ ...chipFor(narrow), borderColor: graduate ? "#e8a13d" : "#4a3626" }}
+        style={{ ...chipFor(narrow), borderColor: graduate ? "#e8a13d" : "#dfd4bb" }}
         onClick={onAcademy}
         aria-label="The Academy"
       >
@@ -232,10 +232,10 @@ export function EditTray({
         transform: "translateX(-50%)",
         bottom: 12,
         width: "min(460px, 94vw)",
-        background: "rgba(27,19,16,0.94)",
-        border: "1px solid #4a3626",
+        background: "rgba(255,252,243,0.97)",
+        border: "1px solid #dfd4bb",
         borderRadius: 14,
-        color: "#f3e9d2",
+        color: "#3c392c",
         fontFamily: FONT,
         fontSize: 12,
         padding: "10px 12px",
@@ -253,7 +253,7 @@ export function EditTray({
           : "Tap anything in the room to pick it up, or choose from storage below."}
       </div>
       {error && (
-        <div style={{ marginTop: 6, color: "#ff9a9a", fontWeight: 700, lineHeight: 1.35 }}>
+        <div style={{ marginTop: 6, color: "#b94f3e", fontWeight: 700, lineHeight: 1.35 }}>
           {error}
         </div>
       )}
@@ -289,9 +289,9 @@ export function EditTray({
                 style={{
                   padding: "6px 10px",
                   borderRadius: 10,
-                  border: `1px solid ${active ? "#e8a13d" : "#4a3626"}`,
-                  background: active ? "#2f2016" : "#1f150f",
-                  color: "#f3e9d2",
+                  border: `1px solid ${active ? "#e8a13d" : "#dfd4bb"}`,
+                  background: active ? "#e5eedb" : "#f3ecd9",
+                  color: "#3c392c",
                   fontFamily: FONT,
                   fontSize: 12,
                   fontWeight: 700,
@@ -417,8 +417,8 @@ export function CrewModal({
               ...chip,
               fontSize: 12,
               padding: "6px 12px",
-              background: tab === t ? "#2f2016" : "#1f150f",
-              borderColor: tab === t ? "#e8a13d" : "#4a3626",
+              background: tab === t ? "#e5eedb" : "#f3ecd9",
+              borderColor: tab === t ? "#e8a13d" : "#dfd4bb",
             }}
           >
             {t === "chef" ? "👩‍🍳 Chef" : "🧑‍💼 Waiters"}
@@ -439,8 +439,8 @@ export function CrewModal({
                 justifyContent: "center",
                 padding: 8,
                 borderRadius: 12,
-                border: `1px solid ${on ? "#e8a13d" : "#4a3626"}`,
-                background: on ? "#2f2016" : "#1f150f",
+                border: `1px solid ${on ? "#e8a13d" : "#dfd4bb"}`,
+                background: on ? "#e5eedb" : "#f3ecd9",
                 cursor: "pointer",
               }}
             >
@@ -463,9 +463,9 @@ export function CrewModal({
               marginTop: 5,
               padding: "8px 10px",
               borderRadius: 10,
-              border: "1px solid #4a3626",
-              background: "#1f150f",
-              color: "#f3e9d2",
+              border: "1px solid #dfd4bb",
+              background: "#f3ecd9",
+              color: "#3c392c",
               fontFamily: FONT,
               fontSize: 13,
             }}
@@ -509,9 +509,9 @@ export function StyleModal({
               padding: "9px 10px",
               marginTop: 6,
               borderRadius: 12,
-              border: `1px solid ${active ? "#e8a13d" : "#4a3626"}`,
-              background: active ? "#2f2016" : "#1f150f",
-              color: "#f3e9d2",
+              border: `1px solid ${active ? "#e8a13d" : "#dfd4bb"}`,
+              background: active ? "#e5eedb" : "#f3ecd9",
+              color: "#3c392c",
               fontFamily: FONT,
               fontSize: 13,
               cursor: "pointer",
@@ -554,7 +554,7 @@ function RecipeLine({
           <span
             key={id}
             title={ing?.label ?? id}
-            style={{ color: ok ? "#e8a13d" : "#f3e9d2", opacity: ok ? 1 : 0.55 }}
+            style={{ color: ok ? "#e8a13d" : "#3c392c", opacity: ok ? 1 : 0.55 }}
           >
             {ing?.icon ?? "•"} {have}/{need}
           </span>
@@ -592,7 +592,7 @@ function DishRow({
 }) {
   const recipe = nextRecipe(dishKey, level);
   return (
-    <div style={{ padding: "8px 0", borderTop: "1px solid rgba(74,54,38,0.6)" }}>
+    <div style={{ padding: "8px 0", borderTop: "1px solid rgba(119,97,60,0.15)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontWeight: 700, color: accent ? "#e8a13d" : undefined }}>
           {name} <span style={{ color: "#e8a13d", letterSpacing: 1 }}>{stars(level)}</span>
@@ -611,10 +611,10 @@ function DishRow({
             style={{
               padding: "5px 11px",
               borderRadius: 999,
-              border: `1px solid ${canUpgrade ? "#e8a13d" : "#4a3626"}`,
+              border: `1px solid ${canUpgrade ? "#e8a13d" : "#dfd4bb"}`,
               // filled when it is actually possible, matching the shop's Buy
-              background: canUpgrade ? "#e8a13d" : "#241a14",
-              color: canUpgrade ? "#1b1310" : "#8a7a63",
+              background: canUpgrade ? "#e8a13d" : "#eee8db",
+              color: canUpgrade ? "#f4eddf" : "#8a7a63",
               fontFamily: FONT,
               fontSize: 12,
               fontWeight: 800,
@@ -658,11 +658,11 @@ function DailyCard({
   return (
     <div
       style={{
-        border: `1px solid ${daily.prepped ? "#e8a13d" : "rgba(74,54,38,0.8)"}`,
+        border: `1px solid ${daily.prepped ? "#e8a13d" : "rgba(119,97,60,0.2)"}`,
         borderRadius: 10,
         padding: "8px 10px",
         marginBottom: 8,
-        background: daily.prepped ? "rgba(232,161,61,0.09)" : "rgba(20,14,11,0.5)",
+        background: daily.prepped ? "rgba(232,161,61,0.09)" : "rgba(235,227,207,0.5)",
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
@@ -687,7 +687,7 @@ function DailyCard({
                 <span
                   key={id}
                   title={ing?.label ?? id}
-                  style={{ color: ok ? "#e8a13d" : "#f3e9d2", opacity: ok ? 1 : 0.55 }}
+                  style={{ color: ok ? "#e8a13d" : "#3c392c", opacity: ok ? 1 : 0.55 }}
                 >
                   {ing?.icon ?? "•"} {have}/{n}
                 </span>
@@ -702,9 +702,9 @@ function DailyCard({
               width: "100%",
               padding: "6px 11px",
               borderRadius: 999,
-              border: `1px solid ${ready ? "#e8a13d" : "#4a3626"}`,
-              background: ready ? "#e8a13d" : "#241a14",
-              color: ready ? "#1b1310" : "#8a7a63",
+              border: `1px solid ${ready ? "#e8a13d" : "#dfd4bb"}`,
+              background: ready ? "#e8a13d" : "#eee8db",
+              color: ready ? "#f4eddf" : "#8a7a63",
               fontFamily: FONT,
               fontSize: 12,
               fontWeight: 800,
@@ -749,11 +749,11 @@ export function MenuModal({
       <DailyCard daily={daily} stock={pantry.stock} onPrep={onPrepSpecial} />
       <div
         style={{
-          border: "1px solid rgba(74,54,38,0.8)",
+          border: "1px solid rgba(119,97,60,0.2)",
           borderRadius: 10,
           padding: "7px 9px",
           marginBottom: 4,
-          background: "rgba(20,14,11,0.5)",
+          background: "rgba(235,227,207,0.5)",
         }}
       >
         <div style={{ opacity: 0.7, marginBottom: 4 }}>Pantry</div>
@@ -789,7 +789,7 @@ export function MenuModal({
           onUpgrade={onUpgrade}
         />
       ))}
-      <div style={{ padding: "9px 0 4px", borderTop: "1px solid rgba(74,54,38,0.6)" }}>
+      <div style={{ padding: "9px 0 4px", borderTop: "1px solid rgba(119,97,60,0.15)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontWeight: 800, color: "#e8a13d" }}>
             {menu.specialMastered ? "★ " : ""}House Special
@@ -811,8 +811,8 @@ export function MenuModal({
               style={{
                 height: 8,
                 borderRadius: 999,
-                background: "#31241b",
-                border: "1px solid #4a3626",
+                background: "#e6dcc8",
+                border: "1px solid #dfd4bb",
                 overflow: "hidden",
                 marginTop: 6,
               }}
@@ -943,8 +943,8 @@ export function BookModal({
             style={{
               flex: 1,
               borderRadius: 10,
-              border: "1px solid rgba(74,54,38,0.8)",
-              background: "rgba(20,14,11,0.5)",
+              border: "1px solid rgba(119,97,60,0.2)",
+              background: "rgba(235,227,207,0.5)",
               padding: "6px 8px",
             }}
           >
@@ -962,11 +962,11 @@ export function BookModal({
       {regulars.length > 0 && (
         <div
           style={{
-            border: "1px solid rgba(74,54,38,0.8)",
+            border: "1px solid rgba(119,97,60,0.2)",
             borderRadius: 10,
             padding: "7px 9px",
             marginBottom: 9,
-            background: "rgba(20,14,11,0.5)",
+            background: "rgba(235,227,207,0.5)",
           }}
         >
           <div style={{ opacity: 0.7, marginBottom: 5 }}>Regulars</div>
@@ -980,7 +980,7 @@ export function BookModal({
                 padding: "2px 0",
               }}
             >
-              <span style={{ fontWeight: 700, color: due.has(i) ? "#e8a13d" : "#f3e9d2" }}>
+              <span style={{ fontWeight: 700, color: due.has(i) ? "#e8a13d" : "#3c392c" }}>
                 {REGULAR_NAMES[r.n]}
                 {due.has(i) && <span style={{ opacity: 0.75 }}> · due in</span>}
               </span>
@@ -997,7 +997,7 @@ export function BookModal({
           key={i}
           style={{
             padding: "7px 0",
-            borderTop: "1px solid rgba(74,54,38,0.6)",
+            borderTop: "1px solid rgba(119,97,60,0.15)",
             lineHeight: 1.4,
             opacity: 0.92,
           }}

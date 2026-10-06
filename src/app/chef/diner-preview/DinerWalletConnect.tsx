@@ -23,9 +23,10 @@ function connectionError(error: Error) {
   return 'Your wallet could not connect. Unlock it and try again. Connection help below has other ways to open the game.';
 }
 
-/** Own the installed-wallet action: RainbowKit's phone chooser excludes some
- * EIP-6963 wallets and can swallow errors before an account request is sent. */
-export function DinerWalletConnect() {
+/** The full RainbowKit chooser is the primary entry, as in Launch Wars.
+ * Installed browser wallets also retain a direct connection shortcut: some
+ * mobile providers reject the chooser's pre-connection chain lookup. */
+export function DinerWalletConnect({compact=false}:{compact?:boolean}={}) {
   const { isConnected } = useAccount();
   const { connectors, connectAsync, isPending, error } = useConnect();
   const legacyConnector = useLegacyBrowserWalletConnector();
@@ -52,17 +53,23 @@ export function DinerWalletConnect() {
   // SSR and the first browser render must agree, even when an extension has
   // already injected a provider before React hydrates.
   if (mobile === null) return <div className={css.walletConnect}><p className={css.small} role="status">Looking for your wallet…</p></div>;
-  const injectedWallets = connectors.filter(connector => connector.type === 'injected');
+  const injectedWallets = connectors.filter(connector => {
+    if (connector.type !== 'injected') return false;
+    const details = (connector as typeof connector & { rkDetails?: { installed?: boolean } }).rkDetails;
+    // Named catalogue entries may describe an uninstalled extension. Only
+    // real detected providers get direct buttons; the chooser handles setup.
+    return details ? details.installed === true : true;
+  });
   const namedWallets = injectedWallets.filter(connector => connector.id !== 'injected');
   // A generic browser entry is the same provider as the named entry. Do not
   // offer two buttons for it, or send MetaMask requests to Brave's provider.
   const availableWallets = [...new Map((namedWallets.length ? namedWallets : injectedWallets).map(connector => [connector.name, connector])).values()];
   const hasInjectedWallet = availableWallets.length > 0 || Boolean(legacyConnector);
-  const hasRemoteWallet = connectors.some(connector => connector.type !== 'injected');
   const pending = isPending || requestedWallet !== null;
 
   return <div className={css.walletConnect}>
     {isConnected ? <ConnectButton showBalance={false} chainStatus="none" accountStatus="address"/> : <>
+      {!pending && <ConnectButton label="Choose wallet" showBalance={false} chainStatus="none" accountStatus="address"/>}
       {availableWallets.map(connector => <button key={connector.uid} type="button" className={css.walletLink} disabled={pending}
         onClick={() => { void connect(connector, connector.name); }}>
         <WalletIcon name={connector.name} icon={connector.icon}/><span>Connect {connector.name}</span>
@@ -76,20 +83,14 @@ export function DinerWalletConnect() {
       {error && <p className={css.error} role="alert">{connectionError(error)}</p>}
     </>}
     {mobile && !isConnected && <>
-      <a className={css.walletLink} href={METAMASK_GAME_LINK}><WalletIcon name="MetaMask"/><span>Open game in MetaMask</span></a>
-      <p className={css.small}>Using the MetaMask app? This opens the game in its browser. Connect there, then tap <strong>Play beta</strong>.</p>
       <details className={css.walletHelp}>
-        <summary>App opened, but the game didn&apos;t?</summary>
-        <p>Open MetaMask&apos;s browser tab and enter <strong>domainkitchen.xyz</strong>. Other wallets with a built-in browser work the same way.</p>
+        <summary>Having trouble opening your wallet app?</summary>
+        <p>You can also open <strong>domainkitchen.xyz</strong> in your wallet&apos;s built-in browser, connect there, then tap <strong>Open my restaurant</strong>.</p>
+        <a className={css.walletLink} href={METAMASK_GAME_LINK}><WalletIcon name="MetaMask"/><span>Open game in MetaMask</span></a>
         <p>Your beta diner saves in the browser you play in. Use that same browser when you return.</p>
       </details>
     </>}
-    {!isConnected && hasRemoteWallet && <ConnectButton label="Other wallets" showBalance={false} chainStatus="none" accountStatus="address"/>}
-    {mobile === false && !isConnected && !hasInjectedWallet && !hasRemoteWallet && <>
-      <p className={css.small}>No wallet extension was found in this browser.</p>
-      <a className={css.walletLink} href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer">Get MetaMask</a>
-      <p className={css.small}>Already have a wallet on your phone? Open <strong>{GAME_ADDRESS.replace('https://', '')}</strong> in its built-in browser.</p>
-    </>}
+    {!compact && mobile === false && !isConnected && !hasInjectedWallet && <p className={css.small}>Choose your wallet above. You can also open <strong>{GAME_ADDRESS.replace('https://', '')}</strong> in a wallet&apos;s built-in browser.</p>}
     <Link className={css.helpLink} href={WALLET_HELP_PATH}>What is a wallet? · Connection help</Link>
   </div>;
 }

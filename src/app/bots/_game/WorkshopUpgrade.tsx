@@ -7,11 +7,13 @@ import EntryDialog from './EntryDialog';
 import WorkshopItemPages from './WorkshopItemPages';
 import css from './workshop-upgrade.module.css';
 
-export default function WorkshopUpgrade({robot,state,initialSlot='torso',initialItem,busy,now,onInstall,onShop,onClose}:{
+export default function WorkshopUpgrade({robot,state,initialSlot='torso',initialItem,busy,now,saveError,onRetry,onInstall,onShop,onClose}:{
  robot:Robot8;state:Workshop8;initialSlot?:Slot;initialItem?:string;busy:boolean;now:number;
+ saveError?:string;onRetry?:()=>Promise<unknown>;
  onInstall:(slot:Slot,spareUid:string)=>Promise<boolean>;onShop:(slot:Slot)=>void;onClose:()=>void;
 }) {
  const [slot,setSlot]=useState<Slot>(initialSlot),[picked,setPicked]=useState(''),[message,setMessage]=useState('');
+ const [retrying,setRetrying]=useState(false);
  const fitted=ITEM_MAP.get(itemId(robot.choices[slot],slot))!;
  const spares=state.spares.flatMap(spare=>{
   const item=ITEM_MAP.get(spare.item);
@@ -37,7 +39,7 @@ export default function WorkshopUpgrade({robot,state,initialSlot='torso',initial
     </>:<p className={css.status}>No replacement {SLOT_NAMES[slot].toLowerCase()} in your cabinet yet.</p>}
    </>}
   </div>
-  <p role="status" className={css.feedback}>{message}</p>
-  <div className={css.actions}>{choice&&!blocked&&<button className={css.primary} disabled={busy} onClick={async()=>{setMessage('');if(await onInstall(slot,choice.uid)){setPicked('');setMessage('Installed. Your old part is back in the cabinet.')}else setMessage('Could not confirm the change. Check your connection and try again.')}}>{busy?'Installing…':'Install part'}</button>}<button disabled={busy} onClick={()=>onShop(slot)}>Shop for parts →</button></div>
+  <p role="status" className={css.feedback}>{saveError||message}</p>
+  <div className={css.actions}>{saveError&&onRetry?<button className={css.primary} disabled={busy||retrying} onClick={async()=>{setRetrying(true);try{await onRetry();setMessage('Save confirmed.')}catch{setMessage('Could not save yet. Check your connection, then retry.')}finally{setRetrying(false)}}}>{retrying?'Retrying…':'Retry save'}</button>:choice&&!blocked&&<button className={css.primary} disabled={busy||retrying} onClick={async()=>{setMessage('');if(await onInstall(slot,choice.uid)){setPicked('');setMessage('Installed. Your old part is back in the cabinet.')}else setMessage('Could not confirm the change. Check your connection and try again.')}}>{busy?'Installing…':'Install part'}</button>}<button disabled={busy||retrying} onClick={()=>onShop(slot)}>Shop for parts →</button></div>
  </EntryDialog>;
 }

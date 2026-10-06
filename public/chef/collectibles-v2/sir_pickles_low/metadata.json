@@ -1,0 +1,55 @@
+{
+  "assetId": "sir_pickles_low",
+  "displayName": "sir_pickles_low",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.3680175244808197,
+        0.960551530122757,
+        0.2380175143480301
+      ],
+      "min": [
+        -0.3683624863624573,
+        0.006982482969760895,
+        -0.23836249113082886
+      ],
+      "sizeMeters": [
+        0.736380010843277,
+        0.9535690471529961,
+        0.47638000547885895
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 84504,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 8,
+    "meshCount": 8,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 8,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 2217,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 1518,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

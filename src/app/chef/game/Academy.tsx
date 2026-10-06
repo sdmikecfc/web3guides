@@ -15,9 +15,9 @@ import { FONT } from "./_ui/tokens";
 
 const chip: React.CSSProperties = {
   background: "rgba(27,19,16,0.92)",
-  border: "1px solid #4a3626",
+  border: "1px solid #dfd4bb",
   borderRadius: 999,
-  color: "#f3e9d2",
+  color: "#3c392c",
   fontFamily: FONT,
   fontSize: 13,
   fontWeight: 700,
@@ -34,7 +34,7 @@ const doBtn: React.CSSProperties = {
   borderRadius: 10,
   border: "1px solid #e8a13d",
   background: "#e8a13d",
-  color: "#1b1310",
+  color: "#f4eddf",
   fontFamily: FONT,
   fontSize: 13,
   fontWeight: 800,
@@ -85,10 +85,10 @@ export function AcademyModal({
           width: "min(430px, 94vw)",
           maxHeight: "82vh",
           overflowY: "auto",
-          background: "#241812",
-          border: "1px solid #4a3626",
+          background: "#fffaf0",
+          border: "1px solid #dfd4bb",
           borderRadius: 16,
-          color: "#f3e9d2",
+          color: "#3c392c",
           fontFamily: FONT,
           fontSize: 13,
           padding: "14px 16px",
@@ -126,9 +126,9 @@ export function AcademyModal({
                     padding: "9px 11px",
                     marginBottom: 6,
                     borderRadius: 11,
-                    border: `1px solid ${finished ? "#e8a13d" : "#4a3626"}`,
-                    background: finished ? "rgba(232,161,61,0.09)" : "#1f150f",
-                    color: "#f3e9d2",
+                    border: `1px solid ${finished ? "#e8a13d" : "#dfd4bb"}`,
+                    background: finished ? "rgba(232,161,61,0.09)" : "#f3ecd9",
+                    color: "#3c392c",
                     fontFamily: FONT,
                     fontSize: 13,
                     cursor: "pointer",
@@ -178,9 +178,9 @@ export function AcademyModal({
                     padding: "9px 11px",
                     marginBottom: 6,
                     borderRadius: 11,
-                    border: `1px solid ${show && chosen ? (right ? "#6fe3a0" : "#e0a552") : "#4a3626"}`,
-                    background: show && chosen ? (right ? "rgba(111,227,160,0.1)" : "rgba(224,165,82,0.08)") : "#1f150f",
-                    color: "#f3e9d2",
+                    border: `1px solid ${show && chosen ? (right ? "#46744f" : "#e0a552") : "#dfd4bb"}`,
+                    background: show && chosen ? (right ? "rgba(111,227,160,0.1)" : "rgba(224,165,82,0.08)") : "#f3ecd9",
+                    color: "#3c392c",
                     fontFamily: FONT,
                     fontSize: 13,
                     cursor: correct ? "default" : "pointer",
@@ -197,7 +197,7 @@ export function AcademyModal({
               </div>
             )}
             {correct && (
-              <div style={{ color: "#6fe3a0", lineHeight: 1.45, margin: "6px 0 2px", fontWeight: 700 }}>
+              <div style={{ color: "#46744f", lineHeight: 1.45, margin: "6px 0 2px", fontWeight: 700 }}>
                 That is it exactly.
               </div>
             )}
@@ -246,7 +246,7 @@ export function AcademyModal({
               </button>
               {correct && !done.includes(open.id) && (
                 <button
-                  style={{ ...chip, borderColor: "#e8a13d", background: "#2a1c14" }}
+                  style={{ ...chip, borderColor: "#e8a13d", background: "#fffdf6" }}
                   onClick={() => {
                     onComplete(open.id);
                     setOpen(null);

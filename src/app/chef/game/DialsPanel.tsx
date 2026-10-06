@@ -24,6 +24,8 @@ import { SELL_BACK, type HireKind } from "./_engine/world";
 import { THEME_IDS, THEME_META } from "./_view/preload";
 
 export interface PanelSnapshot {
+  cleanliness?: number;
+  equipment?: number;
   tierName: string;
   seatsOpen: number;
   tables: number;
@@ -77,6 +79,8 @@ export interface PanelSnapshot {
   hustles: number;
   /** has the player ever opened the money card (M10 coach step 5) */
   lpCardOpened: boolean;
+  cookbookOpened: boolean;
+  pantryCount: number;
   busedByPlayer: number;
   placements: number;
   dirtyTables: number;
@@ -123,7 +127,7 @@ function CampaignLine({ campaign }: { campaign?: LiveCampaign | null }) {
       style={{
         marginTop: 8,
         paddingTop: 7,
-        borderTop: "1px solid rgba(74,54,38,0.6)",
+        borderTop: "1px solid rgba(119,97,60,0.15)",
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
@@ -160,10 +164,10 @@ export const VOLUME_STEPS = [0, 20, 50, 100, 150, 300, 600, 1000];
 const cardBase: React.CSSProperties = {
   position: "absolute",
   bottom: 12,
-  background: "rgba(27,19,16,0.94)",
-  border: "1px solid #4a3626",
+  background: "rgba(255,252,243,0.97)",
+  border: "1px solid #dfd4bb",
   borderRadius: 14,
-  color: "#f3e9d2",
+  color: "#3c392c",
   fontFamily: FONT,
   fontSize: 12,
   padding: "10px 12px",
@@ -219,7 +223,7 @@ export function DialsPanel({
     <div
       style={
         bare
-          ? { fontFamily: FONT, fontSize: 12, color: "#f3e9d2", pointerEvents: "auto" }
+          ? { fontFamily: FONT, fontSize: 12, color: "#3c392c", pointerEvents: "auto" }
           : { ...cardBase, position: "static", bottom: "auto", width: fullWidth ? "auto" : 236, alignSelf: fullWidth ? "stretch" : undefined, maxHeight: fullWidth ? "58vh" : cardBase.maxHeight, flexShrink: 1, minHeight: 0, pointerEvents: "auto" }
       }
     >
@@ -252,7 +256,7 @@ export function DialsPanel({
                   fontWeight: 800,
                   letterSpacing: "0.08em",
                   color: "#8a7a63",
-                  border: "1px solid #4a3626",
+                  border: "1px solid #dfd4bb",
                   borderRadius: 999,
                   padding: "2px 8px",
                 }}
@@ -279,9 +283,9 @@ export function DialsPanel({
                   style={{
                     padding: "4px 9px",
                     borderRadius: 999,
-                    border: `1px solid ${on ? "#e8a13d" : "#4a3626"}`,
-                    background: on ? "#2f2016" : "#1f150f",
-                    color: "#f3e9d2",
+                    border: `1px solid ${on ? "#e8a13d" : "#dfd4bb"}`,
+                    background: on ? "#e5eedb" : "#f3ecd9",
+                    color: "#3c392c",
                     fontSize: 11,
                     fontWeight: 700,
                     cursor: "pointer",
@@ -300,10 +304,10 @@ export function DialsPanel({
           </div>
           <div style={{ margin: "6px 0 2px", opacity: 0.75 }}>
             Parked in the market:{" "}
-            <b style={{ color: snap.liveParked ? "#e8a13d" : "#c9b79a" }}>
+            <b style={{ color: snap.liveParked ? "#e8a13d" : "#706a55" }}>
               ${snap.liveParked ? snap.parkedUsd.toFixed(2) : snap.parkedUsd}
             </b>
-            {snap.liveParked && <span style={{ color: "#6fe3a0", marginLeft: 6 }}>live</span>}
+            {snap.liveParked && <span style={{ color: "#46744f", marginLeft: 6 }}>live</span>}
           </div>
           {snap.liveParked ? (
             <div style={{ opacity: 0.6, lineHeight: 1.35 }}>
@@ -329,7 +333,7 @@ export function DialsPanel({
                 $100 for a world running on 60, with the earnings line under it
                 computed from the 60. Numbers on one card must agree. */}
             Trading this week:{" "}
-            <b style={{ color: snap.liveParked ? "#e8a13d" : "#c9b79a" }}>${snap.volumeUsd}</b>
+            <b style={{ color: snap.liveParked ? "#e8a13d" : "#706a55" }}>${snap.volumeUsd}</b>
           </div>
           <input
             type="range"
@@ -371,8 +375,8 @@ export function DialsPanel({
             style={{
               height: 11,
               borderRadius: 999,
-              background: "#31241b",
-              border: "1px solid #4a3626",
+              background: "#e6dcc8",
+              border: "1px solid #dfd4bb",
               overflow: "hidden",
               display: "flex",
             }}
@@ -396,7 +400,7 @@ export function DialsPanel({
               session. Done rows get a check and warm color; undone rows are
               simply not-yet, never a debt: no streaks, nothing shown as
               missed, and at the day's end the card quietly resets. */}
-          <div style={{ marginTop: 8, paddingTop: 7, borderTop: "1px solid rgba(74,54,38,0.6)" }}>
+          <div style={{ marginTop: 8, paddingTop: 7, borderTop: "1px solid rgba(119,97,60,0.15)" }}>
             <div style={{ opacity: 0.75, marginBottom: 4 }}>Today&apos;s goals</div>
             {[
               {
@@ -415,7 +419,7 @@ export function DialsPanel({
                     width: 15,
                     height: 15,
                     borderRadius: 999,
-                    border: `1px solid ${g2.done ? "#8fbf6a" : "#4a3626"}`,
+                    border: `1px solid ${g2.done ? "#8fbf6a" : "#dfd4bb"}`,
                     background: g2.done ? "rgba(143,191,106,0.18)" : "transparent",
                     color: "#8fbf6a",
                     display: "grid",
@@ -427,7 +431,7 @@ export function DialsPanel({
                 >
                   {g2.done ? "✓" : ""}
                 </span>
-                <span style={{ opacity: g2.done ? 0.85 : 0.65, color: g2.done ? "#f3e9d2" : undefined }}>
+                <span style={{ opacity: g2.done ? 0.85 : 0.65, color: g2.done ? "#3c392c" : undefined }}>
                   {g2.text}
                 </span>
               </div>
@@ -441,7 +445,7 @@ export function DialsPanel({
               style={{
                 marginTop: 8,
                 paddingTop: 7,
-                borderTop: "1px solid rgba(74,54,38,0.6)",
+                borderTop: "1px solid rgba(119,97,60,0.15)",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "baseline",
@@ -452,7 +456,7 @@ export function DialsPanel({
               <span
                 style={{
                   fontWeight: 700,
-                  color: snap.dailyPrepped ? "#e8a13d" : snap.dailyReady ? "#f3e9d2" : "#8a7a63",
+                  color: snap.dailyPrepped ? "#e8a13d" : snap.dailyReady ? "#3c392c" : "#8a7a63",
                   textAlign: "right",
                 }}
               >
@@ -482,10 +486,10 @@ export function DialsPanel({
           )}
           {/* the PUBLIC service ladder (ADR-0111): where you stand, never a
               dollar figure and never the payout math */}
-          <div style={{ marginTop: 8, paddingTop: 7, borderTop: "1px solid rgba(74,54,38,0.6)" }}>
+          <div style={{ marginTop: 8, paddingTop: 7, borderTop: "1px solid rgba(119,97,60,0.15)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={{ opacity: 0.75 }}>Service record</span>
-              <span style={{ fontWeight: 800, color: snap.topTier ? "#e8a13d" : "#f3e9d2" }}>
+              <span style={{ fontWeight: 800, color: snap.topTier ? "#e8a13d" : "#3c392c" }}>
                 {snap.topTier ? "★ " : ""}
                 {snap.tier}
               </span>
@@ -501,13 +505,13 @@ export function DialsPanel({
           {(snap.trashCount > 0 || snap.toiletsBroken > 0) && (
             <div style={{ marginTop: 5, color: "#6fb0c9", lineHeight: 1.35 }}>
               {snap.toiletsBroken > 0
-                ? "A restroom needs fixing. Tap it, or the crew will get to it."
+                ? "A toilet needs fixing. Tap it, or the crew will get to it."
                 : `${snap.trashCount} bit${snap.trashCount === 1 ? "" : "s"} of litter on the floor. Tap to sweep.`}
             </div>
           )}
           {snap.toiletsTotal === 0 && (
             <div style={{ marginTop: 5, opacity: 0.6, lineHeight: 1.35 }}>
-              A restroom would lift your service. The shop has one.
+              You can buy a toilet in the shop. Keep it working with occasional repairs.
             </div>
           )}
           <div style={{ marginTop: 7, lineHeight: 1.35, opacity: 0.85 }}>{snap.line}</div>
@@ -564,9 +568,9 @@ const actionBtn = (
 ): React.CSSProperties => ({
   padding: "4px 10px",
   borderRadius: 999,
-  border: `1px solid ${enabled ? accent : "#4a3626"}`,
-  background: !enabled ? "#241a14" : primary ? accent : "#2a1c14",
-  color: !enabled ? "#8a7a63" : primary ? "#1b1310" : "#f3e9d2",
+  border: `1px solid ${enabled ? accent : "#dfd4bb"}`,
+  background: !enabled ? "#eee8db" : primary ? accent : "#fffdf6",
+  color: !enabled ? "#8a7a63" : primary ? "#f4eddf" : "#3c392c",
   fontSize: 11,
   fontWeight: 800,
   cursor: enabled ? "pointer" : "default",
@@ -599,7 +603,7 @@ function HireRow({
         alignItems: "center",
         gap: 8,
         padding: "6px 0",
-        borderTop: "1px solid rgba(74,54,38,0.6)",
+        borderTop: "1px solid rgba(119,97,60,0.15)",
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -644,7 +648,7 @@ function ItemRow({
         alignItems: "center",
         gap: 9,
         padding: "7px 0",
-        borderTop: "1px solid rgba(74,54,38,0.6)",
+        borderTop: "1px solid rgba(119,97,60,0.15)",
         opacity: locked ? 0.55 : 1,
       }}
     >
@@ -654,8 +658,8 @@ function ItemRow({
           height: 42,
           flexShrink: 0,
           borderRadius: 9,
-          background: "rgba(20,14,11,0.6)",
-          border: "1px solid rgba(74,54,38,0.8)",
+          background: "rgba(235,227,207,0.6)",
+          border: "1px solid rgba(119,97,60,0.2)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -696,7 +700,7 @@ function ItemRow({
           <button
             onClick={() => canSellOrPlace && onPlace(item.id)}
             disabled={!canSellOrPlace}
-            style={actionBtn(canSellOrPlace, "#6fe3a0")}
+            style={actionBtn(canSellOrPlace, "#46744f")}
           >
             Place
           </button>
@@ -751,7 +755,7 @@ export function ShopPanel({
     <div
       style={
         bare
-          ? { fontFamily: FONT, fontSize: 12, color: "#f3e9d2", pointerEvents: "auto" }
+          ? { fontFamily: FONT, fontSize: 12, color: "#3c392c", pointerEvents: "auto" }
           : fullWidth
           ? { ...cardBase, position: "static", bottom: "auto", width: "auto", alignSelf: "stretch", maxHeight: "58vh", minHeight: 0, pointerEvents: "auto" }
           : { ...cardBase, right: 12, width: 244 }
@@ -784,9 +788,9 @@ export function ShopPanel({
                 style={{
                   padding: "4px 8px",
                   borderRadius: 999,
-                  border: `1px solid ${tab === t.id ? "#e8a13d" : "#4a3626"}`,
-                  background: tab === t.id ? "#2f2016" : "#1f150f",
-                  color: "#f3e9d2",
+                  border: `1px solid ${tab === t.id ? "#e8a13d" : "#dfd4bb"}`,
+                  background: tab === t.id ? "#e5eedb" : "#f3ecd9",
+                  color: "#3c392c",
                   fontSize: 11,
                   fontWeight: 700,
                   cursor: "pointer",
@@ -798,7 +802,7 @@ export function ShopPanel({
           </div>
           {market ? (
             <div style={{ marginBottom: 4 }}>
-              <div style={{ fontWeight: 800, color: unlocked ? "#e8a13d" : "#f3e9d2" }}>
+              <div style={{ fontWeight: 800, color: unlocked ? "#e8a13d" : "#3c392c" }}>
                 {unlocked ? "★ " : "🔒 "}
                 {market.collectionName}
               </div>
@@ -817,8 +821,8 @@ export function ShopPanel({
                           flex: 1,
                           height: 7,
                           borderRadius: 999,
-                          background: i < tenure ? "#e8a13d" : "#31241b",
-                          border: "1px solid #4a3626",
+                          background: i < tenure ? "#e8a13d" : "#e6dcc8",
+                          border: "1px solid #dfd4bb",
                         }}
                       />
                     ))}

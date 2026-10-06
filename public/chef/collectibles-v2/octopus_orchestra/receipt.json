@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T16:38:33.759Z",
+  "destination": {
+    "assetId": "octopus_orchestra",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "498fb5a5f098a4855c193a6310a7fc8c3859e5ee89bfefd2cbaf7963f686dd95",
+  "packageId": "pkg_ab707684afe6309242515f38",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 311632,
+    "fileName": "octopus_orchestra.glb",
+    "sha256": "4fbda2086eb603e2e1daf67e85949f6a06bd591946e55de250459b1402ac84db"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "assetId": "world_on_plate_low",
+  "displayName": "world_on_plate_low",
+  "files": [
+    {
+      "bytes": 338852,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "763c283022c1bed635dcf0e43bdbcd2ef04bbc7f081a66982bc140bcc7d4f14c"
+    },
+    {
+      "bytes": 1424,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "317cf4bf9705e3bbb85f991921854490aa7bcdcf023578292b30314555a02f08"
+    },
+    {
+      "bytes": 398,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "39cffea00f70b2cb2c039e79c1d0b824245345b9c5d3cb3a371e1459294bc653"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "b791e2e0f29ffd59968fc0585f11c3355b7c0f2f0b2ca67b08f0dd532cad20f0"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_d98756dd003d9db7f35ab4dc",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.1"
+}

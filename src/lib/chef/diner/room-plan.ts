@@ -2,15 +2,21 @@ import type { Point } from './types';
 import type { HomePlacement } from './progression';
 import { EQUIPMENT_BY_ID } from './content';
 import { DECOR_BY_ID } from './collections';
+import { COLLECTIBLE_BY_ID } from './collectible-packs';
+import {DOMAIN_KIT_ASSETS} from './domain-room-kit-defs';
+import {validateFreeRoomPlan,freeRoomCanStep,freeRoomSeats} from './room-plan-v2';
 
 export type RestaurantStage = 'burger_shop' | 'diner' | 'restaurant';
 export type RoomRole = 'chef' | 'waiter' | 'cashier' | 'customer';
 export type RoomModuleKind = 'display_counter' | 'lift_gate' | 'service_hatch' | 'internal_pass' | 'console' | 'chef_bar' | 'toilet' | 'handwash_sink';
 export type StoolStyle = 'classic'|'diner';
 export type RoomModule = Point & { id:string;kind:RoomModuleKind;rotation:0|1|2|3;condition?:number;width?:number;seatStyles?:StoolStyle[] };
-export type RoomEdge = { id:string;a:Point;b:Point;kind:'wall'|'staff_gate'|'door'|'hatch';zoneId?:string };
+export type RoomEdge = { id:string;a:Point;b:Point;kind:'wall'|'staff_gate'|'door'|'hatch'|'half_wall'|'glass'|'screen'|'window';zoneId?:string;finish?:string;height?:number };
 export type RoomZone = { id:string;kind:'kitchen'|'dining'|'bathroom';x:number;y:number;w:number;h:number };
-export type RoomPlan = { version:1;stage:RestaurantStage;w:number;h:number;modules:RoomModule[];edges:RoomEdge[];zones:RoomZone[] };
+export type RoomSurface=Point&{kind:'indoor'|'patio'|'garden';finish?:string};
+export type RoomEntrance={id:string;at:Point;facing:0|1|2|3;awning?:boolean};
+export type RoomSeating={mode:'waiter'|'pickup'|'chef';pointId?:string;chairs?:Point[]};
+export type RoomPlan = { version:1|2;stage:RestaurantStage;w:number;h:number;modules:RoomModule[];edges:RoomEdge[];zones:RoomZone[];surfaces?:RoomSurface[];entrances?:RoomEntrance[];seating?:Record<string,RoomSeating>;legacyShell?:boolean;appearance?:import('./domain-room-kit-defs').DomainRoomAppearance };
 export const ROOM_RULES = { version:1,orderTicks:40,toiletTicks:80,handwashTicks:40,toiletWear:.5,handwashWear:.25,minimumCondition:20,bathroomEvery:3,bathroomWaitTicks:300,tipRate:.12 } as const;
 export const RESTAURANT_STAGES = { burger_shop:{w:10,h:8,bathroomBays:2},diner:{w:12,h:10,bathroomBays:3},restaurant:{w:14,h:12,bathroomBays:4} } as const;
 export const ROOM_FIXTURES:Record<RoomModuleKind,{name:string;footprint:[number,number];solid:boolean;capacity:number}> = {
@@ -29,6 +35,7 @@ export function roomModuleGeometry(module:RoomModule):{cells:Point[];front:Point
 }
 export function roomZoneAt(plan:RoomPlan,p:Point):RoomZone|undefined{return Number.isInteger(p.x)&&Number.isInteger(p.y)&&p.x>=0&&p.x<plan.w&&p.y>=0&&p.y<plan.h?navigation(plan).zones[p.y*plan.w+p.x]:plan.zones.find(z=>p.x>=z.x&&p.x<z.x+z.w&&p.y>=z.y&&p.y<z.y+z.h&&z.kind!=='dining');}
 export function roomCanStep(plan:RoomPlan|undefined,from:Point,to:Point,role:RoomRole='waiter'):boolean {
+ if(plan?.version===2)return freeRoomCanStep(plan,from,to,role);
  if(!plan)return true;const zone=roomZoneAt(plan,to);if(role==='customer'&&zone?.kind==='kitchen')return false;if(role!=='customer'&&zone?.kind==='bathroom')return false;
  const edge=navigation(plan).edges.get(`${from.x},${from.y}>${to.x},${to.y}`);
  return !edge||edge==='door'||(edge==='staff_gate'&&role!=='customer');
@@ -62,6 +69,7 @@ function moduleEdges(module:RoomModule):{a:Point;b:Point}[]{const g=roomModuleGe
 /** Pure editor draft. Validation belongs after rotation/translation, never before. */
 export function moveRoomModule(plan:RoomPlan,id:string,x:number,y:number,rotation:0|1|2|3):RoomPlan {
  const next=structuredClone(plan),module=next.modules.find(m=>m.id===id);if(!module)return next;
+ if(plan.version===2){Object.assign(module,{x,y,rotation});return next;}
  const opening=module.kind==='lift_gate'?'staff_gate':module.kind==='display_counter'||module.kind==='service_hatch'?'hatch':null,old=moduleEdges(module);
  if(opening)for(const edge of next.edges)if(edge.kind===opening&&old.some(e=>(key(e.a)===key(edge.a)&&key(e.b)===key(edge.b))||(key(e.a)===key(edge.b)&&key(e.b)===key(edge.a))))edge.kind='wall';
  module.x=x;module.y=y;module.rotation=rotation;
@@ -80,21 +88,58 @@ export function moveRoomZone(plan:RoomPlan,zoneId:string,x:number,y:number):Room
  zone.x=x;zone.y=y;closeZoneBoundaries(next);return next;
 }
 export function moveRoomZoneLayout(layout:HomePlacement[],plan:RoomPlan,zoneId:string,x:number,y:number):HomePlacement[]{const zone=plan.zones.find(z=>z.id===zoneId);if(!zone)return structuredClone(layout);return alignRoomMounts(layout.map(p=>inZone(zone,p)?{...p,x:p.x+x-zone.x,y:p.y+y-zone.y}:structuredClone(p)),moveRoomZone(plan,zoneId,x,y));}
-export function alignRoomMounts(layout:HomePlacement[],plan:RoomPlan):HomePlacement[]{return layout.map(p=>{const at=p.mount?resolveRoomMount(plan,p.mount):null;return at?{...p,x:Math.floor(at.x),y:Math.floor(at.y)}:structuredClone(p);});}
-export function validateRoomMount(plan:RoomPlan,p:HomePlacement):string|null {
+/** Waiting benches reserve seats on their own tiles; they never add dining orders. */
+export function waitingPlaces(layout:readonly HomePlacement[]):Array<Point&{id:string;front:Point;rotation:0|1|2|3}>{
+ return layout.filter(p=>!p.mount&&DECOR_BY_ID[p.equipmentId]?.waitingSeats).flatMap(p=>Array.from({length:DECOR_BY_ID[p.equipmentId].waitingSeats!},(_,i)=>{
+  const x=p.x+(p.rotation===0?i:p.rotation===2?1-i:0),y=p.y+(p.rotation===1?i:p.rotation===3?1-i:0);
+  const delta=p.rotation===0?{x:0,y:1}:p.rotation===1?{x:-1,y:0}:p.rotation===2?{x:0,y:-1}:{x:1,y:0};
+  return {x,y,id:p.id+':wait:'+i,front:{x:x+delta.x,y:y+delta.y},rotation:p.rotation};
+ }));
+}
+export function alignRoomMounts(layout:HomePlacement[],plan:RoomPlan):HomePlacement[]{return layout.map(p=>{const at=p.mount?resolveRoomMount(plan,p.mount,layout):null;return at?{...p,x:Math.floor(at.x),y:Math.floor(at.y),rotation:at.rotation}:structuredClone(p);});}
+/** Legacy ornaments keep their saved single attachment. New wide pieces reserve every slot. */
+export function roomMountAnchors(p:Pick<HomePlacement,'equipmentId'|'mount'>,plan?:RoomPlan):NonNullable<HomePlacement['mount']>[] {
+ if(!p.mount)return [];const item=COLLECTIBLE_BY_ID[p.equipmentId],count=item?.version===2?item.footprint[0]:DOMAIN_KIT_ASSETS.has(p.equipmentId)||DECOR_BY_ID[p.equipmentId]?.displaySlot?DECOR_BY_ID[p.equipmentId]?.footprint[0]??1:1;
+ const first=plan?.version===2&&!plan.legacyShell&&p.mount.kind==='wall'&&p.mount.slot===0?plan.edges.find(e=>e.id===p.mount!.targetId):undefined;
+ return Array.from({length:count},(_,i)=>{
+  if(!first)return {...p.mount!,slot:p.mount!.slot+i};
+  const horizontal=first.a.x===first.b.x,dx=horizontal?i:0,dy=horizontal?0:i;
+  const edge=plan!.edges.find(e=>e.kind==='wall'&&(e.height??2.4)>=1.9&&((e.a.x===first.a.x+dx&&e.a.y===first.a.y+dy&&e.b.x===first.b.x+dx&&e.b.y===first.b.y+dy)||(e.b.x===first.a.x+dx&&e.b.y===first.a.y+dy&&e.a.x===first.b.x+dx&&e.a.y===first.b.y+dy)));
+  return {...p.mount!,targetId:edge?.id??`missing-support-${i}`,slot:0};
+ });
+}
+export function roomMountSlots(p:Pick<HomePlacement,'equipmentId'|'mount'>,plan?:RoomPlan):string[]{
+ return roomMountAnchors(p,plan).map(m=>`${m.kind}:${m.targetId}:${m.slot}`);
+}
+export function resolveDecorationMount(plan:RoomPlan,p:Pick<HomePlacement,'equipmentId'|'mount'>,layout:readonly HomePlacement[]=[]){
+ if(!p.mount)return null;const anchors=roomMountAnchors(p,plan),first=resolveRoomMount(plan,anchors[0],layout);
+ const last=resolveRoomMount(plan,anchors[anchors.length-1],layout);
+ return first&&last?{...first,x:(first.x+last.x)/2,y:(first.y+last.y)/2}:null;
+}
+export function validateRoomMount(plan:RoomPlan,p:HomePlacement,layout:readonly HomePlacement[]=[]):string|null {
  const mount=p.mount;if(!mount)return null;const decor=DECOR_BY_ID[p.equipmentId];if(!decor||!Number.isInteger(mount.slot)||mount.slot<0)return 'Only suitable decorations can be mounted.';
- if(mount.kind==='wall')return decor.wall&&resolveRoomMount(plan,mount)?null:'Choose a clear solid wall for this decoration.';
- if(mount.kind==='ceiling')return decor.ceiling&&resolveRoomMount(plan,mount)?null:'Choose a clear ceiling point for this hanging decoration.';
- if(mount.kind==='counter')return decor.counter&&resolveRoomMount(plan,mount)?null:'Choose a free display spot away from the till and serving dishes.';
+ const slots=roomMountSlots(p,plan),points=roomMountAnchors(p,plan).map(anchor=>resolveRoomMount(plan,anchor,layout));
+ if(points.some(point=>!point)||points.some((point,i)=>i>0&&point&&points[i-1]&&(point.rotation!==points[i-1]!.rotation||Math.abs(point.x-points[i-1]!.x)+Math.abs(point.y-points[i-1]!.y)>1.01)))return `This piece needs ${slots.length} connected display spots.`;
+ if(layout.some(other=>other.id!==p.id&&roomMountSlots(other,plan).some(slot=>slots.includes(slot))))return 'This display spot already holds a decoration.';
+ if(mount.kind==='wall')return decor.wall&&resolveRoomMount(plan,mount,layout)?null:'Choose a clear solid wall for this decoration.';
+ if(mount.kind==='ceiling')return decor.ceiling&&resolveRoomMount(plan,mount,layout)?null:'Choose a clear ceiling point for this hanging decoration.';
+ if(mount.kind==='counter')return decor.counter&&resolveRoomMount(plan,mount,layout)?null:'Choose a free display spot away from the till and serving dishes.';
  return 'Choose a wall or counter mount.';
 }
-export function resolveRoomMount(plan:RoomPlan,mount:{kind:'wall'|'counter'|'ceiling';targetId:string;slot:number}):{x:number;y:number;rotation:0|1|2|3;surfaceHeight:number}|null {
+export function resolveRoomMount(plan:RoomPlan,mount:{kind:'wall'|'counter'|'ceiling';targetId:string;slot:number},layout:readonly HomePlacement[]=[]):{x:number;y:number;rotation:0|1|2|3;surfaceHeight:number}|null {
  if(!Number.isInteger(mount.slot)||mount.slot<0)return null;
- if(mount.kind==='ceiling')return mount.targetId==='ceiling'&&mount.slot<plan.w*plan.h?{x:mount.slot%plan.w,y:Math.floor(mount.slot/plan.w),rotation:0,surfaceHeight:2.8}:null;
+ if(mount.kind==='ceiling')return mount.targetId==='ceiling'&&mount.slot<plan.w*plan.h&&(plan.version!==2||plan.surfaces?.find(s=>s.x===mount.slot%plan.w&&s.y===Math.floor(mount.slot/plan.w))?.kind==='indoor')?{x:mount.slot%plan.w,y:Math.floor(mount.slot/plan.w),rotation:0,surfaceHeight:2.8}:null;
  if(mount.kind==='wall'){
-  if(mount.targetId==='outer-back')return mount.slot<plan.w?{x:mount.slot,y:-.55,rotation:0,surfaceHeight:1.5}:null;
-  if(mount.targetId==='outer-side')return mount.slot<plan.h?{x:-.55,y:mount.slot,rotation:3,surfaceHeight:1.5}:null;
-  const edge=plan.edges.find(e=>e.id===mount.targetId&&e.kind==='wall');return edge&&mount.slot===0?{x:(edge.a.x+edge.b.x)/2,y:(edge.a.y+edge.b.y)/2,rotation:edge.a.x===edge.b.x?0:1,surfaceHeight:1.5}:null;
+  if(mount.targetId==='outer-back')return (plan.version!==2||plan.legacyShell)&&mount.slot<plan.w?{x:mount.slot,y:-.55,rotation:0,surfaceHeight:1.5}:null;
+  if(mount.targetId==='outer-side')return (plan.version!==2||plan.legacyShell)&&mount.slot<plan.h?{x:-.55,y:mount.slot,rotation:3,surfaceHeight:1.5}:null;
+  const edge=plan.edges.find(e=>e.id===mount.targetId&&e.kind==='wall'&&(e.height??2.4)>=1.9);return edge&&mount.slot===0?{x:(edge.a.x+edge.b.x)/2,y:(edge.a.y+edge.b.y)/2,rotation:edge.a.x===edge.b.x?0:edge.a.x<0||edge.b.x<0?3:1,surfaceHeight:1.5}:null;
+ }
+ const support=layout.find(p=>p.id===mount.targetId&&!p.mount),decor=support?DECOR_BY_ID[support.equipmentId]:undefined;
+ if(support&&decor?.displaySurface!==undefined){
+   const [width,height]=decor.footprint;if(mount.slot>=width*height)return null;
+   const sx=mount.slot%width,sy=Math.floor(mount.slot/width);
+   const point=support.rotation===0?{x:sx,y:sy}:support.rotation===1?{x:height-1-sy,y:sx}:support.rotation===2?{x:width-1-sx,y:height-1-sy}:{x:sy,y:width-1-sx};
+   return {x:support.x+point.x,y:support.y+point.y,rotation:support.rotation,surfaceHeight:decor.displaySurface};
  }
  const module=plan.modules.find(m=>m.id===mount.targetId);if(!module||!['display_counter','internal_pass','console','chef_bar'].includes(module.kind)||(['display_counter','internal_pass'].includes(module.kind)&&mount.slot===0))return null;
  const point=roomModuleGeometry(module).cells[mount.slot];if(!point)return null;
@@ -104,7 +149,8 @@ export function resolveRoomMount(plan:RoomPlan,mount:{kind:'wall'|'counter'|'cei
  return {x:point.x+delta.x,y:point.y+delta.y,rotation:module.rotation,surfaceHeight:module.kind==='internal_pass'?1.13:1.11};
 }
 /** One source for staged table chairs, used by both validation and simulation. */
-export function roomTableSeats(p:HomePlacement,available:(point:Point)=>boolean):Point[] {
+export function roomTableSeats(p:HomePlacement,available:(point:Point)=>boolean,plan?:RoomPlan):Point[] {
+ if(plan?.version===2)return freeRoomSeats(plan,p).filter(available);
  const capacity=p.equipmentId==='table_1'?1:p.equipmentId==='table_2'||p.equipmentId==='booth_2'?2:p.equipmentId==='table_4'?4:0;if(!capacity)return [];
  // Booth benches belong to the furnishing. Unlike loose chairs they cannot
  // jump to a different side when somebody places an object next to them.
@@ -119,6 +165,7 @@ export function roomTableSeats(p:HomePlacement,available:(point:Point)=>boolean)
  return usable.length<capacity?[]:Array.from({length:capacity},(_,i)=>usable[Math.floor(i*usable.length/capacity)]);
 }
 export function validateRoomPlan(value:RoomPlan,layout:HomePlacement[]=[]):string|null {
+ if(value?.version===2)return validateFreeRoomPlan(value,layout);
  if(!value||value.version!==1||!Object.hasOwn(RESTAURANT_STAGES,value.stage))return 'Choose a known restaurant stage.';
  navigationCache.delete(value);
  const spec=RESTAURANT_STAGES[value.stage];if(value.w!==spec.w||value.h!==spec.h||!Array.isArray(value.modules)||value.modules.length>80||!Array.isArray(value.edges)||value.edges.length>180||!Array.isArray(value.zones)||value.zones.length>12)return 'The room plan dimensions or module count are invalid.';
@@ -136,14 +183,17 @@ export function validateRoomPlan(value:RoomPlan,layout:HomePlacement[]=[]):strin
  for(const zone of [...kitchens,...bathrooms])for(let y=zone.y;y<zone.y+zone.h;y++)for(let x=zone.x;x<zone.x+zone.w;x++)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const a={x,y},b={x:x+dx,y:y+dy};if(!inside(b)||inZone(zone,b))continue;const edge=value.edges.find(e=>sameEdge(e,{a,b}));if(!edge||(zone.kind==='kitchen'?edge.kind==='door':!['wall','door'].includes(edge.kind)))return 'Keep the kitchen and bathroom boundaries enclosed, with their proper openings.';}
  for(const m of value.modules)if(m.kind==='lift_gate'){const g=roomModuleGeometry(m),edge=moduleEdges(m)[0];if(roomZoneAt(value,g.back)?.kind!=='kitchen'||roomZoneAt(value,edge.b)?.kind==='kitchen'||roomZoneAt(value,edge.b)?.kind==='bathroom')return 'Place the lift gate between the kitchen and public floor.';}
  for(const edge of value.edges)if(edge.kind==='staff_gate'&&!value.modules.some(m=>m.kind==='lift_gate'&&moduleEdges(m).some(e=>sameEdge(e,edge))))return 'Every staff opening needs a visible lift gate.';
- const mounts=new Set<string>(),occupied=new Set(solid);for(const p of layout){if(p.mount){const error=validateRoomMount(value,p),resolved=resolveRoomMount(value,p.mount);if(error)return error;if(!resolved||p.x!==Math.floor(resolved.x)||p.y!==Math.floor(resolved.y))return 'Keep mounted decoration aligned with its support.';const slot=`${p.mount.kind}:${p.mount.targetId}:${p.mount.slot}`;if(mounts.has(slot))return 'This display spot already holds a decoration.';mounts.add(slot);continue;}const def=EQUIPMENT_BY_ID[p.equipmentId]??DECOR_BY_ID[p.equipmentId];if(!def)return 'Choose a known furnishing.';if(DECOR_BY_ID[p.equipmentId]?.ceiling)return 'Hang this decoration from a ceiling position.';const [width,height]=p.rotation%2?[def.footprint[1],def.footprint[0]]:def.footprint;for(let y=0;y<height;y++)for(let x=0;x<width;x++){const point={x:p.x+x,y:p.y+y};if(!inside(point)||occupied.has(key(point)))return 'Furniture overlaps a room module or another furnishing.';occupied.add(key(point));if(!DECOR_BY_ID[p.equipmentId]?.passable)solid.add(key(point));}}
+ const mounts=new Set<string>(),occupied=new Set(solid);for(const p of layout){if(p.mount){const error=validateRoomMount(value,p,layout),resolved=resolveRoomMount(value,p.mount,layout);if(error)return error;if(!resolved||p.x!==Math.floor(resolved.x)||p.y!==Math.floor(resolved.y))return 'Keep mounted decoration aligned with its support.';const slot=`${p.mount.kind}:${p.mount.targetId}:${p.mount.slot}`;if(mounts.has(slot))return 'This display spot already holds a decoration.';mounts.add(slot);continue;}const item=COLLECTIBLE_BY_ID[p.equipmentId];if(item?.version===2&&item.mount!=='floor')return `Attach this piece to a ${item.mount} display spot.`;const def=EQUIPMENT_BY_ID[p.equipmentId]??DECOR_BY_ID[p.equipmentId];if(!def)return 'Choose a known furnishing.';if(DECOR_BY_ID[p.equipmentId]?.ceiling)return 'Hang this decoration from a ceiling position.';const [width,height]=p.rotation%2?[def.footprint[1],def.footprint[0]]:def.footprint;for(let y=0;y<height;y++)for(let x=0;x<width;x++){const point={x:p.x+x,y:p.y+y};if(!inside(point)||occupied.has(key(point)))return 'Furniture overlaps a room module or another furnishing.';occupied.add(key(point));if(!DECOR_BY_ID[p.equipmentId]?.passable)solid.add(key(point));}}
  if(!value.modules.some(m=>['display_counter','service_hatch','internal_pass'].includes(m.kind)))return 'Add a food handoff counter.';
  const door={x:Math.floor(value.w/2),y:value.h-1};if(solid.has(key(door)))return 'Keep the restaurant entrance clear.';
  const chairs=new Set<string>();for(const m of value.modules)for(const seat of roomModuleGeometry(m).seats){if(!inside(seat)||solid.has(key(seat))||chairs.has(key(seat)))return 'Give each stool its own clear floor space.';chairs.add(key(seat));}
  const reach=(role:RoomRole,blockChairs:boolean)=>{const seen=new Set<string>([key(door)]),queue=[door];for(let i=0;i<queue.length;i++)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const q={x:queue[i].x+dx,y:queue[i].y+dy};if(inside(q)&&!solid.has(key(q))&&(!blockChairs||!chairs.has(key(q)))&&!seen.has(key(q))&&roomCanStep(value,queue[i],q,role)){seen.add(key(q));queue.push(q);}}return seen;};
  const publicFloor=reach('customer',false),tableSeats=new Map<string,Point[]>();
  for(const p of layout)if(['table_1','table_2','table_4','booth_2'].includes(p.equipmentId)){const seats=roomTableSeats(p,point=>publicFloor.has(key(point))&&!solid.has(key(point)));if(!seats.length)return p.equipmentId==='booth_2'?'Keep both fixed booth benches clear and reachable from the dining room.':'Keep every table chair reachable from the public dining room.';for(const seat of seats){if(chairs.has(key(seat))||key(seat)===key(door))return 'Give each chair its own clear floor space.';chairs.add(key(seat));}tableSeats.set(p.id,seats);}
+ const waiting=waitingPlaces(layout);
+ for(const seat of waiting){if(!publicFloor.has(key(seat))||chairs.has(key(seat))||key(seat)===key(door)||(roomZoneAt(value,seat)?.kind??'dining')!=='dining')return 'Keep waiting benches in the public dining area, clear of dining chairs and the entrance.';chairs.add(key(seat));}
  const staff=reach('waiter',true),publicAisles=reach('customer',true);
+ for(const seat of waiting)if(!publicAisles.has(key(seat.front))||!roomCanStep(value,seat.front,seat,'customer'))return 'Leave a clear public approach in front of each waiting seat.';
  for(const point of [...value.modules.flatMap(m=>roomModuleGeometry(m).seats),...tableSeats.values()].flat())if(![[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>{const from={x:point.x+dx,y:point.y+dy};return publicAisles.has(key(from))&&roomCanStep(value,from,point,'customer');}))return 'Leave a public aisle to each chair without crossing another chair.';
  for(const p of layout)if(tableSeats.has(p.id)){const def=EQUIPMENT_BY_ID[p.equipmentId],[width,height]=p.rotation%2?[def.footprint[1],def.footprint[0]]:def.footprint;let service=false;for(let y=0;y<height;y++)for(let x=0;x<width;x++)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])if(staff.has(key({x:p.x+x+dx,y:p.y+y+dy})))service=true;if(!service)return 'Leave a serving side beside every table.';}
  for(const m of value.modules){const g=roomModuleGeometry(m);if(m.kind==='toilet'||m.kind==='handwash_sink'){if(roomZoneAt(value,m)?.kind!=='bathroom'||roomZoneAt(value,g.front)?.kind!=='bathroom')return 'Place bathroom fixtures inside the bathroom area.';if(!publicFloor.has(key(g.front)))return 'Keep a public path to each bathroom fixture.';}if(['display_counter','service_hatch','internal_pass'].includes(m.kind)&&(!staff.has(key(g.front))||!staff.has(key(g.back))))return 'Keep both sides of the food handoff reachable.';if((m.kind==='display_counter'||m.kind==='service_hatch')&&(roomZoneAt(value,g.back)?.kind!=='kitchen'||roomZoneAt(value,g.front)?.kind==='kitchen'))return 'Place this counter between the kitchen and public floor.';if(m.kind==='display_counter'&&(!staff.has(key(g.orderBack))||!publicFloor.has(key(g.orderFront))))return 'Keep the cashier and ordering side reachable.';if(g.seats.some(p=>!publicFloor.has(key(p)))||g.servicePoints.some(p=>!staff.has(key(p))))return 'Keep every stool and its serving side reachable.';}

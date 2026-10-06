@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T16:38:02.343Z",
+  "destination": {
+    "assetId": "rocket_shake",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "e423da5f4ba1d023104a6b83c20f7b928eda7461a8b2674661cc152e4c5e2344",
+  "packageId": "pkg_17e7f0eae643bc2801023450",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 527664,
+    "fileName": "rocket_shake.glb",
+    "sha256": "5f0cf979594cf11a77652f097d0c50aa5067e21ea34f382871a0aa91e7589559"
+  }
+}

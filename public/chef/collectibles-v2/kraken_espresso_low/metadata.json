@@ -1,0 +1,55 @@
+{
+  "assetId": "kraken_espresso_low",
+  "displayName": "kraken_espresso_low",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.40993747115135193,
+        1.4072855513449625,
+        0.35801753401756287
+      ],
+      "min": [
+        -0.40993747115135193,
+        0.008638322353363037,
+        -0.3563617169857025
+      ],
+      "sizeMeters": [
+        0.8198749423027039,
+        1.3986472289915994,
+        0.7143792510032654
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 215544,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 6,
+    "meshCount": 9,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 9,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 6090,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 4189,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

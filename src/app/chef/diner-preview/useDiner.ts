@@ -4,7 +4,12 @@ import { createDiner, dispatchDiner, sanitizeDinerSave, DINER_SAVE_KEY, dinerTic
 import type { DinerSocialCommand } from '@/lib/chef/diner/social';
 import { DinerSync, type SyncStatus, type DinerSession, type DinerSnapshot } from './diner-sync';
 import { useDinerAccess } from './DinerAccess';
+import {gameplayRecorder} from './gameplay-recorder';
+import {clearLocalDiagnostics} from './local-diagnostics';
 import { betaStorageKeys } from './beta-access';
+import { claimCollectionRestaurant } from '@/lib/chef/gacha/collection-client';
+import type { DomainId } from '@/lib/chef/diner/domain-worlds';
+import {attachJourneyRewards} from '@/lib/chef/diner/domain-journey-rewards';
 
 const SOCIAL_PENDING_KEY='diner_preview_social_pending_v1';
 
@@ -12,6 +17,9 @@ const SOCIAL_PENDING_KEY='diner_preview_social_pending_v1';
 export function useDiner(){
   const access=useDinerAccess(),requiredWallet=access?.mode==='wallet'?access.wallet:undefined,localAllowed=access?.mode==='local'||access?.mode==='beta';
   const localSaveKey=access?.mode==='beta'?betaStorageKeys(access.wallet).save:DINER_SAVE_KEY;
+  const accessRef=useRef(access);accessRef.current=access;
+  const mounted=useRef(false);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   const reauthenticate=access?.mode==='wallet'?access.reauthenticate:undefined;
   const socialPendingKey=requiredWallet?`${SOCIAL_PENDING_KEY}:${requiredWallet}`:SOCIAL_PENDING_KEY;
   const [state,setState]=useState<DinerState|null>(null),live=useRef<DinerState|null>(null);
@@ -23,8 +31,12 @@ export function useDiner(){
   const replace=useCallback((next:DinerState)=>{if(!live.current){setMessage(null);if(timer.current)clearTimeout(timer.current);timer.current=null;}live.current=next;setState(next);dirty.current=true;},[]);
   const send=useCallback((command:DinerCommand):boolean=>{
     if(!live.current||externalBusy.current)return false;
+    const recorded=live.current.run?.service??live.current.rally?.service;
+    if(recorded&&(command.type==='service'||command.type==='rallyService'))gameplayRecorder.before(recorded,command.action);
     if(sync.current?.session)return sync.current.send(command);
     if(!localAllowed)return false;
+    // Pack samples are private development fixtures. Public beta/local play never
+    // supplies a ticket, so replaying an old previewPack command cannot grant one.
     const next=dispatchDiner(live.current,command,{now:Date.now(),online:document.visibilityState==='visible'});
     if(next.error){announce(next.error,true);return false;}replace(next.state);
     // Pointer samples remain ordered in memory; the regular checkpoint saves them.
@@ -112,7 +124,54 @@ export function useDiner(){
     };
     const pageHide=()=>{hidden();write();};
     document.addEventListener('visibilitychange',hidden);window.addEventListener('pagehide',pageHide);
-    return()=>{active=false;clearInterval(tick);clearInterval(save);clearInterval(settle);document.removeEventListener('visibilitychange',hidden);window.removeEventListener('pagehide',pageHide);const pause=live.current?dinerPauseCommand(live.current):null;if(pause)send(pause);write();sync.current?.dispose();sync.current=null;if(timer.current)clearTimeout(timer.current);};
+    return()=>{active=false;clearInterval(tick);clearInterval(save);clearInterval(settle);document.removeEventListener('visibilitychange',hidden);window.removeEventListener('pagehide',pageHide);const pause=live.current?dinerPauseCommand(live.current):null;if(pause)send(pause);write();gameplayRecorder.clear();clearLocalDiagnostics();sync.current?.dispose();sync.current=null;if(timer.current)clearTimeout(timer.current);};
   },[announce,replace,send,write,requiredWallet,localAllowed,localSaveKey,reauthenticate]);
-  return {state,send,announce,message,replace,syncStatus,serverEnabled,localSaveError,connect,read,social,acceptSession,signOut};
+  // Receipt delivery is independent of cloud-save adoption. Fetch again on a
+  // return home; an interrupted response cannot change another wallet's save.
+  const journeyChecked=useRef<string|null>(null);
+  useEffect(()=>{if(access?.mode!=='wallet'||syncStatus!=='saved'||journeyChecked.current===access.wallet)return;const wallet=access.wallet;journeyChecked.current=wallet;void read('journey/rewards').then(data=>{const result=data as {wallet?:string;rewards?:unknown[]};if(accessRef.current?.mode==='wallet'&&accessRef.current.wallet===wallet&&result.wallet===wallet&&result.rewards?.length)send({type:'claimDomainJourneyRewards'});}).catch(()=>{});},[access,syncStatus,read,send]);
+  useEffect(()=>{
+    if(access?.mode!=='beta'||!state||journeyChecked.current===access.wallet)return;
+    const wallet=access.wallet;journeyChecked.current=wallet;const abort=new AbortController();
+    void (async()=>{try{
+      const session=JSON.parse(localStorage.getItem(DinerSync.sessionKey(wallet))??'null') as DinerSession|null;
+      if(session?.wallet!==wallet||session.expiresAt*1000<Date.now()+30000)return;
+      const response=await fetch('/api/chef/diner/journey/rewards',{headers:{Authorization:`Bearer ${session.accessToken}`},cache:'no-store',signal:abort.signal});if(!response.ok)return;
+      const data=await response.json(),current=accessRef.current;
+      if(abort.signal.aborted||!mounted.current||!live.current||current?.mode!=='beta'||current.wallet!==wallet||sync.current?.session||!guestWritable.current)return;
+      const next=attachJourneyRewards(live.current,data,wallet),before=live.current.domainJourneyRewards?.receipts.length??0;
+      if(next.domainJourneyRewards!.receipts.length===before)return;
+      localStorage.setItem(localSaveKey,JSON.stringify(next));replace(next);dirty.current=false;
+      announce('Your journey rewards are home. Décor is in Storage; earned dishes are in Menu & recipes.');
+    }catch(error){if(!abort.signal.aborted)announce('Journey rewards could not be saved yet. Return home to retry.',true);}})();
+    // Do not cancel when ordinary ticks render a newer state.
+    return undefined;
+  },[access,state,localSaveKey,replace,announce]);
+  const refreshRallyTrophy=useCallback(async(session:DinerSession)=>{
+    const wallet=access?.mode==='beta'||access?.mode==='wallet'?access.wallet:null;if(!wallet||wallet!==session.wallet?.toLowerCase())return;
+    const response=await fetch('/api/chef/diner/ranked/current',{headers:{Authorization:`Bearer ${session.accessToken}`},cache:'no-store'});if(!response.ok)return;const data=await response.json();const currentAccess=accessRef.current;if(!data.trophy||!live.current||currentAccess?.mode!==access?.mode||!currentAccess||!('wallet' in currentAccess)||currentAccess.wallet!==wallet)return;
+    if(sync.current?.session){send({type:'claimRallyTrophy'});return;}
+    if(access?.mode==='beta'){const result=dispatchDiner(live.current,{type:'claimRallyTrophy'},{now:Date.now(),verifiedRallyTrophy:true});if(!result.error){replace(result.state);write();}}
+  },[access,send,replace,write]);
+  const refreshCommunityPlaque=useCallback(async(session:DinerSession)=>{
+    const wallet=access?.mode==='beta'||access?.mode==='wallet'?access.wallet:null;if(!wallet||wallet!==session.wallet?.toLowerCase())throw new Error('Reconnect the wallet that cooked for the picnic.');
+    const response=await fetch('/api/chef/diner/community/current',{headers:{Authorization:`Bearer ${session.accessToken}`},cache:'no-store'});if(!response.ok)throw new Error('The picnic reward could not be verified yet.');const data=await response.json(),currentAccess=accessRef.current;
+    if(!data.entitled||!live.current||!currentAccess||!('wallet' in currentAccess)||currentAccess.wallet!==wallet)throw new Error('Your plaque is not ready for this wallet.');
+    if(sync.current?.session){send({type:'claimCommunityPlaque'});return;}
+    if(access?.mode==='beta'){const result=dispatchDiner(live.current,{type:'claimCommunityPlaque'},{now:Date.now(),verifiedCommunityPlaque:true});if(result.error)throw new Error(result.error);replace(result.state);write();}
+  },[access,send,replace,write]);
+  const refreshCollectionRoom=useCallback(async(session:DinerSession,domain:DomainId,signal:AbortSignal)=>{
+    const wallet=access?.mode==='beta'?access.wallet:null;
+    if(!wallet||session.wallet?.toLowerCase()!==wallet||sync.current?.session)throw new Error('Open the beta restaurant for this wallet first.');
+    await claimCollectionRestaurant({wallet,domain,session,signal,current:()=>{
+      const current=accessRef.current;
+      return mounted.current&&live.current&&current?.mode==='beta'&&!sync.current?.session?{wallet:current.wallet,state:live.current}:null;
+    },persist:next=>{
+      if(!guestWritable.current)throw new Error('Allow browser storage before attaching your restaurant kit.');
+      // Persist before reporting success. Retry can re-deliver the same receipt.
+      try{localStorage.setItem(localSaveKey,JSON.stringify(next));}catch{throw new Error('Your browser could not save the kit. Allow storage, then claim again.');}
+      replace(next);dirty.current=false;setLocalSaveError(null);
+    }});
+  },[access,localSaveKey,replace]);
+  return {state,send,announce,message,replace,refreshCollectionRoom,refreshCommunityPlaque,refreshRallyTrophy,syncStatus,serverEnabled,localSaveError,connect,read,social,acceptSession,signOut};
 }

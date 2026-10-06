@@ -1,0 +1,43 @@
+{
+  "assetId": "after_hours_diner_low",
+  "displayName": "after_hours_diner_low",
+  "files": [
+    {
+      "bytes": 145276,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "8205f8a7d5cfd6c50aa106fe3f1c8e7c63b606b15bf9c0a96af1aa1ef5fef098"
+    },
+    {
+      "bytes": 1430,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "bf7aa360554f5b18645a9f92d7f87ed24bf081da4038f35cc9a842c322e652f6"
+    },
+    {
+      "bytes": 401,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "ebe5694123c4dfa3c756b57da8a973fe79b150f4c3667a046facda3094bdb630"
+    },
+    {
+      "bytes": 2535,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "b6d6ee8aa53bee8d702e8e12e27693b880f32f8c6ccaa49f7b350c7e93572510"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_ee8501a32ab5b8a3132f0583",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.1"
+}

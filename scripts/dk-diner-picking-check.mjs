@@ -2,7 +2,8 @@
 import assert from 'node:assert/strict';
 import {THREE,sourceModule} from './dk-diner-source-loader.mjs';
 const {createModel,createFoodModel,animateCharacter}=await sourceModule('src/app/chef/diner-preview/models.ts');
-const {firstVisibleSceneSurface,setActorPicking}=await sourceModule('src/app/chef/diner-preview/scene-picking.ts');
+const {firstVisibleSceneSurface,resolveTableSurfaceTarget,setActorPicking}=await sourceModule('src/app/chef/diner-preview/scene-picking.ts');
+const {makeTable,tableFootprint}=await sourceModule('src/lib/chef/diner/geometry.ts');
 const raycaster=new THREE.Raycaster();let groups=0;
 function test(name,run){run();groups++;console.log(`PASS ${name}`);}
 function cast(root,origin=[0,5,0],direction=[0,-1,0]){root.updateMatrixWorld(true);raycaster.set(new THREE.Vector3(...origin),new THREE.Vector3(...direction).normalize());return raycaster.intersectObject(root,true);}
@@ -13,6 +14,26 @@ function plane(material,y=1){const mesh=new THREE.Mesh(new THREE.PlaneGeometry(2
 const opaque=()=>new THREE.MeshBasicMaterial({color:'#69422f',side:THREE.DoubleSide});
 function ancestry(object,name){while(object){if(object.name===name)return true;object=object.parent;}return false;}
 function targetAt(hit){let object=hit.object;while(object){if(object.userData.pick)return object.userData.pick;object=object.parent;}return null;}
+
+test('both halves of a rotated tabletop select their own seat, with exact chair and food picks preserved',()=>{
+  let checked=0;
+  for(const capacity of [2,4])for(const rotation of [0,1,2,3]){
+    const table=makeTable('shared',3,5,capacity,1,rotation),cells=tableFootprint(table);
+    const center={x:cells.reduce((n,p)=>n+p.x,0)/cells.length,y:cells.reduce((n,p)=>n+p.y,0)/cells.length};
+    const model=target(`table_${capacity}`,table.id);model.position.set(center.x,0,center.y);model.rotation.y=-rotation*Math.PI/2;
+    const root=rootOf(model);
+    for(const seat of table.seats){
+      // Ray through the tabletop on this guest's side, using the shipped model.
+      const x=center.x+(seat.x-center.x)*.2,z=center.y+(seat.y-center.y)*.2;
+      const surface=closest(root,[x,4,z]);assert.equal(surface?.target?.id,table.id,'must hit the physical tabletop');
+      assert.equal(resolveTableSurfaceTarget(surface,[table]).seatId,seat.id,`${capacity} seats, turn ${rotation}`);checked++;
+      const exact={...surface,target:{id:table.id,seatId:seat.id}};
+      assert.deepEqual(resolveTableSurfaceTarget(exact,[table]),exact.target);
+    }
+    const middle=closest(root,[center.x,4,center.y]);assert.deepEqual(resolveTableSurfaceTarget(middle,[table]),{id:table.id});
+  }
+  assert.equal(checked,24);assert.equal(resolveTableSurfaceTarget(null,[]),undefined);
+});
 
 test('a foreground chair owns its seat instead of selecting the table or floor spill behind it',()=>{
   const spill=target('spill','incident:spill'),table=target('table_2','table-1'),chair=target('chair','table-1','seat-near');

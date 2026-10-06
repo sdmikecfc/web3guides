@@ -14,7 +14,7 @@
  * static room definition and never per pathfind.
  */
 
-import { itemDef } from "./items";
+import { footprintCells, itemDef } from "./items";
 import type { PlacedItem } from "./world";
 
 export interface Grid {
@@ -34,8 +34,8 @@ export function buildGrid(w: number, h: number, layout: PlacedItem[]): Grid {
     const def = itemDef(p.itemId);
     if (!def || !def.solid) continue; // rug, doormat: walkable
     const seat = def.kind === "chair" || def.kind === "bench";
-    for (let i = 0; i < def.cells; i++) {
-      put(p.gx + i, p.gy, seat ? 2 : 1);
+    for (const cell of footprintCells(p.itemId, p.gx, p.gy, p.facing)) {
+      put(cell.x, cell.y, seat ? 2 : 1);
     }
   }
   return { w, h, cells };

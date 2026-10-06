@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:21:07.708Z",
+  "destination": {
+    "assetId": "dragonfire_grill_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "f2245194fef1048a8e17d903dda2d6f54736db9fde335d793f9fecad8525fbf3",
+  "packageId": "pkg_6a3bd18c84adc93d31caed6d",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 272992,
+    "fileName": "dragonfire_grill_low.glb",
+    "sha256": "5aec91734f546242da8f41289c9e8851d1c139109a78f492fd3797c4387bea88"
+  }
+}

@@ -4,8 +4,9 @@ import fs from 'node:fs';
 import Module from 'node:module';
 import path from 'node:path';
 import { createDiner, dispatchDiner, dinerPauseCommand, type DinerCommand, type DinerState } from '../src/lib/chef/diner/progression';
-import { createService } from '../src/lib/chef/diner/service';
-import { buildServiceLoadout } from '../src/lib/chef/diner/geometry';
+import { createService, dispatchService, sanitizeService } from '../src/lib/chef/diner/service';
+import { buildServiceLoadout, makeStation } from '../src/lib/chef/diner/geometry';
+import {Cook} from './dk-diner-cook-fixture';
 const loader=Module as unknown as {_load:(request:string,parent:unknown,main:boolean)=>unknown},original=loader._load;
 loader._load=function(request,parent,main){return original.call(this,request.startsWith('@/')?path.resolve('src',request.slice(2)):request,parent,main);};
 const {cookingGuideMenu,cookingGuideRecipe,cookingGuideSteps}=require('../src/app/chef/diner-preview/cooking-guide') as typeof import('../src/app/chef/diner-preview/cooking-guide');
@@ -27,7 +28,7 @@ check('loaned rally menu exposes fries and lemonade without granting owned recip
 check('each selected rally dish explains its own supply, cooking and serving vessel',()=>{
   const state=rally(),burger=cookingGuideSteps(state,'classic_burger').join(' '),fries=cookingGuideSteps(state,'fries').join(' '),drink=cookingGuideSteps(state,'lemonade').join(' ');
   assert.match(burger,/beef from the fridge/);assert.match(burger,/bun from the pantry/);assert.match(burger,/clean plate/);
-  assert.match(fries,/potato from the pantry/);assert.match(fries,/Cut potatoes/);assert.match(fries,/raise its basket/);assert.match(fries,/3 orders/);assert.match(fries,/empty fries box/);assert.match(fries,/carton.*bin/);assert.doesNotMatch(fries,/beef|bun|Grill/);
+  assert.match(fries,/potato from the pantry/);assert.match(fries,/Cut potatoes/);assert.match(fries,/raise its basket/);assert.match(fries,/3 orders/);assert.match(fries,/empty fries box/);assert.match(fries,/carton.*bin/);assert.doesNotMatch(fries,/beef|bun|Grill|Finish fries portion/);
   assert.match(drink,/lemon from the pantry/);assert.match(drink,/Pour lemonade at the drinks station/);assert.match(drink,/Hold the nearby work control/);assert.match(drink,/clean cup/);assert.doesNotMatch(drink,/burger|beef|bun|basket|Grill/);
 });
 check('normal truck guides follow the active menu and legacy checkpoints keep their old cooking steps',()=>{
@@ -71,11 +72,32 @@ loader._load=function(request,parent,main){
 };
 const DinerPanels=require('../src/app/chef/diner-preview/DinerPanels').default;
 const {RecipeUpgrade,recipeUpgradeDetails}=require('../src/app/chef/diner-preview/RecipeUpgrade') as typeof import('../src/app/chef/diner-preview/RecipeUpgrade');
-const {TruckPacking}=require('../src/app/chef/diner-preview/TruckPacking') as typeof import('../src/app/chef/diner-preview/TruckPacking');
+const {TruckPacking,lunchHelp}=require('../src/app/chef/diner-preview/TruckPacking') as typeof import('../src/app/chef/diner-preview/TruckPacking');
 const {RoadsideMarket}=require('../src/app/chef/diner-preview/RecipeLearning') as typeof import('../src/app/chef/diner-preview/RecipeLearning');
 const {ServiceLevelCard}=require('../src/app/chef/diner-preview/ServiceLevelCard') as typeof import('../src/app/chef/diner-preview/ServiceLevelCard');
 const {TruckHelpers}=require('../src/app/chef/diner-preview/CollectionPanels') as typeof import('../src/app/chef/diner-preview/CollectionPanels');
+const {CounterItems}=require('../src/app/chef/diner-preview/CounterItems') as typeof import('../src/app/chef/diner-preview/CounterItems');
 loader._load=original;
+check('holding counter buttons retrieve the exact stored object through real walking and reload',()=>{
+  for(const tier of [1,2,3] as const){
+    const loadout=buildServiceLoadout(1,['classic_burger']);loadout.stations.push(makeStation('holding','pass',5,5,tier));
+    let service=dispatchService(createService({...loadout,menu:['classic_burger'],lessonVersion:0}),{type:'prepare'});
+    const cook=new Cook(()=>service,action=>{service=dispatchService(service,action);});
+    cook.touch('crate',undefined,undefined,'bun');const bun=structuredClone(service.chef.held!);cook.touch('holding');
+    cook.touch('plates');const plate=structuredClone(service.chef.held!);cook.touch('holding');
+    service=dispatchService(sanitizeService(JSON.parse(JSON.stringify(service)))!,{type:'resume'});
+    const panel=()=>CounterItems({service,station:service.stations.find(st=>st.id==='holding')!,onTake:itemId=>cook.touch('holding',undefined,undefined,undefined,itemId),onPutDown:()=>cook.touch('holding'),onClose:()=>{}});
+    const buttons=(element:any):any[]=>!element||typeof element!=='object'?[]:[...(element.type==='button'?[element]:[]),...React.Children.toArray(element.props?.children).flatMap(buttons)];
+    // The second item used to live below a clipped mobile information card.
+    let choices=buttons(panel());assert(choices.find(button=>button.props['aria-label']==='Take Bun from spot 1'));
+    const takePlate=choices.find(button=>button.props['aria-label']==='Take Clean plate from spot 2');assert(takePlate);assert.equal(takePlate.props.disabled,false);takePlate.props.onClick();
+    assert.deepEqual(service.chef.held,plate);assert.equal(service.stations.find(st=>st.id==='holding')!.slots[0].item!.id,bun.id);
+    choices=buttons(panel());assert(choices.filter(button=>button.props['aria-label']?.startsWith('Take ')).every(button=>button.props.disabled));
+    const put=choices.find(button=>button.props.children==='Put down clean plate');assert(put);put.props.onClick();assert.equal(service.chef.held,null);
+    const takeBun=buttons(panel()).find(button=>button.props['aria-label']==='Take Bun from spot 1');takeBun.props.onClick();assert.deepEqual(service.chef.held,bun);
+    assert(sanitizeService(service));
+  }
+});
 check('the real cooking panel opens directly on the clicked recipe, with loaned tabs and the correct artwork',()=>{
   for(const [id,name] of [['classic_burger','Classic burger'],['fries','Fries'],['lemonade','Lemonade']]){
     const html=renderToStaticMarkup(React.createElement(DinerPanels,{panel:'help',state:rally(),helpRecipeId:id,close:()=>{}}));
@@ -88,11 +110,11 @@ check('rally exit screen explains unfinished versus saved results and exposes an
   assert.match(html,/previous best score stays safe/);assert.match(html,/>Back home<\/button>/);assert.match(html,/>Stay in the truck<\/button>/);
   state.rally.service!.phase='complete';html=renderToStaticMarkup(React.createElement(DinerPanels,{panel:'rallyExit',state,close:()=>{}}));assert.match(html,/result will be saved/);assert.doesNotMatch(html,/unfinished attempt/);
 });
-check('Cook offers recipe upgrades and cookbook selection follows the dish being inspected',()=>{
+check('truck destinations omit upgrades; home cookbook follows the inspected dish',()=>{
   const state=fresh();state.recipes.fries={level:2};
-  const menu=renderToStaticMarkup(React.createElement(DinerPanels,{panel:'map',state,close:()=>{},open:()=>{}}));assert.match(menu,/>Upgrade dishes<\/button>/);
+  const menu=renderToStaticMarkup(React.createElement(DinerPanels,{panel:'map',state,close:()=>{},open:()=>{}}));assert.doesNotMatch(menu,/>Upgrade dishes<\/button>/);assert.match(menu,/Travel there/);
   const book=renderToStaticMarkup(React.createElement(DinerPanels,{panel:'recipes',state,helpRecipeId:'fries',close:()=>{},open:()=>{}}));
-  assert.match(book,/aria-label="Fries"/);assert.match(book,/Upgrade to level 3/);assert.match(book,/Need 1 · Have 0/);assert.match(book,/saved pantry ingredients/);
+  assert.match(book,/aria-label="Fries"/);assert.match(book,/Upgrade to level 3/);assert.match(book,/Need 1 · Have 0/);assert.match(book,/Use collected upgrade ingredients/);assert.match(book,/Cooking supplies are free during service/);
 });
 check('recipe guide exposes the actual ingredient-funded upgrade and shows its price gain',()=>{
   let state=fresh();state.pantry={beef:1,bun:1};const before=state.coins,info=recipeUpgradeDetails(state,'classic_burger')!;
@@ -101,17 +123,28 @@ check('recipe guide exposes the actual ingredient-funded upgrade and shows its p
   function descendants(node:any):any[]{if(!node||typeof node!=='object')return [];return [node,...React.Children.toArray(node.props?.children).flatMap(descendants)];}
   const upgrade=descendants(element).find(node=>node.type==='button'&&React.Children.toArray(node.props.children).join('')==='Upgrade recipe to level 1');assert(upgrade);assert.equal(upgrade.props.disabled,false);upgrade.props.onClick();
   assert.equal(state.recipes.classic_burger.level,1);assert.equal(state.coins,before);assert.equal(state.pantry.beef,0);assert.equal(state.pantry.bun,0);assert.equal(recipeUpgradeDetails(state,'classic_burger')!.ready,false);
-  const missing=renderToStaticMarkup(React.createElement(RecipeUpgrade,{state,recipeId:'classic_burger',send:()=>true,openBook:()=>{}}));assert.match(missing,/disabled=""/);assert.match(missing,/Need 1 · Have 0/);assert.match(missing,/roadside markets/);
+  const missing=renderToStaticMarkup(React.createElement(RecipeUpgrade,{state,recipeId:'classic_burger',send:()=>true,openBook:()=>{}}));assert.match(missing,/disabled=""/);assert.match(missing,/Need 1 · Have 0/);assert.match(missing,/daily ingredient shop here at home/);
   const loaned=renderToStaticMarkup(React.createElement(RecipeUpgrade,{state:rally(),recipeId:'lemonade',send:()=>true,openBook:()=>{}}));assert.match(loaned,/same recipe levels/);assert.doesNotMatch(loaned,/Upgrade recipe to level/);
+});
+check('setup describes actual helpers for old trips, new paid lunches and practice',()=>{
+  let state=act(fresh(),{type:'startRun'});state=act(state,{type:'chooseNode',nodeId:state.run!.available[0]});
+  state.run!.mapVersion=5;assert.equal(lunchHelp(state).summary,'Solo · no helper');assert.equal(lunchHelp(state).editable,false);assert.match(lunchHelp(state).detail,/next trip/);
+  state.run!.service!.config.helpers=[{id:'old-helper',name:'Mina',role:'washer',look:0}];assert.equal(lunchHelp(state).summary,'Mina · Clear & wash');
+  state.run!.practice=true;assert.match(lunchHelp(state).detail,/No helper wages during practice/);
+  state.run!.practice=false;state.run!.mapVersion=6;state.career.services=1;
+  assert.equal(lunchHelp(state).summary,'1 helper · 20% of food + tips');assert.equal(lunchHelp(state).editable,true);
+  state.run!.service!.config.helpers=[];state.truckConfig.roundHelpers=['prep'];
+  assert.equal(lunchHelp(state).summary,'Solo · no helper','The service snapshot wins over a future setup preference.');
+  state.career.services=0;assert.equal(lunchHelp(state).editable,false);assert.match(lunchHelp(state).detail,/first lunch/);
 });
 check('truck arrangement has owned pieces and menu selection but no purchase shop',()=>{
   const html=renderToStaticMarkup(React.createElement(TruckPacking,{state:fresh(),placing:null,onChoose:()=>{},send:()=>true}));
-  assert.match(html,/Your equipment trailer/);assert.match(html,/>Choose menu<\/button>/);assert.match(html,/Arrange what you own/);assert.doesNotMatch(html,/>Shop<|coins<|Buy equipment|Tier 2 upgrade/);
+  assert.match(html,/Prepare this lunch/);assert.match(html,/Edit today&#x27;s menu/);assert.match(html,/Edit loaded equipment/);assert.match(html,/Edit truck layout/);assert.doesNotMatch(html,/>Shop<|coins<|Buy equipment|Tier 2 upgrade/);
 });
-check('roadside mastery set names exact ingredient contents and links to the cookbook',()=>{
+check('legacy roadside ingredient sets retain contents but direct upgrades home',()=>{
   const state=act(fresh(),{type:'startRun'});state.run!.offers=[{id:'ingredients:recipe:classic_burger',kind:'ingredients',target:'classic_burger',price:70,purchased:false}];state.run!.haul=100;
   const html=renderToStaticMarkup(React.createElement(RoadsideMarket,{state,send:()=>true,openRecipe:()=>{}}));
-  assert.match(html,/Classic burger upgrade ingredients/);assert.match(html,/1 × Beef · 1 × Bun/);assert.match(html,/70 coins/);assert.match(html,/>Use in cookbook<\/button>/);assert.match(html,/buying does not spend the ingredients/);
+  assert.match(html,/Classic burger upgrade ingredients/);assert.match(html,/1 × Beef · 1 × Bun/);assert.match(html,/70 coins/);assert.doesNotMatch(html,/>Use in cookbook<\/button>/);assert.match(html,/Upgrade this dish at home/);assert.match(html,/buying does not spend the ingredients/);
 });
 check('service level explains five permanent clears and leads to assigning a helper',()=>{
   const state=fresh();state.career.services=4;

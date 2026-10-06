@@ -1,0 +1,43 @@
+{
+  "assetId": "disco_lobster",
+  "displayName": "disco_lobster",
+  "files": [
+    {
+      "bytes": 237372,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "347444677aaa34f6fc9039aef4a74379f640d66725499e6000a436d46d43c090"
+    },
+    {
+      "bytes": 1410,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "1f7f14746cc3dcca2a1b71d2e6ed08b5b39deb1eefc3df8b2609c0ae823ad84d"
+    },
+    {
+      "bytes": 393,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "cb2ddc3bd597f6d436d05be8bc8b356d390fe3e4e5a43cd303ffd72ce9f5150d"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "b5db90b89868f0a5ab437c06c91d6b4f436fab674f1f0f3a7ec811b0b8510bb4"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_f5abfe2d78979107b3294e91",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

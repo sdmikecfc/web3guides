@@ -14,7 +14,7 @@ function send(state:DinerState,command:DinerCommand):DinerState{const r=dispatch
 function owned(tier:DinerTier=1){const s=createDiner(now,'truck-capacity');s.truckTier=tier;s.tutorial.finished=true;for(const recipe of RECIPES)s.recipes[recipe.id]={level:0};for(const def of EQUIPMENT)s.equipment[def.id]={tier:1,truckOwned:true,homeCopies:s.equipment[def.id]?.homeCopies??0};return s;}
 function dropBowlDefaults(s:ServiceState){delete (s.config as any).bowlCount;delete (s as any).bowlStock;delete (s as any).cleanBowls;delete s.config.recipeLevels.tomato_pasta;delete s.config.recipeLevels.vegetable_ramen;}
 test('truck floors grow from seven by three without shrinking old footprints or helper capacity',()=>{
- const sizes=[[7,3],[8,3],[9,3],[10,4]],caps=[2,3,4,4],helpers=[1,1,1,2];
+ const sizes=[[7,3],[8,3],[9,3],[10,4]],caps=[3,3,4,4],helpers=[1,1,1,2];
  assert.equal(unlockedTruckHelpers(createDiner(now,'fresh-helper-gate')),0,'physical space does not bypass the five-service helper unlock');
  for(const tier of [1,2,3,4] as const){const def=TRUCK_TIERS[tier];assert.deepEqual([def.w,def.h],sizes[tier-1]);assert.equal(truckMenuCapacity({truckTier:tier}),caps[tier-1]);assert.equal(def.helpers,helpers[tier-1]);if(tier>1){assert(def.w>=TRUCK_TIERS[(tier-1) as DinerTier].w);assert(def.h>=TRUCK_TIERS[(tier-1) as DinerTier].h);}}
  const fresh=createDiner(now,'fresh-wide');assert.equal(fresh.truckConfig.layoutVersion,2);assert.deepEqual(fresh.truckConfig.menu,['classic_burger']);assert.equal(fresh.truckConfig.tables.length,1);assert.equal(fresh.truckConfig.tables[0].capacity,1);assert(!fresh.equipment.fryer?.truckOwned);assert(fresh.equipment.grill.truckOwned&&fresh.equipment.prep.truckOwned);assert(!fresh.truckConfig.stations.some(st=>st.kind==='grill'||st.kind==='prep'),'owned cooking pieces still start in the equipment trailer');
@@ -28,10 +28,11 @@ test('the full burger and fries kit fits indoors with a rear fridge and continuo
  assert(servicePath(1,loadout.stations,loadout.tables,g.door,{x:6,y:1}));
  let s=dispatchService(createService({...loadout,menu:['classic_burger','fries'],tables:[makeTable('one_seat',3,5,1)],customers:5,tutorialLearning:true}),{type:'open'});assert.equal(serviceReadyError(s),null);const cook=new Cook(()=>s,a=>{s=dispatchService(s,a);});cook.run();assert.equal(s.served,5);assert.equal(s.missed,0);assert(sanitizeService(s));
 });
-test('new menu choices follow 2/3/4/4 caps while old larger menus and active orders survive',()=>{
+test('new menu choices follow 3/3/4/4 caps while old larger menus and active orders survive',()=>{
  const menu=['classic_burger','fries','lemonade','coffee'];
  for(const tier of [1,2,3,4] as const){let s=owned(tier);s=send(s,{type:'setTruckMenu',recipeIds:menu.slice(0,truckMenuCapacity(s))});assert.equal(s.truckConfig.menu.length,truckMenuCapacity(s));if(tier<3){const rejected=dispatchDiner(s,{type:'setTruckMenu',recipeIds:menu.slice(0,truckMenuCapacity(s)+1)},{now});assert.equal(rejected.code,'invalid_menu');assert.deepEqual(rejected.state.truckConfig.menu,s.truckConfig.menu);assert.equal(dispatchDiner(s,{type:'startPractice',recipeIds:menu},{now}).code,'invalid_menu');}}
- let legacy=owned();legacy.truckConfig.menu=[...menu];delete legacy.truckConfig.layoutVersion;const loaded=sanitizeDinerSave(legacy);assert(loaded);assert.deepEqual(loaded.truckConfig.menu,menu);legacy=send(loaded,{type:'setTruckMenu',recipeIds:menu.slice(0,3)});assert.equal(legacy.truckConfig.menu.length,3);assert.equal(dispatchDiner(legacy,{type:'setTruckMenu',recipeIds:menu},{now}).code,'invalid_menu');assert.equal(dispatchDiner(legacy,{type:'setTruckMenu',recipeIds:['classic_burger','fries','tomato_pasta']},{now}).code,'invalid_menu');
+ const trio=menu.slice(0,3),loadout=buildServiceLoadout(1,trio);assert.equal(loadout.error,null);assert.equal(serviceReadyError(createService({...loadout,tier:1,menu:trio})),null);
+ let legacy=owned();legacy.truckConfig.menu=[...menu];delete legacy.truckConfig.layoutVersion;const loaded=sanitizeDinerSave(legacy);assert(loaded);assert.deepEqual(loaded.truckConfig.menu,menu);legacy=send(loaded,{type:'setTruckMenu',recipeIds:menu.slice(0,3)});assert.equal(legacy.truckConfig.menu.length,3);assert.equal(dispatchDiner(legacy,{type:'setTruckMenu',recipeIds:menu},{now}).code,'invalid_menu');assert.equal(dispatchDiner(legacy,{type:'setTruckMenu',recipeIds:['classic_burger','fries','tomato_pasta']},{now}).error,undefined,'Three owned dishes may now be freely selected in the starter truck.');
  legacy=send(legacy,{type:'startRun'});assert.deepEqual(legacy.run!.menu,menu.slice(0,3));assert.deepEqual(sanitizeDinerSave(legacy)!.run!.menu,menu.slice(0,3));
 });
 test('canonical and browser migration retain old 4x3 furniture positions, ownership and active cooking',()=>{
@@ -43,7 +44,7 @@ test('canonical and browser migration retain old 4x3 furniture positions, owners
  const again=migrateDinerRecord(migrated);assert.deepEqual(again,migrated,'additive migration is idempotent');
 });
 test('full-menu spice is rejected before departure when the menu cannot meet it',()=>{
- let s=owned();s.collections.routeWins=['downtown'];s=send(s,{type:'setTruckMenu',recipeIds:['classic_burger','fries']});const locked=dispatchDiner(s,{type:'setSpices',spiceIds:['full_menu']},{now});assert.equal(locked.code,'invalid_menu');assert.match(locked.error!,/grow.*truck/i);assert.deepEqual(locked.state.truckConfig.spices,[]);
+ let s=owned();s.collections.routeWins=['downtown'];s=send(s,{type:'setTruckMenu',recipeIds:['classic_burger','fries']});const locked=dispatchDiner(s,{type:'setSpices',spiceIds:['full_menu']},{now});assert.equal(locked.code,'invalid_menu');assert.match(locked.error!,/three recipes/i);assert.deepEqual(locked.state.truckConfig.spices,[]);
  s.truckConfig.spices=['full_menu'];const before=s.runsStarted,blocked=dispatchDiner(s,{type:'startRun'},{now});assert.equal(blocked.code,'invalid_menu');assert.equal(blocked.state.runsStarted,before);assert.equal(blocked.state.run,null);
  s.truckConfig.menu=['classic_burger','fries','lemonade'];s=send(s,{type:'setSpices',spiceIds:['full_menu']});assert.equal(dispatchDiner(s,{type:'setTruckMenu',recipeIds:['classic_burger','fries']},{now}).code,'invalid_menu');s=send(s,{type:'startRun'});assert.deepEqual(s.run!.spices,['full_menu']);assert.equal(s.run!.menu.length,3);
 });

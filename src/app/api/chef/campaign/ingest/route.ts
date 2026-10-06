@@ -149,11 +149,15 @@ export async function POST(req: Request) {
 
       // everyone with a saved kitchen is a candidate; `active` is whether they
       // actually played inside the window
-      const { data: players, error: pErr } = await db
+      let playersQuery = db
         .from("domain_kitchen_players")
         .select("wallet, quality_now, updated_at")
         .eq("game_key", DK_GAME_KEY)
         .eq("is_test", false);
+      if (process.env.NEXT_PUBLIC_DK_AUTHORITY_ENABLED === "true") {
+        playersQuery = playersQuery.not("authority_state", "is", null).gt("best_quality", 0);
+      }
+      const { data: players, error: pErr } = await playersQuery;
       if (pErr) throw new Error("could not read players");
 
       const roster = ((players ?? []) as PlayerRow[]).map((p) => {

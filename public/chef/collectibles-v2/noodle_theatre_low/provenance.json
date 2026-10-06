@@ -1,0 +1,11 @@
+{
+  "author": "[redacted]",
+  "notes": "Original Blender geometry authored for this project. Hero designs based on existing authorized cinematic reference artwork.",
+  "origin": "authored",
+  "schema": "game_dev.asset_provenance.v1",
+  "source": {
+    "bytes": 44448,
+    "fileName": "noodle_theatre_low.glb",
+    "sha256": "2bcac45a6ad4ade518f235a1977446d424e8e46488faf766794156a08c0110a4"
+  }
+}

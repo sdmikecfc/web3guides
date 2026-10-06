@@ -1,0 +1,43 @@
+{
+  "assetId": "croissant_mobile_low",
+  "displayName": "croissant_mobile_low",
+  "files": [
+    {
+      "bytes": 109836,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "d2a0f635dfd5c411a0505f728d06d8a241336c7481f48e0b1dde81272cee72a5"
+    },
+    {
+      "bytes": 1425,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "7f66a053ad57118c8e13d59033c2b4d443b180b40738e4d168cb121f7e173607"
+    },
+    {
+      "bytes": 400,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "b3330aae09efc253f170ff2d42757e4905204f3a0ce47b88a82a34ca24da8c9f"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "308dd0c2a69ca55035947f7007206038522bc694be0b3c6ae42649eb0158fa93"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_4ee2c8e8f4931e928b791179",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

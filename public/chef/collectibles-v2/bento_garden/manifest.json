@@ -1,0 +1,43 @@
+{
+  "assetId": "bento_garden",
+  "displayName": "bento_garden",
+  "files": [
+    {
+      "bytes": 153504,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "fe934f9f41e1909ffdbf6af35c66ac0360f0ba2db6e6901985311ffa6646c045"
+    },
+    {
+      "bytes": 1410,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "b2d7f18eba615aa432f9ea0a5056ab5e8cc14522e577092771862811d50ca26e"
+    },
+    {
+      "bytes": 392,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "952ad9d408ce530f07dd53febf4f5938e9126db3e291dbaff45b93249f957e43"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "1b256411ee06b71ea5d78872826ae97b243cbf090a69b81006a3b62bebad5fce"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_30ceba84c13d0f7c3520eaf5",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

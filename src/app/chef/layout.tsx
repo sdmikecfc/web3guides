@@ -1,12 +1,14 @@
 /**
  * The /chef tree layout (ADR-0101): ONE WalletProviders for the whole tree,
  * the S5 root-layout pattern, so the wallet connects once and survives
- * client-side nav. The M4 LP flows depend on this being here; the demo pages
- * simply pass through it unchanged.
+ * client-side navigation between the restaurant and neighborhood.
  */
 
 import { Baloo_2 } from "next/font/google";
 import { WalletProviders } from "@/app/wallet/providers";
+import {kitchenMetadata} from '@/lib/chef/site-metadata';
+
+export const metadata=kitchenMetadata;
 
 /**
  * THE GAME FONT (M11).
@@ -41,7 +43,7 @@ export default function ChefLayout({
   // the kitchen's amber, so the connect button stops being the one
   // off-palette element on an otherwise warm screen (ADR-0112 house look)
   return (
-    <WalletProviders appName="Domain Kitchen" connectionMode="wallet-browser" learnMoreUrl="/chef/wallet-help" accent="#e8a13d" accentForeground="#1b1310">
+    <WalletProviders appName="Domain Kitchen" connectionMode="expanded" learnMoreUrl="/chef/wallet-help" accent="#e8a13d" accentForeground="#1b1310">
       <div className={dkFont.variable}>{children}</div>
     </WalletProviders>
   );

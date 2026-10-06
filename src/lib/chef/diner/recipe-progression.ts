@@ -37,6 +37,7 @@ export function recipeEquipmentNeeded(state:Pick<DinerState,'equipment'>,recipeI
 /** Kit dishes follow the installed kitchen. The home simulation applies real
  * working-position/routing checks before accepting an order or paying a sale. */
 export function autoHomeRecipeIds(state:Pick<DinerState,'recipes'|'home'>):string[]{
+  if(state.home.menuVersion===1)return [];
   const machines=new Set(state.home.layout.map(item=>item.equipmentId));
   return RECIPE_KITS.map(kit=>kit.recipeId).filter(id=>Object.hasOwn(state.recipes,id)&&RECIPE_BY_ID[id]?.steps.every(step=>machines.has(step.station)));
 }

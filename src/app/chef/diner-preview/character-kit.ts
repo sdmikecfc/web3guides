@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {actionEnvelope} from './presentation';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { miniatureMaterial, type MiniatureSurface } from './material-library';
 
@@ -12,7 +13,7 @@ export interface CharacterRig {
   phase:number; blinkPeriod:number; isChef:boolean;
 }
 export interface CharacterWork {stationKind?:string;recipeId?:string;seatHeight?:number}
-export interface CharacterFrame {delta?:number;speed?:number;reducedMotion?:boolean}
+export interface CharacterFrame {delta?:number;speed?:number;reducedMotion?:boolean;action?:import('./presentation').PresentationAction;actionTime?:number;turn?:number}
 
 const C={cream:'#f8f0dc',ink:'#303b34',sage:'#375e4e',red:'#b95743',gold:'#d0a15c',sole:'#66523b'};
 const geometries=new Map<string,THREE.BufferGeometry>();
@@ -350,14 +351,17 @@ function makePose(rig:CharacterRig,time:number,clock:number,key:string,seated:bo
 export function animateCharacter(model:THREE.Group,time:number,pose:string,carrying:boolean,moving:boolean,work?:CharacterWork,frame?:CharacterFrame){
   const rig=model.userData.rig as CharacterRig|undefined;if(!rig)return;
   const seated=pose==='sit'||pose==='eat';
+  // Seat support wins over a final interpolated walking frame. A saved walk
+  // intent alone is not movement (e.g. a guest waiting for a clear aisle).
+  moving=moving&&!seated;
   const stirring=work?.stationKind==='drinks'||work?.stationKind==='coffee'||work?.stationKind==='blender'||(work?.stationKind==='prep'&&['pancakes','strawberry_waffle','brownie'].includes(work?.recipeId??''));
-  const key=moving?(carrying?'walk-carry':'walk'):carrying?'carry':pose==='cook'?(stirring?'stir':work?.stationKind==='prep'?'chop':'cook'):pose;
+  const key=seated?pose:moving?(carrying?'walk-carry':'walk'):carrying?'carry':pose==='cook'?(stirring?'stir':work?.stationKind==='prep'?'chop':'cook'):pose==='walk'||pose==='leave'?'idle':pose;
   let motion=model.userData.characterMotion as Motion|undefined;
   if(!motion){motion={key,seated,time,clock:rig.phase,blend:1,from:new Float32Array(POSE_SIZE),current:new Float32Array(POSE_SIZE),target:new Float32Array(POSE_SIZE)};model.userData.characterMotion=motion;makePose(rig,time,motion.clock,key,seated,work,!!frame?.reducedMotion,motion.current);}
   const dt=THREE.MathUtils.clamp(frame?.delta??time-motion.time,0,.1);motion.time=time;
   const supportChanged=seated!==motion.seated;
   if(key!==motion.key||supportChanged){motion.key=key;motion.seated=seated;motion.clock=0;motion.blend=0;motion.from.set(motion.current);}
-  motion.clock+=dt*(moving&&Number.isFinite(frame?.speed)?THREE.MathUtils.clamp(frame!.speed!/.95,.5,1.7):1);
+  motion.clock+=dt*(moving&&Number.isFinite(frame?.speed)?THREE.MathUtils.clamp(frame!.speed!/.95,.1,2.8):1);
   makePose(rig,time,motion.clock,key,seated,work,!!frame?.reducedMotion,motion.target);
   // The scene changes the support/hip height at the seating event. Apply the
   // corresponding leg pose in that same frame (also for a zero-delta update),
@@ -366,6 +370,10 @@ export function animateCharacter(model:THREE.Group,time:number,pose:string,carry
   motion.blend=Math.min(1,motion.blend+dt/(frame?.reducedMotion?.10:.18));const blend=motion.blend*motion.blend*(3-2*motion.blend);
   for(let i=0;i<POSE_SIZE;i++)motion.current[i]=THREE.MathUtils.lerp(motion.from[i],motion.target[i],blend);
   const p=motion.current;
+  const gesture=actionEnvelope(frame?.action,frame?.actionTime??time,!!frame?.reducedMotion);
+  if(gesture&&!moving&&!seated){p[3]+=gesture*.08;if(!carrying){p[6]+=gesture*.52;p[9]+=gesture*.42;p[12]+=gesture*.22;p[14]+=gesture*.22;}}
+  if(gesture&&frame?.action?.kind==='pride'&&!moving&&!seated){p[3]-=gesture*.14;p[20]-=gesture*.035;p[22]+=gesture*.12;}
+  if(carrying&&moving)p[4]+=THREE.MathUtils.clamp(frame?.turn??0,-.4,.4)*.25;
   // Seat and inventory support heights are engine contracts, not visual motion.
   // Solve the authored shoes against the floor during a stride and its blend
   // out, so foot roll reads as heel/toe contact rather than skating underground.

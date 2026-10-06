@@ -15,7 +15,7 @@ export function homeScene(state:DinerState,world:HomeWorld|null,selectedId:strin
     const task=state.homeTask?.incidentId===incident.id?state.homeTask:null;
     objects.push({id:incident.id,kind:incident.kind==='spill'?'spill':'parcel',x:incident.x,y:incident.y,state:task?.phase==='working'?'working':'ready',progress:task?task.progressTicks/incident.requiredTicks:0});
   }
-  const regular=REGULARS.find(r=>regularAvailable(state,r.id)&&!state.daily.regularServed.includes(r.id)&&(state.daily.regularProgress[r.id]??0)>=1);
+  const visit=state.regularStories?.pending,regular=visit?.ready&&!world?.customers.some(c=>c.regularId===visit.regularId)?REGULARS.find(r=>r.id===visit.regularId):undefined;
   if(regular){const blocked=world?world.walkable.flatMap((free,i)=>free?[]:[{x:i%state.home.w,y:Math.floor(i/state.home.w)}]):objects.filter(o=>!o.mount).map(o=>({x:o.x,y:o.y}));const point=plan?chooseHomeInteractionTile({width:state.home.w,height:state.home.h,blocked,reserved:[...objects,...tables.flatMap(t=>t.seats),...people,...plan.modules.flatMap(m=>{const g=roomModuleGeometry(m);return [g.front,g.back,g.orderFront,g.orderBack,...g.servicePoints];})],preferred:{x:space.door.x+1,y:state.home.h-1}}):space.regular;if(point)people.push({id:`regular:${regular.id}`,role:'customer',look:REGULARS.findIndex(r=>r.id===regular.id),...point,pose:'cheer',target:{x:point.x-1,y:point.y+1}});}
   return scene;
 }

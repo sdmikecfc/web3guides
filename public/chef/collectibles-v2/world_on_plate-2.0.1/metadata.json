@@ -1,0 +1,55 @@
+{
+  "assetId": "world_on_plate",
+  "displayName": "world_on_plate",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.8650000095367432,
+        1.1850000023841858,
+        0.39500001072883606
+      ],
+      "min": [
+        -0.8650000095367432,
+        0.005000002682209015,
+        -0.39500001072883606
+      ],
+      "sizeMeters": [
+        1.7300000190734863,
+        1.1799999997019768,
+        0.7900000214576721
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 785104,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 9,
+    "meshCount": 14,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 14,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 29556,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 18527,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

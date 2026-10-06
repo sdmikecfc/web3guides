@@ -1,0 +1,11 @@
+{
+  "author": "[redacted]",
+  "notes": "Original Blender geometry authored for this project. Hero designs based on existing authorized cinematic reference artwork.",
+  "origin": "authored",
+  "schema": "game_dev.asset_provenance.v1",
+  "source": {
+    "bytes": 237372,
+    "fileName": "disco_lobster.glb",
+    "sha256": "347444677aaa34f6fc9039aef4a74379f640d66725499e6000a436d46d43c090"
+  }
+}

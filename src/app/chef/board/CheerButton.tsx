@@ -17,8 +17,7 @@
  */
 
 import { useState } from "react";
-
-const FONT = 'ui-rounded, "Segoe UI", system-ui, sans-serif';
+import css from "./board.module.css";
 const TOKEN_KEY = "dk_token_v1";
 
 type State = "idle" | "sending" | "done" | "already" | "none" | "spent" | "failed";
@@ -70,25 +69,11 @@ export function CheerButton({ handle }: { handle: string }) {
     <button
       onClick={send}
       disabled={state === "sending" || cheered}
-      title="One cheer per kitchen per day. It brings them a livelier room."
-      style={{
-        flexShrink: 0,
-        padding: "5px 11px",
-        borderRadius: 999,
-        border: `1px solid ${cheered ? "#e8a13d" : "#4a3626"}`,
-        background: cheered ? "rgba(232,161,61,0.16)" : "#2a1c14",
-        color: cheered ? "#e8a13d" : "#c9b79a",
-        fontFamily: FONT,
-        fontSize: 12,
-        fontWeight: 800,
-        cursor: cheered || state === "sending" ? "default" : "pointer",
-        whiteSpace: "nowrap",
-        // 44px is the iOS minimum, and this board is mostly read on a phone
-        minHeight: 34,
-        touchAction: "manipulation",
-      }}
+      title="One cheer per kitchen per day."
+      className={css.cheer}
+      data-cheered={cheered}
     >
-      {cheered ? "♥ " : ""}
+      {cheered && <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17 3 10C-2 5 5-1 10 5c5-6 12 0 7 5Z" fill="currentColor"/></svg>}
       {label[state]}
     </button>
   );

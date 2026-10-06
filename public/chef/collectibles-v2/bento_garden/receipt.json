@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T16:38:18.414Z",
+  "destination": {
+    "assetId": "bento_garden",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "e607cc7cd17a1b6e8cc2b1908c4e98dc44ad889c7789702d689fdc3f2ba0f0e3",
+  "packageId": "pkg_30ceba84c13d0f7c3520eaf5",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 153504,
+    "fileName": "bento_garden.glb",
+    "sha256": "fe934f9f41e1909ffdbf6af35c66ac0360f0ba2db6e6901985311ffa6646c045"
+  }
+}

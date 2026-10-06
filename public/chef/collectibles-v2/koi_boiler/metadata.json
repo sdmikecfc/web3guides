@@ -1,0 +1,55 @@
+{
+  "assetId": "koi_boiler",
+  "displayName": "koi_boiler",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.4000000059604645,
+        0.9930000007152557,
+        0.4040000033378601
+      ],
+      "min": [
+        -0.4000000059604645,
+        0.005000002682209015,
+        -0.36000001430511475
+      ],
+      "sizeMeters": [
+        0.800000011920929,
+        0.9879999980330467,
+        0.7640000176429749
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 160584,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 6,
+    "meshCount": 7,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 7,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 5992,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 3646,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

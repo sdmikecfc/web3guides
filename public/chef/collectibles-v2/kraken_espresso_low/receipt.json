@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:21:15.985Z",
+  "destination": {
+    "assetId": "kraken_espresso_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "b3e3571801d6d7ac46965d2ec1cf16301e4127216c78a8a51c3395d312d38039",
+  "packageId": "pkg_fbaa7a4ecf1e9d0378d9d322",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 215544,
+    "fileName": "kraken_espresso_low.glb",
+    "sha256": "a52b48fe3d36f968923167a54719fdfc612de6d1fa2d683a249a9279836cd6ea"
+  }
+}

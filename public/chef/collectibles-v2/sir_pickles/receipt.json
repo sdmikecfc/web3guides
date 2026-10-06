@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T16:38:05.979Z",
+  "destination": {
+    "assetId": "sir_pickles",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "7495501ed9d1b587e9a24ba40f05e06448711d8e1d60dfb9b4c6419714248fa5",
+  "packageId": "pkg_b32cd862b2305056c6bc3f3b",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 183240,
+    "fileName": "sir_pickles.glb",
+    "sha256": "d9f68ea0a81f3bbf30dd5bd3756095e94ffcf8191ec72f4b8cb67ace5e3d22ac"
+  }
+}

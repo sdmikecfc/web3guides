@@ -21,7 +21,7 @@ export type ThemeId = (typeof THEME_IDS)[number];
 export const ITEM_SET_IDS = ["neonlab", "bonebronze"] as const;
 export type ItemSetId = (typeof ITEM_SET_IDS)[number];
 
-export const ITEM_SET_ARTS = ["table", "chair", "counter", "stove", "plant"] as const;
+export const ITEM_SET_ARTS = ["table", "chair", "counter", "stove", "plant", "chairBack", "counterBack", "stoveBack"] as const;
 export type ItemSetArt = (typeof ITEM_SET_ARTS)[number];
 
 /**
@@ -48,7 +48,15 @@ export const ROOM_ASSETS = [
   "bench",
   "toilet",
   "toiletBroken",
+  "toiletBack",
+  "toiletBrokenBack",
   "trash",
+  "partition",
+  "wallArt",
+  "chairBack",
+  "benchBack",
+  "stoveBack",
+  "counterBack",
 ] as const;
 export type RoomAssetKey = (typeof ROOM_ASSETS)[number];
 
@@ -67,8 +75,19 @@ export const FILE_OF: Record<RoomAssetKey, string> = {
   bench: "bench.png",
   toilet: "toilet.png",
   toiletBroken: "toilet-broken.png",
+  toiletBack: "toilet-back.png",
+  toiletBrokenBack: "toilet-broken-back.png",
   trash: "trash.png",
+  partition: "partition.png",
+  wallArt: "wall-art.png",
+  chairBack: "chair-back.png",
+  benchBack: "bench-back.png",
+  stoveBack: "stove-back.png",
+  counterBack: "counter-back.png",
 };
+
+/** One illustrated plate per stable cookbook identity. */
+export const DISH_ART_IDS = ["margherita", "caciopepe", "tiramisu", "software_noodles", "software_tart", "boner_broth", "boner_feast", "tomato_pasta", "garden_salad", "fries", "lemonade"] as const;
 
 export const wallFile = (side: "left" | "right", tiles: number): string =>
   `wall-${side}-${tiles}.png`;

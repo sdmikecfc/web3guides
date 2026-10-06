@@ -9,9 +9,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Application } from "pixi.js";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { BOOT_TIPS, BootShell } from "./BootShell";
 import {
   applyAction,
+  applyCanonicalLaunch,
   canUpgradeDish,
   createWorld,
   deriveService,
@@ -22,15 +24,17 @@ import {
   qualityOf,
   qualityParts,
   REGULAR_NAMES,
+  setCareJobsActive,
   stepWorld,
   WORLD_FIXED_DT,
+  type Facing,
   type HireKind,
   type PlacedItem,
   type RoomDef,
   type WorldState,
 } from "./_engine/world";
-import { itemDef } from "./_engine/items";
-import { SHELL, SHELL_SIZES, shellAt } from "./_engine/rooms";
+import { itemDef, footprintCells } from "./_engine/items";
+import { SHELL, SHELL_SIZES, shellAt, starterDesign, starterLayout } from "./_engine/rooms";
 import { loadGameAssets, THEME_IDS, type GameAssets, type ThemeId } from "./_view/preload";
 import { buildScene, type EditView, type Scene } from "./_view/scene";
 import { createDkSfx, type DkSfx } from "./_view/sfx";
@@ -56,11 +60,11 @@ import {
   IconSwatch,
   IconWrench,
 } from "./_ui/icons";
-import { AcademyModal } from "./Academy";
+
 import { isGraduate } from "./_engine/academy";
-import { LpPanel } from "./LpPanel";
-import { useLpPositions } from "./_chain/useLpPositions";
-import { useCloudSave } from "./_chain/useCloudSave";
+
+
+import { AUTHORITY_ENABLED, type KitchenSnapshot, useCloudSave } from "./_chain/useCloudSave";
 import { marketDef } from "./_engine/items";
 import { SERVICE_TIERS, serviceTier } from "./_engine/campaign";
 import {
@@ -75,12 +79,27 @@ import {
 } from "./_engine/save";
 import { dayBeat, tenureDays } from "./_engine/wallclock";
 import { DAILY_SPECIALS } from "./_engine/pantry";
-import { Coach, INTRO_DONE, INTRO_STEPS } from "./Coach";
-import { AddLiquidityModal } from "./AddLiquidityModal";
+import { availableDishes, dishDef } from "./_engine/cookbook";
+import { claimGuestDelivery, createDelivery, createOnboarding, onboardingStep, type OnboardingState } from "./_engine/onboarding";
+import type { KitchenCommand } from "@/lib/chef/authority";
+import DecorEditor from "./DecorEditor";
+import { FLOOR_FINISHES } from "./_engine/building";
+import { FriendsPanel } from "./FriendsPanel";
+import { featuredItems, dailyIngredientOffers } from "@/lib/chef/authority";
+import { settleRestaurant } from "@/lib/chef/offline";
+import { RestaurantHUD, ShopCatalog, Cookbook, DeliveryParcel, ParcelArt } from "./RestaurantUI";
+import FoodTruck from "./FoodTruck";
+import { dispatchTruck, type TruckAction } from "./_engine/truck";
+import { isTruckCommand, takeTruckBatch } from "./_chain/truck-tape";
+import css from "./_ui/restaurant.module.css";
+import { Coach, INTRO_DONE } from "./Coach";
+import { CareSpot, DailyRibbon, ExpansionCard, careLabel } from "./DailyPlay";
+import { type LaunchGoalId, LAUNCH_RULES } from "./_engine/launch-progression";
+
 
 const MAX_SUBSTEPS = 8;
 const DPR_CAP = 2;
-const SAVE_KEY = "dk_save_v2";
+const DEFAULT_SAVE_KEY = "dk_save_v2";
 const OLD_SAVE_KEY = "dk_build_v1";
 const MUTE_KEY = "dk_mute_v1";
 const THEME_KEY = "dk_theme_v1";
@@ -252,6 +271,11 @@ function MoreRow({
  * coin counter, service pill and the dock, and nothing else.
  */
 type SheetId =
+  | "truck"
+  | "account"
+  | "delivery"
+  | "frontier"
+  | "friends"
   | "money"
   | "shop"
   | "service"
@@ -265,7 +289,9 @@ type SheetId =
   | "addLp"
   | null;
 
-export default function GameStage() {
+export default function GameStage({ openingPreview = false }: { openingPreview?: boolean }) {
+  openingPreview = process.env.NODE_ENV === "development" && openingPreview;
+  const SAVE_KEY = openingPreview ? "dk_opening_preview_v1" : DEFAULT_SAVE_KEY;
   const hostRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<WorldState | null>(null);
   const sceneRef = useRef<Scene | null>(null);
@@ -292,6 +318,20 @@ export default function GameStage() {
   const [progress, setProgress] = useState(0.02);
   const [tipIdx, setTipIdx] = useState(0);
   const [snap, setSnap] = useState<PanelSnapshot | null>(null);
+  const [, renderTruck] = useState(0);
+  const [truckError, setTruckError] = useState("");
+  const [truckBusy, setTruckBusy] = useState(false);
+  const truckOpenRef = useRef(false);
+  const truckActionsRef = useRef<TruckAction[]>([]);
+  const truckSendingRef = useRef(false);
+  const truckFlightRef = useRef<Promise<boolean>|null>(null);
+  const truckUncertainRef = useRef(false);
+  const flushTruckRef = useRef<(drain?:boolean)=>Promise<boolean>>(async()=>true);
+  const truckOwnsPrediction=()=>truckOpenRef.current||truckSendingRef.current||truckActionsRef.current.length>0||truckUncertainRef.current||isTruckCommand(cloudRef.current.pendingCommand());
+  const careButtons = useRef(new Map<string, HTMLButtonElement>());
+  const [careBusy,setCareBusy] = useState(false);
+  const [cookFocusSpecial,setCookFocusSpecial] = useState(false);
+  const careBusyRef = useRef(false);
   /**
    * MOBILE (M7g). The three panels are fixed-width cards: the left column is
    * 250px and the shop is 244px, so on a 375px phone they were each taking two
@@ -322,7 +362,8 @@ export default function GameStage() {
        * the dock below. Sheets are transient overlays and deliberately do NOT
        * change the insets, so opening one never makes the room jump.
        */
-      insetRef.current = { top: 56, bottom: 96 };
+      const arranging=worldRef.current?.editing;
+      insetRef.current = { top: arranging?80:mq.matches?184:105, bottom: arranging&&mq.matches?300:110 };
       const host = hostRef.current;
       if (host) sceneRef.current?.resize(host.clientWidth, host.clientHeight, insetRef.current.top, insetRef.current.bottom);
     };
@@ -348,11 +389,22 @@ export default function GameStage() {
    */
   const [intro, setIntro] = useState(INTRO_DONE);
   const introRef = useRef(INTRO_DONE);
+  const onboardingRef = useRef(createOnboarding(true));
+  const deliveryRef = useRef(createDelivery());
+  const [goalDishId, setGoalDishId] = useState<string | null>(null);
+  const [deliveryBusy, setDeliveryBusy] = useState(false);
+  const deliveryBusyRef = useRef(false);
+  const [deliveryReveal, setDeliveryReveal] = useState<Record<string, number> | null>(null);
+  const [accountBusy, setAccountBusy] = useState(false);
+  const guestDesignRef = useRef<DkSave | null>(null);
+  const parcelButtonRef = useRef<HTMLButtonElement>(null);
   const setIntroBoth = useCallback((n: number) => {
     introRef.current = n;
     setIntro(n);
+    if(worldRef.current)setCareJobsActive(worldRef.current,n===INTRO_DONE);
   }, []);
   const [muted, setMuted] = useState(false);
+  const [musicMuted, setMusicMuted] = useState(true);
   const [courses, setCourses] = useState<string[]>([]);
   const [theme, setTheme] = useState<ThemeId>("trattoria");
   // YOUR CREW (M7d): cosmetic, saved beside the theme, never in WorldState
@@ -365,11 +417,33 @@ export default function GameStage() {
   const [roomTitle, setRoomTitle] = useState("");
   const roomTitleRef = useRef("");
   const [editing, setEditing] = useState(false);
+  useEffect(()=>{
+    const host=hostRef.current;if(!host)return;
+    const narrow=host.clientWidth<=900;
+    insetRef.current={top:editing?80:narrow?184:105,bottom:editing&&narrow?300:110};
+    sceneRef.current?.resize(host.clientWidth,host.clientHeight,insetRef.current.top,insetRef.current.bottom);
+  },[editing]);
   const [holdItem, setHoldItem] = useState("");
   const [liftUid, setLiftUid] = useState(-1);
   const [editError, setEditError] = useState("");
+  type EditSnapshot={layout:WorldState["layout"];design:WorldState["design"]};
+  const editHistory=useRef<EditSnapshot[]>([]),editCursor=useRef(0);
+  const editServerBase=useRef("");
+  const [editSession,setEditSession]=useState(0);
+  const [editUncertain,setEditUncertain]=useState(false);
+  const [,renderEdit]=useState(0);
+  const [pendingPlacement,setPendingPlacement]=useState<{gx:number;gy:number}|null>(null);
+  const pendingPlacementRef=useRef(pendingPlacement);pendingPlacementRef.current=pendingPlacement;
+  const [editSaving,setEditSaving]=useState(false);
+  const editSavingRef=useRef(false);
+  const runCommandRef=useRef<(command:KitchenCommand)=>Promise<KitchenSnapshot|null>>(async()=>null);
+  const paintRef=useRef<{tool:"furniture"|"floor"|"wall";finishId:string}>({tool:"furniture",finishId:"cream"});
+  const [routes,setRoutes]=useState(false);
+  const recordEdit=useCallback(()=>{const w=worldRef.current;if(!w)return;const next=structuredClone({layout:w.layout,design:w.design});if(JSON.stringify(editHistory.current[editCursor.current])===JSON.stringify(next))return;editHistory.current=editHistory.current.slice(0,editCursor.current+1);editHistory.current.push(next);editCursor.current=editHistory.current.length-1;renderEdit(n=>n+1);},[]);
+  const beginHistory=useCallback(()=>{const w=worldRef.current;if(!w)return;setEditSession(n=>n+1);const server=cloudRef.current.authorityRef.current?.save;editServerBase.current=server?JSON.stringify({layout:server.layout,design:server.design,shell:server.shell}):"";editHistory.current=[structuredClone({layout:w.layout,design:w.design})];editCursor.current=0;paintRef.current={tool:"furniture",finishId:"cream"};setRoutes(false);setGhostFacing("se");setPendingPlacement(null);renderEdit(n=>n+1);},[]);
+  const restoreEdit=useCallback((index:number)=>{const w=worldRef.current,saved=editHistory.current[index];if(!w||!saved)return;if(applyAction(w,roomRef.current,{type:"replaceLayout",layout:saved.layout})){w.design=structuredClone(saved.design);editCursor.current=index;setHoldItem("");setLiftUid(-1);setPendingPlacement(null);setEditError("");renderEdit(n=>n+1);}},[]);
   /** which way the piece in hand is turned (ADR-0104's Turn control) */
-  const [ghostFacing, setGhostFacing] = useState<"se" | "sw">("se");
+  const [ghostFacing, setGhostFacing] = useState<Facing>("se");
   /**
    * Has the player ever OPENED the money sheet (M10)? The last coach step
    * advances on seeing it, never on spending, so nobody is nudged toward
@@ -381,11 +455,14 @@ export default function GameStage() {
    * by the action that opens the sheet, so the step means what it says.
    */
   const lpSeenRef = useRef(false);
+  const cookbookSeenRef = useRef(false);
   const showSheet = useCallback((id: SheetId) => {
+    truckOpenRef.current = id === "truck";
     if (id === "money") lpSeenRef.current = true;
+    if (id === "menu") cookbookSeenRef.current = true;
     setOpenSheet(id);
   }, []);
-  const [useLive, setUseLive] = useState(true);
+
   const [marketId, setMarketId] = useState<string>("software.ai");
 
   /**
@@ -397,50 +474,40 @@ export default function GameStage() {
    * right now" — that is a doom message, and the kindness laws forbid telling
    * a player they have missed something.
    */
-  const [campaigns, setCampaigns] = useState<
-    { market: string; endsAt: string; windowEndsAt: string }[]
-  >([]);
-  useEffect(() => {
-    let gone = false;
-    fetch("/api/chef/campaign")
-      .then((r) => r.json())
-      .then((j) => {
-        if (!gone && j?.ok && Array.isArray(j.campaigns)) setCampaigns(j.campaigns);
-      })
-      .catch(() => {});
-    return () => {
-      gone = true;
-    };
-  }, []);
+  const campaigns: { market: string; endsAt: string; windowEndsAt: string }[] = [];
 
   // the wallet's REAL liquidity at the current market (M5)
   const market = marketDef(marketId);
-  const lp = useLpPositions(market?.token);
+
   // server-side saves (M6): optional, never a gate on playing
-  const cloud = useCloudSave();
+  const cloud = useCloudSave(openingPreview);
   const cloudRef = useRef(cloud);
   cloudRef.current = cloud;
+  const persistLocalNow = useCallback(() => {
+    const w = worldRef.current;
+    if (!w || w.editing) return;
+    const metadata = { onboarding: onboardingRef.current, delivery: deliveryRef.current };
+    const canonical = AUTHORITY_ENABLED && cloudRef.current.wallet ? cloudRef.current.authorityRef.current?.save : null;
+    const saved = canonical ? { ...canonical, ...metadata } : serializeSave(w, themeRef.current, crewRef.current, introRef.current, roomTitleRef.current, metadata);
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(saved)); } catch {}
+  }, []);
+  const updateOnboarding = useCallback((patch: Partial<OnboardingState>, sync = false) => {
+    onboardingRef.current = { ...onboardingRef.current, ...patch };
+    setGoalDishId(onboardingRef.current.goalDishId);
+    setIntroBoth(onboardingStep(onboardingRef.current, deliveryRef.current));
+    persistLocalNow();
+    if (sync && AUTHORITY_ENABLED && cloudRef.current.wallet) {
+      void runCommandRef.current({ type: "appearance", appearance: { onboarding: patch } });
+    }
+  }, [persistLocalNow, setIntroBoth]);
   const themeRef = useRef<ThemeId>("trattoria");
   themeRef.current = theme;
   const crewRef = useRef<DkSave["crew"]>({ chef: 0, waiter: 0, chefName: "" });
   crewRef.current = crew;
-  const liveOn = useLive && lp.status === "ready" && lp.positions.length > 0;
+  const liveOn = false;
   // the polling snapshot runs outside React's render, so it reads a ref
   const liveRef = useRef(false);
   liveRef.current = liveOn;
-
-  // a live position replaces the practice slider as the room's size
-  useEffect(() => {
-    const world = worldRef.current;
-    if (!world || !liveOn) return;
-    const usd = Math.round(lp.totalUsd * 100) / 100;
-    if (Math.abs(world.dials.parkedUsd - usd) < 0.01) return;
-    applyAction(world, roomRef.current, {
-      type: "dials",
-      parkedUsd: usd,
-      weeklyVolumeUsd: world.dials.weeklyVolumeUsd,
-    });
-  }, [liveOn, lp.totalUsd]);
 
   useEffect(() => {
     if (phase !== "loading") return;
@@ -461,24 +528,23 @@ export default function GameStage() {
    * with them rather than pointing at something they did two minutes ago.
    */
   useEffect(() => {
-    if (!snap || intro >= INTRO_DONE || intro < 1) return;
-    let next = intro;
-    while (next < INTRO_DONE && INTRO_STEPS[next - 1]?.done(snap)) next++;
-    if (next !== intro) {
-      setIntroBoth(next);
-      if (next >= INTRO_DONE) {
-        setToast("That is the whole game. Your hands make it better.");
-      }
-    }
-  }, [snap, intro, setIntroBoth]);
+    if (!snap || !worldRef.current) return;
+    if (!onboardingRef.current.served && worldRef.current.stats.served > 0) updateOnboarding({ served: true }, true);
+  }, [snap, updateOnboarding]);
 
   // keep the scene's edit view in a ref the ticker can read every frame
   useEffect(() => {
+    const w=worldRef.current;
+    const itemId=holdItem||w?.layout.find(p=>p.uid===liftUid)?.itemId||"";
+    const position=pendingPlacement??{gx:-99,gy:-99};
+    const why=w&&pendingPlacement&&itemId?previewPlace(w,roomRef.current,itemId,position.gx,position.gy,liftUid>=0?liftUid:undefined,ghostFacing):"";
     editRef.current = editing
-      ? { liftUid, ghostItemId: holdItem, gx: -99, gy: -99, valid: false, facing: ghostFacing }
+      ? { liftUid, ghostItemId: holdItem, ...position, valid: !!pendingPlacement&&!why, facing: ghostFacing }
       : null;
+    if(pendingPlacement)setEditError(why);
+    if(editRef.current) Object.assign(editRef.current,{showRoutes:routes});
     (window as unknown as Record<string, unknown>).__editView = editRef.current;
-  }, [editing, liftUid, holdItem, ghostFacing]);
+  }, [editing, liftUid, holdItem, ghostFacing,routes,pendingPlacement]);
 
   // ── boot ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -498,11 +564,15 @@ export default function GameStage() {
       } catch {}
       setMuted(startMuted);
       sfxRef.current = createDkSfx(!startMuted);
+      let quietMusic = true;
+      try { quietMusic = localStorage.getItem("dk_music_muted") !== "0"; } catch {}
+      setMusicMuted(quietMusic);
+      sfxRef.current.setMusicMuted(quietMusic);
 
       const a = new Application();
       await a.init({
         resizeTo: host,
-        background: "#1b1310",
+        background: "#f4eddf",
         antialias: true,
         resolution: Math.min(
           typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
@@ -519,6 +589,7 @@ export default function GameStage() {
       app = a;
       appRef.current = a;
       host.appendChild(a.canvas);
+      if(host.clientWidth>0&&host.clientHeight>0)a.renderer.resize(host.clientWidth,host.clientHeight);
       setProgress(0.1);
 
       const assets = await loadGameAssets((p) => {
@@ -530,8 +601,14 @@ export default function GameStage() {
       let local: DkSave | null = null;
       try {
         const rawLocal = localStorage.getItem(SAVE_KEY);
-        if (rawLocal) local = sanitizeSave(JSON.parse(rawLocal));
-        else {
+        if (rawLocal) {
+          const original=JSON.parse(rawLocal);
+          local = sanitizeSave(original);
+          if(Number(original?.v??0)<8){
+            try{const backupKey=`${SAVE_KEY}:before-truck-v8`;if(!localStorage.getItem(backupKey))localStorage.setItem(backupKey,rawLocal);}catch{}
+          }
+        }
+        else if (!openingPreview) {
           // an M3-era save still has value: turn its counts into a room
           const rawV1 = localStorage.getItem(OLD_SAVE_KEY);
           if (rawV1) {
@@ -539,6 +616,9 @@ export default function GameStage() {
               coins?: number; tables?: number; stoves?: number; waiters?: number; chefs?: number;
             };
             local = sanitizeSave({
+              intro: INTRO_DONE,
+              onboarding: createOnboarding(true),
+              delivery: createDelivery(Math.floor(Date.now() / 86_400_000), true),
               coins: s.coins,
               waiters: s.waiters,
               chefs: s.chefs,
@@ -550,27 +630,38 @@ export default function GameStage() {
 
       // the cloud copy, if this browser already holds a session token
       const remote = await cloudRef.current.load().catch(() => null);
-      const chosen = newerSave(local, remote);
+      if(AUTHORITY_ENABLED&&cloudRef.current.wallet&&!remote)throw new Error("Your saved restaurant could not be loaded. Reconnect before continuing.");
+      const chosen = AUTHORITY_ENABLED && remote ? remote : newerSave(local, remote);
       if (remote && chosen === remote && local) {
         setToast("Picked up your restaurant from your wallet.");
       }
 
-      const save = chosen ?? sanitizeSave({});
-      const parkedUsd = save.dials.parkedUsd;
-      const volumeUsd = save.dials.weeklyVolumeUsd;
+      const save = chosen ?? sanitizeSave({ layout: starterLayout(), design: starterDesign() });
+      try {
+        const guestCopy = openingPreview ? null : localStorage.getItem("dk_guest_before_connect");
+        if (guestCopy) guestDesignRef.current = sanitizeSave(JSON.parse(guestCopy));
+      } catch {}
+      const parkedUsd = 0;
+      const volumeUsd = 0;
+      onboardingRef.current = save.onboarding;
+      deliveryRef.current = save.delivery;
+      setGoalDishId(save.onboarding.goalDishId);
       let coins = save.coins;
       const hires = { waiters: save.waiters, chefs: save.chefs };
-      const layout = save.layout.length > 0 ? layoutFromSave(save) : layoutForCounts(2, 1);
+      const layout = layoutFromSave(save);
       const inventory = save.inventory;
       const savedAt = save.savedAt;
       const market = save.market;
       const lpDays = save.lpDays;
 
-      if (savedAt > 0) {
-        const awayHrs = Math.max(0, (Date.now() - savedAt) / 3.6e6);
-        // the engine owns the away math now (M11 economy inversion): capped
-        // kind banking, multiplied by the wallet, never the old dial drip
-        const earned = awayEarnings(awayHrs, { parkedUsd, weeklyVolumeUsd: volumeUsd });
+      if (savedAt > 0 && !(AUTHORITY_ENABLED && remote)) {
+        // Reuse the same capped service and receipt as a tab returning from
+        // the background. A backwards clock must retain the existing purse.
+        const settled = settleRestaurant(save,{condition:{...save.maintenance,lastSettledAt:savedAt},coinRemainder:save.launch.passive.remainder,plateRemainder:0,passive:save.launch.passive},Date.now());
+        const earned = settled.coins;
+        save.maintenance=settled.condition;
+        if(settled.equipment)save.equipment=settled.equipment;
+        if(settled.passive)save.launch.passive=settled.passive;
         if (earned > 0) {
           coins += earned;
           setToast(`The crew kept the pans warm. +${earned} coins while you were away.`);
@@ -588,6 +679,8 @@ export default function GameStage() {
         hires,
         layout,
         inventory,
+        design: save.design,
+        maintenance: save.maintenance,
         market,
         lpDays,
         courses: save.courses,
@@ -596,6 +689,10 @@ export default function GameStage() {
         bestQuality: save.bestQuality,
         utcDay: save.utcDay,
         daily: save.daily,
+        launch: save.launch,
+        truck: save.truck,
+        equipment: save.equipment,
+        careJobsActive: save.onboarding.finished,
         regulars: save.regulars,
         shellIdx: save.shell,
         cheers: cloudRef.current.cheersRef.current,
@@ -614,17 +711,18 @@ export default function GameStage() {
        * when they sit down rather than whenever they next reload.
        */
       const dayBus = () => {
+        if (AUTHORITY_ENABLED && cloudRef.current.wallet) return;
         const beat = dayBeat(Date.now(), world.utcDay);
         if (!beat) return;
-        const held = world.dials.parkedUsd > 0;
         applyAction(world, roomRef.current, {
           type: "newDay",
           utcDay: beat.utcDay,
           banked: beat.banked,
-          tenure: tenureDays(Date.now(), save.utcDay, save.dials.parkedUsd > 0, held),
+          tenure: 0,
+          deferDelivery: true,
         });
         if (beat.welcomeBack) {
-          setToast("Gus brought your orders in from the market. Have a look in the pantry.");
+          setToast("The crew kept your place warm. A delivery is waiting by the door.");
         }
       };
       dayBus();
@@ -649,13 +747,13 @@ export default function GameStage() {
        * need to be told what a restaurant is.
        */
       setIntroBoth(
-        save.savedAt === 0 ? 1 : save.intro === 0 ? INTRO_DONE : save.intro
+        onboardingStep(save.onboarding, save.delivery)
       );
 
-      let startTheme: ThemeId = "trattoria";
+      let startTheme: ThemeId = (THEME_IDS as readonly string[]).includes(save.theme) ? save.theme as ThemeId : "trattoria";
       try {
         const t = localStorage.getItem(THEME_KEY) as ThemeId | null;
-        if (t && (THEME_IDS as readonly string[]).includes(t)) startTheme = t;
+        if (!openingPreview && !chosen && t && (THEME_IDS as readonly string[]).includes(t)) startTheme = t;
       } catch {}
       setTheme(startTheme);
       setCrew(save.crew);
@@ -676,12 +774,23 @@ export default function GameStage() {
         specialUnlocked: world.menu.specialUnlocked,
         specialMastered: world.menu.specialMastered,
       };
+      const discoveredSales = new Map(world.menu.dishes.filter(d=>d.key==="fries"||d.key==="lemonade").map(d=>[d.key,d.serves]));
       const soundSweep = () => {
         const sfx = sfxRef.current;
         if (!sfx) return;
         const s = world.stats;
         if (s.arrived > prevEv.arrived) sfx.play("doorbell");
         if (s.served > prevEv.served) sfx.play("serve");
+        if(s.served>prevEv.served)for(const dish of world.menu.dishes){
+          if(!discoveredSales.has(dish.key))continue;
+          const before=discoveredSales.get(dish.key)??0;
+          if(before===0&&dish.serves>0){
+            sfx.play("unlock");setToast(dish.key==="fries"?"Your first fries! That truck discovery is now part of your restaurant.":"Your first lemonade! A little road-trip discovery, served right at home.");
+            const station=world.operations.stations.find(entry=>entry.dishes.includes(dish.key));
+            if(station)sceneRef.current?.spark(station.gx,station.gy,0xecc267,14);
+          }
+          discoveredSales.set(dish.key,dish.serves);
+        }
         if (s.hearts > prevEv.hearts) sfx.play("heart");
         if (s.gusVisits > prevEv.gusVisits) sfx.play("gus");
         if (world.menu.specialUnlocked && !prevEv.specialUnlocked) sfx.play("unlock");
@@ -695,7 +804,32 @@ export default function GameStage() {
       };
 
       let acc = 0;
+      let passiveAt = Math.max(Date.now(), world.launch.passive.lastSettledAt);
+      const settleGuestAbsence = (w: WorldState, now: number): number => {
+        const elapsedMs = Math.max(0, now - passiveAt);
+        if (w.editing) {
+          // Decorating pauses service, including while its tab is hidden.
+          applyAction(w,roomRef.current,{type:"settlePassive",elapsedMs,now});
+          return 0;
+        }
+        const save = serializeSave(w,themeRef.current,crewRef.current,introRef.current,roomTitleRef.current,{onboarding:onboardingRef.current,delivery:deliveryRef.current});
+        const settled = settleRestaurant(save,{
+          condition:{...w.maintenance,lastSettledAt:passiveAt},
+          coinRemainder:w.launch.passive.remainder,plateRemainder:0,passive:w.launch.passive,
+        },now);
+        w.playMoney += settled.coins;
+        w.maintenance = settled.condition;
+        if(settled.equipment)w.equipment=settled.equipment;
+        if(settled.passive)w.launch.passive=settled.passive;
+        return settled.coins;
+      };
+      let performanceFrames=0, performanceAt=performance.now();
       a.ticker.add(() => {
+        if(truckOpenRef.current){acc=0;return;}
+        if(process.env.NODE_ENV!=="production"){
+          performanceFrames++;const now=performance.now();
+          if(now-performanceAt>=1000){host.dataset.dkFps=String(Math.round(performanceFrames*1000/(now-performanceAt)));host.dataset.dkTicks=String(world.tick);performanceFrames=0;performanceAt=now;}
+        }
         let frameDt = a.ticker.deltaMS / 1000;
         if (!(frameDt > 0) || frameDt > 0.25) frameDt = WORLD_FIXED_DT;
         acc += frameDt;
@@ -710,16 +844,48 @@ export default function GameStage() {
         // through the REF, not the closure: expanding the room destroys this
         // scene and builds a new one, and a captured `scene` would keep
         // syncing the dead one
-        sceneRef.current?.sync(world, editRef.current);
+        sceneRef.current?.sync(world, editRef.current, introRef.current===INTRO_DONE);
+        if(sceneRef.current)for(const task of world.launch.careTasks){
+          const button=careButtons.current.get(task.id);if(!button)continue;
+          const point=sceneRef.current.tileToScreen(task.target.gx,task.target.gy);
+          const adjacent=sceneRef.current.tileToScreen(task.target.gx+1,task.target.gy);
+          const tileWidth=Math.abs(adjacent.x-point.x)*2;
+          const lift=task.target.kind==="table"?tileWidth*.45:task.target.kind==="stove"?tileWidth*.52:0;
+          button.style.setProperty("--care-art-size",`${Math.max(36,Math.min(84,tileWidth*1.15))}px`);
+          button.style.left=`${point.x}px`;
+          button.style.top=`${point.y-lift}px`;
+        }
+        const parcelButton = parcelButtonRef.current;
+        if (parcelButton && sceneRef.current) {
+          const door = roomRef.current.door;
+          const point = sceneRef.current.tileToScreen(door.x, door.y);
+          parcelButton.style.left = `${Math.max(40, Math.min(host.clientWidth - 40, point.x + 36))}px`;
+          parcelButton.style.top = `${Math.max(insetRef.current.top + 22, Math.min(host.clientHeight - 160, point.y + 12))}px`;
+        }
       });
 
       onVis = () => {
-        if (!app) return;
+        if (!app || cancelled) return;
         if (document.visibilityState === "hidden") app.ticker.stop();
         else {
-          app.ticker.start();
           // a tab left open across midnight is still a new day
           dayBusRef.current?.();
+          const w = worldRef.current;
+          const now = Date.now();
+          if (AUTHORITY_ENABLED && cloudRef.current.wallet) {
+            if (w && !w.editing && !truckOwnsPrediction()) void runCommandRef.current({type:"settle"});
+          } else if (w) {
+            const earned = settleGuestAbsence(w,now);
+            if (!w.editing) {
+              const metadata = {onboarding:onboardingRef.current,delivery:deliveryRef.current};
+              // Persist the consumed absence before another hide/reload can
+              // present it again, even if the regular poll has not run yet.
+              try{localStorage.setItem(SAVE_KEY,JSON.stringify(serializeSave(w,themeRef.current,crewRef.current,introRef.current,roomTitleRef.current,metadata)));}catch{}
+              if(earned>0)setToast(`The crew kept the pans warm. +${earned} coins while you were away.`);
+            }
+          }
+          passiveAt = Math.max(passiveAt, now);
+          app.ticker.start();
         }
       };
       document.addEventListener("visibilitychange", onVis);
@@ -727,6 +893,7 @@ export default function GameStage() {
 
       ro = new ResizeObserver(() => {
         if (!cancelled && host.clientWidth > 0) {
+          a.renderer.resize(host.clientWidth,host.clientHeight);
           sceneRef.current?.resize(
             host.clientWidth,
             host.clientHeight,
@@ -745,9 +912,35 @@ export default function GameStage() {
         if (cancelled) return;
         const w = worldRef.current;
         if (!w) return;
+        const connected = AUTHORITY_ENABLED && !!cloudRef.current.wallet;
+        // Hidden guest tabs leave one absence to settle on return. Advancing
+        // or autosaving here would silently turn days away into active play.
+        if (!connected && document.visibilityState === "hidden") return;
+        // Animated service predicts movement, never earned inventory or currency.
+        const canonical = connected ? cloudRef.current.authorityRef.current : null;
+        const passiveNow=Date.now();
+        if(!connected){
+          dayBusRef.current?.();
+          const elapsedMs=Math.max(0,passiveNow-passiveAt);
+          // Sleeping laptops can suspend timers without a visibility event.
+          if(elapsedMs>60_000)settleGuestAbsence(w,passiveNow);
+          else applyAction(w,roomRef.current,{type:"settlePassive",elapsedMs,now:passiveNow});
+        }
+        passiveAt=Math.max(passiveAt,passiveNow);
+        if (canonical && !truckOwnsPrediction()) {
+          w.playMoney = canonical.save.coins;
+          w.coinFloat = 0;
+          w.pantry = { ...w.pantry, ...structuredClone(canonical.save.pantry) };
+          w.menu = { ...w.menu, ...structuredClone(canonical.save.menu) };
+          w.daily = { ...canonical.save.daily };
+          w.maintenance = { ...canonical.save.maintenance };
+          setCareJobsActive(w,introRef.current===INTRO_DONE);
+          applyCanonicalLaunch(w,canonical.save.launch);
+        }
         const svc = deriveService(w);
         const qp = qualityParts(w);
-        const tierNow = serviceTier(qp.total);
+        const displayQuality=canonical?.authority.currentQuality??qp.total;
+        const tierNow = serviceTier(displayQuality);
         // keep the graduate mark honest however courses got finished
         setCourses((prev) => (prev.length === w.courses.length ? prev : [...w.courses]));
         setSnap({
@@ -755,8 +948,10 @@ export default function GameStage() {
           qPresence: qp.presence,
           qClean: qp.cleanliness,
           qDishes: qp.dishes,
-          bestQuality: w.stats.bestQuality,
+          bestQuality: canonical?.authority.verifiedBestQuality ?? w.stats.bestQuality,
           trashCount: w.trash.length,
+          cleanliness: w.maintenance.cleanliness,
+          equipment: w.maintenance.equipment,
           toiletsBroken: w.toilets.filter((t) => t.broken).length,
           toiletsTotal: w.toilets.length,
           tierName: svc.tier.name,
@@ -766,9 +961,9 @@ export default function GameStage() {
           waiters: w.hires.waiters,
           chefs: w.hires.chefs,
           speed: svc.speed,
-          quality: qualityOf(w),
+          quality: AUTHORITY_ENABLED && cloudRef.current.authorityRef.current ? cloudRef.current.authorityRef.current.authority.currentQuality : qualityOf(w),
           presence: w.presence,
-          coins: w.playMoney,
+          coins: AUTHORITY_ENABLED && cloudRef.current.authorityRef.current ? cloudRef.current.authorityRef.current.save.coins : w.playMoney,
           clock: clockText(w.clockHrs),
           phase: phaseIcon(w.clockHrs),
           line: kindLine(w),
@@ -791,11 +986,13 @@ export default function GameStage() {
           topTier: tierNow.name === SERVICE_TIERS[SERVICE_TIERS.length - 1].name,
           toTopTier: Math.max(
             0,
-            SERVICE_TIERS[SERVICE_TIERS.length - 1].minQuality - qp.total
+            SERVICE_TIERS[SERVICE_TIERS.length - 1].minQuality - displayQuality
           ),
           arrived: w.stats.arrived,
           hustles: w.stats.hustles,
           lpCardOpened: lpSeenRef.current,
+          cookbookOpened: cookbookSeenRef.current,
+          pantryCount: Object.values(w.pantry.stock).reduce((n,v)=>n+v,0),
           busedByPlayer: w.stats.busedByPlayer,
           placements: w.stats.placements,
           dirtyTables: w.tables.filter((t) => t.dirty > 0).length,
@@ -820,12 +1017,13 @@ export default function GameStage() {
         });
         // one save shape, written locally every tick of the poll and pushed
         // to the server on a slower beat when the player has signed in
-        const save = serializeSave(w, themeRef.current, crewRef.current, introRef.current, roomTitleRef.current);
+        const metadata = { onboarding: onboardingRef.current, delivery: deliveryRef.current };
+        const save = canonical ? { ...canonical.save, ...metadata } : serializeSave(w, themeRef.current, crewRef.current, introRef.current, roomTitleRef.current, metadata);
         try {
-          localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+          if(!w.editing)localStorage.setItem(SAVE_KEY, JSON.stringify(save));
         } catch {}
         const now = Date.now();
-        if (cloudRef.current.status === "on" && now - lastPushRef.current > 15_000) {
+        if (!w.editing && !AUTHORITY_ENABLED && cloudRef.current.status === "on" && now - lastPushRef.current > 15_000) {
           lastPushRef.current = now;
           void cloudRef.current.store(save);
         }
@@ -882,6 +1080,7 @@ export default function GameStage() {
       if (poll) clearInterval(poll);
       if (onVis) document.removeEventListener("visibilitychange", onVis);
       ro?.disconnect();
+      sfxRef.current?.destroy();
       if (app) {
         app.destroy(true, { children: true, texture: false });
         app = null;
@@ -892,12 +1091,21 @@ export default function GameStage() {
   }, []);
 
   // ── pointer: play verbs, or the layout editor ────────────────────────────
-  const tileAt = useCallback((clientX: number, clientY: number) => {
+  const tileAt = useCallback((clientX: number, clientY: number): { x: number; y: number; facing?: Facing } | null => {
     const host = hostRef.current;
     const scene = sceneRef.current;
     if (!host || !scene) return null;
     const rect = host.getBoundingClientRect();
-    return scene.pick(clientX - rect.left, clientY - rect.top);
+    const sx = clientX - rect.left, sy = clientY - rect.top;
+    const world = worldRef.current, view = editRef.current;
+    const itemId = view?.ghostItemId || world?.layout.find((item) => item.uid === view?.liftUid)?.itemId;
+    if (world?.editing && itemId && itemDef(itemId)?.layer === "wall") {
+      // A point high on a wall projects outside the floor grid. Pick the
+      // actual mounting surface; retain the selected wall at the corner.
+      const mount = scene.pickWall(sx, sy);
+      if (mount) return mount;
+    }
+    return scene.pick(sx, sy);
   }, []);
 
   const onGhostMove = useCallback(
@@ -905,19 +1113,22 @@ export default function GameStage() {
       const w = worldRef.current;
       const view = editRef.current;
       if (!w || !w.editing || !view) return;
+      if(pendingPlacementRef.current||editSavingRef.current||cloudRef.current.pendingCommand()?.type==="layout")return;
       if (!view.ghostItemId && view.liftUid < 0) return;
       const p = tileAt(ev.clientX, ev.clientY);
       if (!p) return;
       const gx = Math.round(p.x);
       const gy = Math.round(p.y);
-      if (gx === view.gx && gy === view.gy) return;
+      const nextFacing = p.facing ?? view.facing;
+      if (gx === view.gx && gy === view.gy && nextFacing === view.facing) return;
       view.gx = gx;
       view.gy = gy;
+      view.facing = nextFacing;
       const itemId =
         view.ghostItemId || w.layout.find((q) => q.uid === view.liftUid)?.itemId || "";
       view.valid =
         itemId !== "" &&
-        previewPlace(w, roomRef.current, itemId, gx, gy, view.liftUid >= 0 ? view.liftUid : undefined) === "";
+        previewPlace(w, roomRef.current, itemId, gx, gy, view.liftUid >= 0 ? view.liftUid : undefined, view.facing) === "";
     },
     [tileAt]
   );
@@ -935,9 +1146,20 @@ export default function GameStage() {
     (clientX: number, clientY: number) => {
       const world = worldRef.current;
       const scene = sceneRef.current;
-      if (!world || !scene) return;
+      if (!world || !scene || truckOpenRef.current) return;
       const p = tileAt(clientX, clientY);
       if (!p) return;
+      if(!world.editing){
+        const rect=hostRef.current?.getBoundingClientRect();
+        const uid=rect?scene.pickItem(clientX-rect.left,clientY-rect.top):null;
+        const piece=world.layout.find(item=>item.uid===uid);
+        if(piece&&itemDef(piece.itemId)?.kind==="counter"){showSheet("menu");return;}
+        if(piece&&world.equipment.instances[String(piece.uid)]?.condition<100){
+          if(AUTHORITY_ENABLED&&cloudRef.current.wallet)void runCommandRef.current({type:"repairMachine",uid:piece.uid});
+          else {world.equipment.instances[String(piece.uid)].condition=100;sfxRef.current?.play("bus");setToast("Back in working order.");}
+          return;
+        }
+      }
       // dev-only tap forensics: what the handler actually received and picked
       if (typeof window !== "undefined") {
         (window as unknown as Record<string, unknown>).__lastTap = {
@@ -957,58 +1179,43 @@ export default function GameStage() {
       // and the player's next tap silently starts over. Divergence now makes
       // edit taps inert instead of half-alive.
       if (world.editing && editRef.current) {
+        if(editSavingRef.current||cloudRef.current.pendingCommand()?.type==="layout")return;
         const view = editRef.current;
         const gx = Math.round(p.x);
         const gy = Math.round(p.y);
+        if(paintRef.current.tool==="floor"){
+          if(applyAction(world,roomRef.current,{type:"finish",surface:"floor",id:paintRef.current.finishId,gx,gy})){recordEdit();sfxRef.current?.play("bus");}
+          return;
+        }
+        if(paintRef.current.tool==="wall")return;
         if (view && (view.ghostItemId || view.liftUid >= 0)) {
           const itemId = view.ghostItemId || world.layout.find((q) => q.uid === view.liftUid)?.itemId;
           if (!itemId) return;
-          const facing = view.liftUid >= 0
-            ? world.layout.find((q) => q.uid === view.liftUid)?.facing
-            : undefined;
-          const ok =
-            view.liftUid >= 0
-              ? applyAction(world, roomRef.current, { type: "move", uid: view.liftUid, gx, gy, facing })
-              : applyAction(world, roomRef.current, { type: "place", itemId, gx, gy, facing: view.facing });
-          (window as unknown as Record<string, unknown>).__lastEdit = { branch: "act", ok, gx, gy, liftUid: view.liftUid, itemId };
-          if (ok) {
-            sfxRef.current?.play("kaching");
-            scene.spark(gx, gy, 0xf3c86a, 8);
-            setHoldItem("");
-            setLiftUid(-1);
-            setEditError("");
-          } else {
-            const why = previewPlace(
-              world, roomRef.current, itemId, gx, gy,
-              view.liftUid >= 0 ? view.liftUid : undefined
-            );
-            setEditError(why || "That will not fit there.");
-          }
+          if (p.facing) { view.facing = p.facing; setGhostFacing(p.facing); }
+          view.gx=gx;view.gy=gy;
+          const why=previewPlace(world,roomRef.current,itemId,gx,gy,view.liftUid>=0?view.liftUid:undefined,view.facing);
+          view.valid=!why;setPendingPlacement({gx,gy});setEditError(why);
           return;
         }
         /**
          * Nothing in hand: lift whatever is under the tap.
          *
-         * SPRITE first, tile second. Lifting by tile alone could not pick up
+         * Select the visible sprite. Lifting by tile alone could not pick up
          * anything tall: a table is drawn from the bottom of its tile and
          * stands about a tile and a half high, so aiming at the tabletop
          * resolved to the tile BEHIND it and lifted the chair sitting there,
          * while the table's own floor tile was hidden underneath the table.
-         * The tile test stays as the fallback so tapping bare floor beside a
-         * piece still works, and so multi-cell items keep their whole
-         * footprint.
+         * Transparent canvas and bare floor do not select a neighboring piece.
+         * Footprints validate placement; they are not the visible hit target.
          */
         const bySprite = scene.pickItem(clientX - hostRef.current!.getBoundingClientRect().left,
           clientY - hostRef.current!.getBoundingClientRect().top);
-        const hit =
-          world.layout.find((q) => q.uid === bySprite) ??
-          world.layout.find((q) => {
-            const cells = itemDef(q.itemId)?.cells ?? 1;
-            return gy === q.gy && gx >= q.gx && gx < q.gx + cells;
-          });
+        const hit = world.layout.find((q) => q.uid === bySprite);
         (window as unknown as Record<string, unknown>).__lastEdit = { branch: "liftTry", hitUid: hit ? hit.uid : -1, gx, gy };
         if (hit) {
           setLiftUid(hit.uid);
+          setGhostFacing(hit.facing);
+          setPendingPlacement(null);
           setHoldItem("");
           setEditError("");
         }
@@ -1058,6 +1265,9 @@ export default function GameStage() {
           bestToilet = t.uid;
         }
       }
+      if(bestToilet&&AUTHORITY_ENABLED&&cloudRef.current.wallet){
+        void runCommandRef.current({type:"repair"}).then(j=>{if(j)applyAction(world,roomRef.current,{type:"fixToilet",uid:bestToilet});});return;
+      }
       if (bestToilet && applyAction(world, roomRef.current, { type: "fixToilet", uid: bestToilet })) {
         const t = world.toilets.find((x) => x.uid === bestToilet);
         if (t) scene.spark(t.gx, t.gy, 0x9fe3ff, 10);
@@ -1075,6 +1285,7 @@ export default function GameStage() {
         }
       }
       if (bestTrash >= 0) {
+        if(AUTHORITY_ENABLED&&cloudRef.current.wallet){void runCommandRef.current({type:"repair"}).then(j=>{if(j)applyAction(world,roomRef.current,{type:"sweep",trashId:bestTrash});});return;}
         const spot = world.trash.find((t) => t.id === bestTrash);
         if (applyAction(world, roomRef.current, { type: "sweep", trashId: bestTrash })) {
           if (spot) scene.spark(spot.gx, spot.gy, 0xf3e9d2, 8);
@@ -1335,6 +1546,250 @@ export default function GameStage() {
     );
   }, []);
 
+  const syncAuthority = useCallback((j: KitchenSnapshot) => {
+    const latest = cloudRef.current.authorityRef.current;
+    if (latest && j.revision < latest.revision) return;
+    const w=worldRef.current; if(!w)return;
+    const save=j.save;
+    onboardingRef.current = save.onboarding;
+    deliveryRef.current = save.delivery;
+    setGoalDishId(save.onboarding.goalDishId);
+    setIntroBoth(onboardingStep(save.onboarding, save.delivery));
+    const preserveDraft=w.editing&&!editSavingRef.current;
+    const before=JSON.stringify(w.layout.map(({uid,itemId,gx,gy,facing})=>({uid,itemId,gx,gy,facing})));
+    const shellChanged=w.shellIdx!==save.shell;
+    if(!preserveDraft&&(before!==JSON.stringify(save.layout)||shellChanged)){
+      const wasEditing=w.editing;
+      const fresh=createWorld("domain-kitchen-m4",shellAt(save.shell),{layout:save.layout,hires:{waiters:save.waiters,chefs:save.chefs},playMoney:save.coins,inventory:save.inventory,design:save.design,maintenance:save.maintenance,pantry:save.pantry,menu:save.menu,market:save.market,lpDays:save.lpDays,shellIdx:save.shell,courses:save.courses,daily:save.daily,launch:save.launch,truck:save.truck,equipment:save.equipment,careJobsActive:save.onboarding.finished,utcDay:save.utcDay,regulars:save.regulars,bestQuality:save.bestQuality});
+      Object.assign(w,fresh);
+      if(wasEditing)applyAction(w,shellAt(save.shell),{type:"edit",on:true});
+    }
+    w.playMoney=save.coins;w.coinFloat=0;w.pantry={...w.pantry,...structuredClone(save.pantry)};
+    if(!preserveDraft){w.inventory={...save.inventory};w.design=structuredClone(save.design);}
+    w.hires={waiters:save.waiters,chefs:save.chefs};w.maintenance={...save.maintenance};
+    w.truck=structuredClone(save.truck);w.equipment=structuredClone(save.equipment);renderTruck(n=>n+1);
+    w.menu={...w.menu,...structuredClone(save.menu)};
+    for(const dish of w.menu.dishes)dish.serves=save.menu.serves[dish.key]??0;
+    w.daily={...save.daily};applyCanonicalLaunch(w,save.launch);w.utcDay=save.utcDay;w.courses=[...save.courses];w.lpDays={...save.lpDays};w.market=save.market;
+    if(!preserveDraft)roomRef.current=shellAt(save.shell);
+    if(!preserveDraft&&shellChanged&&appRef.current&&assetsRef.current&&hostRef.current){sceneRef.current?.destroy();sceneRef.current=buildScene(appRef.current,roomRef.current,assetsRef.current,save.theme as ThemeId);sceneRef.current.resize(hostRef.current.clientWidth,hostRef.current.clientHeight,insetRef.current.top,insetRef.current.bottom);}
+    setRoomTitle(save.name);roomTitleRef.current=save.name;setCrew(save.crew);crewRef.current=save.crew;setTheme(save.theme as ThemeId);themeRef.current=save.theme as ThemeId;setMarketId(save.market);
+    sceneRef.current?.setTheme(save.theme as ThemeId);sceneRef.current?.setCrew(save.crew);sceneRef.current?.setSign(save.name);
+    try{localStorage.setItem(SAVE_KEY,JSON.stringify(save));}catch{}
+  },[]);
+  const syncAuthorityRef=useRef(syncAuthority);syncAuthorityRef.current=syncAuthority;
+  const runCommand=useCallback(async(command:KitchenCommand)=>{
+    if(command.type==="settle"&&truckOwnsPrediction())return null;
+    const j=await cloudRef.current.command(command);
+    // A home settlement already in flight can return after the truck opens.
+    // Its canonical data is retained by the hook, then included in the next
+    // truck receipt; it must not erase the truck's predicted input tape now.
+    if(j&&!(command.type==="settle"&&truckOwnsPrediction()))syncAuthorityRef.current(j);
+    if(!j?.ok){
+      if(j&&worldRef.current?.editing&&editSavingRef.current){beginHistory();setHoldItem("");setLiftUid(-1);setEditError("Your restaurant changed on another device. Review the updated room before decorating again.");}
+      return null;
+    }
+    if(command.type!=="settle")sfxRef.current?.play("kaching");
+    return j;
+  },[]);
+  runCommandRef.current=runCommand;
+  const authoritative=()=>AUTHORITY_ENABLED&&!!cloudRef.current.wallet;
+  const saveGuestProgress=useCallback(()=>{
+    const w=worldRef.current;if(!w||authoritative())return;
+    try{localStorage.setItem(SAVE_KEY,JSON.stringify(serializeSave(w,themeRef.current,crewRef.current,introRef.current,roomTitleRef.current,{onboarding:onboardingRef.current,delivery:deliveryRef.current})));}catch{}
+  },[]);
+  const applyTruckLocal=useCallback((action:TruckAction)=>{
+    const w=worldRef.current;if(!w)return false;
+    const result=dispatchTruck(w.truck,action,{coins:w.playMoney,recipeLevels:w.pantry.levels});
+    if(result.error){if(action.type!=="tick")setTruckError(result.error);return false;}
+    w.truck=result.truck;
+    // Connected prediction animates the truck, but spendable currency and home
+    // equipment stay at the latest confirmed receipt until the server replies.
+    if(!authoritative()){
+      w.playMoney+=result.coinDelta;
+      for(const [id,n] of Object.entries(result.homeGrants))w.inventory[id]=(w.inventory[id]??0)+n;
+      for(const [id,n] of Object.entries(result.stockGrants))w.pantry.stock[id]=(w.pantry.stock[id]??0)+n;
+    }
+    renderTruck(n=>n+1);return true;
+  },[]);
+  const flushTruck=useCallback(async(drain=false):Promise<boolean>=>{
+    if(!authoritative())return true;
+    if(truckFlightRef.current){
+      const confirmed=await truckFlightRef.current;
+      return confirmed&&drain?flushTruckRef.current(true):confirmed;
+    }
+    const outstanding=cloudRef.current.pendingCommand();
+    const retry=isTruckCommand(outstanding)?outstanding:null;
+    if(!retry&&!truckActionsRef.current.length)return !truckUncertainRef.current;
+    const command:KitchenCommand=retry??{type:"truckBatch",actions:takeTruckBatch(truckActionsRef.current)};
+    truckSendingRef.current=true;setTruckBusy(true);
+    const owner=cloudRef.current.wallet;
+    const flight=(async()=>{
+      try{
+        const response=await cloudRef.current.command(command);
+        if(owner!==cloudRef.current.wallet){truckActionsRef.current=[];truckUncertainRef.current=false;return false;}
+        const canonical=response?.save?response:cloudRef.current.authorityRef.current;
+        if(canonical)syncAuthorityRef.current(canonical);
+        if(response?.ok){
+          truckUncertainRef.current=false;
+          if(response.authority.truckClock?.pausedForAbsence){
+            truckActionsRef.current=[];
+            setTruckError("Your connection paused the truck. Resume when you are ready.");
+          }else{
+            // Canonical state already includes the submitted tape. Replay only
+            // the unsent suffix, retaining that suffix for its own receipt.
+            const queued=[...truckActionsRef.current];
+            truckActionsRef.current=[];
+            for(const action of queued){
+              if(action.type==="tick"&&worldRef.current?.truck.run?.phase!=="playing")continue;
+              if(!applyTruckLocal(action))break;
+              truckActionsRef.current.push(action);
+            }
+            if(!truckActionsRef.current.length)setTruckError("");
+          }
+          return true;
+        }
+        truckActionsRef.current=[];
+        truckUncertainRef.current=isTruckCommand(cloudRef.current.pendingCommand());
+        // The last confirmed snapshot replaces speculative coins/equipment.
+        // A pending envelope remains in the hook until the same ID is resolved.
+        const w=worldRef.current;if(truckUncertainRef.current&&w?.truck.run?.phase==="playing")w.truck.run.phase="paused";
+        setTruckError(response?.error??(truckUncertainRef.current?"Your connection paused. Press Resume to confirm the pending trip first.":"That action was refused. Your last confirmed truck has been restored."));
+        return false;
+      }finally{truckSendingRef.current=false;truckFlightRef.current=null;setTruckBusy(false);renderTruck(n=>n+1);}
+    })();
+    truckFlightRef.current=flight;
+    const confirmed=await flight;
+    return confirmed&&drain&&truckActionsRef.current.length?flushTruckRef.current(true):confirmed;
+  },[applyTruckLocal]);
+  flushTruckRef.current=flushTruck;
+  const onTruckAction=useCallback((action:TruckAction)=>{
+    const w=worldRef.current;if(!w)return;
+    if(action.type==="tick"&&w.truck.run?.phase!=="playing")return;
+    if(authoritative()&&(truckUncertainRef.current||(!truckSendingRef.current&&isTruckCommand(cloudRef.current.pendingCommand())))){
+      if(action.type!=="tick")void flushTruckRef.current(true);
+      return;
+    }
+    if(authoritative()&&action.type==="tick"&&truckActionsRef.current.reduce((sum,input)=>sum+(input.type==="tick"?input.ticks:0),0)+action.ticks>80){
+      // Stop optimistic play before a delayed response can create an oversized
+      // backlog. The pause itself is ordered after the already-predicted ticks.
+      if(w.truck.run?.phase==="playing"&&applyTruckLocal({type:"pause"}))truckActionsRef.current.push({type:"pause"});
+      setTruckError("Saving your trip. Service is paused until these actions are confirmed.");
+      void flushTruckRef.current(true);return;
+    }
+    if(action.type==="pause"&&w.truck.run?.phase!=="playing")return;
+    if(!applyTruckLocal(action))return;
+    if(action.type!=="tick")setTruckError("");
+    if(authoritative()){
+      const previous=truckActionsRef.current[truckActionsRef.current.length-1];
+      if(action.type==="tick"&&previous?.type==="tick"&&previous.ticks+action.ticks<=80)previous.ticks+=action.ticks;
+      else truckActionsRef.current.push(action);
+      // Movement/interactions are sent in the one-second tape, rather than a
+      // request per keypress. Lifecycle and between-service purchases flush now.
+      if(!["tick","move","moveTo","interact","discard"].includes(action.type))void flushTruckRef.current();
+    }else if(action.type!=="tick")saveGuestProgress();
+  },[applyTruckLocal,saveGuestProgress]);
+  const prepareTruckExit=useCallback(async()=>{
+    if(worldRef.current?.truck.run?.phase==="playing")onTruckAction({type:"pause"});
+    if(!await flushTruckRef.current(true))return false;
+    // A recovered uncertain tape may have restored a still-running service.
+    if(worldRef.current?.truck.run?.phase==="playing"){
+      onTruckAction({type:"pause"});if(!await flushTruckRef.current(true))return false;
+    }
+    saveGuestProgress();return true;
+  },[onTruckAction,saveGuestProgress]);
+  useEffect(()=>{
+    if(openSheet!=="truck")return;
+    const interval=window.setInterval(()=>{if(authoritative())void flushTruckRef.current();else saveGuestProgress();},1000);
+    return ()=>{window.clearInterval(interval);void flushTruckRef.current(true);};
+  },[openSheet,saveGuestProgress]);
+  const onCareTask=useCallback(async(taskId:string)=>{
+    const w=worldRef.current;if(!w||careBusyRef.current||w.editing)return;
+    const task=w.launch.careTasks.find(entry=>entry.id===taskId);
+    if(!task||task.progress>=task.steps)return;
+    careBusyRef.current=true;setCareBusy(true);
+    try{
+      const ok=authoritative()?!!await runCommand({type:"careTask",taskId}):applyAction(w,roomRef.current,{type:"careTask",taskId});
+      if(ok){
+        saveGuestProgress();
+        sceneRef.current?.spark(task.target.gx,task.target.gy,task.kind==="repair"?0xa2d2d5:0xe8d99c,8);
+        sfxRef.current?.play("bus");
+        if(w.launch.careTasks.find(entry=>entry.id===taskId)?.progress===task.steps)setToast(task.kind==="repair"?"All fixed. Good as new.":"Spotless. That looks better.");
+      }
+      await new Promise(resolve=>setTimeout(resolve,LAUNCH_RULES.careStepCooldownMs));
+    }finally{careBusyRef.current=false;setCareBusy(false);}
+  },[runCommand,saveGuestProgress]);
+  const onClaimDailyGoal=useCallback(async(goalId:LaunchGoalId)=>{
+    const w=worldRef.current;if(!w||careBusyRef.current)return;
+    careBusyRef.current=true;setCareBusy(true);
+    try{
+      const hadBonus=w.launch.shiftClaimed;
+      const ok=authoritative()?!!await runCommand({type:"claimDailyGoal",goalId}):applyAction(w,roomRef.current,{type:"claimDailyGoal",goalId});
+      if(ok){saveGuestProgress();sfxRef.current?.play("kaching");setToast(!hadBonus&&w.launch.shiftClaimed?"Daily bonus! Coins and a rare ingredient for your next recipe.":"Job done. Coins and an ingredient added.");}
+    }finally{careBusyRef.current=false;setCareBusy(false);}
+  },[runCommand,saveGuestProgress]);
+  const onDailyAction=useCallback((goalId:LaunchGoalId)=>{
+    if(goalId==="care"){
+      showSheet(null);sceneRef.current?.resetCamera();
+      const task=worldRef.current?.launch.careTasks.find(entry=>entry.progress<entry.steps);
+      if(task){careButtons.current.get(task.id)?.focus({preventScroll:true});setToast(careLabel(task)+". Tap the mess to work on it.");}
+    }else if(goalId==="serve"){showSheet(null);setToast("Your crew is serving. Keep their paths clear and their kitchen cared for.");}
+    else {setCookFocusSpecial(goalId==="prep"||goalId==="special");showSheet(goalId==="decorate"?"shop":"menu");}
+  },[showSheet]);
+  useEffect(()=>{if(cloud.error)setToast(cloud.error);},[cloud.error]);
+  useEffect(()=>{
+    if(!AUTHORITY_ENABLED||cloud.status!=="on"||phase!=="ready")return;
+    let cancelled=false;
+    void cloud.load().then(async(save)=>{if(!save||cancelled||truckOwnsPrediction())return;await runCommand({type:"settle"});});
+    const id=setInterval(()=>{if(document.visibilityState!=="hidden"&&!worldRef.current?.editing&&!truckOwnsPrediction())void runCommand({type:"settle"});},15000);
+    return()=>{cancelled=true;clearInterval(id);};
+  },[cloud.status,phase,cloud.load,runCommand]);
+
+  const onClaimDelivery = useCallback(async () => {
+    const w = worldRef.current;
+    if (!w || deliveryBusyRef.current) return;
+    deliveryBusyRef.current = true;
+    setDeliveryBusy(true);
+    const before = { ...w.pantry.stock };
+    try {
+      let next: DkSave | null;
+      if (authoritative()) {
+        const result = await runCommand({ type: "claimDaily" });
+        next = result?.save ?? null;
+      } else {
+        const saved = serializeSave(w, themeRef.current, crewRef.current, introRef.current, roomTitleRef.current, { onboarding: onboardingRef.current, delivery: deliveryRef.current });
+        next = claimGuestDelivery(saved, Date.now());
+        if (next) {
+          // Write the receipt and its contents together before showing the reward.
+          try { localStorage.setItem(SAVE_KEY, JSON.stringify(next)); }
+          catch { setToast("Your browser could not keep this parcel. Make room in browser storage and try again."); return; }
+          w.pantry.stock = { ...next.pantry.stock };
+          deliveryRef.current = next.delivery;
+          updateOnboarding(next.onboarding);
+        }
+      }
+      if (!next) { setToast(cloudRef.current.error || "Today's parcel has already been opened."); return; }
+      const contents: Record<string, number> = {};
+      for (const [id, quantity] of Object.entries(next.pantry.stock)) {
+        const added = quantity - (before[id] ?? 0);
+        if (added > 0) contents[id] = added;
+      }
+      setDeliveryReveal(contents);
+      sfxRef.current?.play("unlock");
+      setIntroBoth(onboardingStep(onboardingRef.current, deliveryRef.current));
+    } finally { deliveryBusyRef.current = false; setDeliveryBusy(false); }
+  }, [runCommand, updateOnboarding, setIntroBoth]);
+
+  const onChooseGoal = useCallback(async (id: string) => {
+    const w = worldRef.current;
+    if (!w || !availableDishes(w).some(d => d.id === id)) return;
+    if (authoritative()) {
+      const j = await runCommand({ type: "appearance", appearance: { onboarding: { goalDishId: id } } });
+      if (!j) return;
+    } else updateOnboarding({ goalDishId: id, upgraded: (w.pantry.levels[id] ?? 1) > 1 });
+    setToast(`${dishDef(id)?.name ?? "This recipe"} is your next kitchen goal.`);
+  }, [runCommand, updateOnboarding]);
+
   const onDials = useCallback((parkedUsd: number, volumeUsd: number) => {
     const world = worldRef.current;
     if (!world) return;
@@ -1342,15 +1797,20 @@ export default function GameStage() {
   }, []);
 
   const onUpgradeDish = useCallback((key: string) => {
+    if(authoritative()){void runCommand({type:"upgradeDish",dishId:key}).then(j=>{if(j){setToast("A new recipe level. Your kitchen has something to celebrate.");if(onboardingStep(j.save.onboarding,j.save.delivery)===5)showSheet(null);}});return;}
     const world = worldRef.current;
     if (!world) return;
     if (applyAction(world, roomRef.current, { type: "upgradeDish", key })) {
+      const goal = onboardingRef.current.goalDishId ?? key;
+      updateOnboarding({ upgraded: (world.pantry.levels[goal] ?? 1) > 1, goalDishId: goal });
       sfxRef.current?.play("unlock");
       setToast("The kitchen learned to cook that one better.");
+      if (onboardingStep(onboardingRef.current, deliveryRef.current) === 5) showSheet(null);
     }
   }, []);
 
   const onPrepSpecial = useCallback(() => {
+    if(authoritative()){void runCommand({type:"prepSpecial"});return;}
     const world = worldRef.current;
     if (!world) return;
     if (applyAction(world, roomRef.current, { type: "prepSpecial" })) {
@@ -1369,6 +1829,7 @@ export default function GameStage() {
    * index, so the new scene picks it all up on its first sync.
    */
   const onExpand = useCallback(() => {
+    if(authoritative()){void runCommand({type:"expand"});return;}
     const world = worldRef.current;
     const app = appRef.current;
     const assets = assetsRef.current;
@@ -1393,6 +1854,7 @@ export default function GameStage() {
   onExpandRef.current = onExpand;
 
   const onMarket = useCallback((id: string) => {
+    if(authoritative()){void runCommand({type:"appearance",appearance:{market:id}});return;}
     const world = worldRef.current;
     if (!world) return;
     if (applyAction(world, roomRef.current, { type: "market", id })) {
@@ -1403,6 +1865,7 @@ export default function GameStage() {
   }, []);
 
   const onBuyHire = useCallback((hire: HireKind) => {
+    if(authoritative()){void runCommand({type:"hire",hire});return;}
     const world = worldRef.current;
     if (!world) return;
     if (applyAction(world, roomRef.current, { type: "buyHire", hire })) {
@@ -1412,15 +1875,17 @@ export default function GameStage() {
   }, []);
 
   const onBuyItem = useCallback((itemId: string) => {
+    if(authoritative()){void runCommand({type:"purchase",itemId});return;}
     const world = worldRef.current;
     if (!world) return;
     if (applyAction(world, roomRef.current, { type: "buyItem", itemId })) {
       sfxRef.current?.play("kaching");
-      setToast(`${itemDef(itemId)?.label ?? "It"} is in your storage. Tap Arrange to place it.`);
+      setToast(`${itemDef(itemId)?.label ?? "It"} is in your storage. Open Decorate to place it.`);
     }
   }, []);
 
   const onSellItem = useCallback((itemId: string) => {
+    if(authoritative()){void runCommand({type:"sell",itemId});return;}
     const world = worldRef.current;
     if (!world) return;
     if (applyAction(world, roomRef.current, { type: "sellItem", itemId })) {
@@ -1432,10 +1897,12 @@ export default function GameStage() {
   /** Place straight from the shop: jump into arranging with it in hand. */
   const onPlaceItem = useCallback((itemId: string) => {
     const world = worldRef.current;
-    if (!world) return;
+    if (!world || (world.inventory[itemId] ?? 0) < 1) return;
     if (!world.editing) {
       if (!applyAction(world, roomRef.current, { type: "edit", on: true })) return;
       setEditing(true);
+      beginHistory();
+      setOpenSheet(null);
     }
     setHoldItem(itemId);
     setLiftUid(-1);
@@ -1446,9 +1913,40 @@ export default function GameStage() {
 
   const toggleEdit = useCallback(() => {
     const world = worldRef.current;
-    if (!world) return;
+    if (!world||editSavingRef.current) return;
     const next = !world.editing;
+    if(next)beginHistory();
+    else if(authoritative()){
+      const latest=cloudRef.current.authorityRef.current;
+      editSavingRef.current=true;setEditSaving(true);
+      const pending=cloudRef.current.pendingCommand();
+      if(pending?.type!=="layout"&&latest&&editServerBase.current!==JSON.stringify({layout:latest.save.layout,design:latest.save.design,shell:latest.save.shell})){
+        syncAuthorityRef.current(latest);beginHistory();setHoldItem("");setLiftUid(-1);
+        setEditError("Your restaurant changed on another device. The updated room is ready to review.");
+        editSavingRef.current=false;setEditSaving(false);return;
+      }
+      void runCommand(pending?.type==="layout"?pending:{type:"layout",layout:world.layout.map(({uid,itemId,gx,gy,facing})=>({uid,itemId,gx,gy,facing})),design:world.design}).then(j=>{
+        if(j){applyAction(world,roomRef.current,{type:"edit",on:false});setEditing(false);setHoldItem("");setLiftUid(-1);setPendingPlacement(null);}
+        else setEditError(cloudRef.current.error||"The room could not be saved. Your changes are here; reconnect and try Done again.");
+      }).finally(()=>{editSavingRef.current=false;setEditSaving(false);setEditUncertain(cloudRef.current.pendingCommand()?.type==="layout");});return;
+    }
+    const base = editHistory.current[0];
+    const visualState = (value: EditSnapshot) => JSON.stringify({ layout: value.layout.map(({itemId,gx,gy,facing}) => ({itemId,gx,gy,facing})), design: value.design });
+    const changed = !next && !!base && visualState(base) !== visualState({ layout: world.layout, design: world.design });
+    setOpenSheet(null);
     if (applyAction(world, roomRef.current, { type: "edit", on: next })) {
+      if (!next) {
+        const progress = changed ? { ...onboardingRef.current, decorated: true } : onboardingRef.current;
+        const saved = serializeSave(world, themeRef.current, crewRef.current, onboardingStep(progress, deliveryRef.current), roomTitleRef.current, { onboarding: progress, delivery: deliveryRef.current });
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify(saved)); }
+        catch {
+          applyAction(world, roomRef.current, { type: "edit", on: true });
+          setEditError("This browser could not save your changes. Make room in browser storage and try Done again.");
+          return;
+        }
+        updateOnboarding(progress);
+        if (changed) setToast("A little more you. Your changes are saved.");
+      }
       setEditing(next);
       setHoldItem("");
       setLiftUid(-1);
@@ -1457,13 +1955,60 @@ export default function GameStage() {
     }
   }, []);
 
+  const deliveryAvailable = authoritative()
+    ? cloud.authorityRef.current?.authority.dailyClaimed === false
+    : !deliveryRef.current.welcomeClaimed || deliveryRef.current.claimedDay < Math.floor(Date.now() / 86_400_000);
+  const openDelivery = () => { setDeliveryReveal(null); showSheet("delivery"); };
+  const finishIntro = () => { updateOnboarding({ finished: true }, true); showSheet(null); };
+  const onCoachAction = () => {
+    if (intro === 1) {
+      sceneRef.current?.resetCamera();
+      setToast("Your crew has this. Tap the chef if you'd like to help.");
+    } else if (intro === 2) {
+      toggleEdit();
+      setToast("Move your plant, change a floor finish, or choose an awning. Tap Done to keep it.");
+    } else if (intro === 3) openDelivery();
+    else if (intro === 4) showSheet("menu");
+    else { updateOnboarding({ finished: true }, true); showSheet("account"); }
+  };
+
+  const onSaveAccount = async () => {
+    if (accountBusy) return;
+    setAccountBusy(true);
+    try {
+      const w = worldRef.current;
+      if (w && !cloudRef.current.wallet) {
+        guestDesignRef.current = serializeSave(w, themeRef.current, crewRef.current, introRef.current, roomTitleRef.current, { onboarding: onboardingRef.current, delivery: deliveryRef.current });
+        try { localStorage.setItem("dk_guest_before_connect", JSON.stringify(guestDesignRef.current)); } catch {}
+      }
+      await cloudRef.current.signIn();
+      const saved = await cloudRef.current.load();
+      const current = cloudRef.current.authorityRef.current;
+      if (AUTHORITY_ENABLED && current) syncAuthority(current);
+      else if (saved) { persistLocalNow(); setToast("Your restaurant account is connected."); }
+    } finally { setAccountBusy(false); }
+  };
+
+  const shareKitchen = async () => {
+    const app = appRef.current;
+    if (!app || !snap) return;
+    try {
+      const wallet = cloudRef.current.wallet;
+      const handle = wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : undefined;
+      const visitUrl = handle ? `${window.location.origin}/chef/visit/${encodeURIComponent(handle)}` : `${window.location.origin}/chef`;
+      const blob = await makePostcard(app, app.stage, { name: roomTitleRef.current, tier: snap.tier });
+      const how = await sharePostcard(blob, roomTitleRef.current, visitUrl);
+      setToast(how === "shared" ? "Your postcard is ready to visit." : how === "cancelled" ? "Postcard kept here." : "Postcard saved. Copy your visit link to share alongside it.");
+    } catch { setToast("The postcard did not come out. Try again in a moment."); }
+  };
+
   return (
-    <div
+    <div className={css.game}
       style={{
         position: "relative",
         width: "100%",
         height: "100dvh",
-        background: "#1b1310",
+        background: "#f4eddf",
         overflow: "hidden",
       }}
     >
@@ -1485,24 +2030,26 @@ export default function GameStage() {
            * "manipulation", so their double-tap protection is unaffected.
            */
           touchAction: "none",
+          visibility: openSheet==="truck"?"hidden":"visible",
+          pointerEvents: openSheet==="truck"?"none":"auto",
         }}
       />
       {phase === "ready" && toast && (
         <div
           style={{
             position: "absolute",
-            top: 58,
+            top: editing ? 82 : 176,
             left: "50%",
             transform: "translateX(-50%)",
-            background: "rgba(27,19,16,0.94)",
+            background: "rgba(255,252,243,0.97)",
             border: "1px solid #e8a13d",
             borderRadius: 999,
-            color: "#f3e9d2",
+            color: "#3c392c",
             fontFamily: FONT,
             fontSize: 13,
             fontWeight: 700,
             padding: "8px 16px",
-            zIndex: 6,
+            zIndex: 45,
             maxWidth: "88vw",
             textAlign: "center",
           }}
@@ -1526,7 +2073,9 @@ export default function GameStage() {
             step={intro}
             snap={snap}
             narrow={narrow}
-            onSkip={() => setIntroBoth(INTRO_DONE)}
+            onSkip={finishIntro}
+            onAction={onCoachAction}
+            busy={deliveryBusy || accountBusy}
           />
         )}
       {phase === "ready" && snap && (
@@ -1548,193 +2097,56 @@ export default function GameStage() {
               room is the page; the HUD is a thin frame around it, identical
               on a phone and a laptop. Everything else arrives as one Sheet.
           */}
-          {!editing && (
-            <>
-              <div
-                style={{
-                  position: "absolute",
-                  left: 12,
-                  top: 12,
-                  display: "flex",
-                  gap: 8,
-                  zIndex: Z.hud,
-                }}
-              >
-                {/* the game's first persistent coin counter: until now coins
-                    only existed inside the shop header */}
-                <CoinChip coins={snap.coins} onClick={() => showSheet("money")} />
-                <StatPill
-                  quality={snap.quality}
-                  tier={snap.tier}
-                  clock={`${snap.clock} · ${snap.phase}`}
-                  badge={snap.dailyPlates < 10 || !snap.dailyPrepped || !snap.dailyGreeted}
-                  onClick={() => showSheet("service")}
-                />
-              </div>
-
-              <div style={{ position: "absolute", right: 12, top: 12, zIndex: Z.hud }}>
-                <IconOnly
-                  label={muted ? "Sound off" : "Sound on"}
-                  onClick={() => {
-                    setMuted((m) => {
-                      const next = !m;
-                      sfxRef.current?.setMuted(next);
-                      try {
-                        localStorage.setItem(MUTE_KEY, next ? "1" : "0");
-                      } catch {}
-                      return next;
-                    });
-                  }}
-                >
-                  {muted ? <IconSpeakerOff /> : <IconSpeaker />}
-                </IconOnly>
-              </div>
-
-              <div
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  bottom: `calc(10px + env(safe-area-inset-bottom, 0px))`,
-                  display: "flex",
-                  justifyContent: "center",
-                  gap: 8,
-                  zIndex: Z.hud,
-                  pointerEvents: "none",
-                }}
-              >
-                <div style={{ display: "flex", gap: 8, pointerEvents: "auto" }}>
-                  <DockButton
-                    icon={<IconCart />}
-                    label="Shop"
-                    active={openSheet === "shop"}
-                    onClick={() => showSheet(openSheet === "shop" ? null : "shop")}
-                  />
-                  <DockButton
-                    icon={<IconMoney />}
-                    label="Money"
-                    active={openSheet === "money"}
-                    badge={!!campaigns.find((c) => c.market === marketId)}
-                    onClick={() => showSheet(openSheet === "money" ? null : "money")}
-                  />
-                  <DockButton
-                    icon={<IconCloche />}
-                    label="Menu"
-                    active={openSheet === "menu"}
-                    onClick={() => showSheet(openSheet === "menu" ? null : "menu")}
-                  />
-                  <DockButton
-                    icon={<IconCap />}
-                    label="Learn"
-                    active={openSheet === "learn"}
-                    onClick={() => showSheet(openSheet === "learn" ? null : "learn")}
-                  />
-                  <DockButton
-                    icon={<IconMore />}
-                    label="More"
-                    active={openSheet === "more"}
-                    onClick={() => showSheet(openSheet === "more" ? null : "more")}
-                  />
-                </div>
-              </div>
-            </>
-          )}
+          {!editing && openSheet!=="truck" && <RestaurantHUD name={roomTitle} snap={snap} active={openSheet} onOpen={(id) => {setCookFocusSpecial(false);showSheet(id as SheetId);}} onDecorate={()=>showSheet("shop")} onSound={() => showSheet("more")} />}
+          {openSheet==="truck"&&worldRef.current&&<FoodTruck truck={worldRef.current.truck} coins={worldRef.current.playMoney} restaurantName={roomTitle} busy={truckBusy} error={truckError} confirmedDiscoveries={authoritative()?cloud.authorityRef.current?.save.truck.firstClears??[]:undefined} onSound={name=>sfxRef.current?.play(name)} onAction={onTruckAction} onHome={()=>{void (async()=>{if(await prepareTruckExit())showSheet(null);})();}} onPlaceHome={(itemId)=>{void (async()=>{if(!await prepareTruckExit())return;if((worldRef.current?.inventory[itemId]??0)<1){setTruckError("This equipment is already placed at home. Store it there before moving it.");return;}showSheet(null);onPlaceItem(itemId);})();}}/>}
+          {!editing&&!openSheet&&intro===INTRO_DONE&&worldRef.current&&<>
+            {worldRef.current.launch.careTasks.filter(task=>task.progress<task.steps).map(task=><CareSpot key={task.id} task={task} busy={careBusy} onCare={()=>void onCareTask(task.id)} buttonRef={node=>{if(node)careButtons.current.set(task.id,node);else careButtons.current.delete(task.id);}}/>)}
+            <DailyRibbon world={worldRef.current} busy={careBusy} onClaim={id=>void onClaimDailyGoal(id)} onAction={onDailyAction}/>
+          </>}
+          {!editing && !openSheet && deliveryAvailable && (intro >= 3 || intro === INTRO_DONE) && <button ref={parcelButtonRef} className={css.secondary} onClick={openDelivery} aria-label="Open your ingredient delivery" style={{position:"absolute",left:"30%",top:"58%",transform:"translate(-50%, -50%)",zIndex:7,display:"grid",justifyItems:"center",padding:"5px 9px",background:"#fff9eb",border:"1px solid #d5b887",borderRadius:18,boxShadow:"0 4px 16px #79654624",minWidth:60,minHeight:60}}><ParcelArt size={46}/><span style={{fontSize:11}}>Delivery</span></button>}
 
           {/* ── the sheets ─────────────────────────────────────────────── */}
-          {!editing && openSheet === "money" && market && (
-            <Sheet title="Your money here" onClose={() => showSheet(null)}>
-              <LpPanel
-                market={market}
-                read={lp}
-                live={liveOn}
-                cloud={cloud}
-                onUseLive={setUseLive}
-                collapsed={false}
-                bare
-                onToggle={() => showSheet(null)}
-                onAddLiquidity={() => showSheet("addLp")}
-              />
-              <DialsPanel
-                snap={snap}
-                collapsed={false}
-                bare
-                section="money"
-                onToggle={() => showSheet(null)}
-                onDials={onDials}
-                onMarket={onMarket}
-                campaign={campaigns.find((c) => c.market === marketId) ?? null}
-              />
-            </Sheet>
-          )}
-
-          {!editing && openSheet === "service" && (
-            <Sheet title="Tonight's service" onClose={() => showSheet(null)}>
-              <DialsPanel
-                snap={snap}
-                collapsed={false}
-                bare
-                section="service"
-                onToggle={() => showSheet(null)}
-                onDials={onDials}
-                onMarket={onMarket}
-                campaign={campaigns.find((c) => c.market === marketId) ?? null}
-              />
-            </Sheet>
-          )}
-
+          {!editing && openSheet === "delivery" && <DeliveryParcel available={deliveryAvailable} busy={deliveryBusy} contents={deliveryReveal} onOpen={()=>void onClaimDelivery()} onClose={()=>{showSheet(null);setDeliveryReveal(null);}} onContinue={()=>{showSheet("menu");setDeliveryReveal(null);}} continueLabel="Choose a recipe"/>}
+          {!editing && openSheet === "account" && <Sheet compact title="Save your kitchen" onClose={()=>showSheet(null)}>
+            <div className={css.hero}><div className={css.eyebrow}>A place to come back to</div><h3>{roomTitle || "Your story starts here."}</h3><p>Your crew, your favorite corner, your next signature dish.</p></div>
+            <div className={css.note}>{openingPreview ? "This opening-day preview has its own browser save. Your regular kitchen and connected account are untouched." : cloud.status === "on" ? "Your restaurant account is connected. Come back with the same wallet to open it on another device." : "Your restaurant is saved in this browser. Connect a wallet and sign in when you're ready to keep a restaurant across devices."}</div>
+            {openingPreview && <div className={css.inlineActions}><Button onClick={()=>{localStorage.removeItem(SAVE_KEY);window.location.reload();}}>Restart opening preview</Button><a href="/chef" className={css.secondary}>Open my saved kitchen</a></div>}
+            {!openingPreview && cloud.status !== "on" && <>
+              {AUTHORITY_ENABLED && <p className={css.note}>Connected coins and ingredients are earned separately. For a new account, you can bring over a room design made with its starter furniture. A copy of this browser kitchen is kept before connecting.</p>}
+              <div className={css.inlineActions}><ConnectButton showBalance={false} accountStatus="address" chainStatus="none"/><Button variant="primary" disabled={accountBusy||cloud.status==="signing"} onClick={()=>void onSaveAccount()}>{accountBusy ? "Opening your account…" : "Sign in to save"}</Button></div>
+              <p className={css.note}>Signing in proves this wallet is yours. It does not stake tokens or spend funds.</p>
+            </>}
+            {cloud.error && <p role="alert" className={css.error}>{cloud.error}</p>}
+            {cloud.authorityRef.current?.authority.canImportGuestDesign && guestDesignRef.current && <div className={css.note}><strong>Bring your corner with you.</strong><p>Use your browser kitchen's name, finishes, and starter furniture arrangement. Your connected rewards stay with this account.</p><Button disabled={accountBusy} onClick={()=>{const design=guestDesignRef.current;if(!design)return;setAccountBusy(true);void runCommand({type:"adoptGuestDesign",layout:design.layout,design:design.design,appearance:{name:design.name,theme:design.theme,crew:design.crew}}).then(j=>{if(j){guestDesignRef.current=null;setToast("Your room design is here. Welcome home.");}}).finally(()=>setAccountBusy(false));}}>Use this room design</Button></div>}
+            {guestDesignRef.current && cloud.wallet && <MoreRow icon={<IconChevron/>} label="Return to my browser kitchen" hint="Open the local copy kept before connecting. Your connected restaurant stays saved." onClick={()=>{const copy=guestDesignRef.current;if(!copy)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(copy));cloud.signOut();window.location.reload();}catch{setToast("Your browser could not restore the saved copy.");}}}/>}
+            <Button full variant="primary" onClick={()=>showSheet(null)}>Back to my kitchen</Button>
+          </Sheet>}
+          {!editing && (openSheet === "frontier" || openSheet === "learn") && <Sheet title="About Domain Kitchen" onClose={()=>showSheet(null)}>
+            <div className={css.hero}><div className={css.eyebrow}>Your restaurant. Your food truck.</div><h3>Bring something wonderful home.</h3><p>Cook your way across the neighborhood, discover new machines, and build a restaurant worth visiting.</p></div>
+            <p className={css.note}>Everything you earn stays yours when a trip ends. Place your discoveries at home and your crew starts serving their dishes.</p>
+            <p className={css.note}>Kitchen coins are game currency. Optional token events open only after their reward pool and player eligibility are confirmed.</p>
+            <Button full variant="primary" onClick={()=>showSheet("truck")}>Visit my food truck</Button>
+            <a className={css.textButton} href="https://web3guides.com/domain-kitchen" target="_blank" rel="noopener noreferrer">How to play</a>
+          </Sheet>}
           {!editing && openSheet === "shop" && (
-            <Sheet title="Shop" onClose={() => showSheet(null)}>
-              <ShopPanel
-                snap={snap}
-                theme={theme}
-                collapsed={false}
-                bare
-                onToggle={() => showSheet(null)}
-                onBuyHire={onBuyHire}
-                onBuyItem={onBuyItem}
-                onSellItem={onSellItem}
-                onPlaceItem={onPlaceItem}
-                onExpand={onExpand}
-              />
-            </Sheet>
+            <Sheet title="Decorate" onClose={() => showSheet(null)}>
+              <ShopCatalog unlockedMachines={worldRef.current?.truck.unlockedMachineIds} onArrange={()=>{showSheet(null);toggleEdit();}} expansion={worldRef.current?<ExpansionCard world={worldRef.current} onExpand={onExpand} onCook={()=>showSheet("menu")}/>:undefined} featuredOnly={authoritative()} eligibleMarkets={cloud.authorityRef.current?.authority.eligibleMarkets} featured={cloud.authorityRef.current?.featured??featuredItems(Date.now())} ingredientOffers={cloud.authorityRef.current?.ingredientOffers??[]} onBuyIngredient={(ingredientId)=>{void runCommand({type:"purchaseIngredient",ingredientId});}} snap={snap} theme={theme} onBuyHire={onBuyHire} onBuyItem={onBuyItem} onSellItem={onSellItem} onPlaceItem={onPlaceItem} onExpand={onExpand} />            </Sheet>
           )}
 
           {!editing && openSheet === "more" && (
-            <Sheet title="More" onClose={() => showSheet(null)}>
-              <MoreRow icon={<IconWrench />} label="Arrange the room" hint="Move, turn and store your furniture." onClick={() => { showSheet(null); toggleEdit(); }} />
-              <MoreRow icon={<IconChevron />} label="Name your place" hint={roomTitle ? `The sign says ${roomTitle}.` : "Put a name over the door."} onClick={() => showSheet("name")} />
-              <MoreRow icon={<IconChefHat />} label="Your crew" hint="Pick your chef and waiter, and name them." onClick={() => showSheet("crew")} />
-              <MoreRow icon={<IconSwatch />} label="Style" hint="Change the look of the whole room." onClick={() => showSheet("style")} />
-              <MoreRow icon={<IconBook />} label="Guest book" hint="What happened in your restaurant." onClick={() => showSheet("book")} />
-              <MoreRow
-                icon={<IconCamera />}
-                label="Share a postcard"
-                hint="A picture of your place, ready to post."
-                onClick={async () => {
-                  const app = appRef.current;
-                  const scene = sceneRef.current;
-                  const w = worldRef.current;
-                  if (!app || !scene || !w) return;
-                  showSheet(null);
-                  try {
-                    const blob = await makePostcard(app, app.stage, {
-                      name: roomTitleRef.current,
-                      tier: snap.tier,
-                    });
-                    const how = await sharePostcard(blob, roomTitleRef.current);
-                    setToast(how === "shared" ? "Postcard sent." : "Postcard saved to your downloads.");
-                    sfxRef.current?.play("kaching");
-                  } catch {
-                    setToast("The postcard did not come out. Try again in a moment.");
-                  }
-                }}
-              />
-              <MoreRow icon={<IconMedal />} label="Best tables in town" hint="See how other kitchens are doing." href="/chef/board" />
+            <Sheet compact title="Settings" onClose={() => showSheet(null)}>
+              <div className={css.settingsOptions}>
+                <button className={css.secondary} aria-pressed={!muted} onClick={()=>{const next=!muted;setMuted(next);sfxRef.current?.setEffectsMuted(next);try{localStorage.setItem(MUTE_KEY,next?"1":"0");}catch{}}}>Sounds <strong>{muted?"Off":"On"}</strong></button>
+                <button className={css.secondary} aria-pressed={!musicMuted} onClick={()=>{const next=!musicMuted;setMusicMuted(next);sfxRef.current?.setMusicMuted(next);try{localStorage.setItem("dk_music_muted",next?"1":"0");}catch{}}}>Music <strong>{musicMuted?"Off":"On"}</strong></button>
+              </div>
+              <Button full onClick={()=>showSheet("account")}>{cloud.status==="on"?"Your saved kitchen":"Save your kitchen"}</Button>
+              <button className={css.textButton} onClick={()=>showSheet("frontier")}>About Domain Kitchen</button>
             </Sheet>
           )}
 
+          {!editing && openSheet === "friends" && <Sheet title="Your neighborhood" onClose={()=>showSheet(null)}><button className={css.secondary} onClick={()=>void shareKitchen()}><IconCamera size={18}/>Make a restaurant postcard</button><FriendsPanel cloud={cloud} onAccount={()=>showSheet("account")} onChanged={syncAuthority}/></Sheet>}
           {!editing && openSheet === "name" && (
-            <Sheet title="Name your place" onClose={() => showSheet("more")}>
+            <Sheet compact title="Name your place" onClose={() => showSheet(null)}>
               <div style={{ fontFamily: FONT, fontSize: 13, color: C.creamDim, lineHeight: 1.5, marginBottom: 10 }}>
                 The name goes on a sign by your door. Friends will see it when
                 they look at your place.
@@ -1768,6 +2180,7 @@ export default function GameStage() {
               <Button
                 variant="primary"
                 onClick={() => {
+                  if(authoritative())void runCommand({type:"appearance",appearance:{name:roomTitleRef.current}});
                   sceneRef.current?.setSign(roomTitleRef.current);
                   sfxRef.current?.play("kaching");
                   showSheet(null);
@@ -1783,56 +2196,29 @@ export default function GameStage() {
             </Sheet>
           )}
 
-          {editing && (
-            <EditTray
-              inventory={snap.inventory}
-              holdingItemId={holdItem}
-              liftUid={liftUid}
-              error={editError}
-              onPickItem={(id) => {
-                setHoldItem(id);
-                setLiftUid(-1);
-                setEditError("");
-              }}
-              onRotate={() => {
-                const world = worldRef.current;
-                if (!world) return;
-                // Turn works on BOTH: a lifted piece turns in place, and a
-                // piece from storage turns in your hand before it lands
-                setGhostFacing((f) => (f === "se" ? "sw" : "se"));
-                if (liftUid >= 0) {
-                  if (!applyAction(world, roomRef.current, { type: "rotate", uid: liftUid })) {
-                    setEditError("That will not fit turned around.");
-                    return;
-                  }
-                }
-                setEditError("");
-                sfxRef.current?.play("bus");
-              }}
-              onStore={() => {
-                const world = worldRef.current;
-                if (!world || liftUid < 0) return;
-                if (applyAction(world, roomRef.current, { type: "store", uid: liftUid })) {
-                  setLiftUid(-1);
-                  setEditError("");
-                  sfxRef.current?.play("bus");
-                } else {
-                  setEditError("The room needs that where it is.");
-                }
-              }}
-              onCancel={() => {
-                setHoldItem("");
-                setLiftUid(-1);
-                setEditError("");
-              }}
-            />
-          )}
+          {editing&&editUncertain&&<div role="status" style={{position:"absolute",top:84,left:14,right:14,zIndex:12,padding:12,background:"#fff9e9",border:"1px solid #d8b36a",borderRadius:12,textAlign:"center"}}><p style={{margin:"0 0 8px"}}>Your room may already be saved. Confirm the result before making more changes.</p><Button disabled={editSaving} onClick={cloud.status==="error"?()=>{void cloud.signIn();}:toggleEdit}>{cloud.status==="error"?"Reconnect to confirm":"Confirm save"}</Button></div>}
+          {editing && worldRef.current && <fieldset disabled={editSaving||editUncertain} style={{border:0,padding:0,margin:0}} aria-busy={editSaving}><DecorEditor key={editSession}
+            world={worldRef.current} theme={theme} holdingItemId={holdItem} liftUid={liftUid} error={editError}
+            canUndo={editCursor.current>0} canRedo={editCursor.current<editHistory.current.length-1}
+            onUndo={()=>restoreEdit(editCursor.current-1)} onRedo={()=>restoreEdit(editCursor.current+1)}
+            onDone={toggleEdit} onCancel={()=>{if(editSavingRef.current)return;restoreEdit(0);const w=worldRef.current;if(w){applyAction(w,roomRef.current,{type:"edit",on:false});const latest=cloudRef.current.authorityRef.current;if(authoritative()&&latest)syncAuthority(latest);else persistLocalNow();}setEditing(false);setHoldItem("");setLiftUid(-1);setPendingPlacement(null);}}
+            onPickItem={(id)=>{paintRef.current.tool="furniture";setHoldItem(id);setLiftUid(-1);setGhostFacing("se");setPendingPlacement(null);setEditError("");}}
+            onRotate={()=>{const order:Facing[]=["se","sw","nw","ne"];setGhostFacing(order[(order.indexOf(ghostFacing)+1)%4]);setEditError("");}}
+            onStore={()=>{const w=worldRef.current;if(w&&liftUid>=0&&applyAction(w,roomRef.current,{type:"store",uid:liftUid})){recordEdit();setLiftUid(-1);setPendingPlacement(null);setEditError("");}}}
+            onClearHold={()=>{setHoldItem("");setLiftUid(-1);setPendingPlacement(null);setEditError("");}}
+            onFinish={(surface,id,gx,gy,side,index)=>{const w=worldRef.current;if(w&&applyAction(w,roomRef.current,{type:"finish",surface,id,gx,gy,side,index})){recordEdit();}}}
+            onStorefront={(awning)=>{const w=worldRef.current;if(w&&applyAction(w,roomRef.current,{type:"storefront",awning}))recordEdit();}}
+            onTool={(tool,finishId)=>{paintRef.current={tool,finishId:finishId??"cream"};setHoldItem("");setLiftUid(-1);setPendingPlacement(null);}}
+            onRoutes={setRoutes} canConfirm={!!pendingPlacement&&!editError&&(!!holdItem||liftUid>=0)}
+            onConfirm={()=>{const w=worldRef.current,view=editRef.current;if(!w||!view||!pendingPlacement)return;const {gx,gy}=pendingPlacement;const ok=liftUid>=0?applyAction(w,roomRef.current,{type:"move",uid:liftUid,gx,gy,facing:ghostFacing}):applyAction(w,roomRef.current,{type:"place",itemId:holdItem,gx,gy,facing:ghostFacing});if(ok){recordEdit();sfxRef.current?.play("kaching");setHoldItem("");setLiftUid(-1);setPendingPlacement(null);setEditError("");}else setEditError("That piece needs a clear spot and a path to the door.");}}
+          /></fieldset>}
           {openSheet === "crew" && (
             <CrewModal
               crew={crew}
               looks={CREW_LOOKS}
               nameMax={CHEF_NAME_MAX}
               onPick={(next) => {
+                if(authoritative())void runCommand({type:"appearance",appearance:{crew:next}});
                 setCrew(next);
                 sceneRef.current?.setCrew(next);
                 sfxRef.current?.play("unlock");
@@ -1842,13 +2228,14 @@ export default function GameStage() {
                 setCrew(next);
                 sceneRef.current?.setCrew(next);
               }}
-              onClose={() => showSheet("more")}
+              onClose={() => {if(authoritative())void runCommand({type:"appearance",appearance:{crew:crewRef.current}});showSheet("more");}}
             />
           )}
           {openSheet === "style" && (
             <StyleModal
               theme={theme}
               onPick={(t) => {
+                if(authoritative())void runCommand({type:"appearance",appearance:{theme:t}});
                 setTheme(t);
                 sceneRef.current?.setTheme(t);
                 sfxRef.current?.play("unlock");
@@ -1859,54 +2246,8 @@ export default function GameStage() {
               onClose={() => showSheet("more")}
             />
           )}
-          {openSheet === "learn" && (
-            <AcademyModal
-              done={courses}
-              onComplete={(id) => {
-                const world = worldRef.current;
-                if (!world) return;
-                if (applyAction(world, roomRef.current, { type: "completeCourse", id })) {
-                  setCourses([...world.courses]);
-                  sfxRef.current?.play("unlock");
-                  setToast(
-                    isGraduate(world.courses)
-                      ? "Every course finished. Your kitchen wears the mark."
-                      : "Course finished. The coins are in your register."
-                  );
-                }
-              }}
-              onClose={() => showSheet(null)}
-              tradeHref={
-                market
-                  ? `https://app.doma.xyz/domain/${encodeURIComponent(market.id.toLowerCase())}`
-                  : undefined
-              }
-              onAddLiquidity={() => showSheet("addLp")}
-            />
-          )}
           {openSheet === "menu" && worldRef.current && (
-            <MenuModal
-              menu={worldRef.current.menu}
-              theme={theme}
-              pantry={worldRef.current.pantry}
-              daily={worldRef.current.daily}
-              canUpgrade={(k) => (worldRef.current ? canUpgradeDish(worldRef.current, k) : false)}
-              onUpgrade={onUpgradeDish}
-              onPrepSpecial={onPrepSpecial}
-              onClose={() => showSheet(null)}
-            />
-          )}
-          {openSheet === "addLp" && market && (
-            <AddLiquidityModal
-              market={market}
-              tradeHref={`https://app.doma.xyz/domain/${encodeURIComponent(market.id.toLowerCase())}`}
-              onClose={() => showSheet("money")}
-              onDone={() => {
-                showSheet("money");
-                setToast("That is working now. Your kitchen will feel it within the hour.");
-                // the position list is polled, so it appears on the card by itself
-              }}
-            />
+            <Cookbook focusSpecial={cookFocusSpecial} world={worldRef.current!} goalDishId={goalDishId} onChooseGoal={(id)=>void onChooseGoal(id)} introMode={intro === 4} deliveryAvailable={deliveryAvailable} deliveryBusy={deliveryBusy} onDelivery={openDelivery} onUpgrade={onUpgradeDish} onSelect={(keys) => { const w=worldRef.current; if(w) { if(authoritative())void runCommand({type:"selectMenu",dishes:keys}); else applyAction(w,roomRef.current,{type:"selectMenu",keys}); } }} onPrep={()=>{onPrepSpecial();showSheet(null);}} onClose={() => showSheet(null)} />
           )}
           {openSheet === "book" && worldRef.current && (
             <BookModal
@@ -1926,7 +2267,8 @@ export default function GameStage() {
         <BootShell
           progress={progress}
           tip={BOOT_TIPS[tipIdx]}
-          error={phase === "error" ? "boot" : undefined}
+          error={phase === "error" ? cloud.error || "boot" : undefined}
+          recovery={phase==="error"&&AUTHORITY_ENABLED&&cloud.wallet?<div style={{display:"grid",gap:12,justifyItems:"center"}}><ConnectButton showBalance={false} accountStatus="address" chainStatus="none"/><Button onClick={()=>{void (async()=>{await cloud.signIn();const saved=await cloud.load();if(saved)window.location.reload();})();}}>Reconnect and open</Button></div>:undefined}
         />
       )}
     </div>

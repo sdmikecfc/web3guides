@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:21:05.729Z",
+  "destination": {
+    "assetId": "disco_lobster_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "5999952dd3d32337545d2d48bb63a952f70d8e0fd460cd90cac36e3bd2f02089",
+  "packageId": "pkg_a2c3cfeb75e3d58f5053a62f",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 106784,
+    "fileName": "disco_lobster_low.glb",
+    "sha256": "8043c8a86600de05f5b9dc23be78be391e5751982e98a4daae3299186c6bbc36"
+  }
+}

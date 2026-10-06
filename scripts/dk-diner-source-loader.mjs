@@ -2,6 +2,7 @@
 import {existsSync,readFileSync} from 'node:fs';
 import {resolve,dirname,extname} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
+import {createRequire} from 'node:module';
 import ts from 'typescript';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
@@ -21,6 +22,16 @@ function sourcePath(file){
 export function sourceURL(file){
   file=sourcePath(file);
   if(urls.has(file))return urls.get(file);
+  // RoomPlan v2 and its legacy adapter deliberately share pure layout helpers.
+  // A data-URL graph cannot represent that cycle; Node's module cache can.
+  // No Three.js instances cross this bridge, so art keeps one Three.js runtime.
+  if(file===resolve(root,'src/lib/chef/diner/room-plan.ts')){
+    const require=createRequire(import.meta.url);
+    require.extensions['.ts']??=(module,filename)=>module._compile(ts.transpileModule(readFileSync(filename,'utf8'),{fileName:filename,compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,filename);
+    const names=Object.keys(require(file)).filter(name=>/^[A-Za-z_$][\w$]*$/.test(name));
+    const code=`import {createRequire} from 'node:module';const value=createRequire(${JSON.stringify(pathToFileURL(file).href)})(${JSON.stringify(file)});${names.map(name=>`export const ${name}=value.${name};`).join('')}`;
+    const url='data:text/javascript;base64,'+Buffer.from(code).toString('base64');urls.set(file,url);return url;
+  }
   if(loading.has(file))throw new Error(`Diner art check encountered a circular source import: ${file}`);
   loading.add(file);
   try{

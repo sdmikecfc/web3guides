@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T16:38:35.881Z",
+  "destination": {
+    "assetId": "burger_belt",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "c94c58e603eec60f316724370032d6c3a09911a507092f9cd924be8fa602b057",
+  "packageId": "pkg_7a5444b048b98e21191cb1f3",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 156476,
+    "fileName": "burger_belt.glb",
+    "sha256": "5c879e6bff1dd37c14a14c951fa31800db2764b01472182819eb59a222b8a5d4"
+  }
+}

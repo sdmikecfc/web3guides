@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T16:38:39.896Z",
+  "destination": {
+    "assetId": "after_hours_diner",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "222d31fd3a56e0b3f10a7b60b6864932c211c658f09e88359195e72cce8e41fe",
+  "packageId": "pkg_93c4298eaf34559265959492",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 113224,
+    "fileName": "after_hours_diner.glb",
+    "sha256": "ff2eac36c3550b5ba41d817daa252c8affb4fe29314421924696455868090296"
+  }
+}

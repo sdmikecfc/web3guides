@@ -31,7 +31,7 @@ for(const [kind,definition]of Object.entries(ROOM_FIXTURES))for(let rotation=0;r
 const gate=kit.createModel('lift_gate'),leaf=gate.getObjectByName('lift-gate-leaf'),pivot=leaf.position.clone();leaf.rotation.z=1.48;assert(leaf.position.equals(pivot),'gate hinge detached');gate.updateMatrixWorld(true);assert(new T.Box3().setFromObject(gate).max.y>1.6,'gate does not lift');
 // Counter widths are actual occupied tiles, not a scaled preview. The gate
 // continues the laminate surface at the same depth and height in every facing.
-for(const width of [3,4])for(let rotation=0;rotation<4;rotation++){
+for(const width of [2,3,4,8])for(let rotation=0;rotation<4;rotation++){
  const fixture={id:'test-counter',kind:'display_counter',x:4,y:4,rotation,width},geometry=roomModuleGeometry(fixture),raw=roomModuleFootprint(fixture),center=geometry.cells.reduce((sum,p)=>({x:sum.x+p.x/width,y:sum.y+p.y/width}),{x:0,y:0});
  assert.deepEqual(raw,[width,1]);const first=geometry.cells[0],last=geometry.cells[width-1],along=new T.Vector3((last.x-first.x)/(width-1),0,(last.y-first.y)/(width-1));
  const counter=kit.createModel('display_counter',{fixtureWidth:width}),gate=kit.createModel('lift_gate');counter.position.set(center.x,0,center.y);counter.rotation.y=gate.rotation.y=Math.PI-rotation*Math.PI/2;gate.position.set(last.x+along.x,0,last.y+along.z);counter.updateMatrixWorld(true);gate.updateMatrixWorld(true);
@@ -124,6 +124,15 @@ for(const stage of stages){
  reviews.push({stage,root,data});cases++;
 }
 const disposable=shell.createRoomShell(createRestaurantBlueprint('burger_shop').roomPlan,{menu:['classic_burger']}),grid=disposable.children.find(part=>part.userData.editorGrid);let gridDisposed=false;grid.geometry.addEventListener('dispose',()=>{gridDisposed=true;});kit.disposeObject(disposable);assert(gridDisposed,'layout changes leak editor grid geometry');
+const {editableConstruction}=require('../src/lib/chef/diner/room-construction.ts');
+for(const stage of ['burger_shop','diner','restaurant']){
+ const base=createRestaurantBlueprint(stage),draft=editableConstruction(base),surfaces=stageDefaultSurfaces(stage),root=shell.createRoomShell(draft.roomPlan,{...surfaces,roomFinishes:stageDefaultFinishes(stage),menu:['classic_burger'],sign:'Our place'});
+ assert(root.getObjectByName('room-wall:outer-back-2'),'editable starter keeps an actual supporting wall');
+ const menus=[];root.traverse(o=>{if(o.userData.pick?.id==='home-binder')menus.push(o);if(o.isMesh)assert(o.geometry.getAttribute('position').array.every(Number.isFinite));});assert.equal(menus.length,1,'editing another wall must preserve the menu');
+ if(stage==='diner')assert(root.getObjectByName('dining-wood-planks'),'editable diner retains its timber floor');
+ if(stage==='restaurant')assert(root.getObjectByName('terrazzo-aggregate'),'editable restaurant retains its stone finish');
+ kit.disposeObject(root);cases++;
+}
 console.log(`Restaurant room art PASS: ${cases} fixture/table rotations, full-height doors, booth seat contacts, matched food/linen anchors, ghost pass-through, stage finishes, supported props and camera cutaways.`);
 if(process.argv.includes('--render')){
  const {Resvg}=require('@resvg/resvg-js');mkdirSync('.dk-preview',{recursive:true});

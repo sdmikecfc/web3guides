@@ -1,0 +1,55 @@
+{
+  "assetId": "after_hours_diner",
+  "displayName": "after_hours_diner",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.8199999928474426,
+        0.8199999928474426,
+        0.3700000047683716
+      ],
+      "min": [
+        -0.8199999928474426,
+        0.019999980926513672,
+        -0.17000000178813934
+      ],
+      "sizeMeters": [
+        1.6399999856948853,
+        0.800000011920929,
+        0.5400000065565109
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 302628,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 10,
+    "meshCount": 15,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 15,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 10852,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 7019,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

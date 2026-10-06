@@ -1,0 +1,55 @@
+{
+  "assetId": "octopus_orchestra_low",
+  "displayName": "octopus_orchestra_low",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.39112386107444763,
+        1.0300001055002213,
+        0.3551001250743866
+      ],
+      "min": [
+        -0.395717054605484,
+        0.008638322353363037,
+        -0.3548344373703003
+      ],
+      "sizeMeters": [
+        0.7868409156799316,
+        1.0213617831468582,
+        0.7099345624446869
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 156788,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 6,
+    "meshCount": 21,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 21,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 4062,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 2839,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

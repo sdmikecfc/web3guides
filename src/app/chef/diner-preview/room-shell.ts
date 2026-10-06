@@ -7,10 +7,13 @@ import { homeSpatial,HOME_TERRACE_ELEVATION } from '../../../lib/chef/diner/home
 import { box,cylinder,material,PALETTE } from './models';
 import type { DinerSceneData } from './scene-types';
 import { createDiningFloorFinish,dressRoomWall } from './room-materials';
+import {backWallSupport} from '@/lib/chef/diner/mount-reservations';
 
 const CREAM='#fff1d8',RED='#b94f43',WOOD='#745038',TILE='#a6c9bb';
 export const ROOM_FINISH_COLORS:Record<string,string>={rose:'#e5b9a9',sky:'#8caeb9',wood:'#c39468',oak:'#c39468',caramel:'#b88c55',buttercream:'#ebd29f',...Object.fromEntries(Object.values(ROOM_PALETTES).flat().map(palette=>[palette.id,palette.color]))};
 export const roomColors=(data:Pick<DinerSceneData,'roomFinishes'>)=>({counter:ROOM_FINISH_COLORS[data.roomFinishes?.counter??'tomato']??RED,worktop:ROOM_FINISH_COLORS[data.roomFinishes?.worktop??'porcelain']??CREAM,upholstery:ROOM_FINISH_COLORS[data.roomFinishes?.upholstery??'cherry']??RED});
+// Private art palette only; these are not purchasable finishes or ownership grants.
+if(process.env.NODE_ENV==='development')Object.assign(ROOM_FINISH_COLORS,{domain_cherry:'#a93129',domain_sage:'#538d78',domain_walnut:'#583a30',domain_limestone:'#e8d8bb',domain_burgundy:'#763649'});
 function lettering(lines:string[],width:number,height:number,background=RED,color=CREAM){
   const board=new THREE.Mesh<THREE.PlaneGeometry,THREE.Material>(new THREE.PlaneGeometry(width,height),material(background));
   if(typeof document!=='undefined'){
@@ -19,13 +22,13 @@ function lettering(lines:string[],width:number,height:number,background=RED,colo
   }
   return board;
 }
-function menuBoard(ids:string[],width=3.3,height=1.18){
+function menuBoard(ids:string[],width=3.3,height=1.18,signature?:import('@/lib/chef/diner/personal-touches').SignatureDish|null){
  const board=new THREE.Mesh<THREE.PlaneGeometry,THREE.Material>(new THREE.PlaneGeometry(width,height),material('#fff5df'));
  if(typeof document==='undefined')return board;
  const canvas=document.createElement('canvas');canvas.width=1320;canvas.height=472;const c=canvas.getContext('2d');if(!c)return board;
  c.fillStyle='#fff5df';c.fillRect(0,0,1320,472);c.strokeStyle=RED;c.lineWidth=15;c.strokeRect(14,14,1292,444);
  c.textAlign='left';c.textBaseline='middle';c.fillStyle=RED;c.font='900 50px "Baloo 2",sans-serif';c.fillText('THE HOUSE MENU',400,76);
- const names=ids.map(id=>RECIPE_BY_ID[id]?.name).filter(Boolean).slice(0,4);c.fillStyle=WOOD;names.forEach((name,i)=>{c.font=`800 ${names.length>2?39:51}px "Baloo 2",sans-serif`;c.fillText(name,405,160+i*(names.length>2?62:79),850);});
+ const names=ids.map(id=>signature?.recipeId===id?`${signature.name} · ${RECIPE_BY_ID[id]?.name}`:RECIPE_BY_ID[id]?.name).filter(Boolean).slice(0,4);c.fillStyle=WOOD;names.forEach((name,i)=>{c.font=`800 ${names.length>2?39:51}px "Baloo 2",sans-serif`;c.fillText(name,405,160+i*(names.length>2?62:79),850);});
  c.fillStyle='#997654';c.font='700 24px sans-serif';c.fillText('COOKED FRESH  •  MADE WITH CARE',405,417);
  // Flat illustrated house burger, drawn on the menu paper itself.
  c.fillStyle='#f0d9b2';c.beginPath();c.ellipse(207,252,157,161,0,0,Math.PI*2);c.fill();
@@ -36,7 +39,10 @@ function menuBoard(ids:string[],width=3.3,height=1.18){
  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;board.material=new THREE.MeshBasicMaterial({map:texture});return board;
 }
 function shopWindow(width:number,height:number,frameColor=RED){
- const group=new THREE.Group();group.add(box(width+.18,height+.18,.10,WOOD,0,0,0,.04),box(width+.11,height+.11,.12,CREAM,0,0,.016,.025),box(width,height,.018,'#abd2cf',0,0,.085,.018));
+ const group=new THREE.Group(),rain=new THREE.Group();rain.name='window-rain';rain.visible=false;rain.userData.inputPassthrough=true;
+ const rainMaterial=new THREE.MeshBasicMaterial({color:'#ecf7f7',transparent:true,opacity:.32,depthWrite:false});
+ const streaks=new THREE.InstancedMesh(new THREE.PlaneGeometry(.012,.09),rainMaterial,24),matrix=new THREE.Matrix4();
+ for(let i=0;i<24;i++){matrix.makeTranslation((((i*17)%29)/29-.5)*width*.90,(((i*11)%31)/31-.5)*height*.84,.100);streaks.setMatrixAt(i,matrix);}rain.add(streaks);group.add(rain);group.add(box(width+.18,height+.18,.10,WOOD,0,0,0,.04),box(width+.11,height+.11,.12,CREAM,0,0,.016,.025),box(width,height,.018,'#abd2cf',0,0,.085,.018));
  for(const x of [-width/2,width/2])group.add(box(.07,height+.05,.08,frameColor,x,0,.104,.014));for(const y of [-height/2,height/2])group.add(box(width+.08,.07,.08,frameColor,0,y,.104,.014));
  group.add(box(.060,height,.073,CREAM,0,0,.117,.010),box(width,.050,.06,CREAM,0,-.05,.115,.010),box(width+.27,.105,.32,WOOD,0,-height/2-.065,.14,.025));
  const gleam=box(width*.30,.034,.007,'#deeee0',width*.24,height*.25,.098,.006);gleam.rotation.z=.70;gleam.material=new THREE.MeshStandardMaterial({color:'#deeee0',roughness:.3,transparent:true,opacity:.45,depthWrite:false});gleam.userData.inputPassthrough=true;group.add(gleam);
@@ -50,7 +56,8 @@ function partition(length:number,height:number,color:string,normal:THREE.Vector3
   const cap=box(length+.025,.065,.145,WOOD,0,height+.015,0,.014);root.add(cap);
   root.add(box(length,.055,.132,WOOD,0,.12,0,.010));root.userData.cutaway={upper,cap,normal,height,low};return root;
 }
-export function createRoomShell(plan:RoomPlan,data:Pick<DinerSceneData,'sign'|'menu'|'floor'|'wall'|'roomFinishes'>){
+export function createRoomShell(plan:RoomPlan,data:Pick<DinerSceneData,'sign'|'signature'|'menu'|'floor'|'wall'|'roomFinishes'>){
+  if(plan.version===2&&!plan.legacyShell)return createFreeRoomShell(plan,data);
   const root=new THREE.Group();root.name=`restaurant-shell:${plan.stage}`;const colors=roomColors(data),wallColor=data.wall==='deco'?'#e9e4d5':data.wall==='diner_panel'?'#d7c3a1':ROOM_FINISH_COLORS[data.wall??'cream']??CREAM;
   // The front apron is real supported pavement, not an oversized doorway prop.
   const space=homeSpatial(plan.w,plan.h),depth=plan.h+space.terrace.h;
@@ -103,7 +110,7 @@ export function createRoomShell(plan:RoomPlan,data:Pick<DinerSceneData,'sign'|'m
   const bathroom=plan.zones.find(zone=>zone.kind==='bathroom'),signX=bathroom?bathroom.x+(bathroom.w-1)/2:plan.w-2,signWidth=Math.min(4.4,(bathroom?.w??3)-.25);
   const frame=box(signWidth+.16,.85,.11,WOOD,signX,2.18,-.485,.035);frame.name='restaurant-name-frame';frame.userData.wallOwner=back;root.add(frame);
   const brand=lettering([data.sign??'My little diner'],signWidth,.65,signColor,data.roomFinishes?.sign==='coral'||data.roomFinishes?.sign==='sage'?CREAM:RED);brand.name='restaurant-name-sign';brand.position.set(signX,2.19,-.420);brand.userData.wallOwner=back;root.add(brand);
-  const menu=menuBoard(data.menu??['classic_burger']);menu.position.set(cx,1.56,-.476);menu.userData.pick={id:'home-binder'};menu.userData.wallOwner=back;root.add(menu);
+  const menu=menuBoard(data.menu??['classic_burger'],3.3,1.18,data.signature);menu.position.set(cx,1.56,-.476);menu.userData.pick={id:'home-binder'};menu.userData.wallOwner=back;root.add(menu);
   for(const trim of [box(3.38,.09,.15,WOOD,cx,2.79,-.49,.026),box(3.43,.06,.10,WOOD,cx,.94,-.49,.016)]){trim.userData.wallOwner=back;root.add(trim);}
   // Real framed shop windows give the cutaway restaurant a recognisable frontage.
   for(const y of [Math.max(2.25,plan.h-5.35),plan.h-2.25]){const window=shopWindow(2.02,1.03,data.wall==='deco'?'#a98d58':data.wall==='diner_panel'?'#795232':RED);window.rotation.y=Math.PI/2;window.position.set(-.476,1.58,y);window.userData.wallOwner=side;root.add(window);}
@@ -121,6 +128,49 @@ export function createRoomShell(plan:RoomPlan,data:Pick<DinerSceneData,'sign'|'m
   const positions:number[]=[];for(let x=0;x<=plan.w;x++)positions.push(x-.5,.101,-.5,x-.5,.101,plan.h-.5);for(let y=0;y<=plan.h;y++)positions.push(-.5,.101,y-.5,plan.w-.5,.101,y-.5);
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));const grid=new THREE.LineSegments(geometry,new THREE.LineBasicMaterial({color:'#644c35',transparent:true,opacity:.28}));grid.userData.editorGrid=true;grid.visible=false;grid.raycast=()=>{};root.add(grid);
   return root;
+}
+
+/** Editable construction uses the same surfaces and edges as physical routing. */
+function createFreeRoomShell(plan:RoomPlan,data:Pick<DinerSceneData,'sign'|'signature'|'menu'|'floor'|'wall'|'roomFinishes'>){
+ const root=new THREE.Group(),colors=roomColors(data);root.name=`restaurant-shell:${plan.stage}`;
+ root.add(box(plan.w+.28,.20,plan.h+.28,'#c2b7a2',(plan.w-1)/2,-.10,(plan.h-1)/2,.065));
+ const tiles=plan.surfaces??[],mesh=new THREE.InstancedMesh(new THREE.BoxGeometry(.99,.06,.99),material('#ffffff'),tiles.length),matrix=new THREE.Matrix4();
+ mesh.name='room-supported-floor';mesh.userData.tiles=tiles;mesh.receiveShadow=true;
+ tiles.forEach((s,i)=>{const checker=(s.x+s.y)%2,zone=roomZoneAt(plan,s)?.kind,color=s.kind==='garden'?'#8ca975':s.kind==='patio'?(checker?'#d0caba':'#c2c4b5'):s.finish?ROOM_FINISH_COLORS[s.finish]??CREAM:zone==='bathroom'?(checker?'#d8e7da':'#bfdbce'):zone==='kitchen'?(checker?'#efe7d5':'#e4ddc9'):ROOM_FINISH_COLORS[data.floor??'']??(checker?'#efe4d0':'#ded1b5');matrix.makeTranslation(s.x,.065,s.y);mesh.setMatrixAt(i,matrix);mesh.setColorAt(i,new THREE.Color(color));});root.add(mesh,createDiningFloorFinish(plan,'wood',data.floor),createDiningFloorFinish(plan,'terrazzo',data.floor));
+ for(const edge of plan.edges){
+  if(edge.kind==='hatch')continue;
+  const x=(edge.a.x+edge.b.x)/2,z=(edge.a.y+edge.b.y)/2,dx=edge.b.x-edge.a.x,dz=edge.b.y-edge.a.y,height=edge.height??(edge.kind==='half_wall'?1:2.4),color=edge.finish?ROOM_FINISH_COLORS[edge.finish]??colors.counter:colors.counter;
+  let piece:THREE.Group;
+  if(edge.kind==='door'||edge.kind==='staff_gate'){
+   piece=new THREE.Group();const h=edge.kind==='staff_gate'?1.06:2.4;
+   for(const x of [-.46,.46])piece.add(box(.085,h,.13,WOOD,x,h/2,0,.016));if(edge.kind==='door')piece.add(box(1,.10,.14,WOOD,0,h,0,.022));
+   const hinge=new THREE.Group();hinge.name='room-door-hinge';hinge.position.set(-.41,.08,0);hinge.add(box(.82,edge.kind==='staff_gate'?.58:1.76,.065,edge.kind==='staff_gate'?colors.counter:CREAM,.41,edge.kind==='staff_gate'?.70:.94,0,.028));piece.add(hinge);piece.userData.doorEdge=edge;
+  }else if(edge.kind==='window'){
+   piece=partition(1,2.4,color,new THREE.Vector3(dx,0,dz),.7);piece.userData.cutaway.upper.clear();piece.userData.cutaway.upper.add(shopWindow(.78,1.12,colors.counter));piece.userData.cutaway.upper.children[0].position.y=.8;
+  }else if(edge.kind==='glass'||edge.kind==='screen'){
+   piece=new THREE.Group();const upper=new THREE.Group();piece.add(upper);
+   if(edge.kind==='glass'){const pane=box(.91,height-.10,.035,'#b8d7ce',0,height/2,0,.01);pane.material=new THREE.MeshStandardMaterial({color:'#b8d7ce',transparent:true,opacity:.38,roughness:.28,depthWrite:false});upper.add(pane);}else for(let i=0;i<7;i++)upper.add(box(.047,height,.08,WOOD,-.43+i*.143,height/2,0,.01));
+   for(const px of [-.48,.48])upper.add(box(.055,height,.08,WOOD,px,height/2,0,.01));const cap=box(1,.055,.11,WOOD,0,height,0,.01);piece.add(cap);piece.userData.cutaway={upper,cap,normal:new THREE.Vector3(dx,0,dz),height,low:0};
+  }else piece=partition(1.01,height,color,new THREE.Vector3(dx,0,dz),Math.min(.63,height-.1));
+  if(edge.kind==='wall'||edge.kind==='half_wall')dressRoomWall(piece,1,edge.finish??data.wall);
+  piece.position.set(x,.095,z);piece.rotation.y=dx?Math.PI/2:0;piece.name=`room-wall:${edge.id}`;piece.userData.pick={id:`edge:${edge.id}`};root.add(piece);
+ }
+ // Keep the starter's signs while their actual supporting walls remain intact.
+ // Removing those walls is allowed; the restaurant name also follows its entrance.
+ const backSupport=(x:number,width:number)=>{const id=backWallSupport(plan,x,width);return id?root.getObjectByName(`room-wall:${id}`):undefined;};
+ const kitchen=plan.zones.find(z=>z.kind==='kitchen'),cx=(kitchen?.w??5)/2-.5,menuWall=backSupport(cx,3.3);
+ if(menuWall){const menu=menuBoard(data.menu??['classic_burger'],3.3,1.18,data.signature);menu.position.set(cx,1.56,-.426);menu.userData.pick={id:'home-binder'};menu.userData.wallOwner=menuWall;root.add(menu);}
+ const bath=plan.zones.find(z=>z.kind==='bathroom'),signX=bath?bath.x+(bath.w-1)/2:plan.w-2,signWidth=Math.min(4.4,(bath?.w??3)-.25),signWall=backSupport(signX,signWidth);
+ if(signWall){const frame=box(signWidth+.16,.85,.11,WOOD,signX,2.18,-.435,.035),brand=lettering([data.sign??'My little diner'],signWidth,.65,ROOM_FINISH_COLORS[data.roomFinishes?.sign??'cream']??CREAM,RED);brand.position.set(signX,2.19,-.370);for(const part of [frame,brand]){part.userData.wallOwner=signWall;root.add(part);}}
+ for(const entry of plan.entrances??[]){
+  const group=new THREE.Group();group.name=`room-entry:${entry.id}`;group.userData.pick={id:`entrance:${entry.id}`};group.position.set(entry.at.x,.095,entry.at.y);group.rotation.y=-entry.facing*Math.PI/2;
+  if(entry.awning){for(let i=0;i<6;i++)group.add(box(.18,.06,.65,i%2?CREAM:colors.counter,-.45+i*.18,2.45,.55,.02),box(.18,.13,.07,i%2?CREAM:colors.counter,-.45+i*.18,2.38,.84,.015));}
+  for(const x of [-.48,.48])group.add(box(.08,2.25,.10,colors.counter,x,1.125,.48,.017));
+  const sign=lettering([data.sign??'My little diner'],1.45,.33,CREAM,colors.counter);sign.position.set(0,2.18,.54);group.add(sign,box(1.52,.40,.07,WOOD,0,2.18,.49,.03));root.add(group);
+ }
+ const positions:number[]=[];for(let x=0;x<=plan.w;x++)positions.push(x-.5,.102,-.5,x-.5,.102,plan.h-.5);for(let y=0;y<=plan.h;y++)positions.push(-.5,.102,y-.5,plan.w-.5,.102,y-.5);
+ const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));const grid=new THREE.LineSegments(geometry,new THREE.LineBasicMaterial({color:'#644c35',transparent:true,opacity:.28}));grid.userData.editorGrid=true;grid.visible=false;grid.raycast=()=>{};root.add(grid);
+ return root;
 }
 
 export function updateRoomShell(root:THREE.Object3D,data:DinerSceneData,toCamera:THREE.Vector3,dt:number){

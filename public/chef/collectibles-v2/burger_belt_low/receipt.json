@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:20:57.621Z",
+  "destination": {
+    "assetId": "burger_belt_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "c3ee8d52bd4dbbd5e3ffb9ccc3779bcca2eea05449d0c4d7e6ab23570c864d54",
+  "packageId": "pkg_d7032a674b1513ee3b30cb7c",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 71256,
+    "fileName": "burger_belt_low.glb",
+    "sha256": "5e8e305fdc2f660edc05a3390de511bd963804dd4452f3277c3d0f6b9891b3e0"
+  }
+}

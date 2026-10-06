@@ -17,9 +17,11 @@
  */
 
 import { Assets, type Spritesheet, type Texture } from "pixi.js";
+import { ITEMS } from "../_engine/items";
 
 import {
   FILE_OF,
+  DISH_ART_IDS,
   ITEM_SET_ARTS,
   ITEM_SET_IDS,
   ROOM_ASSETS,
@@ -64,6 +66,8 @@ export interface GameAssets {
   /** domain collection furniture, keyed by collection id (ADR-0105) */
   itemSets: Record<ItemSetId, ItemSetTextures>;
   sheets: Record<SheetKey, Spritesheet>;
+  dishes: Record<string, Texture>;
+  equipment: Record<string, Texture>;
 }
 
 export async function loadGameAssets(
@@ -89,7 +93,9 @@ export async function loadGameAssets(
   for (const k of SHEET_KEYS) {
     entries.push({ alias: `sheet_${k}`, src: `/chef-art/chars/${k}.json` });
   }
+  for (const id of DISH_ART_IDS) for(const suffix of ["","-mastered"]) entries.push({ alias: `dish_${id}${suffix}`, src: `/chef-art/dishes/${id}${suffix}.png` });
 
+  for(const item of ITEMS)if(item.artPath){entries.push({alias:`equipment_${item.id}`,src:item.artPath});if(item.artBackPath)entries.push({alias:`equipment_${item.id}_back`,src:item.artBackPath});}
   const loaded = await Assets.load(entries, onProgress);
 
   const themes = {} as Record<ThemeId, RoomTextures>;
@@ -108,5 +114,9 @@ export async function loadGameAssets(
   }
   const sheets = {} as Record<SheetKey, Spritesheet>;
   for (const k of SHEET_KEYS) sheets[k] = loaded[`sheet_${k}`] as Spritesheet;
-  return { themes, itemSets, sheets };
+  const dishes: Record<string, Texture> = {};
+  for (const id of DISH_ART_IDS) for(const suffix of ["","-mastered"]) dishes[id+suffix] = loaded[`dish_${id}${suffix}`] as Texture;
+  const equipment:Record<string,Texture>={};
+  for(const item of ITEMS)if(item.artPath){equipment[item.id]=loaded[`equipment_${item.id}`] as Texture;if(item.artBackPath)equipment[item.id+"_back"]=loaded[`equipment_${item.id}_back`] as Texture;}
+  return { themes, itemSets, sheets, dishes, equipment };
 }

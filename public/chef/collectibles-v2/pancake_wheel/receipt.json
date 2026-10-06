@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T16:38:08.071Z",
+  "destination": {
+    "assetId": "pancake_wheel",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "13b4d3d2761af004ec038dc5975abe16b73f679a5fcfd4bdee71a4156de062f3",
+  "packageId": "pkg_4583fea381225228d5ba3327",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 164056,
+    "fileName": "pancake_wheel.glb",
+    "sha256": "f72168af505b4d7affaa757fcec3c5a3940f3d51987f1db1877b488d4f26a912"
+  }
+}

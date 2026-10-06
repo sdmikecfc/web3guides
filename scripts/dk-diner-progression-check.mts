@@ -1,3 +1,4 @@
+import {advanceRegularStories} from '../src/lib/chef/diner/regular-stories';
 /** Local isolated-preview progression checks. No old saves, credentials or network. */
 import assert from "node:assert/strict";
 import { createDiner, DINER_RULES, dinerRates, dispatchDiner, generateDinerMap, homeIncidents, homeSimulationConfig, sanitizeDinerSave, shopOffers, validateDinerHome, type DinerCommand, type DinerState } from "../src/lib/chef/diner/progression";
@@ -128,22 +129,25 @@ test("menu and complete loadout persist at home and change only before opening",
   rejected(state, { type: "setupLayout", stations: state.truckConfig.stations, tables: state.truckConfig.tables }, "setup_only");
   assert.equal(sanitizeDinerSave(state)!.run!.service!.phase, "paused");
 });
-test("head starts and spices need actual route ownership; helpers use roster and truck tier", () => {
+test("head starts and spices need actual route ownership; legacy helpers use roster and truck tier", () => {
   let state = fresh(); state.tutorial.finished = true;
   rejected(state, { type: "startRun", headStart: true }, "head_start_locked"); rejected(state, { type: "setSpices", spiceIds: ["rush_hour"] }, "spices_locked");
   rejected(state, { type: "assignHelper", staffId: "waiter-1" }, "helper_unavailable"); state.collections.routeWins.push("downtown"); state.truckTier = 2;
   state = action(state, { type: "assignHelper", staffId: "waiter-1", role: "washer" });
   state = action(state, { type: "setSpices", spiceIds: ["two_strikes"] }); state = action(state, { type: "startRun", headStart: true });
   assert.ok(state.run!.available.every(id => state.run!.map.find(n => n.id === id)!.row === 4)); assert.equal(state.run!.haul, 0); assert.deepEqual(state.run!.visited, []);
+  state.run!.mapVersion=5; // Preserve the saved, pre-wage staffing contract.
   const service = state.run!.map.find(n => n.kind === "slow")!; state.run!.available = [service.id]; state.run!.strikes = 1;
   state = action(state, { type: "chooseNode", nodeId: service.id }); assert.equal(state.run!.service!.config.strikeLimit, 1); assert.equal(state.run!.service!.helpers[0].role, "washer");
 });
-test("friendship requires measured favourite output, has daily receipts, and rewards a keepsake once", () => {
+test("friendship requires an active named meal and rewards a keepsake once", () => {
   let state = fresh(); rejected(state, { type: "serveRegular", regularId: "old_pete" }, "regular_not_ready");
   const noKitchen = fresh(); noKitchen.home.layout = noKitchen.home.layout.filter(p => p.equipmentId !== "grill");
   rejected(action(noKitchen, { type: "settle" }, now + hour), { type: "serveRegular", regularId: "old_pete" }, "regular_not_ready", now + hour);
   state.collections.regulars.old_pete = 14;
-  state = action(state, { type: "serveRegular", regularId: "old_pete" }, now + hour); assert.equal(state.collections.regulars.old_pete, 15); assert.equal(state.decorOwned.pete_postcard, 1); assert.equal(state.daily.minted, 0);
+  for(let i=0;i<40&&!state.regularStories?.pending?.ready;i++){const at=state.updatedAt+15000;advanceRegularStories(state,homeSimulationConfig(state),at,true);state.updatedAt=at;}
+  assert(state.regularStories?.pending?.ready);
+  state = action(state, { type: "serveRegular", regularId: "old_pete",visitId:state.regularStories.pending.id }, state.updatedAt); assert.equal(state.collections.regulars.old_pete, 15); assert.equal(state.decorOwned.pete_postcard, 1); assert.equal(state.daily.minted, 0);
   rejected(state, { type: "serveRegular", regularId: "old_pete" }, "regular_not_ready", now + hour);
   rejected(state, { type: "serveRegular", regularId: "old_pete", served: 9999 } as any, "invalid_command", now + hour);
   assert.ok(sanitizeDinerSave(state));
@@ -218,7 +222,10 @@ test("Dottie unlocks through a purchasable daisy pot and real sundae output, wit
   state=action(state,{type:'homeLayout',layout:[...state.home.layout,{id:'daisies',equipmentId:'daisy_pot',x:6,y:5,rotation:0}]});
   assert.equal(regularAvailable(state,'dottie'),true);assert.equal(state.equipment.queue_bench,undefined);
   rejected(state,{type:'serveRegular',regularId:'dottie'},'regular_not_ready');
-  state=action(state,{type:'serveRegular',regularId:'dottie'},now+hour);assert.equal(state.collections.regulars.dottie,1);
+  state.home.menu.main=[];state.regularStories=undefined;
+  for(let i=0;i<40&&!state.regularStories?.pending?.ready;i++){const at=state.updatedAt+15000;advanceRegularStories(state,homeSimulationConfig(state),at,true);state.updatedAt=at;}
+  assert.equal(state.regularStories?.pending?.regularId,'dottie');assert(state.regularStories.pending.ready);
+  state=action(state,{type:'serveRegular',regularId:'dottie',visitId:state.regularStories.pending.id},state.updatedAt);assert.equal(state.collections.regulars.dottie,1);
   assert(HOME_EQUIPMENT.some(e=>e.id==='table_2'));const table=fresh();table.coins=1000;
   const bought=action(table,{type:'buyHomeEquipment',equipmentId:'table_2'});assert.equal(bought.equipment.table_2.homeCopies,1);assert.equal(bought.coins,40);
 });

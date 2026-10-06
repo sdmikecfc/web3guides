@@ -63,6 +63,10 @@ export interface DkSfx {
   play: (name: DkSfxName) => void;
   muted: () => boolean;
   setMuted: (m: boolean) => void;
+  setEffectsMuted: (m: boolean) => void;
+  setMusicMuted: (m: boolean) => void;
+  musicMuted: () => boolean;
+  destroy: () => void;
 }
 
 export function createDkSfx(startUnmuted: boolean): DkSfx {
@@ -70,8 +74,16 @@ export function createDkSfx(startUnmuted: boolean): DkSfx {
   let muted = !startUnmuted;
   let master: GainNode | null = null;
   let voiceCount = 0;
+  let musicMuted = !startUnmuted;
+  let musicBus: GainNode | null = null;
+  let musicTimer: ReturnType<typeof setInterval> | null = null;
+  let ambience: AudioBufferSourceNode | null = null;
+  let nextBeat = 0;
+  let beat = 0;
+  let disposed = false;
 
   function ensureCtx(): AudioContext | null {
+    if (disposed) return null;
     if (ctx) return ctx;
     try {
       const AC =
@@ -83,6 +95,48 @@ export function createDkSfx(startUnmuted: boolean): DkSfx {
       ctx = null;
     }
     return ctx;
+  }
+
+  /** A quiet original café waltz, with a soft filtered kitchen-room bed.
+   * Separate buses let players keep service cues while turning music off.
+   * It only starts from a user sound interaction, never on page load.
+   */
+  function ensureMusic(c: AudioContext): void {
+    if (musicTimer || disposed || musicMuted) return;
+    musicBus = c.createGain();
+    musicBus.gain.setValueAtTime(0, c.currentTime);
+    musicBus.gain.linearRampToValueAtTime(0.14, c.currentTime + 1.5);
+    musicBus.connect(c.destination);
+    const buffer=c.createBuffer(1,c.sampleRate*4,c.sampleRate),data=buffer.getChannelData(0);
+    let previous=0;
+    for(let i=0;i<data.length;i++){previous=(previous+(Math.random()*2-1)*.03)/1.025;data[i]=previous;}
+    ambience=c.createBufferSource();ambience.buffer=buffer;ambience.loop=true;
+    const filter=c.createBiquadFilter();filter.type='lowpass';filter.frequency.value=720;
+    const bed=c.createGain();bed.gain.value=.045;
+    ambience.connect(filter);filter.connect(bed);bed.connect(musicBus);ambience.start();
+    nextBeat=c.currentTime+.05;
+    const melody=[72,76,79,76,74,71,67,71,69,72,76,72,74,77,76,71,72,79,76,74,71,67,69,71];
+    const bass=[48,48,53,55];
+    const note=(midi:number,time:number,duration:number,volume:number)=>{
+      if(!musicBus)return;
+      const osc=c.createOscillator(),gain=c.createGain();
+      osc.type='triangle';osc.frequency.value=440*2**((midi-69)/12);
+      gain.gain.setValueAtTime(.0001,time);gain.gain.exponentialRampToValueAtTime(volume,time+.025);gain.gain.exponentialRampToValueAtTime(.0001,time+duration);
+      osc.connect(gain);gain.connect(musicBus);osc.start(time);osc.stop(time+duration+.05);
+      osc.onended=()=>{osc.disconnect();gain.disconnect();};
+    };
+    const schedule=()=>{
+      if(disposed||c.state==='closed')return;
+      // Background tabs can be suspended for minutes. Resume on the current
+      // phrase instead of scheduling a backlog of hundreds of notes.
+      if(nextBeat<c.currentTime-.5)nextBeat=c.currentTime+.03;
+      while(nextBeat<c.currentTime+.3){
+        note(melody[beat%melody.length],nextBeat,.56,.24);
+        if(beat%3===0)note(bass[Math.floor(beat/6)%bass.length],nextBeat,1.4,.18);
+        beat++;nextBeat+=.44;
+      }
+    };
+    schedule();musicTimer=setInterval(schedule,200);
   }
 
   function ensureMaster(c: AudioContext): GainNode {
@@ -108,6 +162,7 @@ export function createDkSfx(startUnmuted: boolean): DkSfx {
       const c = ensureCtx();
       if (!c) return;
       if (c.state === "suspended") void c.resume();
+      ensureMusic(c);
       if (voiceCount >= MAX_VOICES) return;
       voiceCount++;
 
@@ -174,7 +229,7 @@ export function createDkSfx(startUnmuted: boolean): DkSfx {
     }
   }
 
-  function setMuted(m: boolean): void {
+  function setEffectsMuted(m: boolean): void {
     muted = m;
     if (master && ctx) {
       try {
@@ -187,6 +242,20 @@ export function createDkSfx(startUnmuted: boolean): DkSfx {
       }
     }
   }
-
-  return { play, muted: () => muted, setMuted };
+  function setMusicMuted(m: boolean): void {
+    musicMuted=m;
+    const c=ctx??(!m?ensureCtx():null);
+    if(!c)return;
+    if(!m){if(c.state==='suspended')void c.resume();ensureMusic(c);}
+    if(musicBus){const t=c.currentTime;musicBus.gain.cancelScheduledValues(t);musicBus.gain.setValueAtTime(musicBus.gain.value,t);musicBus.gain.linearRampToValueAtTime(m?0:.14,t+.35);}
+  }
+  function setMuted(m:boolean):void{setEffectsMuted(m);setMusicMuted(m);}
+  function destroy():void{
+    disposed=true;
+    if(musicTimer)clearInterval(musicTimer);
+    musicTimer=null;
+    try{ambience?.stop();void ctx?.close();}catch{/* already closed */}
+    ambience=null;musicBus=null;master=null;ctx=null;
+  }
+  return { play, muted: () => muted, setMuted, setEffectsMuted, setMusicMuted, musicMuted:()=>musicMuted, destroy };
 }

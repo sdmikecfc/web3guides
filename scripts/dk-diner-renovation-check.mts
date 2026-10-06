@@ -16,7 +16,7 @@ const now=Date.UTC(2026,8,21,8);let groups=0;
 function test(name:string,run:()=>void){run();groups++;console.log(`PASS ${name}`);}
 function act(s:DinerState,c:DinerCommand,time=now){const r=dispatchDiner(s,c,{now:time});assert.equal(r.error,undefined,`${c.type}: ${r.error}`);return r.state;}
 function reject(s:DinerState,c:any,code:string){const r=dispatchDiner(s,c,{now});assert.equal(r.code,code,`${c.type}: ${r.error}`);assert.deepEqual(r.state,s);}
-function eligible(stage:'diner'|'restaurant'='diner') {const s=createDiner(now,'career');s.coins=1000000;s.tutorial.finished=true;s.collections.routeWins=['downtown','boardwalk'];for(const id of ['classic_burger','fries','lemonade','coffee','bacon_deluxe_burger','apple_pie'])s.recipes[id]={level:5};s.career.services=stage==='diner'?100:200;s.career.byRoute={downtown:s.career.services};s.career.byDifficulty={busy:s.career.services};s.career.multiRecipe={two:s.career.services,three:s.career.services};return s;}
+function eligible(stage:'diner'|'restaurant'='diner') {const s=createDiner(now,'career');s.coins=1000000;s.tutorial.finished=true;s.collections.routeWins=['downtown','business_center'];for(const id of ['classic_burger','fries','lemonade','coffee','bacon_deluxe_burger','apple_pie'])s.recipes[id]={level:5};s.career.services=stage==='diner'?100:200;s.career.byRoute={downtown:s.career.services};s.career.byDifficulty={busy:s.career.services};s.career.multiRecipe={two:s.career.services,three:s.career.services};return s;}
 
 
 test('fresh shop is a ten-by-eight room with three staff, three stools and persistent bathroom fixtures',()=>{
@@ -94,7 +94,7 @@ test('three-person shop capacity includes its cashier and restoration restores t
 test('saved favourites retain their original room context across renovation and cannot move its stage on apply',()=>{
  let s=eligible();s.home.layout=s.home.layout.filter(p=>!p.id.startsWith('welcome-'));s=act(s,{type:'buyDecor',decorId:'daisy_pot'});const mount={kind:'counter' as const,targetId:'service-counter',slot:1},point=resolveRoomMount(s.home.roomPlan!,mount)!;
  s=act(s,{type:'homeRoomPlan',roomPlan:s.home.roomPlan!,layout:[...s.home.layout,{id:'favourite-flowers',equipmentId:'daisy_pot',x:Math.floor(point.x),y:Math.floor(point.y),rotation:point.rotation,mount}]});s=act(s,{type:'saveLayout',name:'My first counter'});const saved=structuredClone(s.savedLayouts[0]);
- s=act(s,{type:'renovateHome',stage:'diner',previewToken:getRenovationPreview(s)!.token});assert.deepEqual(s.savedLayouts[0],saved);assert(sanitizeDinerSave(s));reject(s,{type:'loadLayout',layoutId:saved.id},'invalid_layout');assert.equal(s.home.roomPlan!.stage,'diner');
+ s=act(s,{type:'renovateHome',stage:'diner',previewToken:getRenovationPreview(s)!.token});assert.deepEqual(s.savedLayouts[0],saved);assert(sanitizeDinerSave(s));reject(s,{type:'loadLayout',layoutId:saved.id},'layout_stage');assert.equal(s.home.roomPlan!.stage,'diner');
  s=act(s,{type:'restoreRenovation',backupId:s.renovation.backups[0].id});s=act(s,{type:'loadLayout',layoutId:saved.id});assert.deepEqual(s.home.layout,saved.layout);assert(sanitizeDinerSave(s));
 });
 test('the optional restaurant bar is one owned six-seat fixture, preserving the diner bar in storage',()=>{

@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:21:13.915Z",
+  "destination": {
+    "assetId": "koi_boiler_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "784f41fc4391f2dc3e3563fcd520ec3f5202e5580d175864effe46fe5736ad19",
+  "packageId": "pkg_a77f004524b90158fc775504",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 71712,
+    "fileName": "koi_boiler_low.glb",
+    "sha256": "9db9d4cd62b5cfff017ab53addbf4a283da9f9d59a7b8598f876680c5434a1db"
+  }
+}

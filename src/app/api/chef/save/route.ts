@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { dkDb, DK_GAME_KEY, walletForDkSession } from "@/lib/chef/server";
 import { LIMITS, sanitizeSave, type DkSave } from "@/app/chef/game/_engine/save";
+import { authorityEnabled, kitchenResponse, loadKitchen } from "@/lib/chef/authority-server";
 
 /**
  * Load and store a player's restaurant (M6).
@@ -45,10 +46,25 @@ export async function POST(req: Request) {
   } catch {
     return bad("bad json");
   }
+  if (!body || typeof body !== "object") return bad("bad json");
 
   const db = dkDb();
   const wallet = await walletForDkSession(db, body.t);
   if (!wallet) return bad("session expired: sign in again", 401);
+
+  // A shape sanitizer does not prove that currency or mastery was earned.
+  // Once authority is enabled, the old client snapshot endpoint cannot write
+  // even an unmigrated account: initialization only imports a PREEXISTING row.
+  // The database trigger also rejects old writes after individual migration.
+  if (authorityEnabled()) {
+    if (body.state !== undefined) return NextResponse.json({
+      ok: false, code: "commands_required", error: "This restaurant saves through validated kitchen actions. Refresh the game.",
+    }, { status: 409 });
+    try {
+      const now = Date.now();
+      return NextResponse.json(await kitchenResponse(db, await loadKitchen(db, wallet, now), now), { headers: { "Cache-Control": "no-store" } });
+    } catch { return bad("your restaurant service is updating; please try again soon", 503); }
+  }
 
   // ── load ─────────────────────────────────────────────────────────────────
   if (body.state === undefined) {

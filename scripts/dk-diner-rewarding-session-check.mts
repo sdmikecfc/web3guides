@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import {createDiner,dispatchDiner,sanitizeDinerSave,canVisitRestaurant,atRestaurant,homeMenu,type DinerCommand} from '../src/lib/chef/diner/progression';
+import {buildServiceLoadout,makeTable} from '../src/lib/chef/diner/geometry';
+import {Kitchen} from './dk-diner-reference-kitchen';
+import {roomStyleQuote} from '../src/lib/chef/diner/room-design';
+import {MAX_DECOR_COPIES,charmOf} from '../src/lib/chef/diner/collections';
+import {createPlacementDraft,previewPlacement} from '../src/app/chef/diner-preview/placement-preview';
+import {createHomeWorld,stepHomeWorld} from '../src/lib/chef/diner/home-simulation';
+import {settleAudience} from '../src/lib/chef/diner/home-audience';
+import {homeSimulationConfig} from '../src/lib/chef/diner/progression';
+const now=1800000000000;let state=createDiner(now,'rewarding-session');
+function act(command:DinerCommand){const r=dispatchDiner(state,command,{now});assert.equal(r.error,undefined,r.error);state=r.state;}
+assert(dispatchDiner(state,{type:'claimStyleBundle',bundleId:'cherry_lunch'},{now}).error);
+state.tutorial.finished=true;state.onboarding!.completed=true;
+const loadout=buildServiceLoadout(1,['classic_burger']);state.truckConfig.stations=loadout.stations.map(({id,kind,x,y,facing})=>({id,kind,x,y,facing}));const table=makeTable('table_1',3,loadout.tables[0].y,1);state.truckConfig.tables=[{id:table.id,x:table.x,y:table.y,capacity:1,rotation:0}];
+act({type:'startRun',routeId:'downtown'});act({type:'chooseNode',nodeId:state.run!.available[0]});assert(!canVisitRestaurant(state));assert(dispatchDiner(state,{type:'visitRestaurant'},{now}).error);
+const kitchen=new Kitchen(state.run!.service!,0);kitchen.lunch(true);state.run!.service=kitchen.s;act({type:'finishService'});
+assert.equal(state.career.services,1);assert(canVisitRestaurant(state));const trip=structuredClone(state.run),coins=state.coins,layout=structuredClone(state.home.layout);
+act({type:'visitRestaurant'});assert(atRestaurant(state));assert.equal(state.coins,coins);assert.equal(state.run!.haul,trip!.haul);assert(dispatchDiner(state,{type:'startRun',routeId:'downtown'},{now}).error);assert(dispatchDiner(state,{type:'chooseNode',nodeId:state.run!.available[0]},{now}).error);
+act({type:'claimStyleBundle',bundleId:'cherry_lunch'});assert.deepEqual(state.home.layout,layout);assert.equal(state.home.finishes!.counter,'tomato');assert.equal(state.decorOwned.chrome_clock,1);assert(state.paletteOwned!.counter.includes('cream'));
+assert(sanitizeDinerSave(state));state=sanitizeDinerSave(state)!;const claimed=structuredClone(state);assert(dispatchDiner(state,{type:'claimStyleBundle',bundleId:'green_corner'},{now}).error);assert.deepEqual(state,claimed);
+const style=roomStyleQuote(state,'cherry_lunch')!;assert.equal(style.cost,0);
+const draft=structuredClone(state);for(const id of style.style.decor){const preview=previewPlacement(draft,createPlacementDraft(draft,'home',id,`reward-${id}`));if(!preview.error&&preview.command.type==='homeLayout')draft.home.layout=preview.command.layout;}
+act({type:'applyRoomStyle',styleId:'cherry_lunch',layout:draft.home.layout,expectedCost:0});assert.equal(state.home.finishes!.counter,'cream');assert(sanitizeDinerSave(state));
+const beforeBad=structuredClone(state),quote=roomStyleQuote(state,'green_corner')!;state.coins+=quote.cost;const funds=state.coins;
+const invalid=dispatchDiner(state,{type:'applyRoomStyle',styleId:'green_corner',expectedCost:quote.cost,layout:[{id:'invalid',equipmentId:'grill',x:-8,y:0,rotation:0}]},{now});assert(invalid.error);assert.equal(invalid.state.coins,funds);assert.equal(invalid.state.decorOwned.herb_planter,state.decorOwned.herb_planter);
+state=beforeBad;act({type:'resumeTrip'});assert.deepEqual({...state.run,location:undefined},{...trip,location:undefined});assert.equal(state.coins,coins);
+console.log('PASS real lunch eligibility; one-time rewards; draft cancellation; atomic purchase failure; visit/resume preserves route, haul and boosts.');
+const full=structuredClone(claimed);full.progressRewards!.style=null;full.decorOwned.chrome_clock=MAX_DECOR_COPIES;const denied=dispatchDiner(full,{type:'claimStyleBundle',bundleId:'cherry_lunch'},{now});assert(denied.error);assert.deepEqual(denied.state,full);
+const fresh=createDiner(now,'menu-stays-explicit');fresh.recipes.tomato_pasta={level:0};fresh.equipment.boiler={tier:1,truckOwned:true,homeCopies:1};
+const boiler=createPlacementDraft(fresh,'home','boiler','test-boiler');const placement=previewPlacement(fresh,boiler);assert.equal(placement.error,null);assert.equal(placement.command.type,'homeLayout');if(placement.command.type==='homeLayout')fresh.home.layout=placement.command.layout;
+assert(!homeMenu(fresh).includes('tomato_pasta'));delete fresh.home.menuVersion;assert(homeMenu(fresh).includes('tomato_pasta'));
+const migrated=dispatchDiner(fresh,{type:'settle'},{now});assert(!migrated.error);assert(migrated.state.home.menu.main.includes('tomato_pasta'));assert.equal(migrated.state.home.menuVersion,1);assert(sanitizeDinerSave(migrated.state));
+const ordinaryCharm=charmOf(fresh);fresh.decorOwned.prestige_service_badge=1;fresh.home.layout.push({id:'badge',equipmentId:'prestige_service_badge',x:0,y:0,rotation:0,mount:{kind:'wall',targetId:'outer-back',slot:0}});assert.deepEqual(charmOf(fresh),ordinaryCharm);
+console.log('PASS full storage atomic denial; old automatic menu becomes explicit; prestige changes no charm.');
+const live=createDiner(now,'pending-meal');const config=homeSimulationConfig(live);live.homeAudience={version:1,world:createHomeWorld(config),fraction:0};stepHomeWorld(live.homeAudience.world,100);const guest=live.homeAudience.world.customers[0];assert(guest);const oldPrice=guest.acceptedPrice;
+settleAudience(live,{...config,menu:[],recipeLevels:{classic_burger:10}},0,true);assert(live.homeAudience.world.customers.some(c=>c.id===guest.id));assert.equal(live.homeAudience.world.customers[0].acceptedPrice,oldPrice);assert.deepEqual(live.homeAudience.world.menu,[]);
+console.log('PASS changing restaurant menu preserves existing guests and their accepted prices.');

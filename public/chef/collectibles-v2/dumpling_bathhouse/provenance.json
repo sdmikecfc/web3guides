@@ -1,0 +1,11 @@
+{
+  "author": "[redacted]",
+  "notes": "Original Blender geometry authored for this project. Hero designs based on existing authorized cinematic reference artwork.",
+  "origin": "authored",
+  "schema": "game_dev.asset_provenance.v1",
+  "source": {
+    "bytes": 344404,
+    "fileName": "dumpling_bathhouse.glb",
+    "sha256": "6cf31330d1ebf8761f9eb3c00c6bcef3dfe895b6ceb6e7413f12b75cac2ca2ed"
+  }
+}

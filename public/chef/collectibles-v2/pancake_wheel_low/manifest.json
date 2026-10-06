@@ -1,0 +1,43 @@
+{
+  "assetId": "pancake_wheel_low",
+  "displayName": "pancake_wheel_low",
+  "files": [
+    {
+      "bytes": 75732,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "d21a09e24fe5072f041851981cabb1d2850ff68e1e013cd71ec85a5c58ecd063"
+    },
+    {
+      "bytes": 1419,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "58e5a20efc2f74394d571dba09d9340bcd53db61b13772e5122c7a4649800335"
+    },
+    {
+      "bytes": 396,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "77da0fe7fdeaed8b5ad8b408dcf7cedb794659bd7ef072b2bd20372ab729312b"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "650afdca7d28eff02fc1ac55fed6b8e4078c8ece4d23bda61f35732c913c6c7e"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_29055ece3448b157404a86ff",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

@@ -1,0 +1,12 @@
+.body.body{padding:12px;overflow:hidden;min-height:0;display:flex}
+.studio{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(240px,1fr);gap:16px;flex:1;height:60dvh;min-height:0;overflow:hidden}
+.scene{position:relative;min-height:0;background:#f5edde;border-radius:20px;overflow:hidden}
+.controls{display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 6px 6px 0}
+.controls p{margin:0;line-height:1.5}
+.controls summary{min-height:44px;display:flex;align-items:center;cursor:pointer;text-decoration:underline;font-size:13px}
+.tabs.tabs{margin:0;gap:5px;flex-wrap:nowrap}
+.tabs.tabs button{min-height:44px;padding:8px;flex:1;font-size:12px}
+.tabs button[aria-pressed=true]{background:#436c55;color:#fff8ea}
+.action.action{flex:1;min-height:48px}
+@media(max-width:700px){.studio{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(80px,120px);height:calc(100dvh - 240px);gap:10px}.controls{gap:8px}.controls p{font-size:13px}.action.action{font-size:13px;padding:10px 8px}}
+@media(max-height:500px) and (orientation:landscape){.studio{grid-template-columns:minmax(0,1.3fr) minmax(230px,1fr);grid-template-rows:minmax(0,1fr);height:calc(100dvh - 210px)}}

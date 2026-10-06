@@ -2,161 +2,92 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { topRooms } from "@/lib/chef/board";
 import { SERVICE_TIERS } from "../game/_engine/campaign";
+import { IconChefHat, IconStar } from "../game/_ui/icons";
 import { CheerButton } from "./CheerButton";
-
-/**
- * THE BEST TABLES IN TOWN — the public spotlight (ADR-0111).
- *
- * The ladder and where people stand on it are public; the payout math is not,
- * and no dollar figure appears anywhere on this page. A restaurant earns its
- * place here by being well RUN — hands, upkeep and dishes — which is the one
- * thing coins can never buy.
- */
+import css from "./board.module.css";
 
 export const metadata: Metadata = {
   title: "Domain Kitchen: the best tables in town",
-  description: "The best-run restaurants on Doma.",
+  description: "Meet the neighborhood, discover community restaurants, and find your next favorite table.",
   robots: { index: false, follow: false },
 };
-
-// the board is a read of two columns; a minute of staleness is fine
 export const revalidate = 60;
 
-const FONT = 'ui-rounded, "Segoe UI", system-ui, sans-serif';
+// Service descriptions are independent of campaign or award copy.
+const milestones: Record<number, string> = {
+  0: "The doors are open. Every restaurant starts somewhere.",
+  60: "A tidy room and a steady rhythm in the kitchen.",
+  70: "Thoughtful service and dishes worth coming back for.",
+  80: "Warm welcomes, polished service, and memorable plates.",
+};
+
+function NeighborhoodMark() {
+  return <svg viewBox="0 0 210 170" aria-hidden="true" focusable="false">
+    <ellipse cx="108" cy="155" rx="92" ry="12" fill="#d8d9bd"/>
+    <path d="M32 151V64h146v87" fill="#eee0bd" stroke="#a78e65" strokeWidth="3"/>
+    <path d="M44 151V92h39v59M131 105h35v-26h-35z" fill="#afc9b0" stroke="#a78e65" strokeWidth="3"/>
+    <path d="M55 94v25h16V94M137 80v24m10-24v24" fill="none" stroke="#fff3d8" strokeWidth="3"/>
+    <path d="M96 151V84h27v67" fill="#839a78" stroke="#a78e65" strokeWidth="3"/>
+    <circle cx="116" cy="122" r="2" fill="#fff0c9"/>
+    <path d="m25 62 15-35h128l20 35v13H25z" fill="#fff1ce" stroke="#b09062" strokeWidth="3" strokeLinejoin="round"/>
+    <path d="m40 27-15 35v13h23V62l9-35m23 0-4 35v13h23V27m24 0v48h24V62l-5-35m24 0 20 35v13h-22V62l-12-35" fill="#c67d61"/>
+    <path d="M49 40h111v22H49z" fill="#c67d61"/>
+    <path d="M89 48h33m-26 7h20" stroke="#fff0cf" strokeWidth="2.5" strokeLinecap="round"/>
+    <path d="M17 146h23l-4-25H20zM172 145h23l-4-25h-15z" fill="#c9956d"/>
+    <path d="M28 124V99m-5 11q-23-16-10-24 17 2 17 21m2 4q22-18 27-4-6 15-27 11M182 124v-24m-3 12q-23-18-10-25 16 0 16 21m0 7q20-22 26-8-4 15-25 13" fill="#8fa66e" stroke="#769261" strokeWidth="2"/>
+  </svg>;
+}
 
 export default async function BoardPage() {
   const rows = await topRooms(25);
+  // Match topRooms' actual query mode: new visuals do not confer verification
+  // on legacy records.
+  const verified = process.env.NEXT_PUBLIC_DK_AUTHORITY_ENABLED === "true";
+  const recordLabel = verified ? "Server-recorded service" : "Saved restaurant records";
 
-  return (
-    <main
-      style={{
-        minHeight: "100dvh",
-        background:
-          "radial-gradient(120% 90% at 50% 0%, #2a1c14 0%, #1b1310 55%, #140e0b 100%)",
-        color: "#f3e9d2",
-        fontFamily: FONT,
-        padding: "28px 18px 60px",
-      }}
-    >
-      <div style={{ maxWidth: 680, margin: "0 auto" }}>
-        <div style={{ fontSize: 34, lineHeight: 1 }}>🍳</div>
-        <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: "0.04em", margin: "10px 0 4px" }}>
-          THE BEST TABLES IN TOWN
-        </h1>
-        <p style={{ opacity: 0.75, lineHeight: 1.45, margin: "0 0 18px", maxWidth: 520 }}>
-          Every restaurant here earned its place by being well run. Service comes from your hands,
-          a tidy room and better dishes. It is the one thing coins cannot buy.
-        </p>
-
-        <Link
-          href="/chef"
-          style={{
-            display: "inline-block",
-            marginBottom: 22,
-            padding: "8px 16px",
-            borderRadius: 999,
-            border: "1px solid #e8a13d",
-            color: "#f3e9d2",
-            textDecoration: "none",
-            fontWeight: 700,
-          }}
-        >
-          ← Back to your kitchen
-        </Link>
-
-        {rows.length === 0 ? (
-          <div
-            style={{
-              border: "1px solid #4a3626",
-              borderRadius: 14,
-              padding: "18px 16px",
-              background: "rgba(27,19,16,0.6)",
-              lineHeight: 1.5,
-              opacity: 0.85,
-            }}
-          >
-            No rooms on the board yet. Open your kitchen, keep it tidy, and yours can be the first.
-          </div>
-        ) : (
-          <div
-            style={{
-              border: "1px solid #4a3626",
-              borderRadius: 14,
-              overflow: "hidden",
-              background: "rgba(27,19,16,0.6)",
-            }}
-          >
-            {rows.map((r) => (
-              <div
-                key={r.rank}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "11px 14px",
-                  borderTop: r.rank === 1 ? "none" : "1px solid rgba(74,54,38,0.7)",
-                  background: r.topTier ? "rgba(232,161,61,0.07)" : "transparent",
-                }}
-              >
-                <span
-                  style={{
-                    width: 26,
-                    textAlign: "right",
-                    opacity: 0.6,
-                    fontWeight: 800,
-                    flexShrink: 0,
-                  }}
-                >
-                  {r.rank}
-                </span>
-                <Link
-                  href={`/chef/visit/${r.handle}`}
-                  style={{ flex: 1, minWidth: 0, color: "inherit", textDecoration: "none" }}
-                >
-                  <span style={{ fontWeight: 700 }}>
-                    {r.topTier && <span style={{ color: "#e8a13d" }}>★ </span>}
-                    {r.name || r.handle}
-                  </span>
-                  <span style={{ display: "block", opacity: 0.62, fontSize: 12, marginTop: 2 }}>
-                    {r.tier} · {r.seats} seat{r.seats === 1 ? "" : "s"} · tap to visit
-                  </span>
-                </Link>
-                <span style={{ fontWeight: 800, color: r.topTier ? "#e8a13d" : "#f3e9d2" }}>
-                  {r.quality}
-                </span>
-                <CheerButton handle={r.handle} />
-              </div>
-            ))}
-          </div>
-        )}
-
-        <h2 style={{ fontSize: 15, fontWeight: 800, letterSpacing: "0.04em", margin: "26px 0 8px" }}>
-          THE LADDER
-        </h2>
-        <div style={{ display: "grid", gap: 6 }}>
-          {[...SERVICE_TIERS].reverse().map((t) => (
-            <div
-              key={t.name}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 10,
-                padding: "9px 12px",
-                border: "1px solid rgba(74,54,38,0.7)",
-                borderRadius: 10,
-                background: "rgba(27,19,16,0.5)",
-              }}
-            >
-              <span style={{ fontWeight: 700 }}>{t.name}</span>
-              <span style={{ opacity: 0.6, textAlign: "right" }}>{t.blurb}</span>
-            </div>
-          ))}
-        </div>
-        <p style={{ opacity: 0.55, lineHeight: 1.5, marginTop: 16, fontSize: 12 }}>
-          Rooms appear here once they have been saved to a wallet. Scores are shown as a service
-          record, never as money.
-        </p>
+  return <main className={css.page}><div className={css.wrap}>
+    <header className={css.nav}>
+      <Link href="/chef" className={css.brand}><span className={css.crest}><IconChefHat size={25}/></span><span>Domain Kitchen<small>The neighborhood</small></span></Link>
+      <Link href="/chef" className={css.back}>Back to your kitchen</Link>
+    </header>
+    <section className={css.hero}>
+      <div className={css.heroCopy}><span className={css.eyebrow}>A seat at the table</span>
+        <h1>The best tables<br/>in town.</h1>
+        <p>Meet your neighbors, peek inside their restaurants, and find a little inspiration for your own.</p>
       </div>
-    </main>
-  );
+      <div className={css.heroArt}><NeighborhoodMark/></div>
+    </section>
+
+    <section aria-labelledby="records-heading">
+      <div className={css.sectionHeading}><h2 id="records-heading">Around the neighborhood</h2><span className={css.recordBadge}>{recordLabel}</span></div>
+      <p className={css.recordNote}>{verified
+        ? "These service records come from server-validated restaurant progress. Earlier saved scores are kept separately."
+        : "Explore community kitchens and their saved best service scores. These legacy records are not verified competitive results."}</p>
+      {rows.length === 0 ? <div className={css.empty}>
+        <span className={css.emptyIcon}><IconChefHat size={36}/></span>
+        <h3>There’s room for a new favorite.</h3>
+        <p>{verified ? "No server-recorded restaurants are available to show yet. Keep caring for your kitchen and check back soon." : "No saved restaurants are available to show right now. Your own kitchen is a lovely place to start."}</p>
+        <Link href="/chef" className={css.primary}>Open your kitchen</Link>
+      </div> : <ol className={css.rooms} aria-label={recordLabel}>
+        {rows.map(r=><li key={r.handle} className={css.room+" "+(r.topTier?css.featured:"")}>
+          <span className={css.rank}>{r.rank}</span>
+          <Link href={"/chef/visit/"+encodeURIComponent(r.handle)} className={css.roomLink}>
+            <span className={css.roomIcon}><IconChefHat size={27}/></span>
+            <span className={css.roomName}><strong>{r.name||r.handle}{r.topTier&&<span className={css.star}><IconStar size={15}/></span>}</strong><small>{r.tier} · {r.seats} seat{r.seats===1?"":"s"}</small><span className={css.visit}>Come on in <span aria-hidden="true">→</span></span></span>
+          </Link>
+          <span className={css.score}><strong>{r.quality}</strong><small>{verified?"Recorded best":"Saved best"}</small></span>
+          <CheerButton handle={r.handle}/>
+        </li>)}
+      </ol>}
+    </section>
+
+    <section className={css.ladder} aria-labelledby="ladder-heading">
+      <div className={css.sectionHeading}><h2 id="ladder-heading">THE LADDER</h2><span className={css.eyebrow}>Little milestones, lasting pride</span></div>
+      <p className={css.recordNote}>Good food, clean tables, and a welcoming room give your service room to grow.</p>
+      <div className={css.tiers}>{[...SERVICE_TIERS].reverse().map(t=><div key={t.name} className={css.tier}>
+        <span className={css.tierIcon}><IconStar size={20}/></span><div><strong>{t.name}</strong><p>{milestones[t.minQuality]||"Keep building your restaurant’s service."}</p></div><span className={css.threshold}>{t.minQuality}+</span>
+      </div>)}</div>
+    </section>
+    <footer className={css.footer}>Scores show each restaurant’s best recorded service, rather than its current live condition. Cleaning and repairs help today’s restaurant feel welcoming again.</footer>
+  </div></main>;
 }

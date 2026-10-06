@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:21:22.331Z",
+  "destination": {
+    "assetId": "lunar_oven_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "fb3f4e8e460d57f08719dc527df917e6e01fc55477ea36adfd190b224823bbba",
+  "packageId": "pkg_77c0e7960e5ca6730b170dcf",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 169656,
+    "fileName": "lunar_oven_low.glb",
+    "sha256": "081fb647d8141186d06c8b05fce1c228015c55740ae67c56d06dd8bc53099d67"
+  }
+}

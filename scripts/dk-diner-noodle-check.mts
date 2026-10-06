@@ -11,7 +11,8 @@ class Kitchen {
   s:ServiceState; cook:Cook;
   constructor(menu=['tomato_pasta'],options:CreateServiceOptions={}){
     const layout=buildServiceLoadout(options.tier??1,menu);assert.equal(layout.error,null);
-    this.s=createService({...layout,menu,customers:8,tutorialLearning:true,...options});
+    // This suite preserves saved single-basket services; audience-batches covers current finite batches.
+    this.s=createService({...layout,menu,customers:8,tutorialLearning:true,boilerVersion:0,...options});
     assert.equal(serviceReadyError(this.s),null);
     this.cook=new Cook(()=>this.s,action=>this.send(action));this.send({type:'open'});
   }

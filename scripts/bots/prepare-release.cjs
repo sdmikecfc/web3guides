@@ -26,7 +26,11 @@ const current=fs.readFileSync(path.join(root,'src/middleware.ts'),'utf8');
 const block=current.match(/    \/\/ The domain entrance[\s\S]*?    gameUrl.pathname = pathname.startsWith/);
 if(!block)throw Error('Model Kombat entry block missing');
 const priorBlock=/    \/\/ The domain entrance[\s\S]*?    gameUrl.pathname = pathname.startsWith/;
-middleware=priorBlock.test(middleware)?middleware.replace(priorBlock,block[0]):middleware.replace('    gameUrl.pathname = pathname.startsWith',block[0]);shared['src/middleware.ts']=middleware+'\n';
+middleware=priorBlock.test(middleware)?middleware.replace(priorBlock,block[0]):middleware.replace('    gameUrl.pathname = pathname.startsWith',block[0]);
+// Public soundtracks must bypass host-specific page rewrites on every game domain.
+if(!middleware.includes('|mp3|ogg|wav'))middleware=middleware.replace('|mp4|webm)', '|mp4|webm|mp3|ogg|wav)');
+if(!middleware.includes('|mp3|ogg|wav'))throw Error('Review soundtrack middleware exclusion');
+shared['src/middleware.ts']=middleware+'\n';
 let config=git(['show',`${head}:next.config.js`]);
 if(!config.includes('outputFileTracingIncludes'))config=config.replace("  webpack(config) {","  experimental: { outputFileTracingIncludes: { '/api/bots/workshop/**': ['./server-assets/bots8/**'] } },\n  webpack(config) {");shared['next.config.js']=config+'\n';
 const {projectRendererHeaders}=require('./lib/renderer-headers.cjs');

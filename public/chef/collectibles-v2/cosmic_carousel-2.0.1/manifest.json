@@ -1,0 +1,43 @@
+{
+  "assetId": "cosmic_carousel",
+  "displayName": "cosmic_carousel",
+  "files": [
+    {
+      "bytes": 518936,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "699f0f32f2bc48c65f5b31613cd9e16963daf59517d262936a1078e92773b50e"
+    },
+    {
+      "bytes": 1420,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "6925a39eb86b1886d186347179639b157fdf32ec1d664d4d4f1b5b51296b3189"
+    },
+    {
+      "bytes": 395,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "cffadd4cb8f998f8d7f94b33a69e78b02351b540f05b5a849ed3e3199ab05475"
+    },
+    {
+      "bytes": 2536,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "b82105ff87c5555b4ca55ebc7c3787f765a420d5295fb9bd9b735b9005f02dc6"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_ee582a846e711c5c8fbba5b2",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.1"
+}

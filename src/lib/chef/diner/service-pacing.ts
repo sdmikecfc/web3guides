@@ -6,10 +6,12 @@ export function earlyServicePacing(input:{routeId:string;serviceDays:number;tuto
   const {routeId,serviceDays,tutorial,kind}=input;
   if(routeId!=='downtown')return {};
   if(tutorial&&serviceDays<3)return {
-    customers:[4,6,8][serviceDays],arrivalTicks:(serviceDays<2?36:32)*20,
-    maxWaitingCustomers:1,queuePatienceTicks:100*20,tablePatienceTicks:80*20,
+    customers:[4,6,8][serviceDays],arrivalTicks:[30,27,28][serviceDays]*20,
+    pacingVersion:2,pacingProfile:serviceDays===0?'first':serviceDays===1?'second':'third',
+    maxWaitingCustomers:serviceDays===2?2:1,queuePatienceTicks:90*20,tablePatienceTicks:70*20,
   };
-  if(serviceDays<2)return {customers:serviceDays===0?6:8,arrivalTicks:32*20,maxWaitingCustomers:1,queuePatienceTicks:90*20,tablePatienceTicks:70*20};
+  if(serviceDays<2)return {customers:serviceDays===0?6:8,arrivalTicks:(serviceDays===0?28:30)*20,maxWaitingCustomers:1,queuePatienceTicks:90*20,tablePatienceTicks:70*20};
+  if(kind==='slow')return {pacingVersion:2,pacingProfile:'slow',customers:serviceDays>=4?12:8,arrivalTicks:30*20,maxWaitingCustomers:1,queuePatienceTicks:90*20,tablePatienceTicks:70*20};
   const rush=['busy','special','finale'].includes(kind);
   if(serviceDays>=4)return {
     customers:kind==='finale'?22:rush?Math.min(18,14+(serviceDays-4)*2):12,

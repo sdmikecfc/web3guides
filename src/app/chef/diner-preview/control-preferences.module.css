@@ -1,0 +1,7 @@
+.scope{display:contents}
+.scope button,.scope select,.scope input:not([type=checkbox]),.scope summary{min-height:44px!important}
+.scope button{min-width:44px!important}
+.scope[data-large-controls=true] button,.scope[data-large-controls=true] select,.scope[data-large-controls=true] input:not([type=checkbox]),.scope[data-large-controls=true] summary{min-height:56px!important;min-width:56px!important}
+.scope select{display:block;width:100%;margin-top:6px}
+.scope [data-work-control]{font-size:calc(13px * var(--dk-text-scale,1))}
+.scope label{font-size:calc(14px * var(--dk-text-scale,1))}

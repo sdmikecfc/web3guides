@@ -1,0 +1,55 @@
+{
+  "assetId": "lucky_cat_soda",
+  "displayName": "lucky_cat_soda",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.4562382102012634,
+        1.5099999676715754,
+        0.4168168008327484
+      ],
+      "min": [
+        -0.4000000059604645,
+        0.005000002682209015,
+        -0.36000001430511475
+      ],
+      "sizeMeters": [
+        0.8562382161617279,
+        1.5049999649893664,
+        0.7768168151378632
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 305448,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 9,
+    "meshCount": 11,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 11,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 11392,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 7057,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}

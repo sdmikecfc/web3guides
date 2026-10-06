@@ -1,0 +1,11 @@
+{
+  "author": "[redacted]",
+  "notes": "Original Blender geometry authored for this project. Hero designs based on existing authorized cinematic reference artwork.",
+  "origin": "authored",
+  "schema": "game_dev.asset_provenance.v1",
+  "source": {
+    "bytes": 220776,
+    "fileName": "rocket_shake_low.glb",
+    "sha256": "adc1786e175955b9cb4de22a212b184914f5f1a746255424b061f3ba4fa3a5e0"
+  }
+}

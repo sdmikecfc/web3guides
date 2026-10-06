@@ -1,19 +1,26 @@
 /**
- * The save shape, and the sanitizer that makes a save SAFE TO TRUST (M6).
+ * The versioned save shape and structural sanitizer.
  *
  * This module is shared by the browser and the server on purpose: the client
  * writes saves and the server accepts them, and both must agree on exactly
  * what a legal save is. The server treats every incoming save as hostile —
  * anyone can POST anything — so `sanitizeSave` is the only way state enters
- * the game, and it drops unknown keys rather than trusting them.
+ * the game, and it drops unknown keys rather than trusting them. Structural
+ * validity is not evidence of earned progress; server commands own rewards.
  *
  * Renderer-free and React-free: importable from a route handler.
  */
 
 import { COURSES } from "./academy";
+import { sanitizeTruckProgress, type TruckProgress } from "./truck";
+import { sanitizeEquipment, reconcileEquipmentLayout, type EquipmentState } from "./equipment";
+import { sanitizeDesign, sanitizeMaintenance, type RestaurantDesign, type MaintenanceState } from "./building";
+import { DISHES, STARTER_DISH_IDS, availableDishes, legacyDomainDish, sanitizeSelected } from "./cookbook";
 import { itemDef, MARKETS } from "./items";
+import { sanitizeLaunchProgress, type LaunchProgress } from "./launch-progression";
 import { DAILY_SPECIALS, INGREDIENTS, MAX_DISH_LEVEL, RECIPES } from "./pantry";
 import { SHELL_SIZES } from "./rooms";
+import { DELIVERY_DAY_LIMIT, DELIVERY_STOCK_LIMIT, sanitizeDelivery, sanitizeOnboarding, type OnboardingMetadata, type OnboardingState, type DeliveryState } from "./onboarding";
 import {
   GUEST_VARIANTS,
   HIRE_SHOP,
@@ -24,7 +31,7 @@ import {
   type WorldState,
 } from "./world";
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 8;
 
 /**
  * YOUR CREW (M7d): which chef and waiter look the player picked, and what
@@ -57,15 +64,15 @@ export const LIMITS = {
   inventoryKinds: 60,
   perItem: 999,
   coins: 1_000_000_000,
-  stock: 999,
+  stock: DELIVERY_STOCK_LIMIT,
   serves: 1_000_000,
   lpDays: 3650,
   /** ceiling for a practice dial; a live wallet read is not clamped by this */
   dial: 5000,
   /** whole days since the epoch; comfortably past any real date */
-  utcDay: 100_000,
+  utcDay: DELIVERY_DAY_LIMIT,
   /** biggest JSON we will accept over the wire, before parsing */
-  bytes: 24_000,
+  bytes: 48_000,
 } as const;
 
 export interface DkSave {
@@ -75,11 +82,18 @@ export interface DkSave {
   coins: number;
   waiters: number;
   chefs: number;
-  layout: { itemId: string; gx: number; gy: number; facing: Facing }[];
+  layout: { uid?: number; itemId: string; gx: number; gy: number; facing: Facing }[];
   inventory: Record<string, number>;
+  design: RestaurantDesign;
+  maintenance: MaintenanceState;
+  launch: LaunchProgress;
+  truck: TruckProgress;
+  equipment: EquipmentState;
   pantry: { stock: Record<string, number>; levels: Record<string, number> };
   menu: {
     serves: Record<string, number>;
+    selected: string[];
+    unlocked: string[];
     specialUnlocked: boolean;
     specialServes: number;
     specialMastered: boolean;
@@ -134,6 +148,9 @@ export interface DkSave {
    * phone and comes back on a laptop is not taught the same thing twice.
    */
   intro: number;
+  /** Tutorial progress and collection receipts are saved outside the simulation. */
+  onboarding: OnboardingState;
+  delivery: DeliveryState;
   savedAt: number;
 }
 
@@ -197,7 +214,8 @@ export function serializeSave(
   theme: string,
   crew?: DkSave["crew"],
   intro = INTRO_STEPS_DONE,
-  name = ""
+  name = "",
+  metadata?: OnboardingMetadata
 ): DkSave {
   const serves: Record<string, number> = {};
   for (const d of w.menu.dishes) serves[d.key] = d.serves;
@@ -208,11 +226,18 @@ export function serializeSave(
     coins: Math.floor(w.playMoney),
     waiters: w.hires.waiters,
     chefs: w.hires.chefs,
-    layout: w.layout.map((p) => ({ itemId: p.itemId, gx: p.gx, gy: p.gy, facing: p.facing })),
+    layout: w.layout.map((p) => ({ uid:p.uid, itemId: p.itemId, gx: p.gx, gy: p.gy, facing: p.facing })),
     inventory: { ...w.inventory },
+    design: sanitizeDesign(w.design, w.grid.w, w.grid.h),
+    maintenance: sanitizeMaintenance(w.maintenance),
+    launch: sanitizeLaunchProgress(w.launch, w.utcDay, w.layout, { w: w.grid.w, h: w.grid.h, door: w.door }),
+    truck: sanitizeTruckProgress(w.truck),
+    equipment: sanitizeEquipment(w.equipment),
     pantry: { stock: { ...w.pantry.stock }, levels: { ...w.pantry.levels } },
     menu: {
       serves,
+      selected: [...w.menu.selected],
+      unlocked: [...w.menu.unlocked],
       specialUnlocked: w.menu.specialUnlocked,
       specialServes: w.menu.specialServes,
       specialMastered: w.menu.specialMastered,
@@ -246,6 +271,8 @@ export function serializeSave(
     name: roomName(name),
     courses: [...w.courses],
     intro: Math.max(0, Math.min(INTRO_STEPS_DONE, Math.floor(intro))),
+    onboarding: sanitizeOnboarding(metadata?.onboarding, { intro, savedAt: 1, allowedDishIds: w.menu.unlocked, levels: w.pantry.levels }),
+    delivery: sanitizeDelivery(metadata?.delivery, { existing: true, utcDay: w.utcDay }),
     savedAt: Date.now(),
   };
 }
@@ -257,6 +284,7 @@ export function serializeSave(
  */
 export function sanitizeSave(raw: unknown): DkSave {
   const src = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const legacy = num(src.v, 0, SAVE_VERSION) < 7;
 
   // layout: only real catalog items, only inside the room, only known facings
   const rawLayout = Array.isArray(src.layout) ? src.layout.slice(0, LIMITS.layout) : [];
@@ -267,10 +295,13 @@ export function sanitizeSave(raw: unknown): DkSave {
     const itemId = typeof e.itemId === "string" ? e.itemId : "";
     if (!itemDef(itemId)) continue; // an item we do not sell cannot be placed
     layout.push({
+      uid: num(e.uid,1,1_000_000,layout.length+1),
       itemId,
       gx: num(e.gx, 0, 63),
       gy: num(e.gy, 0, 63),
-      facing: e.facing === "sw" ? "sw" : "se",
+      // In v6 a mirrored counter still occupied the +x cells. Preserve its
+      // footprint rather than rotating an old room into an overlap on load.
+      facing: legacy && (itemDef(itemId)?.cells ?? 1) > 1 ? "se" : ["sw", "nw", "ne"].includes(String(e.facing)) ? e.facing as Facing : "se",
     });
   }
 
@@ -343,21 +374,47 @@ export function sanitizeSave(raw: unknown): DkSave {
   }
 
   const marketRaw = typeof src.market === "string" ? src.market : "";
+  const market = MARKET_IDS.includes(marketRaw) ? marketRaw : MARKET_IDS[0];
+  const inheritedDish = legacyDomainDish(market);
+  if (legacy) {
+    levels[inheritedDish] = Math.max(levels[inheritedDish] ?? 1, levels.special ?? 1);
+    serves[inheritedDish] = Math.max(serves[inheritedDish] ?? 0, num(rawMenu.specialServes, 0, LIMITS.serves));
+  }
+  const unlocked = Array.from(new Set([
+    ...STARTER_DISH_IDS,
+    ...(Array.isArray(rawMenu.unlocked) ? rawMenu.unlocked.filter((id): id is string => typeof id === "string" && DISHES.some((dish) => dish.id === id)) : []),
+    ...availableDishes({ market, lpDays, pantry: { levels }, menu: { specialUnlocked: bool(rawMenu.specialUnlocked), unlocked: legacy ? undefined : [] } }).map((dish) => dish.id),
+  ]));
+  const defaultMenu = legacy && bool(rawMenu.specialUnlocked) ? [...STARTER_DISH_IDS, inheritedDish] : STARTER_DISH_IDS;
+  const selected = sanitizeSelected(sanitizeSelected(rawMenu.selected, defaultMenu).filter((id) => unlocked.includes(id)));
+  const shell = num(src.shell, 0, SHELL_SIZES.length - 1);
   const themeRaw = typeof src.theme === "string" ? src.theme : "";
   const rawCrew = (src.crew && typeof src.crew === "object" ? src.crew : {}) as Record<string, unknown>;
+  const intro = num(src.intro, 0, INTRO_STEPS_DONE, 0);
+  const savedAt = num(src.savedAt, 0, Number.MAX_SAFE_INTEGER);
+  const utcDay = num(src.utcDay, 0, LIMITS.utcDay);
+  const equipment = sanitizeEquipment(src.equipment);
+  const stableLayout = reconcileEquipmentLayout(layout, equipment);
 
   return {
     v: SAVE_VERSION,
-    market: MARKET_IDS.includes(marketRaw) ? marketRaw : MARKET_IDS[0],
+    market,
     lpDays,
     coins: num(src.coins, 0, LIMITS.coins, 20),
     waiters: num(src.waiters, 1, HIRE_SHOP.waiter.max, 1),
     chefs: num(src.chefs, 1, HIRE_SHOP.chef.max, 1),
-    layout,
+    layout: stableLayout,
     inventory,
+    design: sanitizeDesign(src.design, SHELL_SIZES[shell].w, SHELL_SIZES[shell].h),
+    maintenance: sanitizeMaintenance(src.maintenance),
+    launch: sanitizeLaunchProgress(src.launch, utcDay, layout, SHELL_SIZES[shell]),
+    truck: sanitizeTruckProgress(src.truck),
+    equipment,
     pantry: { stock, levels },
     menu: {
       serves,
+      selected,
+      unlocked,
       specialUnlocked: bool(rawMenu.specialUnlocked),
       specialServes: num(rawMenu.specialServes, 0, LIMITS.serves),
       specialMastered: bool(rawMenu.specialMastered),
@@ -367,7 +424,7 @@ export function sanitizeSave(raw: unknown): DkSave {
       parkedUsd: num(rawDials.parkedUsd, 0, LIMITS.dial, 25),
       weeklyVolumeUsd: num(rawDials.weeklyVolumeUsd, 0, LIMITS.dial, 60),
     },
-    utcDay: num(src.utcDay, 0, LIMITS.utcDay),
+    utcDay,
     daily: {
       idx: num(rawDaily.idx, 0, DAILY_SPECIALS.length - 1),
       prepped: bool(rawDaily.prepped),
@@ -381,7 +438,7 @@ export function sanitizeSave(raw: unknown): DkSave {
       goalGreetPaid: bool(rawDaily.goalGreetPaid),
     },
     regulars,
-    shell: num(src.shell, 0, SHELL_SIZES.length - 1),
+    shell,
     theme: THEMES.includes(themeRaw) ? themeRaw : THEMES[0],
     crew: {
       chef: num(rawCrew.chef, 0, CREW_LOOKS - 1),
@@ -402,14 +459,16 @@ export function sanitizeSave(raw: unknown): DkSave {
     // defaults to 0 = "not started". A save written before M8 has no `intro`
     // at all and also lands on 0, so the boot code distinguishes the two by
     // savedAt: an existing player has played, and is not taught to play.
-    intro: num(src.intro, 0, INTRO_STEPS_DONE, 0),
-    savedAt: num(src.savedAt, 0, Number.MAX_SAFE_INTEGER),
+    intro,
+    onboarding: sanitizeOnboarding(src.onboarding, { intro, savedAt, allowedDishIds: unlocked, levels }),
+    delivery: sanitizeDelivery(src.delivery, { existing: savedAt > 0 || intro > 0, utcDay }),
+    savedAt,
   };
 }
 
 /** The layout in the shape createWorld wants. */
 export function layoutFromSave(save: DkSave): PlacedSpec[] {
-  return save.layout.map((p) => ({ itemId: p.itemId, gx: p.gx, gy: p.gy, facing: p.facing }));
+  return save.layout.map((p) => ({ uid:p.uid, itemId: p.itemId, gx: p.gx, gy: p.gy, facing: p.facing }));
 }
 
 /** Which of two saves to trust when local and cloud disagree. */

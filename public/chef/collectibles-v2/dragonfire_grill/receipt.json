@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T16:01:51.994Z",
+  "destination": {
+    "assetId": "dragonfire_grill",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "45256d228ba55abc306eb60dc89500a85e5c82c86613054c66ac70e243193836",
+  "packageId": "pkg_78eb46a7e07d44e0eae888be",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 643176,
+    "fileName": "dragonfire_grill.glb",
+    "sha256": "bff901aad1d2fa247480599ffb0ce8504e3a3558ccade3476097151bd711b7e0"
+  }
+}

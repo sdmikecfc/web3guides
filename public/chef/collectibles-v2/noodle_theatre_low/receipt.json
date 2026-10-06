@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-09-23T17:21:25.422Z",
+  "destination": {
+    "assetId": "noodle_theatre_low",
+    "version": "2.0.0"
+  },
+  "evidence": {
+    "blenderNormalizationPerformed": false,
+    "gpuImportTestPerformed": false,
+    "humanVisualReviewPerformed": false,
+    "modelBytesCopiedAndHashed": true,
+    "policyValidationCompleted": true,
+    "staticInspectionCompleted": true
+  },
+  "manifestSha256": "d608bd87452abfab6fbc8c4a7e0bdbf529e7570c37d61b7281e65968c00deee0",
+  "packageId": "pkg_866c895952973826849c1bbe",
+  "schema": "game_dev.package_receipt.v1",
+  "source": {
+    "bytes": 44448,
+    "fileName": "noodle_theatre_low.glb",
+    "sha256": "2bcac45a6ad4ade518f235a1977446d424e8e46488faf766794156a08c0110a4"
+  }
+}

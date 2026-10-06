@@ -1,0 +1,43 @@
+{
+  "assetId": "rabbit_tea",
+  "displayName": "rabbit_tea",
+  "files": [
+    {
+      "bytes": 236568,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "e7722d20145ff83db8fc230d411137e31c368357418ce441878b6c3d5216d8be"
+    },
+    {
+      "bytes": 1407,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "61a38de7d09ba7577b8cf9971cf9bb26aa4df9bae1558b8ee58909cde949b0f5"
+    },
+    {
+      "bytes": 390,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "82b0df391a6b1d74428e7243da1e2fccd6e863714b5f38dbdee44daf6885aa30"
+    },
+    {
+      "bytes": 2534,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "6403fc686ca2e3cd8b2a45e9c32b0a98c420840d9e1210690a5c19e165794b26"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_703456868bc8f2cbef5fcca2",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

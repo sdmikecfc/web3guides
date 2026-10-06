@@ -1,0 +1,43 @@
+{
+  "assetId": "dumpling_bathhouse",
+  "displayName": "dumpling_bathhouse",
+  "files": [
+    {
+      "bytes": 344404,
+      "kind": "model",
+      "path": "model.glb",
+      "sha256": "6cf31330d1ebf8761f9eb3c00c6bcef3dfe895b6ceb6e7413f12b75cac2ca2ed"
+    },
+    {
+      "bytes": 1425,
+      "kind": "metadata",
+      "path": "metadata.json",
+      "sha256": "8a08c62002bb5da1668c9d75925011195ede0924ca4a10eb86a72b5f28826742"
+    },
+    {
+      "bytes": 398,
+      "kind": "provenance",
+      "path": "provenance.json",
+      "sha256": "f6e89ef1006ecfe237545e4039130ae5916273191907b49a424b70c36dd94adf"
+    },
+    {
+      "bytes": 2536,
+      "kind": "validation",
+      "path": "validation.json",
+      "sha256": "b78f0c0aa20fd6c0a1414129660392aa09f6e0c8451fe7a1a873c77fed3529e6"
+    }
+  ],
+  "license": "LicenseRef-DomainKitchen-Original",
+  "model": "model.glb",
+  "packageId": "pkg_91022b8282dddafc9e8b7fa9",
+  "provenance": {
+    "origin": "authored"
+  },
+  "schema": "game_dev.asset_package.v1",
+  "validation": {
+    "errorCount": 0,
+    "passed": true,
+    "warningCount": 0
+  },
+  "version": "2.0.0"
+}

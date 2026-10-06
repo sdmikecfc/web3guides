@@ -1,0 +1,55 @@
+{
+  "assetId": "phoenix_fryer",
+  "displayName": "phoenix_fryer",
+  "inspection": {
+    "animationCount": 0,
+    "boundingBox": {
+      "max": [
+        0.4724435806274414,
+        1.1784007400274277,
+        0.42000001668930054
+      ],
+      "min": [
+        -0.4724435806274414,
+        0.005000002682209015,
+        -0.36000001430511475
+      ],
+      "sizeMeters": [
+        0.9448871612548828,
+        1.1734007373452187,
+        0.7800000309944153
+      ]
+    },
+    "boundingBoxEmpty": false,
+    "fileBytes": 207564,
+    "filePath": "model.glb",
+    "generator": "glTF-Transform v4.4.2",
+    "hasNormals": true,
+    "hasSkin": false,
+    "hasTangents": false,
+    "hasUVs": true,
+    "materialCount": 6,
+    "meshCount": 6,
+    "pbr": {
+      "hasBaseColorTexture": false,
+      "hasEmissiveTexture": false,
+      "hasMetallicRoughnessTexture": false,
+      "hasNormalTexture": false,
+      "hasOcclusionTexture": false
+    },
+    "primitiveCount": 6,
+    "sceneGraphFallback": false,
+    "textureCount": 0,
+    "textureResolutions": [],
+    "triangleCount": 7866,
+    "undrawnMeshCount": 0,
+    "undrawnPrimitiveCount": 0,
+    "undrawnTriangleCount": 0,
+    "vertexCount": 4841,
+    "warnings": [
+      "no base colour texture on any material: the asset is untextured and will read as flat colour"
+    ]
+  },
+  "license": "LicenseRef-DomainKitchen-Original",
+  "schema": "game_dev.asset_metadata.v1"
+}
