@@ -33,6 +33,12 @@ function failure(error:{message:string;code?:string}):never {
   throw Error(`Journey storage unavailable (${error.code??'unknown'}).`);
 }
 async function rpc(db:BotsDb,name:string,params:Record<string,unknown>){const {data,error}=await db.rpc(name,params);if(error)failure(error);return data;}
+async function browserGarageIds(db:BotsDb,secret:string){
+  const {data:guest,error}=await db.from('mk8_guest_sessions').select('player_id,expires_at,revoked').eq('token_hash',hash(secret)).maybeSingle();if(error)failure(error);
+  if(!guest||guest.revoked||Date.parse(guest.expires_at)<=Date.now())return [];
+  const {data,error:garageError}=await db.from('mk8_garages').select('id').eq('player_id',guest.player_id).order('updated_at',{ascending:false});if(garageError)failure(garageError);
+  return (data??[]).map(g=>g.id as string);
+}
 export async function journeySession(req: Request, enroll=false) {
   if(!journeyEnabled())return NextResponse.json({ok:true,enabled:false});
   if(req.headers.get('sec-fetch-site')==='cross-site')throw new Refusal(403,'Open Model Kombat directly to start your garage.');
@@ -45,7 +51,9 @@ export async function journeySession(req: Request, enroll=false) {
     const bucket=createHmac('sha256',sessionSecret()).update(`${ip}:${Math.floor(Date.now()/3600000)}`).digest('hex');
     await rpc(db,'mk8_guest_enroll',{p_hash:hash(secret),p_bucket:bucket,p_state:{...freshWorkshop(),journey:freshJourney()}});
   }
-  const response=NextResponse.json({ok:true,enabled:true},{headers:{'Cache-Control':'no-store'}});
+  // Inspect only the cookie's existing save. This never enrolls, claims or settles a fight.
+  const guestGarageIds=await browserGarageIds(db,secret);
+  const response=NextResponse.json({ok:true,enabled:true,guestGarageIds},{headers:{'Cache-Control':'no-store'}});
   response.cookies.set(GUEST_COOKIE,secret,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'strict',path:'/api/bots/workshop',maxAge:60*86400});
   return response;
 }

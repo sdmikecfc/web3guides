@@ -4,7 +4,7 @@ import { freshWorkshop, type Fight8, type Workshop8 } from '@/lib/bots/workshop8
 
 export type GarageSummary={id:string;name:string;robots:{id:string;name:string}[];activeFight:string|null};
 type Packet={serverNow?:number;ok:boolean;error?:string;state:Workshop8|null;garageId:string|null;garages:GarageSummary[];days:Record<string,number>;session:{kind:'guest'|'wallet';address?:string}|null};
-const PENDING='mk8.journey.pending.1',ACTIVE='mk8.journey.active.1';
+const PENDING='mk8.journey.pending.1',ACTIVE='mk8.journey.active.1',SCOPE='mk8.journey.scope.1';
 async function request(url:string,options:RequestInit={}){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
  try{return await fetch(url,{...options,signal:controller.signal})}
@@ -18,6 +18,8 @@ export default function useJourneyGarage(enabled:boolean,onState:(state:Workshop
  const reading=useRef(0),readEpoch=useRef(0);
  const failed=useRef<{requestId:string;action:unknown;garageId:string|null}|null>(null);
  const sessionReady=useRef(false),bootstrapReady=useRef(false),bootstrap=useRef<Promise<void>|null>(null);
+ const browserGarages=useRef<string[]>([]),walletToken=useRef('');
+ const [guestGarageIds,setGuestGarageIds]=useState<string[]>([]),[hasWalletSession,setHasWalletSession]=useState(false);
  callbacks.current={onState,onFinished};
  const headers=useCallback(()=>({...(token.current?{Authorization:`Bearer ${token.current}`}:{ }), 'Content-Type':'application/json'}),[]);
  const accept=useCallback((data:Packet)=>{
@@ -25,7 +27,7 @@ export default function useJourneyGarage(enabled:boolean,onState:(state:Workshop
   const before=latest.current;
   if(before?.garageId===data.garageId&&before?.state&&data.state&&data.state.revision<before.state.revision)return before;
   if(before?.state?.active&&!data.state?.active){const completed=data.state?.history.find(f=>f.id===before.state!.active!.id);if(completed)callbacks.current.onFinished(completed);}
-  latest.current=data;setPacket(data);if(Number.isFinite(data.serverNow))setServerOffset(data.serverNow!-Date.now());callbacks.current.onState(data.state??freshWorkshop());setStatus(data.state?'saved':'browsing');setError('');
+  latest.current=data;setPacket(data);if(Number.isFinite(data.serverNow))setServerOffset(data.serverNow!-Date.now());callbacks.current.onState(data.state??freshWorkshop());setStatus(failed.current?'error':data.state?'saved':'browsing');setError(failed.current?'Your last change needs a retry. It will not be charged twice.':'');
   if(data.garageId)try{sessionStorage.setItem(ACTIVE,data.garageId)}catch{}
   return data;
  },[]);
@@ -40,8 +42,8 @@ export default function useJourneyGarage(enabled:boolean,onState:(state:Workshop
  const initialize=useCallback(()=>{
   const work=(async()=>{
    sessionReady.current=false;bootstrapReady.current=false;
-   const saved=JSON.parse(sessionStorage.getItem('mk8.wallet-session.v1')||'null');token.current=saved?.token??'';
-   const sessionCheck=(async()=>{const response=await request('/api/bots/workshop/session',{cache:'no-store'}),data=await response.json();if(!response.ok||!data.enabled)throw Error(data.error||'Server saves are unavailable. Try the free arcade while we reconnect.');sessionReady.current=true;})();
+   const saved=JSON.parse(sessionStorage.getItem('mk8.wallet-session.v1')||'null');walletToken.current=saved?.token??'';setHasWalletSession(!!walletToken.current);token.current=sessionStorage.getItem(SCOPE)==='guest'?'':walletToken.current;
+   const sessionCheck=(async()=>{const response=await request('/api/bots/workshop/session',{cache:'no-store'}),data=await response.json();if(!response.ok||!data.enabled)throw Error(data.error||'Server saves are unavailable. Try the free arcade while we reconnect.');browserGarages.current=Array.isArray(data.guestGarageIds)?data.guestGarageIds.filter((id:unknown):id is string=>typeof id==='string'):[];setGuestGarageIds(browserGarages.current);sessionReady.current=true;})();
    const restore=(async()=>{try{await read(sessionStorage.getItem(ACTIVE))}catch(e){if((e as {status?:number}).status!==404)throw e;await read(null)}})();
    // The session read only prepares a cookie; it never enrolls a guest. Existing
    // wallet/guest identity is resolved independently using the original credentials.
@@ -54,6 +56,8 @@ export default function useJourneyGarage(enabled:boolean,onState:(state:Workshop
  const ensure=useCallback(async()=>{
   await bootstrap.current;
   if(!sessionReady.current||!latest.current)throw Error('Reconnect your saved garage before building. Your earlier progress has not changed.');
+  const retryingWalletSave=!!latest.current.state&&failed.current?.garageId===latest.current.garageId&&!browserGarages.current.includes(latest.current.garageId??'');
+  if(token.current&&browserGarages.current.length&&!retryingWalletSave)throw Error('Choose whether to save this browser’s garage to your wallet or keep it here. Open Wallet & garages to continue.');
   if(latest.current?.state)return latest.current;
   const response=await request('/api/bots/workshop/session',{method:'POST',headers:headers()}),data=await response.json();
   if(!response.ok||!data.ok||!data.enabled)throw Error(data.error||'Saving is unavailable. You can still watch and try unsaved practice.');
@@ -79,11 +83,28 @@ export default function useJourneyGarage(enabled:boolean,onState:(state:Workshop
   tail.current=next;return next;
  },[execute]);
  const retry=useCallback(async()=>{try{if(!bootstrapReady.current)return await initialize();if(failed.current)return await execute(failed.current);return await read();}catch(e){setStatus('error');setError((e as Error).message);throw e}},[execute,read,initialize]);
- const connect=useCallback(async(value:string)=>{const previous=token.current;token.current=value;try{return await read(null)}catch(e){token.current=previous;throw e}},[read]);
+ const connect=useCallback(async(value:string)=>{const previous=token.current;token.current=value;try{const data=await read(null);walletToken.current=value;setHasWalletSession(true);sessionStorage.removeItem(SCOPE);return data}catch(e){token.current=previous;throw e}},[read]);
  const claim=useCallback(async(value:string)=>{
-  const previous=token.current,garage=latest.current?.garageId;token.current=value;try{
-  const response=await request('/api/bots/workshop/claim',{method:'POST',headers:headers()}),data=await response.json();if(!response.ok||!data.ok){const recovery=await request('/api/bots/workshop',{headers:headers(),cache:'no-store'}),saved=await recovery.json();if(recovery.ok&&garage&&saved.garages?.some((g:GarageSummary)=>g.id===garage))return accept(saved);throw Error(data.error||'Your garage could not link.');}return accept(data);}catch(e){token.current=previous;throw e}
+  if(inFlight.current)throw Error('Finish saving before linking your garage.');
+  const previous=token.current,expected=browserGarages.current.length?browserGarages.current:latest.current?.session?.kind==='guest'&&latest.current.garageId?[latest.current.garageId]:[];token.current=value;inFlight.current=true;readEpoch.current++;
+  const pendingGarage=failed.current?.garageId,keepGarage=pendingGarage&&(expected.includes(pendingGarage)||latest.current?.garages.some(g=>g.id===pendingGarage))?pendingGarage:latest.current?.session?.kind==='guest'?latest.current.garageId:null;
+  const query=keepGarage?`?garage=${encodeURIComponent(keepGarage)}`:'';
+  try{
+   let linked:Packet;
+   try{const response=await request(`/api/bots/workshop/claim${query}`,{method:'POST',headers:headers()}),data=await response.json();if(!response.ok||!data.ok)throw Error(data.error||'Your garage could not link.');linked=data;}
+   catch(error){const recovery=await request(`/api/bots/workshop${query}`,{headers:headers(),cache:'no-store'}),saved=await recovery.json();if(!recovery.ok||!saved.ok||saved.session?.kind!=='wallet'||!expected.length||!expected.every(id=>saved.garages?.some((g:GarageSummary)=>g.id===id)))throw error;linked=saved;}
+   walletToken.current=value;setHasWalletSession(true);browserGarages.current=[];setGuestGarageIds([]);sessionStorage.removeItem(SCOPE);return accept(linked);
+  }catch(e){token.current=previous;throw e}finally{inFlight.current=false}
  },[accept,headers]);
+ const claimBrowser=useCallback(async()=>{if(!walletToken.current)throw Error('Sign in to your wallet first.');return claim(walletToken.current)},[claim]);
+ const keepBrowser=useCallback(async()=>{
+  await bootstrap.current;
+  if(inFlight.current)throw Error('Finish saving before switching garages.');
+  if(!browserGarages.current.length)throw Error('This browser’s saved garage is no longer available. Refresh to check your wallet.');
+  if(failed.current?.garageId&&!browserGarages.current.includes(failed.current.garageId))throw Error('Retry your pending wallet save before opening this browser’s garage.');
+  const previous=token.current;token.current='';inFlight.current=true;
+  try{const data=await read(browserGarages.current.includes(latest.current?.garageId??'')?latest.current!.garageId:browserGarages.current[0]);if(data.session?.kind!=='guest')throw Error('This browser’s saved garage could not open.');sessionStorage.setItem(SCOPE,'guest');return data;}catch(e){token.current=previous;throw e}finally{inFlight.current=false}
+ },[read]);
  const select=useCallback(async(id:string)=>{
   if(inFlight.current||failed.current)throw Error('Finish saving before switching garages.');
   inFlight.current=true;readEpoch.current++;setStatus('saving');
@@ -98,5 +119,5 @@ export default function useJourneyGarage(enabled:boolean,onState:(state:Workshop
   let lastRefresh=0;const timer=setInterval(()=>{const t=Date.now();if(t-lastRefresh<(latest.current?.state?.active?2500:30000))return;lastRefresh=t;refresh()},2500);document.addEventListener('visibilitychange',refresh);
   return()=>{alive.current=false;clearInterval(timer);document.removeEventListener('visibilitychange',refresh)};
  },[enabled,read,initialize]);
- return {packet,status,error,serverOffset,mutate,retry,connect,claim,select,read,ensure,hasSave:!!packet?.state};
+ return {packet,status,error,serverOffset,mutate,retry,connect,claim,claimBrowser,keepBrowser,select,read,ensure,hasSave:!!packet?.state,hasWalletSession,hasUnlinkedGuest:!!guestGarageIds.length&&packet?.session?.kind==='wallet'};
 }
