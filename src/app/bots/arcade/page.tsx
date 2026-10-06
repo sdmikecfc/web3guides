@@ -1,3 +1,4 @@
 import ArcadeGarage from '../_game/ArcadeGarage';
-export const metadata={title:{absolute:'Model Kombat · Arcade'},description:'An illustrated robot fighting game. Play with touch, keyboard or mouse.'};
+import {modelKombatMetadata} from '@/lib/bots/social-metadata';
+export const metadata=modelKombatMetadata('/bots/arcade','Model Kombat · Arcade','A free cartoon robot fighting game. Play with touch, keyboard or mouse. Arcade practice is unrewarded.','games');
 export default function ArcadePage(){return <ArcadeGarage/>;}

@@ -19,3 +19,7 @@
 
 .menuActions{display:flex;gap:8px;align-items:center}
 .fighterStats summary,.advancedMoves summary{cursor:pointer;color:var(--amber)}.fighterStats p{margin-top:8px;line-height:1.6}.advancedMoves{margin-top:20px;padding-top:15px;border-top:1px solid var(--line);font-size:12px}.fighterStats summary:focus-visible,.advancedMoves summary:focus-visible{outline:3px solid #83e5ff;outline-offset:3px}
+
+.app button:disabled{cursor:not-allowed;opacity:.55}.app button:disabled:hover{background:#202c37;border-color:var(--line)}.garageChoice a{color:var(--amber);text-underline-offset:3px}
+
+.ownedFighter{display:grid;grid-template-columns:1.2fr 1fr;gap:24px;align-items:center;border:1px solid var(--amber);border-radius:18px;padding:22px;background:radial-gradient(ellipse at 30% 40%,#3a5148,#14212c 70%)}.ownedFighter img{width:100%;height:clamp(180px,34vh,310px);object-fit:contain}.ownedFighter h2{font-size:32px;margin:12px 0;overflow-wrap:anywhere}.ownedFighter p{font-size:13px;line-height:1.8;color:#bdcbd4}.ownedFighter button{font-size:12px}.garageChoice [role=alert]{width:100%;color:#ffd09a}.garageChoice [role=alert] button{padding:7px 10px;margin-left:8px}@media(max-width:540px){.ownedFighter{padding:14px;gap:12px}.ownedFighter h2{font-size:24px}.ownedFighter img{height:210px}.ownedFighter button{padding:8px}}@media(max-height:540px) and (orientation:landscape){.ownedFighter{padding:10px;gap:14px}.ownedFighter img{height:145px}.ownedFighter h2{font-size:22px;margin:5px 0}.ownedFighter p{font-size:10px;margin:5px 0}}

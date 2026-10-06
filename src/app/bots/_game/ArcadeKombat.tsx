@@ -3,7 +3,8 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {ArcadeEngine,guarding,ready,replay} from '../../../lib/bots/arcade/engine';
 import {LADDERS,newRun,opponent,settleRun,matchSeed,ladderDifficulty,type LadderRun} from '../../../lib/bots/arcade/ladder';
 import {ARCADE_SAVE,freshArcadeSave,readArcadeSave,type ArcadeSave} from '../../../lib/bots/arcade/save';
-import {loaner,arcadeBuild} from '../../../lib/bots/arcade/equipment';
+import {loaner,arcadeBuild,tierForGP} from '../../../lib/bots/arcade/equipment';
+import {ladderAvailable,ladderRequirement,ladderResumeAvailable} from '../../../lib/bots/arcade/access';
 import {ARENAS,arenaDefinition,type ArenaId} from '../../../lib/bots/arcade/arenas';
 import {RULES,ART,type Action,type Build,type Style,type Tier} from '../../../lib/bots/arcade/types';
 import {HeldInputs,bindCombatMouse,DEFAULT_PREFERENCES,keyName,keyboardBinding,readPreferences,type Binding,type PitPreferences} from '../../../lib/bots/pit/controls';
@@ -20,7 +21,7 @@ type Snapshot={tick:number;phase:string;phaseFrames:number;round:number;clock:nu
 function snapshot(e:ArcadeEngine):Snapshot{return{tick:e.tick,phase:e.phase,phaseFrames:e.phaseFrames,round:e.round,clock:e.clock,winner:e.winner,roundWinner:e.roundWinner,fighters:e.fighters.map(f=>({name:f.build.name,hp:f.hp,max:f.build.health,guard:f.guard,maxGuard:f.build.guard,energy:f.energy,combo:f.combo,comboDamage:f.comboDamage,status:f.noticeUntil>e.tick?f.notice:guarding(f)?'Guarding':ready(f)?'Ready':'Recovering',armed:f.armed,heat:f.build.style==='ranged'?f.heat:null,venting:f.vent>0})),inputs:e.commands.filter(c=>c.down&&!['clear','left','right','skip'].includes(c.action)).slice(-8).map(c=>LABELS[c.action]??c.action)};}
 
 type Match={builds:[Build,Build];seed:number;training:boolean;serial:number;arena:ArenaId;difficulty:'easy'|'normal'|'hard';run?:LadderRun;checkpoint?:ArcadeSave['checkpoint']};
-export default function ArcadeKombat({ownedRobot,ownedRobots=[],saveScope='device',garageMessage='',onClose}:{ownedRobot?:Robot8;ownedRobots?:Robot8[];saveScope?:string;garageMessage?:string;onClose?:()=>void}){
+export default function ArcadeKombat({ownedRobot,ownedRobots=[],preferredRobotId,saveScope='device',garageMessage='',garageError='',garageLoading=false,onRetryGarage,onClose}:{ownedRobot?:Robot8;ownedRobots?:Robot8[];preferredRobotId?:string;saveScope?:string;garageMessage?:string;garageError?:string;garageLoading?:boolean;onRetryGarage?:()=>void;onClose?:()=>void}){
  const [style,setStyle]=useState<Style>('tank'),[difficulty,setDifficulty]=useState<'easy'|'normal'|'hard'>('normal');
  const [rivalStyle,setRivalStyle]=useState<Style|'auto'>('auto');
  const [arena,setArena]=useState<ArenaId>('reactor');
@@ -28,9 +29,11 @@ export default function ArcadeKombat({ownedRobot,ownedRobots=[],saveScope='devic
  const [owned,setOwned]=useState(!!ownedRobot),[robotId,setRobotId]=useState(ownedRobot?.id??''),[tier,setTier]=useState<Tier>(1),[match,setMatch]=useState<Match|null>(null);
  const [saved,setSaved]=useState<ArcadeSave>(()=>freshArcadeSave(saveScope)),[saveError,setSaveError]=useState('');
  const savedRef=useRef(saved),settled=useRef('');savedRef.current=saved;
- const chosenRobot=robots.find(r=>r.id===robotId)??robots[0];
+ const selectionMade=useRef(false);
+ const initializedScope=useRef<string|null>(null);
+ const chosenRobot=robots.find(r=>r.id===robotId)??(!robotId?robots[0]:undefined);
  const persist=useCallback((next:ArcadeSave)=>{savedRef.current=next;setSaved(next);try{localStorage.setItem(ARCADE_SAVE+':'+next.scope,JSON.stringify(next));setSaveError('');}catch{setSaveError('Could not save this ladder on your device. Keep this tab open.');}},[]);
- useEffect(()=>{if(match)return;try{const next=readArcadeSave(localStorage.getItem(ARCADE_SAVE+':'+saveScope),saveScope);savedRef.current=next;setSaved(next);if(next.active){setTier(next.active);const run=next.runs[next.active];if(run)setStyle(run.build.style);}}catch{setSaveError('Device saving is unavailable. You can still play.');}},[saveScope,!!match]);
+ useEffect(()=>{if(match)return;try{const next=readArcadeSave(localStorage.getItem(ARCADE_SAVE+':'+saveScope),saveScope);savedRef.current=next;setSaved(next);if(next.active&&!selectionMade.current){setTier(next.active);const run=next.runs[next.active];if(run)setStyle(run.build.style);}}catch{setSaveError('Device saving is unavailable. You can still play.');}},[saveScope,!!match]);
  const [prefs,setPrefs]=useState<PitPreferences>(structuredClone(DEFAULT_PREFERENCES));
  const [settings,setSettings]=useState(false),[binding,setBinding]=useState<Binding|null>(null),[warning,setWarning]=useState('');
  const [touch,setTouch]=useState(false),[paused,setPaused]=useState(false),[loading,setLoading]=useState(0),[error,setError]=useState('');
@@ -51,8 +54,14 @@ export default function ArcadeKombat({ownedRobot,ownedRobots=[],saveScope='devic
  },[]);
  const pause=useCallback(()=>{input.current.clear();pauseRequested.current=true;blocked.current=true;setPaused(true);music.current?.pause();},[]);
  const resume=()=>{activateAudio();input.current.clear();pauseRequested.current=false;setPaused(false);blocked.current=!view.current;};
- const selectedBuild=()=>owned&&chosenRobot?arcadeBuild(chosenRobot.choices,chosenRobot.name):loaner(style,tier);
+ const selectedBuild=()=>{if(owned){if(!chosenRobot)throw Error('Your robot is not available. Choose a free Tier 1 fighter or reload your garage.');return arcadeBuild(chosenRobot.choices,chosenRobot.name);}return loaner(style,1);};
+ const chooseOwnedRobot=(robot:Robot8)=>{try{const build=arcadeBuild(robot.choices,robot.name),active=savedRef.current.active,run=active?savedRef.current.runs[active]:undefined;setOwned(true);setRobotId(robot.id);setStyle(build.style);setTier(run&&ladderResumeAvailable(run,build,robot.id)?run.tier:build.tier);}catch(e){setError((e as Error).message);}};
+ useEffect(()=>{if(match||selectionMade.current||initializedScope.current===saveScope)return;const preferred=ownedRobot??ownedRobots.find(r=>r.id===preferredRobotId)??ownedRobots[0];if(preferred){initializedScope.current=saveScope;chooseOwnedRobot(preferred);}
+ // A slow garage response must not replace a free fighter the player already chose.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[ownedRobot,ownedRobots,preferredRobotId,saveScope,!!match]);
  const launch=(next:Omit<Match,'serial'>)=>{
+  selectionMade.current=true;
   activateAudio();setError('');setPaused(false);pauseRequested.current=false;setState(null);setLoading(0);blocked.current=true;settled.current='';
   try{localStorage.setItem('mk11.arcade.arena',arena);}catch{}
   setMatch({...next,serial:Date.now()});
@@ -63,10 +72,12 @@ export default function ArcadeKombat({ownedRobot,ownedRobots=[],saveScope='devic
   launch({builds:[build,rival],seed:75,training,arena,difficulty});
  }catch(e){setError((e as Error).message);}};
  const enterRun=(run:LadderRun,checkpoint:ArcadeSave['checkpoint']=null)=>{
+  let build:Build;try{build=selectedBuild();}catch(e){setError((e as Error).message);return;}
+  if(!ladderResumeAvailable(run,build,owned?chosenRobot?.id??null:null)){setError(ladderAvailable(run.tier,build,owned)?'This saved run uses different equipment. Select its robot, or start a new ladder with your current build.':ladderRequirement(run.tier));return;}
   persist({...savedRef.current,active:run.tier,arena,runs:{...savedRef.current.runs,[run.tier]:run},checkpoint});
   launch({builds:[run.build,opponent(run)],seed:matchSeed(run),training:false,arena,difficulty:ladderDifficulty(run),run,checkpoint});
  };
- const startLadder=()=>{try{const build=selectedBuild();if(owned&&tier>build.tier){setError(`This ladder needs ${LADDERS[tier-1].gp} Gear Points. Choose a temporary fighter to try it now.`);return;}enterRun(newRun(build,tier,Math.floor(Math.random()*0xffffffff),crypto.randomUUID()));}catch(e){setError((e as Error).message);}};
+ const startLadder=()=>{try{const build=selectedBuild();if(!ladderAvailable(tier,build,owned)){setError(ladderRequirement(tier));return;}enterRun(newRun(build,tier,Math.floor(Math.random()*0xffffffff),crypto.randomUUID(),owned?chosenRobot?.id:undefined));}catch(e){setError((e as Error).message);}};
  const checkpoint=useCallback(()=>{
   const e=engine.current;if(!e||!match?.run||e.phase==='result')return;
   const r=savedRef.current.runs[match.run.tier];if(!r||r.id!==match.run.id||r.stage!==match.run.stage||r.lives!==match.run.lives)return;
@@ -80,6 +91,10 @@ export default function ArcadeKombat({ownedRobot,ownedRobots=[],saveScope='devic
  const continueRun=()=>{const run=match?.run&&savedRef.current.runs[match.run.tier];if(run&&!run.cleared&&run.lives>0)enterRun(run);};
  const savedRun=saved.runs[tier];
  let equipment:Build|null=null;try{equipment=selectedBuild();}catch{}
+ const unlockedTier=owned&&equipment?tierForGP(equipment.gp):1;
+ const canStartLadder=ladderAvailable(tier,equipment,owned);
+ const canResumeSaved=!!savedRun&&ladderResumeAvailable(savedRun,equipment,owned?chosenRobot?.id??null:null);
+ useEffect(()=>{if(!match&&tier>unlockedTier)setTier(unlockedTier);},[match,tier,unlockedTier]);
  useEffect(()=>{
   if(!match||!host.current)return;
   let disposed=false,raf=0,last=0,accumulator=0,lastUi=0,eventIndex=0;const options={difficulty:match.difficulty,training:match.training,dummy:match.training?dummy:'fight' as const,unlimited:match.training&&unlimited};
@@ -152,12 +167,13 @@ export default function ArcadeKombat({ownedRobot,ownedRobots=[],saveScope='devic
  return <main className={`${css.app} ${showTouch?css.touchMode:''}`} style={{'--control-size':prefs.size} as React.CSSProperties}>
   <header className={css.header}><a href="/bots/play" onClick={onClose?e=>{e.preventDefault();close();onClose();}:undefined}>MODEL <b>KOMBAT</b></a><span>ARCADE / THE LEAGUE</span><div className={css.menuActions}><button onClick={()=>{if(match)pause();setMoves(true);}}>Help</button><button onClick={()=>{if(match)pause();setSettings(true);}}>Settings</button></div></header>
   {!match?<section className={css.selection}>
-   <div className={css.intro}><span className={css.eyebrow}>UNDERGROUND MACHINE LEAGUE</span><h1>Built to<br/> <em>hit back.</em></h1><p>Pick a free fighter. Beat six rivals with three lives.</p><p className={css.reviewNote}>Free arcade · No coins, repairs or competition points</p></div>
-   <div className={css.fighters}>{(['tank','speed','ranged'] as const).map(s=><button key={s} className={`${css.fighterCard} ${style===s&&!owned?css.chosen:''}`} onClick={()=>{setStyle(s);setOwned(false);}}><span className={css.cardType}>{s==='tank'?'TOUGH / CLOSE RANGE':s==='speed'?'FAST / QUICK COUNTERS':'RANGED / KEEP YOUR DISTANCE'}</span><img src={`/bots-arcade/v1/${s}${tier>1?`-t${tier}`:''}-jab-0.png`} alt={`${NAMES[s]} Tier ${tier}, ready to fight`}/><h2>{NAMES[s]}</h2><p>{HELP[s]}</p><span className={css.cardSelect}>{style===s&&!owned?'Selected':'Choose fighter'} →</span></button>)}</div>
+   <div className={css.intro}><span className={css.eyebrow}>UNDERGROUND MACHINE LEAGUE</span><h1>{owned?'Your robot.':'Built to'}<br/> <em>{owned?'Your fight.':'hit back.'}</em></h1><p>{owned?'Your equipped parts set your health, speed and damage.':'Pick a free Tier 1 fighter.'} Beat six rivals with three lives.</p><p className={css.reviewNote}>Free arcade · No coins, repairs or competition points</p></div>
+   {owned&&equipment?<div className={css.ownedFighter}><img src={`/bots-arcade/v1/${equipment.style}${equipment.tier>1?`-t${equipment.tier}`:''}-jab-0.png`} alt={`${equipment.name}, your Tier ${equipment.tier} Arcade fighter`}/><div><span className={css.eyebrow}>YOUR WORKSHOP ROBOT</span><h2>{equipment.name}</h2><p>Tier {equipment.tier} · {equipment.gp} Gear Points</p><p>Health {equipment.health}<br/>Attack power {equipment.damage.toFixed(1)}<br/>Movement {equipment.speed.toFixed(1)}</p><button onClick={()=>{selectionMade.current=true;setOwned(false);setTier(1);}}>Try free Tier 1 fighters</button></div></div>:<div className={css.fighters}>{(['tank','speed','ranged'] as const).map(s=><button key={s} className={`${css.fighterCard} ${style===s&&!owned?css.chosen:''}`} onClick={()=>{selectionMade.current=true;setStyle(s);setOwned(false);setTier(1);}}><span className={css.cardType}>{s==='tank'?'TOUGH / CLOSE RANGE':s==='speed'?'FAST / QUICK COUNTERS':'RANGED / KEEP YOUR DISTANCE'}</span><img src={`/bots-arcade/v1/${s}-jab-0.png`} alt={`${NAMES[s]} free Tier 1 fighter, ready to fight`}/><h2>{NAMES[s]}</h2><p>{HELP[s]}</p><span className={css.cardSelect}>{style===s&&!owned?'Selected':'Choose fighter'} · Tier 1 →</span></button>)}</div>}
    <div className={css.ladderPanel}>
-    <div className={css.ladderTabs}>{LADDERS.map(l=><button key={l.tier} aria-pressed={tier===l.tier} onClick={()=>setTier(l.tier)}><small>TIER {l.tier}</small><b>{l.name}</b><span>{saved.runs[l.tier]?.cleared?'★ Cleared':l.tag}</span></button>)}</div>
-    <div className={css.garageChoice}>{robots.length>0&&<label>Fight as <select value={owned?chosenRobot?.id:'temporary'} onChange={e=>{setOwned(e.target.value!=='temporary');setRobotId(e.target.value);}}><option value="temporary">Free fighter</option>{robots.map(r=><option key={r.id} value={r.id}>{r.name} · My robot</option>)}</select></label>}<p>{garageMessage}</p>{equipment&&<details className={css.fighterStats}><summary>Fighter stats</summary><p>Health {equipment.health} · Attack power {equipment.damage.toFixed(1)} · Movement speed {equipment.speed.toFixed(1)}</p></details>}</div>
-    {savedRun&&!savedRun.cleared&&savedRun.lives>0?<div className={css.ladderResume}><p><b>{savedRun.build.name}</b> · Bout {savedRun.stage+1}/6 · {savedRun.lives} lives left<br/><small>Saved on this device. Resume keeps the fighter and rival from this run.</small></p><button className={css.primary} onClick={()=>enterRun(savedRun,saved.checkpoint?.runId===savedRun.id?saved.checkpoint:null)}>Continue ladder →</button><button onClick={startLadder}>Restart with selected fighter</button></div>:<div className={css.ladderResume}><p>{savedRun?.cleared?'Champion. Ready to go again?':savedRun?.lives===0?'Run over. A fresh run gives you three lives.':'Six bouts, with tougher rivals at the top. Your equipment stays intact.'}</p><button className={css.primary} onClick={startLadder}>Start {LADDERS[tier-1].name} ladder →</button></div>}
+    <div className={css.ladderTabs}>{LADDERS.map(l=><button key={l.tier} aria-pressed={tier===l.tier} disabled={!ladderAvailable(l.tier,equipment,owned)} title={l.tier>unlockedTier?ladderRequirement(l.tier):undefined} onClick={()=>{if(ladderAvailable(l.tier,equipment,owned)){selectionMade.current=true;setTier(l.tier);}}}><small>TIER {l.tier}</small><b>{l.name}</b><span>{l.tier>unlockedTier?`Locked · ${l.gp} GP robot`:saved.runs[l.tier]?.cleared?'★ Cleared':l.tag}</span></button>)}</div>
+    {owned&&!chosenRobot&&<p role="alert">Your selected robot is unavailable. Open your garage or choose a free Tier 1 fighter.</p>}
+    <div className={css.garageChoice}>{(robots.length>0||owned)&&<label>Fight as <select value={owned?chosenRobot?.id??'unavailable':'temporary'} onChange={e=>{selectionMade.current=true;const robot=robots.find(r=>r.id===e.target.value);if(robot)chooseOwnedRobot(robot);else{setOwned(false);setTier(1);}}}>{owned&&!chosenRobot&&<option value="unavailable" disabled>Selected robot unavailable</option>}<option value="temporary">Free Tier 1 fighter</option>{robots.map(r=><option key={r.id} value={r.id}>{r.name} · My robot</option>)}</select></label>}<p role="status">{garageMessage}</p>{garageError&&<p role="alert">{garageError} <button disabled={garageLoading} onClick={onRetryGarage}>Retry garage</button> <a href="/bots/workshop?view=garage">Open garage / sign in →</a></p>}<p>{owned&&equipment?`${equipment.name} · ${equipment.gp} GP · Ladders through Tier ${unlockedTier}`:'Free fighters enter Tier 1. Upgrade your own robot to unlock higher ladders.'} <a href={owned?'/bots/workshop?view=garage':'/bots/workshop?view=build'}>{owned?'Upgrade robot':'Build your robot'} →</a></p>{equipment&&!owned&&<details className={css.fighterStats}><summary>Fighter stats</summary><p>Health {equipment.health} · Attack power {equipment.damage.toFixed(1)} · Movement speed {equipment.speed.toFixed(1)}</p></details>}</div>
+    {savedRun&&!savedRun.cleared&&savedRun.lives>0?<div className={css.ladderResume}><p><b>{savedRun.build.name}</b> · Bout {savedRun.stage+1}/6 · {savedRun.lives} lives left<br/><small>{canResumeSaved?'Saved on this device. Resume keeps the fighter and rival from this run.':'Select the robot and equipment used in this run, or restart with your selected fighter.'}</small></p><button className={css.primary} disabled={!canResumeSaved} onClick={()=>enterRun(savedRun,saved.checkpoint?.runId===savedRun.id?saved.checkpoint:null)}>Continue ladder →</button><button disabled={!canStartLadder} onClick={startLadder}>Restart with selected fighter</button></div>:<div className={css.ladderResume}><p>{savedRun?.cleared?'Champion. Ready to go again?':savedRun?.lives===0?'Run over. A fresh run gives you three lives.':'Six bouts, with tougher rivals at the top. Your equipment stays intact.'}</p><button className={css.primary} disabled={!canStartLadder} onClick={startLadder}>Start {LADDERS[tier-1].name} ladder →</button></div>}
     {saveError&&<p role="alert">{saveError}</p>}
    </div>
    <div className={css.startBar}><label className={css.arenaSelect}><img src={`/bots-arcade/v1/${arenaDefinition(arena).file}`} alt=""/><span>Arena <select value={arena} onChange={e=>setArena(e.target.value as ArenaId)}>{ARENAS.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></span></label><details><summary>Single fight options</summary><label>Opponent <select value={rivalStyle} onChange={e=>setRivalStyle(e.target.value as Style|'auto')}><option value="auto">Suggested rival</option><option value="tank">Boiler</option><option value="speed">Voltage</option><option value="ranged">Deadbolt</option></select></label><label>Difficulty <select value={difficulty} onChange={e=>setDifficulty(e.target.value as typeof difficulty)}><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></label></details><button onClick={()=>start(true)}>Training room</button><button onClick={()=>start(false)}>Single fight</button></div>

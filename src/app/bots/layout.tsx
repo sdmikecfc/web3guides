@@ -6,10 +6,12 @@
 import localFont from "next/font/local";
 import BotsRouteProviders from "./_components/BotsRouteProviders";
 import { M } from "./_ui/tokens";
+import { modelKombatMetadata } from "@/lib/bots/social-metadata";
 
 export const metadata = {
-  title: "Model Kombat",
-  description: "Build your robot, enter the ring, and compete in the Doma trading challenge.",
+  ...modelKombatMetadata(),
+  title: { default: "Model Kombat", template: "%s" },
+  alternates: null,
 };
 
 /**

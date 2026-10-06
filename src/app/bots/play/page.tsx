@@ -2,8 +2,9 @@ import Link from 'next/link';
 import QuickHelp from '../_game/QuickHelp';
 import {ARCADE_ENTRY_URL,BUILD_ENTRY_URL} from '@/lib/bots/workshop8/entry';
 import css from './play.module.css';
+import {modelKombatMetadata} from '@/lib/bots/social-metadata';
 
-export const metadata={title:{absolute:'Choose your fight · Model Kombat'},description:'Take control in Arcade, or build a robot for automatic battles. Two ways to play, free to start.'};
+export const metadata=modelKombatMetadata('/bots/play','Choose your fight · Model Kombat','Take control in Arcade, or build a robot for automatic battles. Two ways to play, free to start.','games');
 
 export default function PlayPage(){return <main className={css.page}>
  <header className={css.nav}><Link className={css.brand} href="/bots/start">MODEL <b>KOMBAT</b></Link><nav aria-label="Game navigation"><Link href="/bots/leaderboard">Rewards</Link><QuickHelp topic="play"/></nav></header>

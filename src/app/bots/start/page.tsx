@@ -1,3 +1,4 @@
 import Landing from './Landing';
-export const metadata={title:'Model Kombat — Trade together. Climb higher.',description:'Connect your wallet, set up Doma Strategies or MCP and unlock nine fixed-token reward zones.'};
+import {modelKombatMetadata} from '@/lib/bots/social-metadata';
+export const metadata=modelKombatMetadata();
 export default function Page(){return <Landing/>}
