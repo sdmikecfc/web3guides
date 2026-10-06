@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "source": "exec-97e3916a-c413-46cc-bd75-93f2eb616c7c.png",
+  "referenceHeight": 419,
+  "frames": [
+    {
+      "file": "tank-t3-motion-0.png",
+      "w": 371,
+      "h": 427,
+      "pivotX": 190.75,
+      "pivotY": 423
+    },
+    {
+      "file": "tank-t3-motion-1.png",
+      "w": 360,
+      "h": 427,
+      "pivotX": 165.25,
+      "pivotY": 423
+    },
+    {
+      "file": "tank-t3-motion-2.png",
+      "w": 365,
+      "h": 420,
+      "pivotX": 186.75,
+      "pivotY": 416
+    },
+    {
+      "file": "tank-t3-motion-3.png",
+      "w": 360,
+      "h": 420,
+      "pivotX": 182.25,
+      "pivotY": 416
+    },
+    {
+      "file": "tank-t3-motion-4.png",
+      "w": 344,
+      "h": 410,
+      "pivotX": 170.75,
+      "pivotY": 406
+    },
+    {
+      "file": "tank-t3-motion-5.png",
+      "w": 318,
+      "h": 338,
+      "pivotX": 144.25,
+      "pivotY": 334
+    },
+    {
+      "file": "tank-t3-motion-6.png",
+      "w": 371,
+      "h": 407,
+      "pivotX": 190.75,
+      "pivotY": 403
+    },
+    {
+      "file": "tank-t3-motion-7.png",
+      "w": 444,
+      "h": 154,
+      "pivotX": 248.25,
+      "pivotY": 150
+    }
+  ]
+}

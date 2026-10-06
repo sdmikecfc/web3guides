@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "source": "exec-5f0c8251-a020-4413-a802-efff671a35fe.png",
+  "referenceHeight": 432,
+  "frames": [
+    {
+      "file": "speed-jab-0.png",
+      "w": 364,
+      "h": 441,
+      "pivotX": 192.75,
+      "pivotY": 437
+    },
+    {
+      "file": "speed-jab-1.png",
+      "w": 391,
+      "h": 437,
+      "pivotX": 209.25,
+      "pivotY": 433
+    },
+    {
+      "file": "speed-jab-2.png",
+      "w": 415,
+      "h": 441,
+      "pivotX": 210.75,
+      "pivotY": 437
+    },
+    {
+      "file": "speed-jab-3.png",
+      "w": 425,
+      "h": 441,
+      "pivotX": 217.25,
+      "pivotY": 437
+    },
+    {
+      "file": "speed-jab-4.png",
+      "w": 429,
+      "h": 438,
+      "pivotX": 210.75,
+      "pivotY": 434
+    },
+    {
+      "file": "speed-jab-5.png",
+      "w": 394,
+      "h": 440,
+      "pivotX": 198.25,
+      "pivotY": 436
+    },
+    {
+      "file": "speed-jab-6.png",
+      "w": 385,
+      "h": 439,
+      "pivotX": 197.75,
+      "pivotY": 435
+    },
+    {
+      "file": "speed-jab-7.png",
+      "w": 366,
+      "h": 439,
+      "pivotX": 194.25,
+      "pivotY": 435
+    }
+  ]
+}

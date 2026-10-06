@@ -57,7 +57,8 @@ begin
  checked:=(p_payload->>'checkedAt')::timestamptz;
  if checked is null or checked>now()+interval '60 seconds' or checked<now()-interval '7 days' then raise exception 'MK_LINK_INVALID'; end if;
  if s='linked' then
-  if m is null or m !~ '^0x[0-9a-f]{40}$' or m='0x0000000000000000000000000000000000000000'
+  -- A verified Doma account can use Strategies without an embedded wallet.
+  if (m is not null and (m !~ '^0x[0-9a-f]{40}$' or m='0x0000000000000000000000000000000000000000'))
    or uid is null or uid !~ '^[0-9]{1,30}$' or (did is not null and did !~ '^did:privy:[A-Za-z0-9_-]{1,100}$')
    then raise exception 'MK_LINK_INVALID'; end if;
  elsif m is not null or uid is not null or did is not null then raise exception 'MK_LINK_INVALID'; end if;
@@ -73,14 +74,15 @@ begin
  if not exists(select 1 from public.mkz_tracking_players where wallet=w) then raise exception 'MK_LINK_UNREGISTERED'; end if;
  select * into old from public.mkz_all_links where wallet=w for update;
  if coalesce(old.revision,0)<>expected then raise exception 'MK_LINK_CONFLICT'; end if;
- if old.status='linked' and (s<>'linked' or old.mcp_wallet is distinct from m or old.doma_user_id is distinct from uid or old.privy_did is distinct from did)
+ if old.status='linked' and (s<>'linked' or (old.mcp_wallet is not null and old.mcp_wallet is distinct from m) or old.doma_user_id is distinct from uid or (old.privy_did is not null and old.privy_did is distinct from did))
  then raise exception 'MK_LINK_REVIEW_REQUIRED'; end if;
  if old.checked_at>checked then raise exception 'MK_LINK_CONFLICT'; end if;
  if s='linked' and (
   exists(select 1 from public.mkz_all_links where wallet<>w and status='linked' and
    (((mcp_wallet in (w,m) or wallet=m) and doma_user_id<>uid)
-    or (doma_user_id=uid and (mcp_wallet<>m or privy_did is distinct from did))))
+    or (doma_user_id=uid and ((mcp_wallet is not null and m is not null and mcp_wallet<>m) or (privy_did is not null and did is not null and privy_did<>did)))))
  ) then raise exception 'MK_LINK_REVIEW_REQUIRED'; end if;
+ if s='linked' and exists(select 1 from mkz_wallets where trade_wallet in (w,m) and participant<>uid) then raise exception 'MK_LINK_REVIEW_REQUIRED';end if;
  insert into public.mkz_wallet_links(wallet,mcp_wallet,doma_user_id,privy_did,status,revision,checked_at)
  values(w,m,uid,did,s,expected+1,checked)
  on conflict(wallet) do update set mcp_wallet=excluded.mcp_wallet,doma_user_id=excluded.doma_user_id,

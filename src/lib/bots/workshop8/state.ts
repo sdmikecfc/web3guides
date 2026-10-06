@@ -39,7 +39,7 @@ export function repairQuote(robot:Robot8,now=Date.now()) {
   const factor=Math.max(0,Math.min(1,(gp-100)/400)),duration=3600000+factor*7200000;
   return Math.ceil((50+factor*100)*Math.min(1,Math.max(0,robot.repairUntil-now)/duration));
 }
-export type Action8 = {kind:'builderStep';step:'style'|'parts'|'personalize'|'review';slot:Slot} | {kind:'draftAppearance';appearance:Appearance} | {kind:'journey';plan?:Draft8|null;lesson?:string;dismissWallet?:boolean} | {kind:'career';id:string;title?:keyof typeof MILESTONES|'';emblem?:Career['emblem'];pose?:'proud'|'salute'|'fist';showMarks?:boolean;clearMarks?:boolean;pin?:string} | { kind: "checkpoint"; id: string; ticks: number; inputs: NonNullable<Fight8["inputs"]>; versions: unknown } | { kind: "choose"; slot: Slot; entry: string } | { kind: "nameDraft"; name: string } | { kind: "welcome" } | { kind: "draft"; draft: Draft8 } | { kind: "select"; id: string } | { kind: "buy"; item: string; request: string } | { kind: "finish"; request: string } | { kind: "recycle"; id: string; request: string } | { kind: "paint"; id: string; appearance: Appearance; name: string } | { kind: "start"; fight: Fight8 } | { kind: "complete"; id: string; winner: number | null; inputs: NonNullable<Fight8["inputs"]>; ticks: number; reason: string; versions: unknown } | { kind: "repair"; id: string; request: string };
+export type Action8 = {kind:'replacePart';id:string;slot:Slot;spareUid:string;request:string} | {kind:'builderStep';step:'style'|'parts'|'personalize'|'review';slot:Slot} | {kind:'draftAppearance';appearance:Appearance} | {kind:'journey';plan?:Draft8|null;lesson?:string;dismissWallet?:boolean} | {kind:'career';id:string;title?:keyof typeof MILESTONES|'';emblem?:Career['emblem'];pose?:'proud'|'salute'|'fist';showMarks?:boolean;clearMarks?:boolean;pin?:string} | { kind: "checkpoint"; id: string; ticks: number; inputs: NonNullable<Fight8["inputs"]>; versions: unknown } | { kind: "choose"; slot: Slot; entry: string } | { kind: "nameDraft"; name: string } | { kind: "welcome" } | { kind: "draft"; draft: Draft8 } | { kind: "select"; id: string } | { kind: "buy"; item: string; request: string } | { kind: "finish"; request: string } | { kind: "recycle"; id: string; request: string } | { kind: "paint"; id: string; appearance: Appearance; name: string } | { kind: "start"; fight: Fight8 } | { kind: "complete"; id: string; winner: number | null; inputs: NonNullable<Fight8["inputs"]>; ticks: number; reason: string; versions: unknown } | { kind: "repair"; id: string; request: string };
 export function changeWorkshop(previous: Workshop8, action: Action8, now = Date.now()): Workshop8 {
   if ("request" in action && previous.receipts.includes(action.request)) return previous;
   const s = structuredClone(previous);
@@ -92,6 +92,31 @@ export function changeWorkshop(previous: Workshop8, action: Action8, now = Date.
       const item=ITEM_MAP.get(action.item); if(!item) throw Error("That part is unavailable.");
       if(s.coins<item.price) throw Error("You need more game coins for this part.");
       s.coins-=item.price;s.spares.push({uid:action.request,item:item.id});break;
+    }
+    case 'replacePart': {
+      if(!robot)throw Error('Choose a saved robot.');
+      if(s.active?.robotId===robot.id)throw Error('Finish this robot’s fight before changing parts.');
+      if(robot.repairUntil>now)throw Error('Wait for repair, or repair this robot before changing parts.');
+      if(!SLOTS.includes(action.slot)||!legalChoices(robot.choices))throw Error('Choose a valid robot and part slot.');
+      const index=s.spares.findIndex(p=>p.uid===action.spareUid);
+      const spare=index>=0?s.spares[index]:undefined,item=spare?ITEM_MAP.get(spare.item):undefined;
+      if(!item)throw Error('That spare part is no longer in this garage.');
+      if(item.slot!==action.slot)throw Error('This spare fits a different part slot.');
+      const oldItem=itemId(robot.choices[action.slot],action.slot);
+      if(oldItem===item.id)throw Error('This robot already has that part fitted.');
+      const choices={...robot.choices,[action.slot]:item.entry.id};
+      // Both arm slots and all other equipment must remain in the current
+      // workshop catalogue. Historical specialised equipment is not remapped.
+      if(!legalChoices(choices))throw Error('These parts cannot be assembled together.');
+      const returnedUid=`returned:${action.request}`;
+      if(s.spares.some(p=>p.uid===returnedUid))throw Error('Refresh this garage before changing parts.');
+      s.spares.splice(index,1);s.spares.push({uid:returnedUid,item:oldItem});
+      robot.choices=choices;
+      // Recycle value follows fitted equipment only. Returned parts cannot
+      // also contribute to this robot’s recycling payout.
+      robot.cost=SLOTS.reduce((sum,slot)=>sum+ITEM_MAP.get(itemId(choices[slot],slot))!.price,0);
+      if(robot.career)robot.career.marks=robot.career.marks.filter(mark=>mark.slot!==action.slot);
+      break;
     }
     case "finish": {
       if(!s.draft || !legalChoices(s.draft.choices)) throw Error("Choose all seven parts first.");

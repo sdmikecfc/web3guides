@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "source": "exec-df41fd43-e1db-4feb-9c82-e20ee29cdaa3.png",
+  "referenceHeight": 406,
+  "frames": [
+    {
+      "file": "sovereign-special-0.png",
+      "w": 377,
+      "h": 414,
+      "pivotX": 203.75,
+      "pivotY": 410
+    },
+    {
+      "file": "sovereign-special-1.png",
+      "w": 475,
+      "h": 414,
+      "pivotX": 252.25,
+      "pivotY": 410
+    },
+    {
+      "file": "sovereign-special-2.png",
+      "w": 359,
+      "h": 342,
+      "pivotX": 200.75,
+      "pivotY": 338
+    },
+    {
+      "file": "sovereign-special-3.png",
+      "w": 434,
+      "h": 367,
+      "pivotX": 222.25,
+      "pivotY": 363
+    },
+    {
+      "file": "sovereign-special-4.png",
+      "w": 353,
+      "h": 441,
+      "pivotX": 160.75,
+      "pivotY": 437
+    },
+    {
+      "file": "sovereign-special-5.png",
+      "w": 399,
+      "h": 350,
+      "pivotX": 207.25,
+      "pivotY": 346
+    },
+    {
+      "file": "sovereign-special-6.png",
+      "w": 386,
+      "h": 456,
+      "pivotX": 201.75,
+      "pivotY": 452
+    },
+    {
+      "file": "sovereign-special-7.png",
+      "w": 399,
+      "h": 326,
+      "pivotX": 213.25,
+      "pivotY": 322
+    }
+  ]
+}

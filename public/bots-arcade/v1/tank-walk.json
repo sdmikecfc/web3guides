@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "source": "exec-b2d23433-330e-4608-8514-b4f90b75734a.png",
+  "referenceHeight": 586,
+  "frames": [
+    {
+      "file": "tank-walk-0.png",
+      "w": 526,
+      "h": 599,
+      "pivotX": 247.5,
+      "pivotY": 595
+    },
+    {
+      "file": "tank-walk-1.png",
+      "w": 377,
+      "h": 604,
+      "pivotX": 154.5,
+      "pivotY": 600
+    },
+    {
+      "file": "tank-walk-2.png",
+      "w": 537,
+      "h": 586,
+      "pivotX": 248.5,
+      "pivotY": 582
+    },
+    {
+      "file": "tank-walk-3.png",
+      "w": 413,
+      "h": 593,
+      "pivotX": 183.5,
+      "pivotY": 589
+    }
+  ]
+}

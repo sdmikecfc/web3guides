@@ -1,0 +1,22 @@
+export const RULES = 'mk11-arcade-1' as const;
+export const ART = 'mk11-illustrated-1' as const;
+export const HZ = 60;
+export const BUFFER = 6;
+export const LEFT = 145, RIGHT = 1135, FLOOR = 570;
+export type Style = 'tank' | 'speed' | 'ranged';
+export type Tier = 1 | 2 | 3 | 4;
+export type Action = 'left'|'right'|'up'|'down'|'light'|'heavy'|'special'|'guard'|'throw'|'super'|'enhance'|'escape'|'dash'|'finish'|'clear'|'skip';
+export type Command = {tick:number; sequence:number; side:0|1; action:Action; down:boolean};
+export type MoveId = 'jab'|'cross'|'heavy'|'low'|'launcher'|'step'|'overhead'|'airLight'|'airHeavy'|'special'|'advance'|'ground'|'throw'|'super';
+export type Point = {x:number;y:number};
+export type Level = 'high'|'mid'|'low'|'overhead'|'throw';
+export type Move = {id:MoveId; name:string; startup:number; active:number; recovery:number; damage:number; stun:number; block:number; push:number; level:Level; limb:'hand'|'foot'|'weapon'; target:Point; radius:number; advance:number; launch?:number; knockdown?:boolean; projectile?:boolean; armour?:boolean; cost:number; cancels:MoveId[]};
+export type Build = {name:string; style:Style; tier:Tier; gp:number; health:number; damage:number; speed:number; handling:number; guard:number; precision:number; boss?:boolean};
+/** Whole-character sprite frames; collision anchors are authored against these frames. */
+export type Animation = 'idle'|'walk'|'jab'|'heavy'|'guard'|'crouch'|'jump'|'hurt'|'down'|'special'|'win';
+export type Fighter = {build:Build;x:number;y:number;vx:number;vy:number;facing:1|-1;hp:number;guard:number;energy:number;heat:number;wins:number;held:Partial<Record<Action,boolean>>;move:MoveId|null;frame:number;enhanced:boolean;armed:boolean;contact:boolean;actionId:number;stun:number;blockstun:number;down:number;invulnerable:number;buffer:{id:MoveId;until:number}|null;combo:number;comboDamage:number;comboAge:number;juggles:number;armourUsed:boolean;throwBy:0|1|null;throwUntil:number;dash:number;dashSign:number;lastTap:{left:number;right:number};notice:string;noticeUntil:number;walk:number;wallUsed:boolean;vent:number;aiNext:number;aiHeldUntil:number;damageMarks:number};
+export type Hit = {tick:number;kind:'hit'|'block'|'break'|'throw'|'tech'|'escape'|'land'|'shot'|'round'|'finish';x:number;y:number;side:0|1;damage:number;move?:MoveId;combo?:number};
+export type Projectile = {id:number;side:0|1;move:MoveId;facing:1|-1;x:number;y:number;vx:number;life:number;damage:number;radius:number;mine:boolean;actionId:number;hit:boolean};
+export type Phase = 'intro'|'fight'|'roundEnd'|'finish'|'finisher'|'result';
+export type Settings = {difficulty:'easy'|'normal'|'hard';training:boolean;dummy:'idle'|'block'|'fight';unlimited:boolean};
+export type MatchSnapshot = {rules:typeof RULES;art:typeof ART;seed:number;builds:[Build,Build];settings:Settings;commands:Command[]};

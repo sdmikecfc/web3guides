@@ -17,6 +17,7 @@ export default function useJourneyGarage(enabled:boolean,onState:(state:Workshop
  const [serverOffset,setServerOffset]=useState(0);
  const reading=useRef(0),readEpoch=useRef(0);
  const failed=useRef<{requestId:string;action:unknown;garageId:string|null}|null>(null);
+ const sessionReady=useRef(false),bootstrapReady=useRef(false),bootstrap=useRef<Promise<void>|null>(null);
  callbacks.current={onState,onFinished};
  const headers=useCallback(()=>({...(token.current?{Authorization:`Bearer ${token.current}`}:{ }), 'Content-Type':'application/json'}),[]);
  const accept=useCallback((data:Packet)=>{
@@ -29,11 +30,30 @@ export default function useJourneyGarage(enabled:boolean,onState:(state:Workshop
   return data;
  },[]);
  const read=useCallback(async(garage?:string|null)=>{
-  const id=garage===undefined?latest.current?.garageId:garage,epoch=++readEpoch.current;reading.current++;try{
+  const id=garage===undefined?latest.current?.garageId:garage,epoch=++readEpoch.current,requestedWallet=!!token.current;reading.current++;try{
   const response=await request(`/api/bots/workshop${id?`?garage=${encodeURIComponent(id)}`:''}`,{headers:headers(),cache:'no-store'}),data=await response.json();
-  if(!response.ok||!data.ok)throw Error(data.error||'Your garage could not load.');return epoch===readEpoch.current?accept(data):latest.current??data;}finally{reading.current--}
+  if(!response.ok||!data.ok)throw Object.assign(Error(data.error||'Your garage could not load.'),{status:response.status});
+  if(requestedWallet&&data.session?.kind!=='wallet')throw Object.assign(Error('Sign in again to open your wallet garage. Your saved robots are unchanged.'),{status:401});
+  if(id&&!data.session)throw Object.assign(Error('Your saved garage needs a fresh sign-in. Reconnect before starting another build.'),{status:401});
+  return epoch===readEpoch.current?accept(data):latest.current??data;}finally{reading.current--}
  },[accept,headers]);
+ const initialize=useCallback(()=>{
+  const work=(async()=>{
+   sessionReady.current=false;bootstrapReady.current=false;
+   const saved=JSON.parse(sessionStorage.getItem('mk8.wallet-session.v1')||'null');token.current=saved?.token??'';
+   const sessionCheck=(async()=>{const response=await request('/api/bots/workshop/session',{cache:'no-store'}),data=await response.json();if(!response.ok||!data.enabled)throw Error(data.error||'Server saves are unavailable. Try the free arcade while we reconnect.');sessionReady.current=true;})();
+   const restore=(async()=>{try{await read(sessionStorage.getItem(ACTIVE))}catch(e){if((e as {status?:number}).status!==404)throw e;await read(null)}})();
+   // The session read only prepares a cookie; it never enrolls a guest. Existing
+   // wallet/guest identity is resolved independently using the original credentials.
+   const results=await Promise.allSettled([sessionCheck,restore]);
+   const failure=results.find((r):r is PromiseRejectedResult=>r.status==='rejected');if(failure)throw failure.reason;bootstrapReady.current=true;
+   const pending=JSON.parse(sessionStorage.getItem(PENDING)||'null');if(pending?.requestId&&pending?.action){failed.current=pending;setStatus('error');setError('Your last change needs a retry. It will not be charged twice.');}
+  })();
+  bootstrap.current=work;return work;
+ },[read]);
  const ensure=useCallback(async()=>{
+  await bootstrap.current;
+  if(!sessionReady.current||!latest.current)throw Error('Reconnect your saved garage before building. Your earlier progress has not changed.');
   if(latest.current?.state)return latest.current;
   const response=await request('/api/bots/workshop/session',{method:'POST',headers:headers()}),data=await response.json();
   if(!response.ok||!data.ok||!data.enabled)throw Error(data.error||'Saving is unavailable. You can still watch and try unsaved practice.');
@@ -58,7 +78,7 @@ export default function useJourneyGarage(enabled:boolean,onState:(state:Workshop
   const next=tail.current.catch(()=>{}).then(()=>{if(failed.current)throw Error('Retry the unsaved change before making another.');return execute(job)});
   tail.current=next;return next;
  },[execute]);
- const retry=useCallback(async()=>{if(failed.current)return execute(failed.current);return read();},[execute,read]);
+ const retry=useCallback(async()=>{try{if(!bootstrapReady.current)return await initialize();if(failed.current)return await execute(failed.current);return await read();}catch(e){setStatus('error');setError((e as Error).message);throw e}},[execute,read,initialize]);
  const connect=useCallback(async(value:string)=>{const previous=token.current;token.current=value;try{return await read(null)}catch(e){token.current=previous;throw e}},[read]);
  const claim=useCallback(async(value:string)=>{
   const previous=token.current,garage=latest.current?.garageId;token.current=value;try{
@@ -73,16 +93,10 @@ export default function useJourneyGarage(enabled:boolean,onState:(state:Workshop
  },[accept,headers]);
  useEffect(()=>{
   if(!enabled)return;alive.current=true;
-  void(async()=>{try{
-   const saved=JSON.parse(sessionStorage.getItem('mk8.wallet-session.v1')||'null');token.current=saved?.token??'';
-   const response=await request('/api/bots/workshop/session',{cache:'no-store'}),data=await response.json();if(!response.ok||!data.enabled)throw Error(data.error||'Server saves are unavailable. You can still browse and watch fights.');
-   const savedGarage=sessionStorage.getItem(ACTIVE);
-   try{await read(savedGarage)}catch{await read(null)}
-   const pending=JSON.parse(sessionStorage.getItem(PENDING)||'null');if(pending?.requestId&&pending?.action){failed.current=pending;setStatus('error');setError('Your last change needs a retry. It will not be charged twice.');}
-  }catch(e){if(alive.current){setStatus('error');setError((e as Error).message);callbacks.current.onState(freshWorkshop())}}})();
-  const refresh=()=>{if(document.hidden||reading.current>0||inFlight.current||failed.current)return;void read().catch(e=>{setStatus('error');setError((e as Error).message)})};
+  void initialize().catch(e=>{if(alive.current){setStatus('error');setError((e as Error).message)}});
+  const refresh=()=>{if(!sessionReady.current||!latest.current||document.hidden||reading.current>0||inFlight.current||failed.current)return;void read().catch(e=>{setStatus('error');setError((e as Error).message)})};
   let lastRefresh=0;const timer=setInterval(()=>{const t=Date.now();if(t-lastRefresh<(latest.current?.state?.active?2500:30000))return;lastRefresh=t;refresh()},2500);document.addEventListener('visibilitychange',refresh);
   return()=>{alive.current=false;clearInterval(timer);document.removeEventListener('visibilitychange',refresh)};
- },[enabled,read]);
+ },[enabled,read,initialize]);
  return {packet,status,error,serverOffset,mutate,retry,connect,claim,select,read,ensure,hasSave:!!packet?.state};
 }

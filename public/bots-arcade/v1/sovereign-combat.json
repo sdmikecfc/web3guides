@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "source": "exec-dcb6a30f-efb7-4b1c-b635-43a615074c7d.png",
+  "referenceHeight": 369,
+  "frames": [
+    {
+      "file": "sovereign-combat-0.png",
+      "w": 370,
+      "h": 464,
+      "pivotX": 198.75,
+      "pivotY": 460
+    },
+    {
+      "file": "sovereign-combat-1.png",
+      "w": 351,
+      "h": 465,
+      "pivotX": 188.25,
+      "pivotY": 461
+    },
+    {
+      "file": "sovereign-combat-2.png",
+      "w": 487,
+      "h": 343,
+      "pivotX": 215.75,
+      "pivotY": 339
+    },
+    {
+      "file": "sovereign-combat-3.png",
+      "w": 383,
+      "h": 327,
+      "pivotX": 189.25,
+      "pivotY": 323
+    },
+    {
+      "file": "sovereign-combat-4.png",
+      "w": 420,
+      "h": 338,
+      "pivotX": 190.75,
+      "pivotY": 334
+    },
+    {
+      "file": "sovereign-combat-5.png",
+      "w": 348,
+      "h": 408,
+      "pivotX": 185.25,
+      "pivotY": 404
+    },
+    {
+      "file": "sovereign-combat-6.png",
+      "w": 234,
+      "h": 312,
+      "pivotX": 110.75,
+      "pivotY": 308
+    },
+    {
+      "file": "sovereign-combat-7.png",
+      "w": 372,
+      "h": 326,
+      "pivotX": 171.25,
+      "pivotY": 322
+    }
+  ]
+}

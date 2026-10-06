@@ -1,0 +1,107 @@
+MODEL KOMBAT — SIMPLE ENTRANCE RELEASE
+Review date: 6 October 2026
+
+WHAT CHANGED
+The homepage leads to three trading steps or two game choices: Play Arcade and
+Build a Robot. The builder is Style > Parts > Finish, with all seven parts editable.
+Help is optional. Rewards, token quantities and formulas live on the Rewards page.
+First-time builds show affordable Tier 1 parts. Buy & finish states the coin cost.
+After building, Fight with this robot is the main action. After fights, players can
+buy parts to upgrade the same robot or build another. Arcade is a separate choice.
+The homepage separates Join trading competition from Play mini-games, explains
+Connect & trade > Track trades & rewards > Play mini-games, and shows the
+60% / 15% / 15% / 10% category split. Profit, ROI and battle categories pay the
+top three; volume also shares rewards among other qualifying traders.
+The play entry explains Arcade Fighting and Build & Battle before opening either
+game. Arcade remains unrewarded practice; eligible automatic house wins are the
+current source of battle points. Reward amounts and competition scoring are unchanged. Existing robots can now
+install an owned spare: the removed part returns to inventory. An in-progress
+fight or repair blocks changing that robot. Current fitted value controls recycling;
+old replays and finished fight records keep their original equipment.
+Help links all four Strategy guides listed at https://app.doma.xyz/help and the
+official MCP connection guide. Both Discord and https://x.com/sdmikecm are visible.
+The site identifies @sdmike as the independent community-game organizer, with
+support at https://discord.gg/doma. Eligible Doma domain-token pairs against USDC
+or ETH are described consistently; ETH/USDC itself does not count.
+
+SIGN-IN
+The invalid-nonce bug is fixed with cryptographically random SIWE-compatible
+codes. Expiry, signature verification and single use are retained. This fix
+requires no SQL migration. Wallet connection is separate from competition entry.
+The Model Kombat chooser now retains MetaMask even without an installed extension,
+alongside Rabby, Coinbase, Brave, Phantom and discovered browser wallets. Its
+configuration is isolated from other games. Installed MetaMask uses its direct
+browser provider; mobile app handoff uses the existing MetaMask SDK.
+WalletConnect/Rainbow QR connections require a valid public
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID at build time. This local preview has none;
+it offers MetaMask installation guidance instead of presenting a broken QR code.
+
+VERIFIED
+- Sign-in: real SIWE parsing and synthetic signatures; expiry, wrong signer/origin,
+  duplicate consumption, rejected signing, registration failure and wallet change.
+- Trading guide: saved step restoration, expired/changed identity, delayed replies,
+  duplicate enrollment clicks and safe errors verified against mocked APIs.
+- Rewards board: server dates, unavailable data, changed identities, duplicate entry
+  and delayed replies verified against mocked APIs on the production-mode build.
+- Builder browser checks: direct entry, legal 250-coin starter, all seven tabs,
+  draft reload, keeping custom parts, one Finish, saved name and return navigation.
+  Ownership APIs were mocked; these checks did not spend or alter live coins.
+- Layouts: 1280x720, 390x844 and 844x390 browser viewports. No horizontal builder
+  overflow. Home and Play choices visually reviewed; Help closes with Escape and
+  restores focus. Direct free Arcade entry, rendering, pause and return tested.
+- Actual workshop renderer: changing a head retained the iframe and its document,
+  loaded just the missing model, and displayed the saved choice without errors.
+  Stale loads, missing-asset retry, paint isolation and cleanup checked separately.
+- Arcade: all 452 packed animation frames retain dimensions, pivots and silhouettes;
+  originals remain intact. Three styles, bosses, arenas and repeated cleanup checked.
+
+MEASURED LOADING
+A cold local Chromium Tank T1 / Speed T1 matchup loaded 3,130,565 asset bytes
+instead of 15,005,502 (79.1% less); image requests fell from 69 to 10. First render
+was 643 ms versus 830 ms in this software-WebGL fixture. These are local results,
+not physical-phone or deployed-network performance promises.
+
+RELEASE CHECK
+Production build: PASS. Next.js 14.2.35, strict types/lint, all 225 static pages
+and output traces completed in the isolated D-drive candidate. Build-time database
+settings were non-secret localhost placeholders, not live production credentials.
+Renderer routes retain SAMEORIGIN framing so their embedded previews can load;
+other pages retain the existing DENY framing policy. No SQL change is needed.
+The runtime package includes both music tracks, arcade atlases and the standalone
+workshop renderer. Authoring art-src was excluded, as it is during deployment.
+Existing optional WalletConnect pino-pretty and old Browserslist-data warnings
+remain; neither prevented compilation. This is not proof of live database setup.
+Production publish: NOT performed. Git updates do not publish this project.
+You alone publish the reviewed D-drive candidate:
+
+cd D:\Temp\modelkombat-release-guided-final-20261006\candidate
+vercel --prod
+
+Do not publish the shared source checkout: it also contains unrelated work.
+No competition opening, rewards change, Reporter change or trading occurs here.
+
+LIVE BACKEND CHECK (6 October, 13:18 UTC)
+Read-only checks: game session/storage endpoints and required tables/RPCs respond.
+Volume worker verified 14 agent-wallet fills; coverage was through 10:10 UTC.
+ROI/profit still PENDING: NATIVE_CONTRACT_FLOW_REVIEW_REQUIRED.
+Campaign remains draft with no start/end dates. Do not describe cash competition
+as open or fully verified. A real registered Strategy fill and live reward
+settlement were not demonstrated by this read-only check.
+
+STILL REQUIRES LIVE REVIEW
+A real wallet-extension signing round trip and cross-device save restoration.
+Android Chrome and iPhone Safari on physical phones. Five fresh-user usability
+reviews. Browser viewport checks are not physical-phone tests.
+Existing tracking/accounting and competition launch gates remain separate; this
+UI pass does not certify cash tracking, eligibility or legal compliance.
+
+LOCAL EVIDENCE
+D:/Temp/modelkombat-guided-home-20261006.jpg
+D:/Temp/modelkombat-entry-review-20261006/results.json
+D:/Temp/modelkombat-entry-review-20261006/landing-identity-results.json
+D:/Temp/modelkombat-entry-review-20261006/token-zone-board-results.json
+D:/Temp/modelkombat-atlas-browser-20261006/report.json
+D:/Temp/modelkombat-display-check-20261006/report.json
+D:/Temp/modelkombat-workshop-update-check-20261006/report.json
+D:/Temp/modelkombat-release-guided-final-20261006/production-build.log
+D:/Temp/modelkombat-release-guided-final-20261006/production-smoke-results.json

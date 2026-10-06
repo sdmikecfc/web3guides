@@ -22,7 +22,7 @@ export function InfoPage({
     >
       <article className={css.page}>
         <nav className={css.back} aria-label="Model Kombat information">
-          <Link href="/bots">← Back to the garage</Link>
+          <Link href="/bots/start">← Model Kombat home</Link>
           <span>Model Kombat</span>
         </nav>
         <header className={css.hero}>
@@ -31,12 +31,6 @@ export function InfoPage({
           <p>{intro}</p>
         </header>
         <div className={css.paper}>{children}</div>
-        <nav className={css.links} aria-label="Rules and legal pages">
-          <Link href="/bots/rules">Rules</Link>
-          <Link href="/bots/privacy">Privacy</Link>
-          <Link href="/bots/terms">Terms</Link>
-          <Link href="/bots/disclaimer">Disclaimer</Link>
-        </nav>
       </article>
     </PageShell>
   );

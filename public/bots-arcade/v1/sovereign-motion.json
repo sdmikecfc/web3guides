@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "source": "exec-611af04d-5d12-4d90-b4f3-3e22436b18d1.png",
+  "referenceHeight": 407,
+  "frames": [
+    {
+      "file": "sovereign-motion-0.png",
+      "w": 386,
+      "h": 415,
+      "pivotX": 197.75,
+      "pivotY": 411
+    },
+    {
+      "file": "sovereign-motion-1.png",
+      "w": 331,
+      "h": 420,
+      "pivotX": 151.25,
+      "pivotY": 416
+    },
+    {
+      "file": "sovereign-motion-2.png",
+      "w": 388,
+      "h": 419,
+      "pivotX": 198.75,
+      "pivotY": 415
+    },
+    {
+      "file": "sovereign-motion-3.png",
+      "w": 359,
+      "h": 420,
+      "pivotX": 158.25,
+      "pivotY": 416
+    },
+    {
+      "file": "sovereign-motion-4.png",
+      "w": 344,
+      "h": 410,
+      "pivotX": 156.75,
+      "pivotY": 406
+    },
+    {
+      "file": "sovereign-motion-5.png",
+      "w": 302,
+      "h": 321,
+      "pivotX": 145.25,
+      "pivotY": 317
+    },
+    {
+      "file": "sovereign-motion-6.png",
+      "w": 389,
+      "h": 404,
+      "pivotX": 202.75,
+      "pivotY": 400
+    },
+    {
+      "file": "sovereign-motion-7.png",
+      "w": 435,
+      "h": 158,
+      "pivotX": 235.25,
+      "pivotY": 154
+    }
+  ]
+}

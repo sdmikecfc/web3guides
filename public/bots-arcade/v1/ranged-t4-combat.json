@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "source": "exec-db34e5f0-2348-4cb5-8769-ef7b61c8fbc6.png",
+  "referenceHeight": 339,
+  "frames": [
+    {
+      "file": "ranged-t4-combat-0.png",
+      "w": 379,
+      "h": 426,
+      "pivotX": 190.75,
+      "pivotY": 422
+    },
+    {
+      "file": "ranged-t4-combat-1.png",
+      "w": 371,
+      "h": 446,
+      "pivotX": 181.25,
+      "pivotY": 442
+    },
+    {
+      "file": "ranged-t4-combat-2.png",
+      "w": 452,
+      "h": 387,
+      "pivotX": 208.75,
+      "pivotY": 383
+    },
+    {
+      "file": "ranged-t4-combat-3.png",
+      "w": 379,
+      "h": 368,
+      "pivotX": 178.25,
+      "pivotY": 364
+    },
+    {
+      "file": "ranged-t4-combat-4.png",
+      "w": 439,
+      "h": 345,
+      "pivotX": 190.75,
+      "pivotY": 341
+    },
+    {
+      "file": "ranged-t4-combat-5.png",
+      "w": 333,
+      "h": 428,
+      "pivotX": 156.25,
+      "pivotY": 424
+    },
+    {
+      "file": "ranged-t4-combat-6.png",
+      "w": 261,
+      "h": 351,
+      "pivotX": 138.75,
+      "pivotY": 347
+    },
+    {
+      "file": "ranged-t4-combat-7.png",
+      "w": 431,
+      "h": 380,
+      "pivotX": 217.25,
+      "pivotY": 376
+    }
+  ]
+}

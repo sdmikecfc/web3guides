@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "source": "exec-f5d94280-2c92-4a37-810b-4b8db2d768b5.png",
+  "referenceHeight": 438,
+  "frames": [
+    {
+      "file": "speed-motion-0.png",
+      "w": 328,
+      "h": 448,
+      "pivotX": 161.75,
+      "pivotY": 444
+    },
+    {
+      "file": "speed-motion-1.png",
+      "w": 206,
+      "h": 460,
+      "pivotX": 109.25,
+      "pivotY": 456
+    },
+    {
+      "file": "speed-motion-2.png",
+      "w": 391,
+      "h": 435,
+      "pivotX": 207.75,
+      "pivotY": 431
+    },
+    {
+      "file": "speed-motion-3.png",
+      "w": 227,
+      "h": 461,
+      "pivotX": 128.25,
+      "pivotY": 457
+    },
+    {
+      "file": "speed-motion-4.png",
+      "w": 358,
+      "h": 422,
+      "pivotX": 178.75,
+      "pivotY": 418
+    },
+    {
+      "file": "speed-motion-5.png",
+      "w": 267,
+      "h": 315,
+      "pivotX": 168.25,
+      "pivotY": 311
+    },
+    {
+      "file": "speed-motion-6.png",
+      "w": 324,
+      "h": 391,
+      "pivotX": 199.75,
+      "pivotY": 387
+    },
+    {
+      "file": "speed-motion-7.png",
+      "w": 492,
+      "h": 139,
+      "pivotX": 281.25,
+      "pivotY": 135
+    }
+  ]
+}

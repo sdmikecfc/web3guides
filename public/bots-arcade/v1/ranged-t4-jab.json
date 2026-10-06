@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "source": "exec-4fbb548a-05e0-48a5-9bfa-ae091f85074a.png",
+  "referenceHeight": 421,
+  "frames": [
+    {
+      "file": "ranged-t4-jab-0.png",
+      "w": 360,
+      "h": 429,
+      "pivotX": 175.75,
+      "pivotY": 425
+    },
+    {
+      "file": "ranged-t4-jab-1.png",
+      "w": 359,
+      "h": 431,
+      "pivotX": 174.25,
+      "pivotY": 427
+    },
+    {
+      "file": "ranged-t4-jab-2.png",
+      "w": 382,
+      "h": 430,
+      "pivotX": 184.75,
+      "pivotY": 426
+    },
+    {
+      "file": "ranged-t4-jab-3.png",
+      "w": 393,
+      "h": 430,
+      "pivotX": 186.25,
+      "pivotY": 426
+    },
+    {
+      "file": "ranged-t4-jab-4.png",
+      "w": 431,
+      "h": 421,
+      "pivotX": 186.75,
+      "pivotY": 417
+    },
+    {
+      "file": "ranged-t4-jab-5.png",
+      "w": 386,
+      "h": 421,
+      "pivotX": 177.25,
+      "pivotY": 417
+    },
+    {
+      "file": "ranged-t4-jab-6.png",
+      "w": 363,
+      "h": 422,
+      "pivotX": 179.75,
+      "pivotY": 418
+    },
+    {
+      "file": "ranged-t4-jab-7.png",
+      "w": 360,
+      "h": 421,
+      "pivotX": 181.25,
+      "pivotY": 417
+    }
+  ]
+}

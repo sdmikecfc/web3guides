@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "source": "exec-93ef4a91-adba-4bd2-8848-3cdfd5583adf.png",
+  "referenceHeight": 440,
+  "frames": [
+    {
+      "file": "overload-jab-0.png",
+      "w": 379,
+      "h": 448,
+      "pivotX": 200.75,
+      "pivotY": 444
+    },
+    {
+      "file": "overload-jab-1.png",
+      "w": 397,
+      "h": 447,
+      "pivotX": 215.25,
+      "pivotY": 443
+    },
+    {
+      "file": "overload-jab-2.png",
+      "w": 420,
+      "h": 446,
+      "pivotX": 224.75,
+      "pivotY": 442
+    },
+    {
+      "file": "overload-jab-3.png",
+      "w": 446,
+      "h": 446,
+      "pivotX": 225.25,
+      "pivotY": 442
+    },
+    {
+      "file": "overload-jab-4.png",
+      "w": 466,
+      "h": 443,
+      "pivotX": 220.75,
+      "pivotY": 439
+    },
+    {
+      "file": "overload-jab-5.png",
+      "w": 448,
+      "h": 444,
+      "pivotX": 221.25,
+      "pivotY": 440
+    },
+    {
+      "file": "overload-jab-6.png",
+      "w": 381,
+      "h": 444,
+      "pivotX": 206.75,
+      "pivotY": 440
+    },
+    {
+      "file": "overload-jab-7.png",
+      "w": 387,
+      "h": 445,
+      "pivotX": 206.25,
+      "pivotY": 441
+    }
+  ]
+}

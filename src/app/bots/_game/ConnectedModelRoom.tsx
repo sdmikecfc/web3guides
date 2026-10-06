@@ -9,8 +9,9 @@ export default function ConnectedModelRoom({ view = "display", payload, onEvent,
   const [error, setError] = useState(""), [attempt, setAttempt] = useState(0);
   const data = JSON.stringify(payload), channel = `mk8-${id}-${attempt}`;
   const value = payload as {id?:string;room?:string;robots?:{id:string;choices:unknown;career?:{pose?:string;showMarks?:boolean;marks?:unknown[]}}[];replay?:boolean;server?:boolean;seekTick?:number;endTick?:number;presentationRevision?:number;versions?:{presentation?:string}};
-  const renderer=view==='practice'&&value.versions?.presentation?(archivedRenderers as Record<string,string>)[value.versions.presentation]||'/bots-playtest/index.html':'/bots-playtest/index.html';
-  const identity = view === "practice" ? `${value.id}:${!!value.replay}:${value.seekTick??0}:${value.endTick??0}:${value.presentationRevision??0}` : JSON.stringify({room:value.room,presentationRevision:value.presentationRevision,robots:value.robots?.map(r=>({id:r.id,choices:r.choices,pose:r.career?.pose,marks:r.career?.showMarks?r.career.marks:undefined}))});
+  const renderer=view==='display'?'/bots-display/v2/index.html':value.versions?.presentation?(archivedRenderers as Record<string,string>)[value.versions.presentation]||'/bots-playtest/index.html':'/bots-playtest/index.html';
+  // Equipment and paint travel through the update bridge; only changing rooms rebuilds the scene.
+  const identity = view === "practice" ? `${value.id}:${!!value.replay}:${value.seekTick??0}:${value.endTick??0}:${value.presentationRevision??0}` : JSON.stringify({room:value.room,presentationRevision:value.presentationRevision});
   const ready = useRef(false), initial = useRef(data);initial.current=data;
   useEffect(() => {
     const listener = (event: MessageEvent) => {

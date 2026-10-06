@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "source": "exec-22dcee9c-4521-425f-9072-e103069536c4.png",
+  "referenceHeight": 360,
+  "frames": [
+    {
+      "file": "ranged-combat-0.png",
+      "w": 377,
+      "h": 426,
+      "pivotX": 180.75,
+      "pivotY": 422
+    },
+    {
+      "file": "ranged-combat-1.png",
+      "w": 357,
+      "h": 447,
+      "pivotX": 181.25,
+      "pivotY": 443
+    },
+    {
+      "file": "ranged-combat-2.png",
+      "w": 370,
+      "h": 378,
+      "pivotX": 208.75,
+      "pivotY": 374
+    },
+    {
+      "file": "ranged-combat-3.png",
+      "w": 370,
+      "h": 348,
+      "pivotX": 207.25,
+      "pivotY": 344
+    },
+    {
+      "file": "ranged-combat-4.png",
+      "w": 437,
+      "h": 378,
+      "pivotX": 176.75,
+      "pivotY": 374
+    },
+    {
+      "file": "ranged-combat-5.png",
+      "w": 328,
+      "h": 420,
+      "pivotX": 151.25,
+      "pivotY": 416
+    },
+    {
+      "file": "ranged-combat-6.png",
+      "w": 260,
+      "h": 360,
+      "pivotX": 132.75,
+      "pivotY": 356
+    },
+    {
+      "file": "ranged-combat-7.png",
+      "w": 432,
+      "h": 368,
+      "pivotX": 239.25,
+      "pivotY": 364
+    }
+  ]
+}

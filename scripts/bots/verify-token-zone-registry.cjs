@@ -35,7 +35,9 @@ async function discover(){
  // Only extract the two read-only API settings. No Reporter module is executed.
  let url=process.env.DOMA_API_URL,key=process.env.DOMA_API_KEY;
  if(!key){const arg=process.argv.indexOf('--doma-env');if(arg<0)throw Error('Provide existing DOMA_API_KEY or --doma-env PATH.');const raw=fs.readFileSync(process.argv[arg+1],'utf8'),read=k=>raw.match(new RegExp('^'+k+'=(.*)$','m'))?.[1].trim().replace(/^(["'])(.*)\1$/,'$2');url=read('DOMA_API_URL');key=read('DOMA_API_KEY');}
- const endpoint=new URL(url||'https://api.doma.xyz/v1/graphql');if(endpoint.protocol!=='https:'||endpoint.hostname!=='api.doma.xyz'||!key)throw Error('Doma API configuration rejected.');
+ const endpoint=new URL(url||'https://api.doma.xyz/graphql');if(endpoint.protocol!=='https:'||endpoint.hostname!=='api.doma.xyz'||!key)throw Error('Doma API configuration rejected.');
+ if(endpoint.pathname==='/v1/graphql')endpoint.pathname='/graphql';
+ if(endpoint.pathname!=='/graphql'||endpoint.search||endpoint.username||endpoint.password)throw Error('Unexpected public Doma API endpoint.');
  async function gql(query){for(let n=0;n<4;n++){const r=await fetch(endpoint,{method:'POST',redirect:'error',headers:{'Content-Type':'application/json','Api-Key':key},body:JSON.stringify({query}),signal:AbortSignal.timeout(30000)});if(r.status===429||r.status>=500){await new Promise(resolve=>setTimeout(resolve,1000*2**n));continue;}if(!r.ok)throw Error('Doma metadata HTTP '+r.status);const p=await r.json();if(p.errors)throw Error('Doma metadata schema rejected: '+p.errors[0].message);return p.data;}throw Error('Doma metadata unavailable after bounded retries.');}
  const all=[];let expected;
  for(let skip=0;skip<10000;skip+=100){const p=(await gql(`{ fractionalTokens(take:100,skip:${skip}) { totalCount items { address status poolAddress priceUsd tvlUsd chain { networkId } params { name symbol decimals } } } }`)).fractionalTokens;

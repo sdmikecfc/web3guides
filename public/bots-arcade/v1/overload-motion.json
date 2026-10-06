@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "source": "exec-e0f28452-d147-49f9-9cc0-30aa021df463.png",
+  "referenceHeight": 437,
+  "frames": [
+    {
+      "file": "overload-motion-0.png",
+      "w": 404,
+      "h": 445,
+      "pivotX": 205.75,
+      "pivotY": 441
+    },
+    {
+      "file": "overload-motion-1.png",
+      "w": 341,
+      "h": 443,
+      "pivotX": 158.25,
+      "pivotY": 439
+    },
+    {
+      "file": "overload-motion-2.png",
+      "w": 405,
+      "h": 440,
+      "pivotX": 186.75,
+      "pivotY": 436
+    },
+    {
+      "file": "overload-motion-3.png",
+      "w": 356,
+      "h": 440,
+      "pivotX": 138.25,
+      "pivotY": 436
+    },
+    {
+      "file": "overload-motion-4.png",
+      "w": 365,
+      "h": 429,
+      "pivotX": 180.75,
+      "pivotY": 425
+    },
+    {
+      "file": "overload-motion-5.png",
+      "w": 307,
+      "h": 338,
+      "pivotX": 152.25,
+      "pivotY": 334
+    },
+    {
+      "file": "overload-motion-6.png",
+      "w": 392,
+      "h": 402,
+      "pivotX": 215.75,
+      "pivotY": 398
+    },
+    {
+      "file": "overload-motion-7.png",
+      "w": 469,
+      "h": 150,
+      "pivotX": 249.25,
+      "pivotY": 146
+    }
+  ]
+}

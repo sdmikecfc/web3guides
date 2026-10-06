@@ -26,7 +26,7 @@ export default function WorkshopWelcome({ gameEntry=false, hasRobots, hasDraft, 
       <footer><span>Watch these example robots, then build your own.</span><button className={css.primary} onClick={()=>onBuild(fighter.id)}>{hasDraft?"Continue my build":hasRobots?"Go to my garage":"Build my robot"} →</button></footer>
     </section> : <div className={css.layout}>
       <section className={css.showcase} aria-label="Meet the fighting styles">
-        <div className={css.marquee}><span>MODEL</span><strong>KOMBAT</strong><small>A DOMA GAME</small></div>
+        <div className={css.marquee}><span>MODEL</span><strong>KOMBAT</strong><small>COMMUNITY HOBBY GAME</small></div>
         <div className={css.fighter}><AnimatedFighter key={fighter.id} style={fighter.id} paused={motionPaused}/><span className={css.example}>Style preview · upgraded equipment</span></div>
         <button className={css.motionToggle} onClick={()=>setMotionPaused(v=>!v)} aria-pressed={motionPaused}>{motionPaused?'Play motion':'Pause motion'}</button>
         <div className={css.personality}><h2>{fighter.line}</h2><p>{fighter.detail}</p></div>

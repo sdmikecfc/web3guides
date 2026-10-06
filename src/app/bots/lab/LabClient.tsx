@@ -106,7 +106,7 @@ export default function LabClient() {
   const totalRows = overallRows(display), selectedRows = partRows(display, slot);
   const labels = ["Your robot", `${FAMILY_LABEL[opponent]} rival`];
   return <main className={css.lab}>
-    <header className={css.header}><Link href="/bots" className={css.brand}>MODEL KOMBAT<span>A DOMA GAME</span></Link><div className={css.headerMiddle}><span className={css.liveDot} /> COMBAT LAB <small>Practice workshop</small></div><Link className={css.back} href="/bots">Back to garage ↗</Link></header>
+    <header className={css.header}><Link href="/bots" className={css.brand}>MODEL KOMBAT<span>COMMUNITY HOBBY GAME</span></Link><div className={css.headerMiddle}><span className={css.liveDot} /> COMBAT LAB <small>Practice workshop</small></div><Link className={css.back} href="/bots">Back to garage ↗</Link></header>
     <div className={css.intro}><div><p className={css.eyebrow}>PRACTICE WORKSHOP · SAVED HERE</p><h1>Made by you.</h1></div><p>Mix the parts. Find your fighter.<br /><span>Try a build, then take it into the ring.</span></p></div>
     <div className={css.workspace}>
       <aside className={css.overview} aria-label="Overall robot stats">

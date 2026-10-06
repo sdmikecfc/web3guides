@@ -7,6 +7,6 @@ import { usePathname } from "next/navigation";
 const ClassicBotsProviders=dynamic(()=>import("./ClassicBotsProviders"),{ssr:false});
 export default function BotsRouteProviders({children}:{children:ReactNode}) {
   const pathname=usePathname();
-  if(['/bots/workshop','/bots/start','/bots/leaderboard','/bots/pit'].includes(pathname.replace(/\/$/,"")))return <>{children}</>;
+  if(['/bots/workshop','/bots/start','/bots/play','/bots/leaderboard','/bots/pit','/bots/arcade','/bots/terms','/bots/privacy','/bots/rules','/bots/disclaimer'].includes(pathname.replace(/\/$/,"")))return <>{children}</>;
   return <ClassicBotsProviders>{children}</ClassicBotsProviders>;
 }

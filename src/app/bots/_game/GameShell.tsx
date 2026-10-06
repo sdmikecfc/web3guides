@@ -504,7 +504,7 @@ function ClassicGameShell({ initialFight, initialReplay }: { initialFight?: Figh
 
   return <div className={css.shell}>
     <header className={css.top}>
-      <button className={css.brand} onClick={() => go("garage")}>Model Kombat<span className={css.subbrand}>A Doma game</span></button>
+      <button className={css.brand} onClick={() => go("garage")}>Model Kombat<span className={css.subbrand}>Community hobby game</span></button>
       {seasonPreview && <div className={css.collectionSwitch} aria-label="Choose your garage"><Link href="/bots?collection=season&tour=1">Season</Link><button aria-pressed>Collection</button></div>}
       <div className={css.topRight}><button className={css.coins} onClick={() => setDrawer("earn")} aria-label={`${ready ? count(totalCoins) : "Checking"} coins. How to earn coins`}><span className={css.coin} aria-hidden>✦</span>{ready ? count(totalCoins) : "…"}<span className={css.desktopOnly}>coins</span></button>
         {seasonPreview && <button className={`${css.quiet} ${css.desktopOnly}`} onClick={showTour}>Show me around</button>}

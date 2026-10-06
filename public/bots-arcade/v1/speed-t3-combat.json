@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "source": "exec-aa97ec32-5bc3-4144-98ff-2008898ece65.png",
+  "referenceHeight": 352,
+  "frames": [
+    {
+      "file": "speed-t3-combat-0.png",
+      "w": 388,
+      "h": 442,
+      "pivotX": 195.75,
+      "pivotY": 438
+    },
+    {
+      "file": "speed-t3-combat-1.png",
+      "w": 388,
+      "h": 455,
+      "pivotX": 189.25,
+      "pivotY": 451
+    },
+    {
+      "file": "speed-t3-combat-2.png",
+      "w": 448,
+      "h": 390,
+      "pivotX": 187.75,
+      "pivotY": 386
+    },
+    {
+      "file": "speed-t3-combat-3.png",
+      "w": 388,
+      "h": 365,
+      "pivotX": 165.25,
+      "pivotY": 361
+    },
+    {
+      "file": "speed-t3-combat-4.png",
+      "w": 432,
+      "h": 391,
+      "pivotX": 188.75,
+      "pivotY": 387
+    },
+    {
+      "file": "speed-t3-combat-5.png",
+      "w": 384,
+      "h": 437,
+      "pivotX": 172.25,
+      "pivotY": 433
+    },
+    {
+      "file": "speed-t3-combat-6.png",
+      "w": 221,
+      "h": 359,
+      "pivotX": 117.75,
+      "pivotY": 355
+    },
+    {
+      "file": "speed-t3-combat-7.png",
+      "w": 364,
+      "h": 332,
+      "pivotX": 152.25,
+      "pivotY": 328
+    }
+  ]
+}

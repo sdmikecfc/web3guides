@@ -110,8 +110,10 @@ export function nonceStoreKind(): "table" | "memory" {
 /* ── issue ─────────────────────────────────────────────────────────────── */
 
 function newNonce(): string {
-  // 32 bytes, the size modules/wallet/index.js newAuthCode uses
-  return randomBytes(32).toString("base64url");
+  // EIP-4361 nonces are alphanumeric. Base64url sometimes contains '-' or
+  // '_', preventing SIWE from constructing the message before signing.
+  // Hex preserves all 256 bits; legacy challenges remain consumable below.
+  return randomBytes(32).toString("hex");
 }
 
 export async function issueNonce(

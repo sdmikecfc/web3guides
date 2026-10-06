@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "source": "exec-8d0dbd3e-742e-4d39-a3b4-e7ab2263410d.png",
+  "referenceHeight": 340,
+  "frames": [
+    {
+      "file": "tank-combat-0.png",
+      "w": 366,
+      "h": 417,
+      "pivotX": 193.75,
+      "pivotY": 413
+    },
+    {
+      "file": "tank-combat-1.png",
+      "w": 337,
+      "h": 457,
+      "pivotX": 182.25,
+      "pivotY": 453
+    },
+    {
+      "file": "tank-combat-2.png",
+      "w": 471,
+      "h": 332,
+      "pivotX": 214.75,
+      "pivotY": 328
+    },
+    {
+      "file": "tank-combat-3.png",
+      "w": 357,
+      "h": 308,
+      "pivotX": 186.25,
+      "pivotY": 304
+    },
+    {
+      "file": "tank-combat-4.png",
+      "w": 411,
+      "h": 331,
+      "pivotX": 186.75,
+      "pivotY": 327
+    },
+    {
+      "file": "tank-combat-5.png",
+      "w": 343,
+      "h": 401,
+      "pivotX": 179.25,
+      "pivotY": 397
+    },
+    {
+      "file": "tank-combat-6.png",
+      "w": 223,
+      "h": 309,
+      "pivotX": 105.75,
+      "pivotY": 305
+    },
+    {
+      "file": "tank-combat-7.png",
+      "w": 366,
+      "h": 318,
+      "pivotX": 172.25,
+      "pivotY": 314
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {parseAbi,encodeFunctionData,encodeAbiParameters,encodeEventTopics}=require('viem');
+const {verifyRouterSettlement,ROUTER,IMPLEMENTATION,UNIVERSAL}=require('./lib/public-router-settlement.cjs');
+const {settlement,USDC,TRANSFER,volume}=require('./lib/public-trade-worker.cjs');
+const address=n=>'0x'+n.repeat(40),wallet=address('a'),domain=address('b'),pool=address('c'),feeTo=address('d');
+const tx='0x'+'e'.repeat(64),blockHash='0x'+'f'.repeat(64),topic=a=>'0x'+a.slice(2).padStart(64,'0');
+const abi=parseAbi(['function execute(uint256 executionId,(uint8 commandType,bytes data)[] commands)','event OrderExecuted(uint256 indexed executionId)']);
+const swapAbi=parseAbi(['event Swap(address indexed sender,address indexed recipient,int256 amount0,int256 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick)']);
+const encode=(types,values)=>encodeAbiParameters(types.map(type=>({type})),values);
+const log=(token,from,to,n)=>({address:token,topics:[TRANSFER,topic(from),topic(to)],data:encode(['uint256'],[n])});
+function fixture({side='buy',inputFee=50000n,outputFee=0n,refund=0n}={}){
+ const s={wallet,tx,domain,quote:USDC,side,domainUnits:'20000000',quoteUnits:'9950000'};
+ const input=side==='buy'?USDC:domain,output=side==='buy'?domain:USDC;
+ const ni=BigInt(side==='buy'?s.quoteUnits:s.domainUnits),no=BigInt(side==='buy'?s.domainUnits:s.quoteUnits),recipient=outputFee?ROUTER:wallet;
+ const pull=ni+inputFee+refund,path=input+'000064'+output.slice(2);
+ const inner=encodeFunctionData({abi:parseAbi(['function execute(bytes commands,bytes[] inputs,uint256 deadline)']),functionName:'execute',args:['0x00',[encode(['address','uint256','uint256','bytes','bool'],[recipient,ni,1n,path,true])],9999999999n]});
+ const commands=[{commandType:0,data:encode(['address','address','uint256'],[input,wallet,pull])},{commandType:2,data:encode(['address','address','uint256'],[input,UNIVERSAL,ni])}];
+ const fee=(token,n)=>({commandType:3,data:encode(['address','bytes','uint256'],[token,encodeFunctionData({abi:parseAbi(['function transfer(address,uint256) returns(bool)']),functionName:'transfer',args:[feeTo,n]}),0n])});
+ if(inputFee)commands.push(fee(input,inputFee));
+ commands.push({commandType:3,data:encode(['address','bytes','uint256'],[UNIVERSAL,inner,0n])});
+ if(outputFee)commands.push(fee(output,outputFee));
+ commands.push({commandType:4,data:encode(['address','address','uint256'],[input,wallet,0n])});
+ if(outputFee)commands.push({commandType:4,data:encode(['address','address','uint256'],[output,wallet,0n])});
+ const transaction={hash:tx,to:ROUTER,blockHash,value:'0x0',input:encodeFunctionData({abi,functionName:'execute',args:[43n,commands]})};
+ const logs=[log(input,wallet,ROUTER,pull)];
+ if(inputFee)logs.push(log(input,ROUTER,feeTo,inputFee));
+ logs.push(log(input,ROUTER,pool,ni),log(output,pool,recipient,no));
+ if(outputFee)logs.push(log(output,ROUTER,feeTo,outputFee),log(output,ROUTER,wallet,no-outputFee));
+ if(refund)logs.push(log(input,ROUTER,wallet,refund));
+ logs.push({address:pool,logIndex:'0x8',topics:encodeEventTopics({abi:swapAbi,eventName:'Swap',args:{sender:UNIVERSAL,recipient}}),data:encode(['int256','int256','uint160','uint128','int24'],BigInt(input)<BigInt(output)?[ni,-no,1n,1n,0]:[-no,ni,1n,1n,0])});
+ logs.push({address:ROUTER,topics:encodeEventTopics({abi,eventName:'OrderExecuted',args:{executionId:43n}}),data:'0x'});
+ const receipt={status:'0x1',blockNumber:'0x10',blockHash,logs};
+ const context={transaction,implementation:IMPLEMENTATION,poolFor:async(a,b,f,at)=>{assert.equal(a,input);assert.equal(b,output);assert.equal(f,100);assert.equal(at,receipt.blockNumber);return pool;}};
+ return {s,receipt,context,commands};
+}
+async function main(){
+ let f=fixture(),r=await verifyRouterSettlement(f.s,f.receipt,f.context);
+ assert.equal(r.walletQuoteUnits,'10000000');assert.equal(r.routerFeeUnits,'50000');assert.equal(r.walletDomainUnits,'20000000');assert.equal(volume(f.s),9950000n,'volume excludes the explicit routing fee');
+ r=await settlement(f.s,f.receipt,{routerSettlement:(s,rc)=>verifyRouterSettlement(s,rc,f.context)});assert.equal(r.walletQuoteUnits,'10000000');
+ f=fixture({refund:1000000n});r=await verifyRouterSettlement(f.s,f.receipt,f.context);assert.equal(r.walletQuoteUnits,'10000000','refund is not part of cost');
+ f=fixture({side:'sell',inputFee:0n,outputFee:50000n});r=await verifyRouterSettlement(f.s,f.receipt,f.context);assert.equal(r.walletQuoteUnits,'9900000');assert.equal(r.walletDomainUnits,'20000000');assert.equal(r.routerFeeUnits,'50000');
+ f=fixture({inputFee:0n,outputFee:100000n});r=await verifyRouterSettlement(f.s,f.receipt,f.context);assert.equal(r.walletDomainUnits,'19900000');assert.equal(r.routerDomainFeeUnits,'100000');
+ f=fixture({side:'sell',inputFee:100000n});r=await verifyRouterSettlement(f.s,f.receipt,f.context);assert.equal(r.walletDomainUnits,'20100000');assert.equal(r.routerDomainFeeUnits,'100000');
+ f=fixture({inputFee:0n});r=await verifyRouterSettlement(f.s,f.receipt,f.context);assert.equal(r.walletQuoteUnits,'9950000');
+ f=fixture();f.context.implementation=address('1');await assert.rejects(()=>verifyRouterSettlement(f.s,f.receipt,f.context),/UNREVIEWED_IMPLEMENTATION/);
+ f=fixture();f.receipt.logs=f.receipt.logs.filter(l=>l.topics[2]!==topic(feeTo));await assert.rejects(()=>verifyRouterSettlement(f.s,f.receipt,f.context),/FEE_NOT_PAID/);
+ f=fixture();f.receipt.logs.push(log(USDC,wallet,feeTo,1n));await assert.rejects(()=>verifyRouterSettlement(f.s,f.receipt,f.context),/UNEXPLAINED_TRANSFER/);
+ f=fixture();f.s.quoteUnits='10000000';await assert.rejects(()=>verifyRouterSettlement(f.s,f.receipt,f.context),/UNSUPPORTED_(APPROVAL|SWAP_PATH)/);
+ f=fixture();f.receipt.logs.push(f.receipt.logs.find(l=>l.address===pool&&l.logIndex));await assert.rejects(()=>verifyRouterSettlement(f.s,f.receipt,f.context),/AMBIGUOUS_POOL/);
+ f=fixture();f.context.transaction.blockHash=tx;await assert.rejects(()=>verifyRouterSettlement(f.s,f.receipt,f.context),/TRANSACTION_MISMATCH/);
+ f=fixture();f.receipt.logs.at(-1).topics=encodeEventTopics({abi,eventName:'OrderExecuted',args:{executionId:44n}});await assert.rejects(()=>verifyRouterSettlement(f.s,f.receipt,f.context),/EXECUTION_EVENT_MISMATCH/);
+ f=fixture();f.receipt.status='0x0';await assert.rejects(()=>verifyRouterSettlement(f.s,f.receipt,f.context),/TRANSACTION_NOT_SUCCESSFUL/);
+ f=fixture();f.context.poolFor=async()=>address('1');await assert.rejects(()=>verifyRouterSettlement(f.s,f.receipt,f.context),/AMBIGUOUS_POOL/);
+ console.log('PASS router settlement: fee-inclusive cost/proceeds, pool-only volume, refunds, input/output fees, and rejection of unsupported implementation, fake amounts, unpaid fees, unrelated transfers, duplicate pools, wrong execution and failed receipts.');
+}
+main().catch(e=>{console.error(e);process.exitCode=1;});

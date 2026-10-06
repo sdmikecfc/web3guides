@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "source": "exec-850293e3-d770-4fb6-8e76-21a8c3302e99.png",
+  "referenceHeight": 424,
+  "frames": [
+    {
+      "file": "tank-t2-jab-0.png",
+      "w": 380,
+      "h": 432,
+      "pivotX": 211.75,
+      "pivotY": 428
+    },
+    {
+      "file": "tank-t2-jab-1.png",
+      "w": 389,
+      "h": 432,
+      "pivotX": 214.25,
+      "pivotY": 428
+    },
+    {
+      "file": "tank-t2-jab-2.png",
+      "w": 399,
+      "h": 432,
+      "pivotX": 217.75,
+      "pivotY": 428
+    },
+    {
+      "file": "tank-t2-jab-3.png",
+      "w": 444,
+      "h": 432,
+      "pivotX": 218.25,
+      "pivotY": 428
+    },
+    {
+      "file": "tank-t2-jab-4.png",
+      "w": 468,
+      "h": 430,
+      "pivotX": 218.75,
+      "pivotY": 426
+    },
+    {
+      "file": "tank-t2-jab-5.png",
+      "w": 440,
+      "h": 430,
+      "pivotX": 214.25,
+      "pivotY": 426
+    },
+    {
+      "file": "tank-t2-jab-6.png",
+      "w": 383,
+      "h": 431,
+      "pivotX": 202.75,
+      "pivotY": 427
+    },
+    {
+      "file": "tank-t2-jab-7.png",
+      "w": 385,
+      "h": 431,
+      "pivotX": 196.25,
+      "pivotY": 427
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
-import { WalletProviders } from "@/app/wallet/providers";
+import { WalletProviders } from "../_game/ModelKombatWalletProviders";
 import { BotsTopNav } from "./BotsTopNav";
 import { M } from "../_ui/tokens";
 

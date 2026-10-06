@@ -18,6 +18,8 @@
 
 .shell{background:var(--mk-bg);color:var(--mk-text)}
 .header,.nav{background:var(--mk-chrome);border-color:var(--mk-edge)}
+.nav .arcadeLink{display:flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:8px 12px;text-decoration:none;border:1px solid var(--mk-edge);border-radius:10px;color:var(--mk-teal);font-weight:700}.message>.primary{padding:12px 18px;text-align:center;text-decoration:none;border-radius:10px}
+@media(max-width:650px){.nav .arcadeLink{min-width:0;flex:1;flex-direction:column;gap:4px;padding:5px 2px;min-height:42px;font-size:9px}.nav .arcadeLink svg{width:18px;height:18px}}
 :where(.shell) button{background:var(--mk-surface);border-color:var(--mk-edge);color:var(--mk-text)}
 :where(.shell) button:hover{background:var(--mk-raised);border-color:var(--mk-teal)}
 :where(.shell) p,:where(.shell) small{color:var(--mk-muted)}

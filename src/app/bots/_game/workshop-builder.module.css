@@ -32,6 +32,7 @@
 
 
 .motionToggle{justify-self:end;font:11px system-ui!important;min-height:30px!important;padding:5px 9px!important}.heroImage>div{height:100%}
+.palette{border:0;padding:0;margin:12px 0}.palette legend{font-size:12px;margin-bottom:7px;color:var(--mk-muted)}.palette>div{display:flex;gap:7px;flex-wrap:wrap}.palette button{width:32px;min-width:32px;height:32px;min-height:32px;padding:0!important;border-radius:8px}
 
 .stylePage{position:relative}.stylePage>.motionToggle{position:absolute;right:0;top:-4px;width:auto;align-self:flex-end}.stylePage>p{padding-right:170px}.styleCards>button{padding:12px!important;gap:6px!important}.styleCards h2{font-size:23px}.styleCards p{font-size:12px;line-height:1.4;min-height:33px;margin-bottom:6px}.styleCards span{margin-top:7px;font-size:12px}
 @media(max-width:650px){.stylePage>.motionToggle{position:static;align-self:flex-end}.stylePage>p{padding-right:0}.styleCards>button{padding:7px!important}.styleCards h2{font-size:20px}.styleCards p{min-height:0;font-size:10px}.styleCards span{margin-top:4px;font-size:11px}}

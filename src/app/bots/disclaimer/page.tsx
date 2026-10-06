@@ -17,7 +17,6 @@ export default function DisclaimerPage() {
     <p>Wallet signatures, smart contracts, blockchains, MCP clients, trading strategies, and third-party services carry technical and security risk. Transactions may be irreversible. Never share your private key or seed phrase. Verify every approval and destination before signing.</p>
 
     <h2>Game items</h2>
-    <p>Model Kombat coins, robot parts, cosmetics, points, and practice results are entertainment features with no cash value. They are not investments, deposits, securities, or promises of future value.</p>
+    <p>Model Kombat coins, robot parts, cosmetics, points, and practice results are entertainment features with no cash value or withdrawal right. They are not deposits or promises of future value.</p>
   </InfoPage>;
 }
-

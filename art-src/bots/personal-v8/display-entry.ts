@@ -1,0 +1,2 @@
+import {startGameDisplay} from './game-display';
+void startGameDisplay().catch(()=>{const message='The robot picture could not load. Your parts are saved.',status=document.getElementById('game-model-status');if(status)status.textContent=message;const channel=new URLSearchParams(location.search).get('channel');if(channel&&parent!==window)parent.postMessage({channel,type:'error',payload:{message}},location.origin);});

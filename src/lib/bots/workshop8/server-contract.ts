@@ -1,4 +1,4 @@
-import { SLOTS, ITEM_MAP, itemId, legalChoices, parseAppearance } from "./catalogue";
+import { SLOTS, ITEM_MAP, itemId, legalChoices, parseAppearance, type Slot } from "./catalogue";
 import { blankDraft, changeWorkshop, type Action8, type Draft8, type Workshop8 } from "./state";
 import { MILESTONES } from './journey';
 
@@ -8,7 +8,9 @@ export function requestId(v: unknown) { const id = text(v); if (!/^[A-Za-z0-9_.:
 function draft(v: unknown): Draft8 {
   const d = record(v), choices = record(d.choices), appearance = parseAppearance(d.appearance);
   if (!appearance || Object.entries(choices).some(([slot,id]) => !SLOTS.includes(slot as any) || typeof id !== "string" || !ITEM_MAP.has(itemId(id,slot as any)))) throw Error("Some parts could not be checked. Choose them again.");
-  return { name: text(d.name,32), choices: { ...choices } as Draft8["choices"], appearance };
+  if(d.step!==undefined&&(typeof d.step!=='string'||!['style','parts','personalize','review'].includes(d.step)))throw Error('Choose a build step.');
+  if(d.slot!==undefined&&!SLOTS.includes(d.slot as any))throw Error('Choose a part slot.');
+  return { name: text(d.name,32), choices: { ...choices } as Draft8["choices"], appearance, ...(d.step!==undefined?{step:d.step as Draft8['step']}:{ }), ...(d.slot!==undefined?{slot:d.slot as Draft8['slot']}:{ }) };
 }
 /** Whitelist only player intentions. Never accept balances, winners or clocks. */
 export function playerAction(value: unknown, id: string): Action8 {
@@ -34,6 +36,7 @@ export function playerAction(value: unknown, id: string): Action8 {
     case "select": return {kind:"select",id:text(a.id)};
     case "finish": return {kind:"finish",request:id};
     case "buy": return {kind:"buy",item:text(a.item,180),request:id};
+    case 'replacePart': if(!SLOTS.includes(a.slot as Slot))throw Error('Choose a valid part slot.');return {kind:'replacePart',id:text(a.id),slot:a.slot as Slot,spareUid:text(a.spareUid,160),request:id};
     case "recycle": return {kind:"recycle",id:text(a.id),request:id};
     case "repair": return {kind:"repair",id:text(a.id),request:id};
     case "paint": { const appearance=parseAppearance(a.appearance); if(!appearance)throw Error("Choose valid paint colours.");return {kind:"paint",id:text(a.id),name:text(a.name,32),appearance}; }

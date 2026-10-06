@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "source": "exec-1f86c502-8133-42fa-861d-d4c2c3b51f69.png",
+  "referenceHeight": 423,
+  "frames": [
+    {
+      "file": "sovereign-jab-0.png",
+      "w": 370,
+      "h": 431,
+      "pivotX": 198.75,
+      "pivotY": 427
+    },
+    {
+      "file": "sovereign-jab-1.png",
+      "w": 386,
+      "h": 432,
+      "pivotX": 209.25,
+      "pivotY": 428
+    },
+    {
+      "file": "sovereign-jab-2.png",
+      "w": 391,
+      "h": 428,
+      "pivotX": 209.75,
+      "pivotY": 424
+    },
+    {
+      "file": "sovereign-jab-3.png",
+      "w": 435,
+      "h": 432,
+      "pivotX": 218.25,
+      "pivotY": 428
+    },
+    {
+      "file": "sovereign-jab-4.png",
+      "w": 457,
+      "h": 429,
+      "pivotX": 215.75,
+      "pivotY": 425
+    },
+    {
+      "file": "sovereign-jab-5.png",
+      "w": 428,
+      "h": 426,
+      "pivotX": 217.25,
+      "pivotY": 422
+    },
+    {
+      "file": "sovereign-jab-6.png",
+      "w": 373,
+      "h": 430,
+      "pivotX": 197.75,
+      "pivotY": 426
+    },
+    {
+      "file": "sovereign-jab-7.png",
+      "w": 378,
+      "h": 430,
+      "pivotX": 192.25,
+      "pivotY": 426
+    }
+  ]
+}

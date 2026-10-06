@@ -6,13 +6,16 @@ const {createClient}=require('@supabase/supabase-js');
 async function main(){
  const db=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
  const report={checkedAt:new Date().toISOString(),database:{},publicEndpoints:[]};
+ const worker=await db.rpc('mkz_worker_health',{p:null});report.database.workerHealth=worker.error?{available:false,code:worker.error.code}:worker.data;
  // Registered-wallet storage intentionally has no direct service-role SELECT;
  // discovery is the supported read view, counted below.
- for(const table of ['mkz_reward_assets','mkz_markets','mkz_entries','mkz_batches','mkz_fills']){
+ for(const table of ['mkz_reward_assets','mkz_markets','mkz_entries','mkz_batches','mkz_fills','mkz_accounting_snapshots','mkz_accounting_receipts']){
   const r=await db.from(table).select('*',{count:'exact',head:true});report.database[table]=r.error?{available:false,code:r.error.code}:{rows:r.count};
  }
  const campaign=await db.from('mkz_campaigns').select('state,starts_at,ends_at,confirmed_through,complete,financial_complete,financial_method').eq('id','model-kombat-zones-1').maybeSingle();
  report.database.campaign=campaign.error?{available:false,code:campaign.error.code}:campaign.data;
+ const manifest=await db.rpc('mkz_collector_manifest');
+ report.database.collector=manifest.error?{available:false,code:manifest.error.code}:{accountingMode:manifest.data?.accounting?.mode,setupIssues:manifest.data?.setupIssues};
  for(const status of ['pending','linked','not_found']){const r=await db.from('mkz_wallet_discovery').select('*',{count:'exact',head:true}).eq('status',status);report.database['wallets_'+status]=r.error?{available:false,code:r.error.code}:{rows:r.count};}
  for(const route of ['/api/bots/campaign/zones','/api/bots/tracking/zones','/api/bots/tracking/wallets?scope=pending']){
   const r=await fetch('https://www.modelkombat.xyz'+route,{signal:AbortSignal.timeout(20000)}),data=await r.json();

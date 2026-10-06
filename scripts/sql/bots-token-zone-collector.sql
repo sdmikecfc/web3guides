@@ -64,6 +64,7 @@ begin
  select coalesce(jsonb_agg(jsonb_build_object('symbol',symbol,'address',address,'decimals',decimals,'quantity',required_quantity::text,'threshold',threshold::text) order by threshold),'[]') into assets from mkz_reward_assets;
  return jsonb_build_object('schemaVersion',1,'campaign',to_jsonb(c),'markets',markets,'participants',entries,'rewardAssets',assets,
   'intervalHours',4,'transport','existing Supabase database connection','limits',jsonb_build_object('maxBytes',2000000,'maxFills',2000,'maxFinancials',20000),
+  'accounting',case when to_regprocedure('public.mkz_collector_accounting(jsonb)') is not null then jsonb_build_object('mode','server_fifo','rpc','mkz_collector_accounting','schemaVersion',1,'instructions','Send complete raw opening lots and asset movements per linked account. Model Kombat computes profit and ROI. Ingest fills first, accounting snapshots second, then an empty final batch with financialComplete=true and financials=[]. No precomputed scores.') else null end,
   'setupIssues',to_jsonb(array_remove(array[case when jsonb_array_length(markets)=0 then 'No verified eligible markets' end,case when c.financial_method is null then 'Financial method is not configured' end,case when jsonb_array_length(assets)<>9 then 'Reward registry is incomplete' end],null)));
 end $$;
 
@@ -106,7 +107,10 @@ begin
  if c.state<>'draft' and ((p_payload->>'coverageFrom')::timestamptz<>c.starts_at or (p_payload->>'confirmedThrough')::timestamptz<coalesce(c.confirmed_through,c.starts_at)) then issues:=issues||jsonb_build_array(jsonb_build_object('code','coverage_invalid'));end if;
  if (p_payload->>'financialComplete')::boolean then
   if c.financial_method is null or p_payload->>'methodology' is distinct from c.financial_method then issues:=issues||jsonb_build_array(jsonb_build_object('code','financial_method'));end if;
-  if jsonb_array_length(p_payload->'financials')<>(select count(*) from mkz_entries where campaign_id=c.id) or exists(select 1 from jsonb_array_elements(p_payload->'financials') item where not exists(select 1 from mkz_entries e where e.campaign_id=c.id and e.participant=item->>'participant')) then issues:=issues||jsonb_build_array(jsonb_build_object('code','financial_coverage'));end if;
+  if to_regprocedure('public.mkz_collector_accounting(jsonb)') is not null then
+   if jsonb_array_length(p_payload->'financials')<>0 or jsonb_array_length(p_payload->'fills')<>0 then issues:=issues||jsonb_build_array(jsonb_build_object('code','financial_scores_are_server_calculated'));end if;
+   -- Actual snapshot completeness and FIFO basis are checked transactionally at ingestion.
+  elsif jsonb_array_length(p_payload->'financials')<>(select count(*) from mkz_entries where campaign_id=c.id) or exists(select 1 from jsonb_array_elements(p_payload->'financials') item where not exists(select 1 from mkz_entries e where e.campaign_id=c.id and e.participant=item->>'participant')) then issues:=issues||jsonb_build_array(jsonb_build_object('code','financial_coverage'));end if;
  end if;
  return jsonb_build_object('ok',jsonb_array_length(issues)=0,'mode','read_only','writesPerformed',0,'competitionState',c.state,'requestId',p_payload->>'requestId',
  'checked',jsonb_build_object('fills',jsonb_array_length(p_payload->'fills'),'mappedFills',mapped,'registeredMarketFills',registered,'currentlyEligibleFills',eligible,'financials',jsonb_array_length(p_payload->'financials')),
