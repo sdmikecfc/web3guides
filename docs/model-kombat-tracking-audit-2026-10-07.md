@@ -1,9 +1,23 @@
 # Model Kombat tracking audit — 7 October 2026
 
-This records read-only audits and the prepared worker 5 repair. Worker 4 was
-installed by the user at approximately **05:31 UTC**, but its first score commit
-failed. Worker 5 has not been installed. These checks have not deployed the
-website, changed production SQL, written production scores or altered Reporter.
+This records read-only audits, the installed worker 5 repair and the prepared
+worker 6 scan update. Worker 5 saved **16 fills / $199.904189** at **08:52 UTC**.
+Overall coverage remained pending with `TRANSFER_INDEX_CHANGED`. Worker 6 is
+prepared, not installed. Local checks have not deployed the website, changed
+production SQL, written production scores or altered Reporter.
+
+## Latest installed result
+
+The private completed audit at **08:52:48.080 UTC** reports
+`mk-public-worker-5-proof-contract`, `scoreWrites: true`, 4 participants and 8
+linked wallets, 16 agent-wallet fills, no Strategy fills and $199.904189 volume.
+A separate database snapshot confirmed all 16 rows persisted. The campaign is
+active from October 6, 14:00 UTC through November 3, 14:00 UTC.
+
+The common cutoff was **October 7, 06:10:50.936 UTC**. Coverage was incomplete,
+so the public leaderboard correctly withheld a confirmed community total. There
+were no financial rows; ROI and profit remain pending. The next scheduled audit
+started at **09:07:48.733 UTC**. This is not a claim that all tracking is ready.
 
 ## Confirmed trading
 
@@ -23,7 +37,7 @@ The installed worker previously saved 13 fills totaling $165.915935. Its five
 unsupported-routing errors represented **three transactions**, including two
 split routes. The prepared adapter independently verifies those receipts and
 adds $33.988254 of domain-pool volume without counting intermediary USDC/WETH
-swaps as additional trades. Candidate totals above have not been written live.
+swaps as additional trades. Worker 5 subsequently saved that complete total.
 
 The owner's `0x8be1…17b9` wallet is registered and linked to its agent wallet but
 was **not entered in this campaign** at the audit. Its historical rehearsal
@@ -98,9 +112,36 @@ OrderRouter, collector, native accounting and native purchase tests also pass.
 
 ## Installation handoff
 
+### Worker 6 fixed-window scan
+
+Version: `mk-public-worker-6-stable-window`.
+
+The old transfer scan compared the changing live first page before and after a
+historical scan. A regression reproduces a false incomplete result when newer
+transfers shift that page without changing the scoring window. Worker 6 compares
+two complete scans of the requested historical window instead. It checks exact
+ordered event identities, block hashes, token units and available decimals.
+Duplicates, changed history, reorgs, cursor/order errors, page limits and failed
+requests still reject the scan; cancellation returns no partial result.
+
+Authorized live read-only checks finished at **09:08:16 UTC**: all eight wallet
+windows passed through the same 06:10 cutoff. Four belong to participants who
+entered after that cutoff and intentionally return an empty window without an
+Explorer request. One agent wallet had 36 transfer events; the other checked
+windows had none. These transfer events are not additional economic fills. One
+HTTP 500 recovered through the existing bounded retry. No accounting or database
+writes ran during these checks. Later live heads were stable, so the exact
+trigger of the earlier production mismatch was not directly observed.
+
+All eleven portable regression checks pass, including moving page boundaries,
+historical corrections, duplicates, reorgs, source cancellation and the existing
+receipt/accounting/proof contract cases. Explorer completeness still depends on
+its source index and the existing coverage checks; two consistent scans cannot
+prove data that the upstream source consistently omits.
+
 **No new SQL, key or internal-AI instructions are required for this update.**
 Keep internal-AI v4 on its existing four-hour wallet/reference discovery schedule.
-The separate public collector retains its configured 15-minute polling interval.
+The separate public collector waits 15 minutes between completed cycles.
 
 From the source checkout, the existing user-run command remains:
 
@@ -110,6 +151,6 @@ node scripts/bots/install-tracking-worker.cjs
 
 The package is prepared only. The command must be run to update the separate
 collector; `vercel --prod` does not update it. After installation, confirm the
-worker-5 version and a newly completed audit before describing its candidate
-volume as live. ROI is still pending until historical backfill and reconciliation
+worker-6 version and a newly completed audit before claiming coverage is complete.
+The 16 saved fills above are confirmed; ROI is still pending until historical backfill and reconciliation
 finish. Website production remains the user's own `vercel --prod` release.

@@ -104,17 +104,35 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000}){
  }
  async function transfers(wallet,from,through){
   if(!/^0x[0-9a-f]{40}$/.test(wallet))throw Error('INVALID_WALLET');
-  const base='https://explorer.doma.xyz/api/v2/addresses/'+wallet+'/token-transfers';let first;
-  // Token prices, holder counts and reputations change between reads. Only
-  // immutable transfer identity/amount/order belong in the pagination anchor.
-  const anchor=p=>hash({next:p.next_page_params,items:p.items?.map(t=>[t.block_hash,t.block_number,t.transaction_hash,t.log_index,t.timestamp,t.from?.hash,t.to?.hash,t.token?.address_hash,t.total])});
+  if(!Number.isFinite(from)||!Number.isFinite(through))throw Error('INVALID_TRANSFER_WINDOW');
+  // A new entrant may be newer than the shared discovery cutoff.
+  if(from>through)return [];
+  const base='https://explorer.doma.xyz/api/v2/addresses/'+wallet+'/token-transfers';
+  // Compare complete scans of the requested historical window, not the live
+  // first page. Newer transfers cannot invalidate an unchanged fixed cutoff.
+  // Keep exact event order/amounts; duplicates are errors, never deduplicated.
+  const proof=rows=>{
+   const seen=new Set(),hex=(v,n)=>{if(typeof v!=='string'||!new RegExp('^0x[0-9a-fA-F]{'+n+'}$').test(v))throw Error('TRANSFER_HISTORY_INVALID');return v.toLowerCase();};
+   const integer=v=>{if((typeof v==='number'&&!Number.isSafeInteger(v))||!/^\d+$/.test(String(v)))throw Error('TRANSFER_HISTORY_INVALID');return BigInt(v).toString();};
+   return rows.map(t=>{
+    checkBudget();
+    const tx=hex(t.transaction_hash,64),log=integer(t.log_index),id=tx+':'+log;
+    if(seen.has(id))throw Error('TRANSFER_HISTORY_DUPLICATE');seen.add(id);
+    return [hex(t.block_hash,64),integer(t.block_number),tx,log,Date.parse(t.timestamp),hex(t.from?.hash,40),hex(t.to?.hash,40),hex(t.token?.address_hash,40),integer(t.total?.value),t.total?.decimals==null?null:integer(t.total.decimals)];
+   });
+  };
   const fetchPage=async params=>{
    const keys=Object.keys(params);if(keys.some(k=>!['block_number','index','items_count','batch_block_hash','batch_transaction_hash','batch_log_index','index_in_batch','token_contract_address_hash','token_id','type'].includes(k)))throw Error('UNKNOWN_EXPLORER_CURSOR');
    const url=new URL(base);url.searchParams.set('type','ERC-20');for(const [k,v]of Object.entries(params))if(v!==null)url.searchParams.set(k,String(v));
-   const p=await request(url.toString());if(!keys.length)first=anchor(p);return p;
+   const p=await request(url.toString());
+   if(p?.next_page_params)p.next_page_params=Object.fromEntries(Object.entries(p.next_page_params).sort(([a],[b])=>a.localeCompare(b)));
+   return p;
   };
-  const rows=await scanPages(fetchPage,{from,through,maxPages});const current=await request(base+'?type=ERC-20');
-  if(anchor(current)!==first)throw Error('TRANSFER_INDEX_CHANGED');return rows;
+  checkBudget();
+  const first=proof(await scanPages(fetchPage,{from,through,maxPages}));
+  const rows=await scanPages(fetchPage,{from,through,maxPages});
+  if(hash(proof(rows))!==hash(first))throw Error('TRANSFER_INDEX_CHANGED');
+  checkBudget();return rows;
  }
  async function hasNativeActivity(wallet,through){
   if(!/^0x[0-9a-f]{40}$/.test(wallet))throw Error('INVALID_WALLET');
