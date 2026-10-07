@@ -12,6 +12,8 @@
  * never break the page.
  */
 
+import { arcadeNow } from "@/lib/arcade/mode";
+
 const SID_KEY = "s5_sid";
 const LANDING_DAY_KEY = "s5_lv_day";
 const REF_KEY = "s5_ref"; // first-touch referral code, read at join (ADR-0068 §3)
@@ -94,6 +96,7 @@ export function storedRef(): string | null {
 export function track(event: string, extra?: Record<string, unknown>): void {
   try {
     if (typeof window === "undefined") return;
+    if (arcadeNow()) return; // arcade play must never write to a season funnel table
     const sid = sessionId();
     if (!sid) return;
 

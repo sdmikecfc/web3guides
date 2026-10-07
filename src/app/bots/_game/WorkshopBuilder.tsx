@@ -31,6 +31,8 @@ export default function WorkshopBuilder({state,busy,act,choose,finish,inspect,jo
  const totals=aggregateEquipment(projected,ENTRY_MAP),chosen=SLOTS.filter(s=>draft?.choices[s]).length;
  const items=ITEMS.filter(i=>i.slot===slot&&(style==="all"||i.entry.style===style)&&(starterBuild?i.entry.tier===1:tier==="all"||i.entry.tier===Number(tier)));
  const cost=draftCost(state),complete=!!draft&&legalChoices(draft.choices);
+ const spareCount=(id:string)=>state.spares.filter(part=>part.item===id).length;
+ const includedSpares=SLOTS.filter(part=>draft?.choices[part]&&spareCount(itemId(draft.choices[part]!,part))>0).length;
  const selectStyle=async(key:keyof typeof STYLE_NAMES,replace=false)=>{
   if(!replace&&draft?.choices.torso&&SLOTS.some(s=>draft.choices[s]&&draft.choices[s]!==preset(bodyStyle)[s])){setReplaceStyle(key);return;}
   selectingStyle.current=true;
@@ -68,7 +70,7 @@ export default function WorkshopBuilder({state,busy,act,choose,finish,inspect,jo
      <div className={css.filters}><select aria-label="Build style" value={style} onChange={e=>setStyle(e.target.value)}><option value="all">All styles</option>{Object.entries(STYLE_NAMES).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select><select aria-label="Build tier" value={starterBuild?'1':tier} disabled={starterBuild} onChange={e=>setTier(e.target.value)}>{starterBuild?<option value="1">Tier 1 starter parts</option>:<><option value="all">All tiers</option>{[1,2,3,4].map(t=><option key={t} value={t}>Tier {t}</option>)}</>}</select><span>{starterBuild?'Earn coins in battles for stronger builds.':'Mix parts freely.'}</span></div>
      <WorkshopItemPages items={items} resetKey={`${slot}:${style}:${tier}`} render={item=><article key={item.id} className={css.card} data-selected={draft?.choices[item.slot]===item.entry.id}>
       <button className={css.pickCard} aria-pressed={draft?.choices[item.slot]===item.entry.id} onClick={()=>void choose(item)}>
-       <img src={item.image} alt=""/><strong>{item.entry.name}</strong><span>T{item.entry.tier} · {STYLE_NAMES[item.entry.style]} · {item.price} coins</span><small>{item.slot==='weapon'?`${item.entry.weapon.replaceAll('_',' ')} · ${item.entry.weapon.includes('rifle')||['rotary','arm_cannon'].includes(item.entry.weapon)?'Ranged fire':item.entry.weapon.includes('spear')||item.entry.weapon==='greatsword'?'Long reach':'Close reach'}`:`${Math.round(itemStats(item.entry,item.slot).health)} health`} · {itemStats(item.entry,item.slot).gearPoints} GP</small>
+       <img src={item.image} alt=""/><strong>{item.entry.name}</strong><span>T{item.entry.tier} · {STYLE_NAMES[item.entry.style]} · {spareCount(item.id)?'Owned spare · no extra cost':`${item.price} coins`}</span><small>{item.slot==='weapon'?`${item.entry.weapon.replaceAll('_',' ')} · ${item.entry.weapon.includes('rifle')||['rotary','arm_cannon'].includes(item.entry.weapon)?'Ranged fire':item.entry.weapon.includes('spear')||item.entry.weapon==='greatsword'?'Long reach':'Close reach'}`:`${Math.round(itemStats(item.entry,item.slot).health)} health`} · {itemStats(item.entry,item.slot).gearPoints} GP</small>
       </button><button className={css.details} aria-label={`Stats for ${item.entry.name}`} onClick={()=>inspect(item)}>Stats & comparison ↗</button>
      </article>}/>
     </div>
@@ -80,8 +82,8 @@ export default function WorkshopBuilder({state,busy,act,choose,finish,inspect,jo
     <div className={css.reviewPanel}>
      <label>Robot name<input aria-label="Robot name" value={name} maxLength={32} onFocus={()=>{editingName.current=true}} onChange={e=>setName(e.target.value)} onBlur={e=>{editingName.current=false;if(!(e.relatedTarget as HTMLElement|null)?.hasAttribute("data-finish")&&name!==draft?.name)void act({kind:"nameDraft",name})}} placeholder="Give it a name"/></label>
      {draft&&<fieldset className={css.palette}><legend>Colours · free</legend><div>{Object.entries(PALETTES).map(([palette,paint])=><button key={palette} disabled={busy} aria-label={`Paint ${palette}`} title={palette} style={{background:paint.primary,border:`3px solid ${paint.trim}`}} onClick={()=>void act({kind:'draftAppearance',appearance:defaultAppearance(palette)})}/>)}</div></fieldset>}
-     <div className={css.reviewParts}>{SLOTS.map(s=><button key={s} onClick={()=>{setSlot(s);setStep("parts")}}><span>{SLOT_NAMES[s]}</span><strong>{ENTRY_MAP.get(projected[s])?.name}</strong><small>Edit →</small></button>)}</div>
-     <p>Finish buys these parts with game coins. You can upgrade parts, rename and repaint later.</p>
+     <div className={css.reviewParts}>{SLOTS.map(s=><button key={s} onClick={()=>{setSlot(s);setStep("parts")}}><span>{SLOT_NAMES[s]}</span><strong>{ENTRY_MAP.get(projected[s])?.name}</strong><small>{spareCount(itemId(projected[s],s))?'Owned spare · ':''}Edit →</small></button>)}</div>
+     <p>{includedSpares?`${includedSpares} owned ${includedSpares===1?'spare is':'spares are'} included. Finish buys only the missing parts.`:'Finish buys these parts with game coins.'} Upgrade, rename or repaint later.</p>
     </div>
    </div>
    <footer className={css.actions}><button onClick={()=>setStep("parts")}>← Edit parts</button><span>Pay {cost} game coins <small>{state.coins} available · {cost>state.coins?`Need ${cost-state.coins} more`:`${state.coins-cost} left after Finish`}</small></span><button className={css.primary} data-finish disabled={busy||!complete||!name.trim()||cost>state.coins} onClick={()=>void(async()=>{if(name===draft?.name||await act({kind:"nameDraft",name}))await finish()})()}>{cost?'Buy & finish':'Finish robot'}</button></footer>

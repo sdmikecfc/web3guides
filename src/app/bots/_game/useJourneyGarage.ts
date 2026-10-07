@@ -66,16 +66,26 @@ export default function useJourneyGarage(enabled:boolean,onState:(state:Workshop
  },[headers,read]);
  const execute=useCallback(async(job:{requestId:string;action:unknown;garageId:string|null})=>{
   inFlight.current=true;readEpoch.current++;setStatus('saving');setError('');
+  let refreshFight:string|undefined;
   try{
    const current=await ensure();
    if(job.garageId&&job.garageId!==current.garageId)throw Error('Open the original garage before retrying this save.');
    job.garageId=current.garageId;failed.current=job;
    try{sessionStorage.setItem(PENDING,JSON.stringify(job))}catch{}
    const response=await request('/api/bots/workshop',{method:'POST',headers:headers(),body:JSON.stringify({...job,revision:current.state!.revision})}),data=await response.json();
-   if(!response.ok||!data.ok){if(response.status>=400&&response.status<500&&response.status!==409){failed.current=null;try{sessionStorage.removeItem(PENDING)}catch{}}if(response.status===409)await read(current.garageId);throw Error(data.error||'Your change could not save. Retry to keep it.');}
+   if(!response.ok||!data.ok){if(response.status>=400&&response.status<500&&response.status!==409&&response.status!==408){failed.current=null;try{sessionStorage.removeItem(PENDING)}catch{}}if(response.status===409)await read(current.garageId);throw Object.assign(Error(data.error||'Your change could not save. Retry to keep it.'),{status:response.status});}
    failed.current=null;try{sessionStorage.removeItem(PENDING)}catch{}
+   if((job.action as {kind?:string})?.kind==='special')refreshFight=data.state?.active?.id;
    return accept(data).state!;
-  }catch(e){setStatus('error');setError((e as Error).message);throw e}finally{inFlight.current=false}
+  }catch(e){setStatus('error');setError((e as Error).message);throw e}finally{
+   inFlight.current=false;
+   // A Special can overlap and suppress the regular poll. Resume coverage now
+   // instead of waiting another 2.5 seconds. This read cannot undo an ACKed save.
+   if(refreshFight)setTimeout(()=>{
+    if(!alive.current||document.hidden||inFlight.current||failed.current||reading.current>0||latest.current?.garageId!==job.garageId||latest.current?.state?.active?.id!==refreshFight)return;
+    void read(job.garageId).catch(()=>{if(alive.current&&!inFlight.current&&!failed.current&&latest.current?.garageId===job.garageId&&latest.current?.state?.active?.id===refreshFight){setStatus('error');setError('Your Special was saved. Fight updates are delayed; retry to reconnect.');}});
+   },0);
+  }
  },[accept,ensure,headers,read]);
  const mutate=useCallback((action:unknown,requestId=crypto.randomUUID())=>{
   const job={action,requestId,garageId:latest.current?.garageId??null};
@@ -115,7 +125,14 @@ export default function useJourneyGarage(enabled:boolean,onState:(state:Workshop
  useEffect(()=>{
   if(!enabled)return;alive.current=true;
   void initialize().catch(e=>{if(alive.current){setStatus('error');setError((e as Error).message)}});
-  const refresh=()=>{if(!sessionReady.current||!latest.current||document.hidden||reading.current>0||inFlight.current||failed.current)return;void read().catch(e=>{setStatus('error');setError((e as Error).message)})};
+  const refresh=()=>{
+   if(!sessionReady.current||!latest.current||document.hidden||reading.current>0||inFlight.current)return;
+   const pending=failed.current?.action as {kind?:string;fightId?:string}|undefined;
+   // An uncertain Special still needs its original request ID retried, but
+   // reading that fight is safe and may confirm its authoritative settlement.
+   if(failed.current&&(pending?.kind!=='special'||pending.fightId!==latest.current.state?.active?.id))return;
+   void read().catch(e=>{setStatus('error');setError((e as Error).message)});
+  };
   let lastRefresh=0;const timer=setInterval(()=>{const t=Date.now();if(t-lastRefresh<(latest.current?.state?.active?2500:30000))return;lastRefresh=t;refresh()},2500);document.addEventListener('visibilitychange',refresh);
   return()=>{alive.current=false;clearInterval(timer);document.removeEventListener('visibilitychange',refresh)};
  },[enabled,read,initialize]);

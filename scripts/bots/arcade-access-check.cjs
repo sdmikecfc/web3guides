@@ -35,7 +35,8 @@ assert.equal(readRun({...freeRun,robotId:''}),null);
 function tierButtons(html){return [...html.matchAll(/<button[^>]*aria-pressed="(?:true|false)"[^>]*>[^]*?<small>TIER (\d)<\/small>[^]*?<\/button>/g)].map(m=>({tier:Number(m[1]),disabled:m[0].includes('disabled=""')}));}
 let html=renderToStaticMarkup(React.createElement(Arcade,{garageMessage:'Loading your garage…'}));
 assert.deepEqual(tierButtons(html),[1,2,3,4].map(tier=>({tier,disabled:tier>1})));
-assert.match(html,/Free fighters enter Tier 1/);assert.doesNotMatch(html,/-t[234]-jab/);assert.match(html,/Start Scrapyard ladder/);
+assert.match(html,/Free fighters enter Tier 1/);assert.doesNotMatch(html,/-t[234]-jab/);assert.match(html,/Start ladder/);
+assert.match(html,/Scrapyard/);assert.doesNotMatch(html,/>Training<|>Single fight</);
 for(const tier of [1,2,3,4]){
  const robot={id:'owned',name:'My robot',choices:preset('tank',tier)},actual=arcadeBuild(robot.choices,robot.name);
  html=renderToStaticMarkup(React.createElement(Arcade,{ownedRobot:robot}));

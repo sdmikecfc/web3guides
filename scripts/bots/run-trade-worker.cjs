@@ -8,7 +8,7 @@ require('@next/env').loadEnvConfig(root,false,{info(){},error(){throw Error('EXI
 const {collect}=require('./lib/public-trade-worker.cjs'),{publicSource}=require('./lib/public-trade-source.cjs');
 const {reconstruct}=require('./lib/public-accounting.cjs');
 const safeCode=code=>typeof code==='string'&&/^[A-Z][A-Z0-9_]{2,100}$/.test(code)?code:'SOURCE_UNAVAILABLE';
-const workerVersion='mk-public-worker-3-native-eth';
+const workerVersion='mk-public-worker-4-smart-wallet';
 let runStartedAt;
 const output=process.env.MK_WORKER_STATE_DIR||(process.platform==='win32'?'D:/Temp/modelkombat-tracking-review':path.join(process.env.TMPDIR||'/tmp','modelkombat-tracking-review'));
 const pollMinutes=Number(process.env.MK_WORKER_POLL_MINUTES||240);
@@ -50,11 +50,17 @@ async function run(){
  result.report.accountingProblems=[];
  const entries=new Map(snapshot.manifest.participants.map(e=>[e.participant,e]));
  const accounts=snapshot.accounts.filter(a=>snapshot.manifest.campaign.state==='draft'||entries.has(a.participant));
- if(result.packet.complete&&!args.has('--test-linked-agent-only'))for(const a of accounts){try{
-  await progress('RECONSTRUCTING_ACCOUNTING',{account:accounts.indexOf(a)+1,accounts:accounts.length});
-  const ledger=await reconstruct({participant:a.participant,wallets:snapshot.wallets.filter(w=>w.participant===a.participant).map(w=>w.trade_wallet),
+ // Financial reconstruction is allowed three minutes across this entire
+ // cycle. Cancellation reaches real HTTP requests; no detached Promise.race
+ // continues scanning after the verified volume packet is ready to commit.
+ if(result.packet.complete&&!args.has('--test-linked-agent-only')&&accounts.length)await progress('RECONSTRUCTING_ACCOUNTING',{accounts:accounts.length});
+ const accountingDeadline=Date.now()+180000;
+ if(result.packet.complete&&!args.has('--test-linked-agent-only'))for(const a of accounts){
+  if(Date.now()>=accountingDeadline){result.report.accountingProblems.push({code:'ACCOUNTING_TIME_BUDGET_EXCEEDED'});break;}
+  try{
+  const ledger=await source.withDeadline(accountingDeadline,()=>reconstruct({participant:a.participant,wallets:snapshot.wallets.filter(w=>w.participant===a.participant).map(w=>w.trade_wallet),
    from:Math.max(Date.parse(result.packet.coverageFrom),Date.parse(entries.get(a.participant)?.entered_at||result.packet.coverageFrom)),through:Date.parse(result.packet.confirmedThrough),
-   markets:snapshot.manifest.markets,references:snapshot.references.filter(r=>r.participant===a.participant),eligible:result.packet.fills.filter(f=>f.status==='verified'&&snapshot.wallets.some(w=>w.participant===a.participant&&w.trade_wallet===f.wallet)),source,priorRevision:snapshot.accountingRevisions?.[a.participant]||0});
+   markets:snapshot.manifest.markets,references:snapshot.references.filter(r=>r.participant===a.participant),eligible:result.packet.fills.filter(f=>f.status==='verified'&&snapshot.wallets.some(w=>w.participant===a.participant&&w.trade_wallet===f.wallet)),source,priorRevision:snapshot.accountingRevisions?.[a.participant]||0}));
   accounting.push(ledger);
  }catch(e){result.report.accountingProblems.push({code:safeCode(e.message)});}}
  if(accounts.length&&accounting.length===accounts.length){result.packet.financialComplete=true;result.packet.methodology='mk-fifo-realized-capital-1';result.report.financialComplete=true;result.report.warnings=[];}

@@ -9,17 +9,19 @@ const micros=s=>{if(!/^\d+\.\d{6}$/.test(s))throw Error('ACCOUNTING_VALUE_INVALI
 const abs=n=>n<0n?-n:n;
 function disposesExternalAsset(receipt,walletSet){return (receipt.logs||[]).some(l=>l.topics?.[0]===TRANSFER&&l.topics.length>=3&&walletSet.has(('0x'+l.topics[1].slice(-40)).toLowerCase())&&!walletSet.has(('0x'+l.topics[2].slice(-40)).toLowerCase())&&(l.topics.length===4||BigInt(l.data)!==0n));}
 async function reconstruct({participant,wallets,from,through,markets,references=[],eligible=[],source,priorRevision=0}){
+ const check=()=>source.checkBudget?.();check();
  const supported=new Set([...markets.flatMap(m=>[m.domain_token,m.quote_token]),NATIVE]),walletSet=new Set(wallets);
  const valueUsd=(token,qty,at)=>qty===0n?Promise.resolve(0n):source.valueUsd(token===NATIVE?WETH:token,qty,at);
  const chainBalance=(wallet,token,at)=>token===NATIVE?source.nativeBalance(wallet,at):source.balance(wallet,token,at);
- const start=await source.blockAt(from-1),end=await source.blockAt(through),all=new Map(),publicSwaps=new Map();
- for(const wallet of wallets){await source.primeBalances?.(wallet,[...supported].filter(t=>t!==NATIVE),start.number);await source.primeBalances?.(wallet,[...supported].filter(t=>t!==NATIVE),end.number);}
+ const start=await source.blockAt(from-1),end=await source.blockAt(through),all=new Map(),publicSwaps=new Map(),indexedSwaps=new Map();
+ for(const wallet of wallets){check();await source.primeBalances?.(wallet,[...supported].filter(t=>t!==NATIVE),start.number);await source.primeBalances?.(wallet,[...supported].filter(t=>t!==NATIVE),end.number);}
  for(const wallet of wallets){
+  check();
   // A complete lifetime transfer history establishes FIFO basis. Missing
   // pagination or unpriced flows throws before any accounting snapshot is sent.
   const transfers=await source.transfers(wallet,0,through);
   for(const t of transfers){const token=t.token?.address_hash?.toLowerCase();if(supported.has(token))all.set(t.transaction_hash,{tx:t.transaction_hash,at:Date.parse(t.timestamp)});}
-  for(const s of await source.swaps(wallet,0,through)){const n=normalizePublicSwap(s);if(n&&n.wallet===wallet)publicSwaps.set(key(n),n);}
+  for(const s of await source.swaps(wallet,0,through)){const n=normalizePublicSwap(s);if(n&&n.wallet===wallet){if(indexedSwaps.has(key(n)))throw Error('ACCOUNTING_DUPLICATE_INDEX_ROW');publicSwaps.set(key(n),n);indexedSwaps.set(key(n),n);}}
   if(source.nativeHistory&&source.nativeTransaction){for(const t of await source.nativeHistory(wallet,through))all.set(t.tx,t);}
   else if(await source.nativeBalance(wallet,start.number)!==0n||await source.nativeBalance(wallet,end.number)!==0n||await source.hasNativeActivity(wallet,through))throw Error('NATIVE_CAPITAL_LEDGER_REQUIRED');
  }
@@ -27,6 +29,7 @@ async function reconstruct({participant,wallets,from,through,markets,references=
  const events=[],lots=[],opening=[],tokens=new Set();let order=0,opened=false;
  const balances=new Map();
  function replay(e){
+  check();
   const qty=BigInt(e.units);tokens.add(e.token);const bucket=e.wallet+':'+e.token;
   if(['in','buy'].includes(e.kind)){
    balances.set(bucket,(balances.get(bucket)||0n)+qty);
@@ -34,6 +37,7 @@ async function reconstruct({participant,wallets,from,through,markets,references=
   }
   balances.set(bucket,(balances.get(bucket)||0n)-qty);let need=qty;
   for(const l of lots.filter(l=>l.wallet===e.wallet&&l.token===e.token&&l.units>0n).sort((a,b)=>a.acquiredAt.localeCompare(b.acquiredAt)||a.id.localeCompare(b.id))){
+   check();
    const take=need<l.units?need:l.units,cost=take===l.units?l.cost:l.cost*take/l.units;
    l.units-=take;l.cost-=cost;need-=take;
    if(e.kind==='transfer')lots.push({...l,id:e.id+':'+l.id,wallet:e.toWallet,units:take,cost});
@@ -43,13 +47,14 @@ async function reconstruct({participant,wallets,from,through,markets,references=
   if(e.kind==='transfer')balances.set(e.toWallet+':'+e.token,(balances.get(e.toWallet+':'+e.token)||0n)+qty);
  }
  async function captureOpening(){if(opened)return;opened=true;
-  for(const l of lots.filter(l=>l.units>0n)){const value=await valueUsd(l.token,l.units,start.number);opening.push({id:l.id,wallet:l.wallet,token:l.token,units:l.units.toString(),costUsd:usd(l.cost),valueUsd:usd(value),acquiredAt:l.acquiredAt,evidence:'Public lifetime transfers/FIFO; opening finalized block '+start.number});}
-  for(const wallet of wallets)for(const token of supported){if(await chainBalance(wallet,token,start.number)!==(balances.get(wallet+':'+token)||0n))throw Error(token===NATIVE?'NATIVE_OPENING_BALANCE_MISMATCH':'OPENING_BALANCE_MISMATCH');}
+  for(const l of lots.filter(l=>l.units>0n)){check();const value=await valueUsd(l.token,l.units,start.number);opening.push({id:l.id,wallet:l.wallet,token:l.token,units:l.units.toString(),costUsd:usd(l.cost),valueUsd:usd(value),acquiredAt:l.acquiredAt,evidence:'Public lifetime transfers/FIFO; opening finalized block '+start.number});}
+  for(const wallet of wallets)for(const token of supported){check();if(await chainBalance(wallet,token,start.number)!==(balances.get(wallet+':'+token)||0n))throw Error(token===NATIVE?'NATIVE_OPENING_BALANCE_MISMATCH':'OPENING_BALANCE_MISMATCH');}
  }
  function event(tx,at,body){return {id:'chain:'+tx+':'+order,executedAt:new Date(at).toISOString(),order:order++,evidence:'Finalized public receipt '+tx,...body};}
- const transactions=[];for(const t of all.values()){const receipt=await source.receipt(t.tx);transactions.push({...t,receipt});}
+ const transactions=[];for(const t of all.values()){check();const receipt=await source.receipt(t.tx);transactions.push({...t,receipt});}
  transactions.sort((a,b)=>Number(BigInt(a.receipt.blockNumber)-BigInt(b.receipt.blockNumber))||Number(BigInt(a.receipt.transactionIndex)-BigInt(b.receipt.transactionIndex)));
  for(const t of transactions){
+  check();
   if(t.at>=from)await captureOpening();
   const receipt=t.receipt,block=await source.block(receipt.blockNumber);
   if(block.hash!==receipt.blockHash||Date.parse(block.timestamp)!==t.at||BigInt(receipt.blockNumber)>BigInt(end.number))throw Error('ACCOUNTING_RECEIPT_MISMATCH');
@@ -61,9 +66,10 @@ async function reconstruct({participant,wallets,from,through,markets,references=
   const gasUsd=paidGas?await valueUsd(NATIVE,paidGas,receipt.blockNumber):0n;
   if(nativePurchase){
    const p=nativePurchase;
-   if(!walletSet.has(p.wallet)||!supported.has(p.token)||[USDC,WETH,NATIVE].includes(p.token)||wallets.some(w=>w!==p.wallet&&receiptFlows(receipt,w).size))throw Error('NATIVE_PURCHASE_ACCOUNT_MISMATCH');
+   const quoteConversion=p.kind==='quote_conversion'&&p.token===USDC;
+   if(!walletSet.has(p.wallet)||!supported.has(p.token)||(!quoteConversion&&[USDC,WETH,NATIVE].includes(p.token))||wallets.some(w=>w!==p.wallet&&receiptFlows(receipt,w).size))throw Error('NATIVE_PURCHASE_ACCOUNT_MISMATCH');
    const cost=await valueUsd(NATIVE,BigInt(p.nativeSpent),receipt.blockNumber);
-   const eligibleFill=eligible.find(f=>f.wallet===p.wallet&&f.transactionHash===t.tx&&f.domainToken===p.token&&f.quoteToken===p.domainQuoteToken);
+   const eligibleFill=quoteConversion?null:eligible.find(f=>f.wallet===p.wallet&&f.transactionHash===t.tx&&f.domainToken===p.token&&f.quoteToken===p.domainQuoteToken);
    batch.push(event(t.tx,t.at,{wallet:p.wallet,token:NATIVE,units:p.nativeSpent,kind:'out'}));
    if(paidGas)batch.push(event(t.tx,t.at,{wallet:native.payer,token:NATIVE,units:paidGas.toString(),kind:'out'}));
    batch.push(event(t.tx,t.at,{wallet:p.wallet,token:p.token,units:p.units,kind:'buy',usd:usd(cost+(native.payer===p.wallet?gasUsd:0n)),...(eligibleFill?{economicId:eligibleFill.economicId,notionalUsd:eligibleFill.volumeUsd}:{})}));
@@ -112,10 +118,12 @@ async function reconstruct({participant,wallets,from,through,markets,references=
     continue;
    }
    if(!flows.size)continue;
-   const swaps=[...publicSwaps.values()].filter(s=>s.tx===t.tx&&s.wallet===wallet);
+   let swaps=[...publicSwaps.values()].filter(s=>s.tx===t.tx&&s.wallet===wallet);
+   const smart=swaps.length&&source.smartWalletSettlement?await source.smartWalletSettlement([...indexedSwaps.values()].filter(s=>s.tx===t.tx&&s.wallet===wallet)):null;
+   if(smart)swaps=[smart.swap];
    if(swaps.length>1)throw Error('ACCOUNTING_MULTI_FILL_ALLOCATION_REQUIRED');
    if(swaps.length){const s=swaps[0];if(flows.size!==2)throw Error('ACCOUNTING_COMPLEX_SWAP');
-    const amounts=await settlement(s,receipt,source);
+    const amounts=smart?smart.amounts:await settlement(s,receipt,source);
     const money=s.quote===USDC?BigInt(amounts.walletQuoteUnits):await valueUsd(s.quote,BigInt(amounts.walletQuoteUnits),receipt.blockNumber);
     const costGas=wallet===native.payer?gasUsd:0n;
     if(s.side==='sell'&&money<costGas)throw Error('GAS_EXCEEDS_SWAP_PROCEEDS');
@@ -147,7 +155,7 @@ async function reconstruct({participant,wallets,from,through,markets,references=
   for(const e of batch){replay(e);if(t.at>=from)events.push(e);}
  }
  await captureOpening();
- for(const wallet of wallets)for(const token of supported){if(await chainBalance(wallet,token,end.number)!==(balances.get(wallet+':'+token)||0n))throw Error(token===NATIVE?'NATIVE_CLOSING_BALANCE_MISMATCH':'CLOSING_BALANCE_MISMATCH');}
+ for(const wallet of wallets)for(const token of supported){check();if(await chainBalance(wallet,token,end.number)!==(balances.get(wallet+':'+token)||0n))throw Error(token===NATIVE?'NATIVE_CLOSING_BALANCE_MISMATCH':'CLOSING_BALANCE_MISMATCH');}
  if(eligible.some(f=>!events.some(e=>e.economicId===f.economicId)))throw Error('ACCOUNTING_FILL_MISSING');
  return {schemaVersion:1,campaignId:'model-kombat-zones-1',methodology:'mk-fifo-realized-capital-1',participant,requestId:randomUUID(),revision:priorRevision+1,periodStart:new Date(from).toISOString(),confirmedThrough:new Date(through).toISOString(),complete:true,evidence:'Independent public chain reconstruction; opening '+start.number+' closing '+end.number,openingLots:opening,events};
 }

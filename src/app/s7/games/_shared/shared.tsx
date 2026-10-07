@@ -32,6 +32,7 @@ import {
   writeSessionToken,
   type PlayerStats,
 } from "@/lib/s7/games";
+import { ARCADE_NAME, ARCADE_PREFIX, apiBase, arcadeNow, lsKey } from "@/lib/arcade/mode";
 
 /** The one theme object every game surface reads its words from. */
 export const THEME = DEFAULT_THEME;
@@ -48,7 +49,10 @@ export function dayKeyUTC(): string {
 // second copy of this template that drifts by one character is a silent auth
 // break. One template, two callers.
 function buildMessage(address: string, nonce: string, issuedAt: string, domain: string, uri: string) {
-  return buildPlaySessionMessage(address, nonce, issuedAt, domain, uri, THEME.seasonName);
+  // Arcade seam: same shared template, the arcade name instead of the season
+  // name. Only ever called from openSession (browser), so arcadeNow() is safe.
+  const seasonName = arcadeNow() ? ARCADE_NAME : THEME.seasonName;
+  return buildPlaySessionMessage(address, nonce, issuedAt, domain, uri, seasonName);
 }
 
 export function useS7Session() {
@@ -70,11 +74,11 @@ export function useS7Session() {
       const issuedAt = new Date().toISOString();
       const nonce = crypto.randomUUID().replace(/-/g, "");
       const domain = window.location.host;
-      const uri = `${window.location.origin}/s7/play`;
+      const uri = `${window.location.origin}${arcadeNow() ? ARCADE_PREFIX : "/s7/play"}`;
       const message = buildMessage(address, nonce, issuedAt, domain, uri);
       const signature = await signMessageAsync({ message });
       track("siwe_ok");
-      const resp = await fetch("/api/s7/game-session", {
+      const resp = await fetch(`${apiBase("/api/s7")}/game-session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address, message, signature }),
@@ -148,7 +152,7 @@ export type ScoreResult = {
 };
 
 export async function startRun(token: string, game: string): Promise<RunStartResult> {
-  const r = await fetch("/api/s7/run-start", {
+  const r = await fetch(`${apiBase("/api/s7")}/run-start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ t: token, game }),
@@ -163,7 +167,7 @@ export async function submitScore(
   nonce: string,
   meta?: Record<string, unknown>,
 ): Promise<ScoreResult> {
-  const r = await fetch("/api/s7/score", {
+  const r = await fetch(`${apiBase("/api/s7")}/score`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ t: token, game, score, nonce, meta }),
@@ -191,7 +195,7 @@ function emptyGuest(): GuestStore {
 export function readGuest(): GuestStore {
   if (typeof window === "undefined") return emptyGuest();
   try {
-    const raw = localStorage.getItem(GUEST_STORAGE_KEY);
+    const raw = localStorage.getItem(lsKey(GUEST_STORAGE_KEY));
     if (!raw) return emptyGuest();
     const p = JSON.parse(raw) as Partial<GuestStore>;
     const g: GuestStore = {
@@ -213,7 +217,7 @@ export function readGuest(): GuestStore {
 
 function writeGuest(g: GuestStore) {
   try {
-    localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(g));
+    localStorage.setItem(lsKey(GUEST_STORAGE_KEY), JSON.stringify(g));
   } catch {
     // storage blocked: guest progress just does not persist
   }
@@ -253,7 +257,7 @@ export function useGuestClaim(token: string | null) {
     tried.current = true;
     (async () => {
       try {
-        const r = await fetch("/api/s7/claim-guest", {
+        const r = await fetch(`${apiBase("/api/s7")}/claim-guest`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ t: token, scores: g.scores }),

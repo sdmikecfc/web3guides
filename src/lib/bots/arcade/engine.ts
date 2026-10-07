@@ -1,4 +1,4 @@
-import {ART,BUFFER,HZ,LEFT,RIGHT,RULES,type Action,type Build,type Command,type Fighter,type Hit,type MatchSnapshot,type Move,type MoveId,type Phase,type Projectile,type Settings} from './types';
+import {AI_VERSION,ART,BUFFER,HZ,LEFT,RIGHT,RULES,type Action,type Build,type Command,type Fighter,type Hit,type MatchSnapshot,type Move,type MoveId,type Phase,type Projectile,type Settings} from './types';
 import {isSignature,moveFor,totalFrames} from './moves';
 import {replay as replayV1} from './v1/engine';
 import type {MatchSnapshot as LegacySnapshot} from './v1/types';
@@ -15,7 +15,7 @@ export function strikePoint(f:Fighter,m:Move){
  const p=clamp((f.frame-m.startup+1)/Math.max(1,m.active),0,1);
  return {x:q(f.x+f.facing*(m.target.x+(p-.5)*8)),y:q(f.y+m.target.y)};
 }
-type Observation={x:number;y:number;move:MoveId|null;frame:number;facing:1|-1;guard:boolean;down:boolean;hp:number};
+type Observation={x:number;y:number;vx:number;move:MoveId|null;frame:number;actionId:number;facing:1|-1;guard:boolean;down:boolean;hp:number;stun:number;knockedDown:boolean;throwBy:0|1|null;projectiles:Pick<Projectile,'x'|'y'|'vx'|'mine'|'life'>[]};
 type Contact={side:0|1;move:Move;point:{x:number;y:number};projectile?:Projectile};
 
 /** Simulation owns time, contact and result. No DOM, textures or renderer imports. */
@@ -23,9 +23,10 @@ export class ArcadeEngine {
  tick=0;clock=90*HZ;phase:Phase='intro';phaseFrames=90;round=1;draws=0;winner:0|1|null=null;roundWinner:0|1|null=null;hitstop=0;
  fighters:[Fighter,Fighter];projectiles:Projectile[]=[];events:Hit[]=[];commands:Command[]=[];sequence=0;actionSequence=0;projectileSequence=0;
  settings:Settings;seed:number;randomState:number;observations:Observation[][]=[];
+ private aiThreat=0;private aiGuardUntil=0;private aiGuardLow=false;private aiLastObservedAction=0;private aiLastObservedAt=0;private aiHighStreak=0;
  constructor(builds:[Build,Build],seed=75,settings:Partial<Settings>={}){
   this.fighters=[freshFighter(builds[0],0),freshFighter(builds[1],1)];this.seed=seed>>>0;this.randomState=this.seed||1;
-  this.settings={difficulty:'normal',training:false,dummy:'fight',unlimited:false,...settings};
+  this.settings={difficulty:'normal',training:false,dummy:'fight',unlimited:false,aiVersion:AI_VERSION,...settings};
  }
  random(){let n=this.randomState;n^=n<<13;n^=n>>>17;n^=n<<5;this.randomState=n>>>0;return this.randomState/4294967296;}
  notice(side:0|1,message:string){this.fighters[side].notice=message;this.fighters[side].noticeUntil=this.tick+45;}
@@ -203,8 +204,112 @@ export class ArcadeEngine {
   this.projectiles.push({id:++this.projectileSequence,side,move:m.id,facing:f.facing,x:point.x,y:point.y,vx:mine?0:f.facing*(m.id==='super'?21:13),life:mine?230:110,damage:Math.round(m.damage*(f.enhanced?1.2:1)),radius:m.id==='super'?35:mine?33:15,mine,actionId:f.actionId,hit:false});
   f.heat+=m.id==='advance'?12:28;if(f.heat>=82){f.vent=65;this.notice(side,'Cannon venting');}this.event('shot',side,point.x,point.y,0,m.id);
  }
- observe(){this.observations.push(this.fighters.map(f=>({x:f.x,y:f.y,move:f.move,frame:f.frame,facing:f.facing,guard:guarding(f),down:crouching(f),hp:f.hp})));if(this.observations.length>65)this.observations.shift();}
+ observe(){this.observations.push(this.fighters.map((f,side)=>({x:f.x,y:f.y,vx:f.vx,move:f.move,frame:f.frame,actionId:f.actionId,facing:f.facing,guard:guarding(f),down:crouching(f),hp:f.hp,stun:f.stun,knockedDown:f.down>0,throwBy:f.throwBy,projectiles:this.projectiles.filter(p=>p.side===side&&!p.hit).map(p=>({x:p.x,y:p.y,vx:p.vx,mine:p.mine,life:p.life}))})));if(this.observations.length>65)this.observations.shift();}
  ai(){
+  if(this.settings.aiVersion!==AI_VERSION){this.aiLegacy();return;}
+  if(this.settings.training&&this.settings.dummy!=='fight'){
+   this.fighters[1].held=this.settings.dummy==='block'?{guard:true}:{};return;
+  }
+  const f=this.fighters[1],difficulty=this.settings.difficulty;
+  // Observation latency is independent of decision cadence. Reading more often
+  // does not reveal a newly pressed button or a not-yet-visible opponent action.
+  const delay={easy:22,normal:13,hard:9}[difficulty],cadence={easy:10,normal:5,hard:3}[difficulty];
+  if(f.aiHeldUntil<=this.tick)f.held={};
+  if(this.tick<f.aiNext)return;
+  f.aiNext=this.tick+cadence+Math.floor(this.random()*3);
+  const scene=this.observations[this.observations.length-1-delay];if(!scene)return;
+  const seen=scene[0],self=scene[1],distance=Math.abs(seen.x-f.x),sign=seen.x>f.x?1:-1;
+  if(seen.move&&seen.actionId!==this.aiLastObservedAction){
+   this.aiLastObservedAction=seen.actionId;this.aiLastObservedAt=this.tick;
+   this.aiHighStreak=['jab','cross'].includes(seen.move)?Math.min(4,this.aiHighStreak+1):0;
+  }
+  const forward:Action=sign>0?'right':'left',back:Action=sign>0?'left':'right';
+  const chance={easy:.32,normal:.68,hard:.84}[difficulty];
+  const press=(action:Action)=>{this.input(1,action,true,false);this.input(1,action,false,false);};
+  f.held={};f.aiHeldUntil=this.tick+cadence+4;
+  // Own contact feedback may be used immediately, but all opponent choices and
+  // projectiles below come only from the delayed, visible scene.
+  if(f.throwBy!==null){if(self.throwBy!==null&&this.random()<chance)press('throw');return;}
+  if(f.energy>=3000&&f.combo>=3&&self.stun>0&&f.stun>0&&this.random()<chance*.3){press('escape');return;}
+  if(f.move){
+   const m=moveFor(f.move,f.build);
+   if(f.contact&&f.frame>=m.startup&&f.frame<=m.startup+m.active+11&&!f.buffer&&this.random()<chance){
+    if(f.move==='jab')press('light');
+    else if(f.move==='cross'||f.move==='low'||f.move==='step')press('heavy');
+    else if(f.move==='launcher')press('light');
+    else if(f.move==='airLight')press('heavy');
+    else if(m.cancels.includes('super')&&f.energy>=2000)press('super');
+    else if(m.cancels.includes('special'))press('special');
+   }return;
+  }
+  if(!ready(f))return;
+  const observedMove=seen.move?moveFor(seen.move,this.fighters[0].build):null;
+  // Do not chase a downed fighter or throw attacks at an unreachable air target.
+  if(seen.knockedDown){if(distance<170)f.held[back]=true;else if(distance>270)f.held[forward]=true;return;}
+  if(f.y){if(distance<230&&Math.abs(seen.y-f.y)<135)press(f.vy<1?'heavy':'light');return;}
+  // Repeated visible highs can be anticipated. Duck through the next high,
+  // then check its recovery; a low, throw or overhead breaks this read.
+  const learnedHigh=this.aiHighStreak>=(difficulty==='hard'?2:3)&&this.tick-this.aiLastObservedAt<45&&difficulty!=='easy'&&distance<220;
+  const highRecovery=observedMove?.level==='high'&&seen.frame+delay>=observedMove.startup+observedMove.active+3;
+  if(learnedHigh&&(!highRecovery||seen.stun>0)){f.held.guard=true;f.held.down=true;return;}
+  if(learnedHigh&&highRecovery){f.held.down=true;press('light');return;}
+  if(this.tick<this.aiGuardUntil){f.held.guard=true;if(this.aiGuardLow)f.held.down=true;return;}
+  const approachingShot=seen.projectiles.find(p=>{
+   const predicted=p.x+p.vx*delay,remaining=(f.x-predicted)/(p.vx||1);
+   return p.mine?Math.abs(predicted-f.x)<105:remaining>=-2&&remaining<23&&p.y<255;
+  });
+  if(approachingShot&&this.random()<chance){
+   if(!approachingShot.mine&&distance>285&&this.random()<.42){f.held[forward]=true;press('up');}
+   else{this.aiGuardLow=approachingShot.mine;this.aiGuardUntil=this.tick+14;f.held.guard=true;if(this.aiGuardLow)f.held.down=true;}return;
+  }
+  const threatens=observedMove&&seen.frame<observedMove.startup+observedMove.active&&distance<observedMove.target.x+observedMove.radius+80&&seen.facing===-sign;
+  if(threatens&&this.aiThreat!==seen.actionId){
+   this.aiThreat=seen.actionId;
+   if(this.random()<chance){
+    // A high jab has a readable crouching answer; lows and overheads require
+    // different guard heights. Each observed action gets one defensive read.
+    this.aiGuardLow=observedMove.level==='low'||observedMove.level==='high';
+    if(observedMove.level==='throw'&&distance<165){f.held[back]=true;press('up');return;}
+    this.aiGuardUntil=this.tick+Math.max(8,Math.min(22,observedMove.startup+observedMove.active-seen.frame-delay+9));
+    f.held.guard=true;if(this.aiGuardLow)f.held.down=true;return;
+   }
+  }
+  if(seen.y>45&&distance<205&&this.random()<chance){f.held.down=true;press('heavy');return;}
+  // Punish a visible missed swing with a reaching strike, rather than walking
+  // into its recovery and selecting an arbitrary attack after another delay.
+  const recovering=observedMove&&seen.frame>=observedMove.startup+observedMove.active;
+  if(recovering&&distance<250&&this.random()<chance){
+   if(distance>195){f.held[forward]=true;press('light');}
+   else if(seen.down||observedMove.level==='high'){f.held.down=true;press('light');}
+   else press(distance<175?'heavy':'special');return;
+  }
+  if(seen.guard&&distance<215&&this.random()<chance){
+   if(distance<142)press('throw');
+   else if(seen.down){f.held[forward]=true;press('heavy');}
+   else{f.held.down=true;press('light');}return;
+  }
+  const ranged=f.build.style==='ranged',canShoot=f.heat<70&&!f.vent;
+  if(ranged&&distance>255){
+   if(canShoot){if(f.energy>=2000&&this.random()<.25)press('super');else press('special');}
+   else if(distance<365&&f.x>LEFT+40&&f.x<RIGHT-40)f.held[back]=true;
+   else{f.held.guard=true;this.aiGuardUntil=this.tick+12;this.aiGuardLow=false;}return;
+  }
+  if(distance>215){
+   if(distance<305&&this.random()<chance*.36&&!ranged){f.held[forward]=true;press('special');return;}
+   f.held[forward]=true;if(distance>410&&this.random()<chance*.35)press('dash');return;
+  }
+  if(f.energy>=2000&&distance<205&&this.random()<chance*.4){press('super');return;}
+  if(f.energy>=1000&&!f.armed&&this.random()<.23)press('enhance');
+  const roll=this.random();
+  if(distance<175&&roll<.18){f.held[back]=true;return;}
+  if(distance>185){if(roll<.52){f.held[forward]=true;press('light');}else press('special');return;}
+  if(roll<.35)press('light');
+  else if(roll<.57){f.held.down=true;press('light');}
+  else if(roll<.72)press('special');
+  else if(roll<.87){f.held[forward]=true;press('heavy');}
+  else{f.held.down=true;press('special');}
+ }
+ aiLegacy(){
   if(this.settings.training&&this.settings.dummy!=='fight'){
    this.fighters[1].held=this.settings.dummy==='block'?{guard:true}:{};return;
   }
@@ -249,8 +354,9 @@ export class ArcadeEngine {
   else if(this.draws>=3){this.phase='result';this.winner=null;}
   else{this.phase='roundEnd';this.phaseFrames=105;}
  }
- nextRound(){this.round++;this.fighters=this.fighters.map((old,i)=>({...freshFighter(old.build,i as 0|1),energy:old.energy,wins:old.wins})) as [Fighter,Fighter];this.clock=90*HZ;this.hitstop=0;this.phase='intro';this.phaseFrames=60;this.observations=[];}
- resetTraining(){this.fighters=this.fighters.map((f,i)=>freshFighter(f.build,i as 0|1)) as [Fighter,Fighter];this.projectiles=[];this.hitstop=0;this.clock=90*HZ;this.phase='fight';this.observations=[];}
+ private resetAI(){this.aiThreat=0;this.aiGuardUntil=0;this.aiGuardLow=false;this.aiLastObservedAction=0;this.aiLastObservedAt=0;this.aiHighStreak=0;}
+ nextRound(){this.round++;this.fighters=this.fighters.map((old,i)=>({...freshFighter(old.build,i as 0|1),energy:old.energy,wins:old.wins})) as [Fighter,Fighter];this.clock=90*HZ;this.hitstop=0;this.phase='intro';this.phaseFrames=60;this.observations=[];this.resetAI();}
+ resetTraining(){this.fighters=this.fighters.map((f,i)=>freshFighter(f.build,i as 0|1)) as [Fighter,Fighter];this.projectiles=[];this.hitstop=0;this.clock=90*HZ;this.phase='fight';this.observations=[];this.resetAI();}
  packet():MatchSnapshot{return{rules:RULES,art:ART,seed:this.seed,builds:this.fighters.map(f=>f.build) as [Build,Build],settings:this.settings,commands:this.commands.slice()};}
  digest(){return JSON.stringify({tick:this.tick,phase:this.phase,clock:this.clock,winner:this.winner,fighters:this.fighters,projectiles:this.projectiles,events:this.events,random:this.randomState});}
 }
@@ -259,7 +365,8 @@ export function replay(packet:LegacySnapshot,ticks:number):ReturnType<typeof rep
 export function replay(packet:MatchSnapshot|LegacySnapshot,ticks:number){
  if(packet.rules==='mk11-arcade-1'&&packet.art==='mk11-illustrated-1')return replayV1(packet as LegacySnapshot,ticks);
  if(packet.rules!==RULES||packet.art!==ART)throw Error('This replay needs its recorded version.');
- const e=new ArcadeEngine(packet.builds,packet.seed,packet.settings);let i=0;
+ if(packet.settings.aiVersion!==undefined&&packet.settings.aiVersion!=='mk11-ai-1'&&packet.settings.aiVersion!==AI_VERSION)throw Error('This replay needs its recorded AI version.');
+ const e=new ArcadeEngine(packet.builds,packet.seed,{...packet.settings,aiVersion:packet.settings.aiVersion??'mk11-ai-1'});let i=0;
  while(e.tick<ticks){while(i<packet.commands.length&&packet.commands[i].tick===e.tick){const c=packet.commands[i++];e.input(c.side,c.action,c.down);}e.step();}
  while(i<packet.commands.length&&packet.commands[i].tick===ticks){const c=packet.commands[i++];e.input(c.side,c.action,c.down);}return e;
 }

@@ -12,6 +12,8 @@ const files=[
  'scripts/bots/lib/public-accounting.cjs',
  'scripts/bots/lib/public-native-accounting.cjs',
  'scripts/bots/lib/public-native-router.cjs',
+ 'scripts/bots/lib/public-native-quote-router.cjs',
+ 'scripts/bots/lib/public-smart-wallet-settlement.cjs',
  'scripts/bots/lib/worker-health.cjs',
  'scripts/bots/lib/worker-release.cjs',
  'scripts/bots/public-trade-worker-check.cjs',
@@ -20,24 +22,26 @@ const files=[
  'scripts/bots/public-native-accounting-check.cjs',
  'scripts/bots/public-native-router-check.cjs',
  'scripts/bots/native-purchase-ledger-check.cjs',
+ 'scripts/bots/public-native-quote-router-check.cjs',
+ 'scripts/bots/public-smart-wallet-check.cjs',
+ 'scripts/bots/public-source-budget-check.cjs',
+ 'scripts/bots/fixtures/smart-wallet/runtime-code.json',
+ 'scripts/bots/fixtures/smart-wallet/a80aed76.json',
+ 'scripts/bots/fixtures/smart-wallet/4e9590d2.json',
+ 'scripts/bots/fixtures/smart-wallet/3dfb75e1.json',
+ 'scripts/bots/fixtures/smart-wallet/README.md',
+ 'docs/model-kombat-tracking-audit-2026-10-07.md',
  'scripts/bots/install-tracking-worker.sh',
 ];
-if(fs.existsSync(out)&&fs.readdirSync(out).some(x=>!['scripts','package.json','package-lock.json','README.txt','manifest.json'].includes(x)))throw Error('PACKAGE_DIRECTORY_CONTAINS_OTHER_FILES');
+if(fs.existsSync(out)&&fs.readdirSync(out).some(x=>!['scripts','docs','package.json','package-lock.json','README.txt','manifest.json'].includes(x)))throw Error('PACKAGE_DIRECTORY_CONTAINS_OTHER_FILES');
 fs.mkdirSync(out,{recursive:true});
 const manifest={createdAt:new Date().toISOString(),purpose:'Model Kombat public trade collector',deployed:false,files:[]};
 for(const name of files){const data=fs.readFileSync(path.join(root,name)),dest=path.join(out,name);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.writeFileSync(dest,data);manifest.files.push({path:name,sha256:createHash('sha256').update(data).digest('hex')});}
-const checks=['public-router-settlement-check','public-trade-worker-check','public-accounting-check','public-native-accounting-check','public-native-router-check','native-purchase-ledger-check'];
+const checks=['public-router-settlement-check','public-trade-worker-check','public-accounting-check','public-native-accounting-check','public-native-router-check','native-purchase-ledger-check','public-native-quote-router-check','public-smart-wallet-check','public-source-budget-check'];
 fs.writeFileSync(path.join(out,'package.json'),JSON.stringify({name:'model-kombat-tracking-worker',private:true,version:'1.0.0',engines:{node:'>=20'},scripts:{test:checks.map(name=>'node scripts/bots/'+name+'.cjs').join(' && '),check:'node scripts/bots/run-trade-worker.cjs',start:'node scripts/bots/run-trade-worker.cjs --write --watch'},dependencies:{'@next/env':'14.2.3','@supabase/supabase-js':'2.99.1','viem':'2.51.2'}},null,2)+'\n');
-fs.writeFileSync(path.join(out,'README.txt'),`MODEL KOMBAT COLLECTOR - PREPARED, NOT INSTALLED\n\nUse the Windows source checkout's scripts/bots/install-tracking-worker.cjs. It checks free space, verifies files and database setup, tests the candidate, and then replaces only this collector. Database repair is the single companion tracking-update.sql file; the preflight checks whether it is installed. Internal-AI v4 does not need reconfiguration.\n\nThis small package is for an always-on server, separate from Doma Reporter. It contains no passwords, keys, player data, game art or unrelated project code.\n\nUse Node 20 or later and the existing Model Kombat settings (NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DOMA_API_KEY). No new key is needed.\n\nThe service polls every 15 minutes. Draft runs write private health reports only, never competition scores. Read-only check mode writes neither. Installation confirmation is not a completed financial audit.\n\nRetrying identical files reuses the verified release. Downloads use a temporary dedicated npm cache. Successful updates retain the current and previous release and remove only verified older collector releases. Unknown directories are preserved.\n\nThis is not a website deployment, and vercel --prod does not start it. It cannot open the campaign, enroll players, grant coins or transfer rewards.\n\nVerified read-only: 14 fills, $26.684083, and the approved single agent wallet's 31-event accounting reconstruction. Full-account financial readiness and real Strategy settlement still require the new installed collector's audit.\n`);
+fs.writeFileSync(path.join(out,'README.txt'),"MODEL KOMBAT COLLECTOR 4 - PREPARED, NOT INSTALLED\n\nThis update adds verified sponsored smart-wallet swaps and split routes. It does not deploy the website or change campaign settings.\n\nFor the current installation: no new SQL, no new key and no internal-AI change are needed. Keep internal-AI v4 running. Update only the separate collector using the source checkout's existing scripts/bots/install-tracking-worker.cjs. It checks disk space, database setup and the included tests before replacing that collector. Do not rerun old setup SQL for this parser update.\n\nThis package contains public transaction regression fixtures, not private account mappings. It contains no credentials, private player data, game art or Reporter code. Use Node 20+ and the existing Model Kombat settings.\n\nThe installed service polls every 15 minutes. Public chain verification and FIFO accounting run on the Model Kombat host; private wallet/Strategy discovery remains on the existing four-hour schedule. Read-only checks never write scores. Installation success is not financial audit success. Accounting has a three-minute total cycle budget with real cancellation, so large historical backfills leave ROI pending without blocking verified volume for hours. Existing financial snapshots are retained.\n\nRead-only audit on 7 October 2026: one entered participant has 16 verified economic trades totaling $199.904189, including three sponsored routed trades missing from the installed parser. The second entrant has no saved trades at the audited cutoff. These candidate totals have not been written by this update. ROI/profit remains unconfirmed until the complete linked-account history and balances reconcile. See docs/model-kombat-tracking-audit-2026-10-07.md in the source checkout for final audit details.\n\nAfter installation, verify the reported version is mk-public-worker-4-smart-wallet and inspect the new completed audit. Reporter, shared accounting, campaign dates and reward rules are unchanged.\n");
 for(const name of ['package.json','README.txt'])manifest.files.push({path:name,sha256:createHash('sha256').update(fs.readFileSync(path.join(out,name))).digest('hex')});
 const lock=path.join(root,'scripts/bots/tracking-worker-lock.json');
 if(fs.existsSync(lock)){const bytes=fs.readFileSync(lock),parsed=JSON.parse(bytes),pkg=JSON.parse(fs.readFileSync(path.join(out,'package.json')));if(JSON.stringify(parsed.packages[''].dependencies)!==JSON.stringify(pkg.dependencies)||Object.values(parsed.packages).some(p=>p.resolved&&(!p.resolved.startsWith('https://registry.npmjs.org/')||p.link)))throw Error('NONPORTABLE_WORKER_LOCK');fs.writeFileSync(path.join(out,'package-lock.json'),bytes);manifest.files.push({path:'package-lock.json',sha256:createHash('sha256').update(bytes).digest('hex')});}
 fs.writeFileSync(path.join(out,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
-const updateDir='D:/Temp/modelkombat-tracking-update-20261006';fs.mkdirSync(updateDir,{recursive:true});
-const patch=['bots-token-zone-native-eth.sql','bots-token-zone-worker-health.sql'].map(name=>{
- const sql=fs.readFileSync(path.join(root,'scripts/sql',name),'utf8');
- if((sql.match(/^begin;\s*$/gmi)||[]).length!==1||(sql.match(/^commit;\s*$/gmi)||[]).length!==1)throw Error('PATCH_TRANSACTION_INVALID');
- return '-- '+name+'\n'+sql.replace(/^begin;\s*$/gmi,'').replace(/^commit;\s*$/gmi,'');
-}).join('\n');
-fs.writeFileSync(path.join(updateDir,'tracking-update.sql'),'-- Model Kombat collector repair: run this entire file once. Safe to rerun.\n-- No campaign opening, score changes, new keys or Reporter changes.\nbegin;\n'+patch+'\ncommit;\nselect (public.mkz_worker_health(null)->>\'nativeAccountingReady\')::boolean as tracking_update_ready;\n');
 console.log(out);

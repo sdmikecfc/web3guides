@@ -30,6 +30,9 @@ import {
   type ScoreResult,
 } from "./shared";
 import { GAME_RULES, ZERO_STATS, type PlayerStats } from "@/lib/s4/games";
+// LAUNCH WARS ARCADE: under /arcade the chrome drops the S4 season words
+// (currency, points, runs per day) and links back to the arcade.
+import { useArcade } from "@/lib/arcade/useArcade";
 
 export interface GameInput {
   px: number | null; // pointer x in canvas CSS px (null if never moved)
@@ -74,6 +77,8 @@ export function GameShell<S>({
   const attempts = rules ? rules.attempts : 3;
 
   const session = useS4Session();
+  const arcade = useArcade();
+  const gameBase = arcade ? "/arcade" : "/s4/games";
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<S | null>(null);
   const rafRef = useRef(0);
@@ -286,6 +291,14 @@ export function GameShell<S>({
                   <div style={{ color: "#8b95ad", fontSize: 14 }}>Practice run. Nothing was saved.</div>
                 ) : banking ? (
                   <div style={{ color: "#aeb6c8", fontSize: 14 }}>Banking…</div>
+                ) : result?.ok && arcade ? (
+                  <div style={{ color: "#86f0c4", fontSize: 14, lineHeight: 1.5 }}>
+                    Your best score today is on the arcade board.
+                    <br />
+                    <span style={{ color: "#8b95ad" }}>
+                      {result.improved ? "New best today!" : "No improvement on today's best."}
+                    </span>
+                  </div>
                 ) : result?.ok ? (
                   <div style={{ color: "#86f0c4", fontSize: 14, lineHeight: 1.5 }}>
                     +{result.credits ?? 0} {THEME.playCurrency}
@@ -334,20 +347,22 @@ export function GameShell<S>({
       <p style={{ color: "#5b6478", fontSize: 12, marginTop: 12, textAlign: "center", lineHeight: 1.5 }}>
         {practice
           ? "Practice arena. Scores here never save and never bank."
-          : `Best of ${attempts} runs a day counts. Runs earn ${THEME.playCurrency} plus a little ${THEME.points} for your ${THEME.team.singular}.`}
+          : arcade
+            ? "The arcade is for fun. Scores here pay nothing and do not carry into a season. Your best score goes on the board."
+            : `Best of ${attempts} runs a day counts. Runs earn ${THEME.playCurrency} plus a little ${THEME.points} for your ${THEME.team.singular}.`}
         <br />
         {/* plain <a>, not <Link>: the practice flag is read once on page load */}
         {/* inline padding + negative margin: a 40px+ mobile tap target, no layout shift */}
         {practice ? (
           <a
-            href={`/s4/games/${game}`}
+            href={`${gameBase}/${game}`}
             style={{ color: "#8b95ad", display: "inline-block", padding: "13px 10px", margin: "-13px -10px" }}
           >
             Ready to play for real?
           </a>
         ) : (
           <a
-            href={`/s4/games/${game}?practice=1`}
+            href={`${gameBase}/${game}?practice=1`}
             style={{ color: "#8b95ad", display: "inline-block", padding: "13px 10px", margin: "-13px -10px" }}
           >
             Warm up in practice mode
@@ -363,14 +378,15 @@ export function GameShell<S>({
         minHeight: "100dvh",
         background: "radial-gradient(900px 500px at 50% -10%, #131a2e 0%, #060912 60%)",
         color: "#e8ecf5",
-        padding: "106px 16px 56px", // 52 nav + 38 contract ticker (both fixed overlays) + breathing room
+        // 52 nav + 38 contract ticker (both fixed overlays) + breathing room; the arcade has the nav only
+        padding: arcade ? "76px 16px 56px" : "106px 16px 56px",
         fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
       }}
     >
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <Link
-            href="/s4/play"
+            href={arcade ? "/arcade" : "/s4/play"}
             style={{
               color: "#cdd4e4",
               textDecoration: "none",
@@ -384,7 +400,7 @@ export function GameShell<S>({
               margin: "-11px 0 -11px -10px",
             }}
           >
-            ‹ Games
+            {arcade ? "‹ Arcade" : "‹ Games"}
           </Link>
           <span style={{ fontSize: 12, letterSpacing: 2, color: ACCENT, textTransform: "uppercase", fontWeight: 700 }}>
             {title}
@@ -403,10 +419,10 @@ export function GameShell<S>({
             {!session.token && (
               <p style={{ textAlign: "center", marginTop: 16, fontSize: 12.5, color: "#5b6478", lineHeight: 1.5 }}>
                 <a
-                  href={`/s4/games/${game}?practice=1`}
+                  href={`${gameBase}/${game}?practice=1`}
                   style={{ color: "#8b95ad", display: "inline-block", padding: "13px 10px", margin: "-13px -10px" }}
                 >
-                  Or warm up in practice mode — no wallet needed
+                  {arcade ? "Or warm up in practice mode. No wallet needed." : "Or warm up in practice mode — no wallet needed"}
                 </a>
               </p>
             )}

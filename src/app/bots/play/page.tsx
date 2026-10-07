@@ -16,7 +16,7 @@ export default function PlayPage(){return <main className={css.page}>
     <img className={css.arcadeFighter} src="/bots-arcade/v1/speed-jab-0.png" width="367" height="441" alt="Blue and ivory cartoon fighter with fists raised"/>
     <span className={css.artCaption}>MOVE · FIGHT · COMBO</span>
    </div>
-   <div className={css.copy}><p>Move, jump and land combos. Win two rounds per fight. Beat six rivals to clear the ladder.</p><small>Free practice · No coins or prize points</small><Link className={css.playButton} prefetch={false} href={ARCADE_ENTRY_URL}>PLAY ARCADE <span aria-hidden="true">↗</span></Link></div>
+   <div className={css.copy}><p>Six rivals. Three lives. One boss. Move, jump and land combos to climb the ladder.</p><small>Free to play · No coins or prize points</small><Link className={css.playButton} prefetch={false} href={ARCADE_ENTRY_URL}>PLAY ARCADE <span aria-hidden="true">↗</span></Link></div>
   </article>
   <article className={`${css.game} ${css.build}`} aria-labelledby="build-title">
    <div className={css.visual}>
@@ -24,7 +24,7 @@ export default function PlayPage(){return <main className={css.page}>
     <img className={css.builderFighter} src="/bots-playtest/intro/tank.png" width="560" height="660" alt="Customizable teal robot holding its warhammer on a garage stand"/>
     <span className={css.artCaption}>ASSEMBLE · PERSONALIZE · WIN</span>
    </div>
-   <div className={css.copy}><p>Pick seven parts. Your robot fights automatically; you time its Special. Beat the rival to win.</p><small>First robot free · Fight to earn coins for parts</small><Link className={css.playButton} prefetch={false} href={BUILD_ENTRY_URL}>BUILD MY ROBOT <span aria-hidden="true">↗</span></Link></div>
+   <div className={css.copy}><p>Build your robot. Fight for coins. Upgrade its parts or build another. In battle, you time its Special.</p><small>First robot free · Room for five in your garage</small><Link className={css.playButton} prefetch={false} href={BUILD_ENTRY_URL}>BUILD MY ROBOT <span aria-hidden="true">↗</span></Link></div>
   </article>
  </section>
  <footer className={css.footer}><Link className={css.garage} prefetch={false} href="/bots/workshop?view=garage">My garage <span aria-hidden="true">→</span></Link><p>Want token prizes? Automatic battle wins can earn points. You must also qualify through trading. <Link href="/bots/rules">How prizes work ↗</Link></p></footer>

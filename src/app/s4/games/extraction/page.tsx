@@ -131,6 +131,9 @@ import {
   type ScoreResult,
 } from "../_shared/shared";
 import { GAME_RULES, STAT_EFFECTS, ZERO_STATS, type PlayerStats } from "@/lib/s4/games";
+// LAUNCH WARS ARCADE: under /arcade the chrome drops the S4 season words and
+// links back to the arcade (banking already switches inside ../_shared/shared).
+import { useArcade } from "@/lib/arcade/useArcade";
 import { createSfx, type Sfx } from "../_shared/sfx";
 
 const GAME = "extraction";
@@ -985,6 +988,8 @@ interface World {
 // =============================================================================
 export default function ExtractionGame() {
   const session = useS4Session();
+  const arcade = useArcade();
+  const gameBase = arcade ? "/arcade" : "/s4/games";
   const mountRef = useRef<HTMLDivElement | null>(null);
   const worldRef = useRef<World | null>(null);
   const rafRef = useRef(0);
@@ -2508,6 +2513,14 @@ export default function ExtractionGame() {
                   <div style={{ color: "#8b95ad", fontSize: 14 }}>Practice run. Nothing was saved.</div>
                 ) : banking ? (
                   <div style={{ color: "#aeb6c8", fontSize: 14 }}>Banking…</div>
+                ) : result?.ok && arcade ? (
+                  <div style={{ color: "#86f0c4", fontSize: 14, lineHeight: 1.5 }}>
+                    Your best score today is on the arcade board.
+                    <br />
+                    <span style={{ color: "#8b95ad" }}>
+                      {result.improved ? "New best today!" : "No improvement on today's best."}
+                    </span>
+                  </div>
                 ) : result?.ok ? (
                   <div style={{ color: "#86f0c4", fontSize: 14, lineHeight: 1.5 }}>
                     +{result.credits ?? 0} {THEME.playCurrency}
@@ -2563,15 +2576,17 @@ export default function ExtractionGame() {
       <p style={{ color: "#5b6478", fontSize: 12, marginTop: 12, textAlign: "center", lineHeight: 1.5 }}>
         {practice
           ? "Practice arena. Scores here never save and never bank."
-          : `Best of ${attempts} runs a day counts. Runs earn ${THEME.playCurrency} plus a little ${THEME.points} for your ${THEME.team.singular}.`}
+          : arcade
+            ? "The arcade is for fun. Scores here pay nothing and do not carry into a season. Your best score goes on the board."
+            : `Best of ${attempts} runs a day counts. Runs earn ${THEME.playCurrency} plus a little ${THEME.points} for your ${THEME.team.singular}.`}
         <br />
         {/* plain <a>, not <Link>: the practice flag is read once on page load */}
         {practice ? (
-          <a href={`/s4/games/${GAME}`} style={{ color: "#8b95ad" }}>
+          <a href={`${gameBase}/${GAME}`} style={{ color: "#8b95ad" }}>
             Ready to ride for real?
           </a>
         ) : (
-          <a href={`/s4/games/${GAME}?practice=1`} style={{ color: "#8b95ad" }}>
+          <a href={`${gameBase}/${GAME}?practice=1`} style={{ color: "#8b95ad" }}>
             Warm up in practice mode
           </a>
         )}
@@ -2585,7 +2600,8 @@ export default function ExtractionGame() {
         minHeight: "100dvh",
         background: "radial-gradient(900px 500px at 50% -10%, #131a2e 0%, #060912 60%)",
         color: "#e8ecf5",
-        padding: "106px 16px 56px", // 52 nav + 38 contract ticker (both fixed overlays) + breathing room
+        // 52 nav + 38 contract ticker (both fixed overlays) + breathing room; the arcade has the nav only
+        padding: arcade ? "76px 16px 56px" : "106px 16px 56px",
         fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
       }}
     >
@@ -2608,7 +2624,7 @@ export default function ExtractionGame() {
       <div style={{ maxWidth: 460, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <Link
-            href="/s4/play"
+            href={arcade ? "/arcade" : "/s4/play"}
             style={{
               color: "#cdd4e4",
               textDecoration: "none",
@@ -2622,7 +2638,7 @@ export default function ExtractionGame() {
               margin: "-11px 0 -11px -10px",
             }}
           >
-            ‹ Games
+            {arcade ? "‹ Arcade" : "‹ Games"}
           </Link>
           <span style={{ fontSize: 12, letterSpacing: 2, color: ACCENT, textTransform: "uppercase", fontWeight: 700 }}>
             Extraction

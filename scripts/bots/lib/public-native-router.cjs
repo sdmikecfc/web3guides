@@ -22,6 +22,8 @@ async function verifyNativeRouterPurchase({transaction:tx,receipt,native,wallet,
  const abi=parseAbi(['function execute(bytes commands,bytes[] inputs) payable']);
  let call;try{call=decodeFunctionData({abi,data:tx.input});if(lower(encodeFunctionData({abi,functionName:call.functionName,args:call.args}))!==lower(tx.input))fail('CALLDATA_INVALID');}catch{fail('CALLDATA_INVALID');}
  const [commands,inputs]=call.args,withFee=commands==='0x0b0105040c';
+ const quoteConversion=await require('./public-native-quote-router.cjs').verifyNativeQuoteConversion({transaction:tx,receipt,native,wallet,router:ROUTER,value,commands,inputs,poolFor});
+ if(quoteConversion)return {...quoteConversion,routerRuntimeHash:RUNTIME_HASH};
  if(!withFee&&commands!=='0x0b01040c'||inputs.length!==(withFee?5:4))fail('UNSUPPORTED_COMMANDS');
  const params=(names,data)=>{try{const ts=types(...names),p=decodeAbiParameters(ts,data);if(lower(encodeAbiParameters(ts,p))!==lower(data))fail('CALLDATA_INVALID');return p;}catch{fail('CALLDATA_INVALID');}};
  const resolve=x=>BigInt(x)===1n?wallet:BigInt(x)===2n?ROUTER:lower(x);

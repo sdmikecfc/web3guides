@@ -10,11 +10,11 @@ import WorkshopItemPages from './WorkshopItemPages';
 import css from './workshop-journey.module.css';
 
 type Act=(action:Action8)=>Promise<boolean>;
-export function FightResults({fight,replay=false,onMoment,onAgain,onGarage,onPin,onShare}:{fight:Fight8;replay?:boolean;onMoment:(start:number,end?:number)=>void;onAgain:()=>void;onGarage:()=>void;onPin?:()=>void;onShare?:()=>void}){
+export function FightResults({fight,replay=false,onMoment,onAgain,onGarage,onPin,onShare,nextStep}:{fight:Fight8;replay?:boolean;onMoment:(start:number,end?:number)=>void;onAgain:()=>void;onGarage:()=>void;onPin?:()=>void;onShare?:()=>void;nextStep?:{label:string;detail:string;onAction:()=>void}}){
  const report=fight.report;
  return <section className={css.results} aria-label="Fight result"><div><strong>{fight.winner===0?'You won!':fight.winner===1?'The rival won.':'An even match.'}</strong><span> {fight.coins===undefined?(replay?'Recorded coin reward unavailable':'Saving result…'):`${replay?'Recorded reward: ': '+'}${fight.coins} game coins`}{fight.mode==='training'?' · Training · No repairs':''}</span><span>{fight.competition?.status==='reserved'?'Saving competition points…':fight.competition?`${fight.competition.points??0} competition points · ${fight.competition.reason}`:'This fight was not entered for competition scoring.'}</span></div>
  {replay&&<small>Replay only. Watching does not award coins or competition points.</small>}
- {!replay&&(fight.coins??0)>0&&<p>Spend your game coins on better parts or your next robot.</p>}
+ {!replay&&fight.coins!==undefined&&(nextStep?<p className={css.rewardNext}><span>{nextStep.detail}</span><button onClick={nextStep.onAction}>{nextStep.label} →</button></p>:(fight.coins??0)>0&&<p>Spend your game coins on better parts or your next robot.</p>)}
  {report?.milestones.map(id=><strong className={css.earned} key={id}>✦ {MILESTONES[id].title} earned</strong>)}
  <div className={css.actions}><button className={css.primary} onClick={onAgain}>Fight again →</button>{report&&<button onClick={()=>onMoment(report.highlight.start,report.highlight.end)}>Watch best moment</button>}<button onClick={()=>onMoment(0)}>Full replay</button><button onClick={onGarage}>Garage</button>{onPin&&<button onClick={onPin}>Pin this fight</button>}{onShare&&<button onClick={onShare}>Share fight</button>}</div>
  {report&&<details><summary>What happened?</summary>{report.moments.map((m,i)=><button className={css.fact} key={i} onClick={()=>onMoment(Math.max(0,m.tick-180))}>{m.text} <small>Watch {Math.floor(m.tick/60)}s ↗</small></button>)}<p>{report.suggestion}</p></details>}

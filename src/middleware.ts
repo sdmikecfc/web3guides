@@ -21,6 +21,7 @@ export function middleware(request: NextRequest) {
     if(request.headers.get('authorization')!==`Basic ${btoa(`${user}:${pass}`)}`)return new NextResponse('Authentication required',{status:401,headers:{'WWW-Authenticate':'Basic realm="Domain Kitchen reports", charset="UTF-8"','Cache-Control':'no-store'}});
   }
 
+
   // ── Ambassador dashboard gate (/dash) — HTTP Basic Auth, team-only ───────
   // Sits BEFORE all host branches so it wins on every host. Basic auth is
   // deliberate: browser-native prompt, zero UI code, and the gate lives
@@ -207,10 +208,23 @@ export function middleware(request: NextRequest) {
     // reaches the S7 tree while the root still serves the live season. Without
     // this, /s7 was rewritten to /s6/s7 and 404ed (found 2026-08-25, the day
     // S7 shipped: Mike had named launchwars.xyz/s7 as the link).
-    seasonUrl.pathname =
-      pathname.startsWith("/s6") || pathname.startsWith("/s7")
-        ? pathname
-        : `${LAUNCHWARS_ROOT_SEASON}${pathname === "/" ? "" : pathname}`;
+    //
+    // OFF-SEASON (2026-09-21, no season live): the ROOT serves the arcade
+    // (src/app/arcade: every season's games, fresh boards). Only "/" moves.
+    // Every other bare path keeps the LAUNCHWARS_ROOT_SEASON fallback, so old
+    // shared root links (launchwars.xyz/board, /hq) still resolve. When the
+    // next season opens, set LAUNCHWARS_OFF_SEASON to false and point
+    // LAUNCHWARS_ROOT_SEASON at it; /arcade stays reachable either way.
+    const LAUNCHWARS_OFF_SEASON = true;
+    const inArcade = pathname === "/arcade" || pathname.startsWith("/arcade/");
+    if (LAUNCHWARS_OFF_SEASON && pathname === "/") {
+      seasonUrl.pathname = "/arcade";
+    } else {
+      seasonUrl.pathname =
+        pathname.startsWith("/s6") || pathname.startsWith("/s7") || inArcade
+          ? pathname
+          : `${LAUNCHWARS_ROOT_SEASON}${pathname === "/" ? "" : pathname}`;
+    }
     return withRef(NextResponse.rewrite(seasonUrl));
   }
 

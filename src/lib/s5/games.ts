@@ -7,6 +7,11 @@
  * ONCE here, never duplicated across routes.
  */
 
+// Arcade seam. lib/arcade/mode is a pure module (no imports), safe for the
+// server routes that import this file. Outside /arcade tokenKey() returns
+// the season key it was given, unchanged.
+import { tokenKey } from "@/lib/arcade/mode";
+
 export const SEASON_KEY = "s5";
 
 /** Combined Medals cap per wallet per UTC day across ALL games. Games are a
@@ -120,7 +125,8 @@ export const SESSION_STORAGE_KEY = "s5_game_token";
 export function readSessionToken(): string {
   if (typeof window === "undefined") return "";
   try {
-    return localStorage.getItem(SESSION_STORAGE_KEY) || sessionStorage.getItem(SESSION_STORAGE_KEY) || "";
+    const key = tokenKey(SESSION_STORAGE_KEY);
+    return localStorage.getItem(key) || sessionStorage.getItem(key) || "";
   } catch {
     return ""; // storage blocked (private mode, embedded webview): stay a guest
   }
@@ -129,8 +135,9 @@ export function readSessionToken(): string {
 export function writeSessionToken(token: string): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(SESSION_STORAGE_KEY, token);
-    sessionStorage.setItem(SESSION_STORAGE_KEY, token); // keep the old readers working
+    const key = tokenKey(SESSION_STORAGE_KEY);
+    localStorage.setItem(key, token);
+    sessionStorage.setItem(key, token); // keep the old readers working
   } catch {
     /* storage blocked: the session lives for this page only */
   }
@@ -170,8 +177,9 @@ export function buildPlaySessionMessage(
 export function clearSessionToken(): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.removeItem(SESSION_STORAGE_KEY);
-    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    const key = tokenKey(SESSION_STORAGE_KEY);
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
   } catch {
     /* nothing to clear */
   }

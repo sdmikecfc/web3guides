@@ -5,3 +5,5 @@
 .customScroll{max-height:calc(100dvh - 310px);min-height:100px;overflow:auto;overscroll-behavior:contain;padding:2px 6px 10px 2px}.customScroll .model{height:210px}@media(max-width:650px){.customScroll .model{height:150px}.customScroll .actions{gap:5px}.customScroll label{font-size:.85rem}}@media(max-height:480px){.customScroll{max-height:155px}.customScroll .model{height:130px}}
 
 .itemScroll{max-height:calc(100dvh - 390px);min-height:110px;overflow:auto;overscroll-behavior:contain;padding:0 6px 6px 0}.itemScroll summary{cursor:pointer;padding:10px}.itemScroll img{max-height:210px;object-fit:contain}@media(max-height:480px){.itemScroll{max-height:120px}.itemScroll img{max-height:100px}}
+
+.rewardNext{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #73838566;padding-top:8px;font-size:.85rem}.rewardNext button{flex-shrink:0}@media(max-width:650px){.rewardNext{flex-wrap:wrap;gap:4px}}

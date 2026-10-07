@@ -12,13 +12,32 @@ function lossless(text){
 }
 function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000}){
  if(!apiKey)throw Error('EXISTING_DOMA_API_KEY_REQUIRED');
+ let deadline=Infinity,budgetController=null;
+ const checkBudget=()=>{if(Date.now()>=deadline||budgetController?.signal.aborted)throw Error('ACCOUNTING_TIME_BUDGET_EXCEEDED');};
+ const pause=ms=>new Promise((resolve,reject)=>{
+  const signal=budgetController?.signal;
+  const done=()=>{signal?.removeEventListener('abort',cancel);resolve();};
+  const timer=setTimeout(done,ms);
+  const cancel=()=>{clearTimeout(timer);signal?.removeEventListener('abort',cancel);reject(Error('ACCOUNTING_TIME_BUDGET_EXCEEDED'));};
+  if(signal?.aborted)cancel();else signal?.addEventListener('abort',cancel,{once:true});
+ });
  let last=0,seq=0;const receipts=new Map(),blocks=new Map(),calls=new Map(),atBlocks=new Map(),balances=new Map(),transactions=new Map(),implementations=new Map(),native=new Map(),codes=new Map(),nativePurchases=new Map();
  async function request(url,body,headers={}){
   for(let attempt=0;attempt<4;attempt++){
-   const wait=Math.max(0,last+delay-Date.now());if(wait)await new Promise(r=>setTimeout(r,wait));last=Date.now();
-   const r=await fetcher(url,{method:body?'POST':'GET',redirect:'error',headers:{Accept:'application/json',...(body?{'Content-Type':'application/json'}:{}),...headers},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(30000)});
-   if(r.status===429||r.status>=500){await new Promise(r=>setTimeout(r,1000*2**attempt));continue;}
-   if(!r.ok)throw Error('PUBLIC_HTTP_'+r.status);return lossless(await r.text());
+   checkBudget();
+   const wait=Math.max(0,last+delay-Date.now());if(wait)await pause(wait);last=Date.now();
+   checkBudget();
+   const signals=[AbortSignal.timeout(30000)];if(budgetController)signals.push(budgetController.signal);
+   let r,text;
+   try{r=await fetcher(url,{method:body?'POST':'GET',redirect:'error',headers:{Accept:'application/json',...(body?{'Content-Type':'application/json'}:{}),...headers},body:body?JSON.stringify(body):undefined,signal:AbortSignal.any(signals)});text=await r.text();}
+   catch(error){checkBudget();const timeout=['AbortError','TimeoutError'].includes(error.name),network=error instanceof TypeError&&/fetch|network/i.test(error.message);
+    if(!timeout&&!network)throw error;
+    if(attempt===3)throw Error(timeout?'PUBLIC_REQUEST_TIMEOUT':'PUBLIC_NETWORK_UNAVAILABLE');
+    await pause(1000*2**attempt);continue;
+   }
+   checkBudget();
+   if(r.status===429||r.status>=500){await pause(1000*2**attempt);continue;}
+   if(!r.ok)throw Error('PUBLIC_HTTP_'+r.status);return lossless(text);
   }
   throw Error('PUBLIC_RETRIES_EXHAUSTED');
  }
@@ -156,6 +175,25 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000}){
   return nativePurchases.get(tx);
  }
  return {
+  checkBudget,
+  async withDeadline(at,task){
+   if(budgetController||!Number.isFinite(at))throw Error('INVALID_ACCOUNTING_BUDGET');
+   deadline=at;budgetController=new AbortController();
+   const timer=setTimeout(()=>budgetController?.abort(),Math.max(0,at-Date.now()));
+   try{checkBudget();const result=await task();checkBudget();return result;}
+   finally{clearTimeout(timer);budgetController=null;deadline=Infinity;}
+  },
+  async smartWalletSettlement(swaps){
+   if(!swaps.length)return null;
+   const tx=swaps[0].tx;
+   if(!transactions.has(tx))transactions.set(tx,await rpc('eth_getTransactionByHash',[tx]));
+   const adapter=require('./public-smart-wallet-settlement.cjs'),transaction=transactions.get(tx);
+   if(transaction.to?.toLowerCase()!==adapter.ENTRY)return null;
+   if(!receipts.has(tx))receipts.set(tx,await rpc('eth_getTransactionReceipt',[tx]));
+   return adapter.verifySmartWalletSettlement({swaps,transaction,receipt:receipts.get(tx),codeAt:code,
+    poolFor:(a,b,fee,at)=>read(factory,'function getPool(address,address,uint24) view returns(address)','getPool',[a,b,fee],at),
+    userOperationHash:(op,at)=>read(adapter.ENTRY,adapter.HASH_ABI,'getUserOpHash',[op],at)});
+  },
   async routerSettlement(s,receipt){
    const {verifyRouterSettlement,ROUTER,IMPLEMENTATION_SLOT}=require('./public-router-settlement.cjs');
    if(!transactions.has(s.tx))transactions.set(s.tx,await rpc('eth_getTransactionByHash',[s.tx]));

@@ -55,3 +55,18 @@
 @media(min-width:901px){.tradingShell .dashboard{padding:18px max(24px,4vw)}}
 
 @media(max-height:500px){.shell.manualShell{grid-template-rows:0 28px minmax(0,1fr) 44px}.manualShell>.header{visibility:hidden;padding:0;overflow:hidden}.manualShell>:nth-child(2){height:28px;min-height:0;overflow:hidden}.manualShell>.nav{padding:2px}.manualShell .nav button{min-height:36px}}
+/* The guide occupies its own strip: it never floats over a fighter or stand. */
+.garage{display:flex;flex-direction:column}
+.garageInterior{position:relative;flex:1;min-height:0}
+.nextStep{display:flex;align-items:center;gap:16px;flex:none;padding:12px 22px;background:var(--mk-chrome);border-bottom:1px solid var(--mk-edge);z-index:2}
+.nextStep>div{flex:1;min-width:0;display:grid;gap:3px}
+.nextStep small{font:800 9px system-ui;letter-spacing:1.5px;color:var(--mk-teal)}
+.nextStep strong{font-size:17px;line-height:1.15}
+.nextStep p{font-size:12px;line-height:1.3}
+.nextStep>.primary{flex:none;max-width:42%;font-size:12px}
+.nextStep .dismissGuide{flex:none;padding:0;width:36px;min-height:36px;background:transparent;font:24px system-ui;border-color:transparent;color:var(--mk-muted)}
+.ownedCount{font-style:normal;font-size:10px;color:var(--mk-teal);line-height:1.3}
+.ownershipSummary{display:grid;gap:5px;margin:10px 0!important;padding:10px 12px;background:var(--mk-bg);border:1px solid var(--mk-edge);border-radius:10px}
+.fitChoice{display:grid;gap:6px;margin:14px 0;font-size:13px}
+@media(max-width:650px){.nextStep{gap:8px;padding:10px 12px;align-items:center}.nextStep strong{font-size:14px}.nextStep p{font-size:10px}.nextStep>.primary{padding:8px;font-size:10px;max-width:37%}.nextStep .dismissGuide{width:28px;min-height:36px}.nextStep small{font-size:8px}.garageInterior .roomTitle{top:12px}.garageInterior .roomTitle h1{font-size:26px}.garageInterior .roomTitle>p{display:none}.garageInterior .clipboard{gap:5px;flex-wrap:wrap;bottom:140px}.garageInterior .clipboard button{flex:1;min-width:70px}.garageInterior .clipboard h2{max-width:none;flex:1 0 100%}.garageInterior .garageScene{inset:58px 0 220px}.garageInterior .garageFooter{gap:7px}.garageInterior .garageFooter>span{font-size:8px}.garageInterior .garageFooter>button{font-size:10px;padding:6px}}
+@media(max-height:500px) and (min-width:651px){.nextStep{padding:5px 12px;gap:10px}.nextStep>div{grid-template-columns:auto 1fr;column-gap:9px;align-items:baseline}.nextStep small{grid-row:1/3;align-self:center}.nextStep strong{font-size:13px}.nextStep p{font-size:10px}.nextStep>.primary{padding:5px 9px;min-height:34px;font-size:10px}.nextStep .dismissGuide{min-height:30px}.garageInterior .clipboard{gap:3px;padding:8px}.garageInterior .clipboard button{min-height:24px;font-size:9px;padding:3px}.garageInterior .clipboard small,.garageInterior .clipboard p{display:none}.garageInterior .roomTitle h1{font-size:21px}}

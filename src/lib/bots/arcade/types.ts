@@ -1,5 +1,8 @@
 export const RULES = 'mk11-arcade-2' as const;
 export const ART = 'mk11-illustrated-2' as const;
+/** AI is pinned separately: combat and older recorded outcomes stay unchanged. */
+export const AI_VERSION = 'mk11-ai-2' as const;
+export type AIVersion = 'mk11-ai-1' | typeof AI_VERSION;
 export const HZ = 60;
 export const BUFFER = 6;
 export const LEFT = 145, RIGHT = 1135, FLOOR = 570;
@@ -18,5 +21,5 @@ export type Fighter = {build:Build;x:number;y:number;vx:number;vy:number;facing:
 export type Hit = {tick:number;kind:'hit'|'block'|'break'|'throw'|'tech'|'escape'|'land'|'shot'|'round'|'finish';x:number;y:number;side:0|1;damage:number;move?:MoveId;combo?:number};
 export type Projectile = {id:number;side:0|1;move:MoveId;facing:1|-1;x:number;y:number;vx:number;life:number;damage:number;radius:number;mine:boolean;actionId:number;hit:boolean};
 export type Phase = 'intro'|'fight'|'roundEnd'|'finish'|'finisher'|'result';
-export type Settings = {difficulty:'easy'|'normal'|'hard';training:boolean;dummy:'idle'|'block'|'fight';unlimited:boolean};
+export type Settings = {difficulty:'easy'|'normal'|'hard';training:boolean;dummy:'idle'|'block'|'fight';unlimited:boolean;aiVersion?:AIVersion};
 export type MatchSnapshot = {rules:typeof RULES;art:typeof ART;seed:number;builds:[Build,Build];settings:Settings;commands:Command[]};

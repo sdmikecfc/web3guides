@@ -88,7 +88,12 @@ async function advance(db:BotsDb,owner:Identity,g:Garage,now:number){
 async function response(db:BotsDb,owner:Identity,list:Garage[],g:Garage|null,now:number,engine:Awaited<ReturnType<typeof simulateWorkshopFight>>|null=null){
   const {data,error}=await db.from('mk8_player_days').select('day,completed,bonus_paid').eq('player_id',owner.player);if(error)failure(error);
   const state=g?structuredClone(g.state):null;
-  if(state?.active){state.active.server=true;state.active.ticks=engine?.tick??0;state.active.inputs=engine?.snapshot().inputs??state.active.inputs;}
+  if(state?.active){
+    state.active.server=true;state.active.ticks=engine?.tick??0;
+    // A just-accepted Special is queued for the following tick, so it is not
+    // in the executed-input snapshot yet. Publish both without advancing time.
+    if(engine)state.active.inputs=[...engine.snapshot().inputs,...(state.active.inputs??[]).filter(i=>i.who===0&&i.tick>engine.tick)];
+  }
   return {ok:true,journey:true,session:{kind:owner.kind,address:owner.wallet},garageId:g?.id??null,garages:list.map(x=>({id:x.id,name:x.name,robots:x.state.robots.map(r=>({id:r.id,name:r.name})),activeFight:x.state.active?.id??null})),state,days:Object.fromEntries((data??[]).map(d=>[String(d.day).slice(0,10),d.completed])),serverNow:now};
 }
 export async function journeyGet(req:Request){
@@ -108,7 +113,7 @@ export async function journeyPost(req:Request,body:any){
   const {data:prior,error}=await db.from('mk8_journey_requests').select('request_id').eq('garage_id',g.id).eq('request_id',id).maybeSingle();if(error)failure(error);
   if(prior)return response(db,owner,list,g,Date.now());
   if(body.revision!==g.revision)throw new Refusal(409,'Your garage changed. Refresh it and retry.');
-  const action=body.action,now=Date.now();let next:Workshop8;
+  const action=body.action,now=Date.now();let next:Workshop8,responseEngine:Awaited<ReturnType<typeof simulateWorkshopFight>>|null=null;
   if(action?.kind==='start'){
     if(g.state.active)return response(db,owner,list,g,now);
     const own=g.state.robots.find(r=>r.id===action.robotId),training=action.mode==='training',loaner=action.loaner===true;
@@ -128,9 +133,10 @@ export async function journeyPost(req:Request,body:any){
     const result=await advance(db,owner,g,now);g.state=result.state;g.revision=result.state.revision;
     if(!result.engine)return response(db,owner,list,g,now);
     if(!result.engine.special(0,id))throw new Refusal(400,'Your Special is not ready.');
+    responseEngine=result.engine;
     next=structuredClone(g.state);next.journey??=freshJourney();if(!next.journey.lessons.includes('special'))next.journey.lessons.push('special');next.active!.inputs=[...(next.active!.inputs??[]).filter(i=>i.who===0),{id,who:0,tick:result.engine.tick+1}];next.revision++;
   }else {try{if(action?.kind==='transferStarter')next=applyBrowserStarter(g.state,action.draft,action.finish===true,id,now);else {const intention=playerAction(action,id);if(intention.kind==='buy'&&!dailyItems(new Date(now).toISOString().slice(0,10)).some(i=>i.id===intention.item))throw new Refusal(400,'This part is not in today’s shipment. Add it to your plan.');next=changeWorkshop(g.state,intention,now);}}catch(e){if(e instanceof Refusal)throw e;throw new Refusal(400,(e as Error).message)}}
-  g.state=await commit(db,owner,g,id,next);g.revision=g.state.revision;return response(db,owner,list,g,now);
+  g.state=await commit(db,owner,g,id,next);g.revision=g.state.revision;return response(db,owner,list,g,now,responseEngine);
 }
 export async function journeyClaim(req:Request){
   sameOrigin(req);const auth=sessionFromRequest(req),token=guestSecret(req);if(!auth||!token)throw new Refusal(401,'Sign in while your guest garage is open.');

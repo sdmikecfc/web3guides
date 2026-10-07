@@ -119,6 +119,20 @@ async function collect(snapshot,source,{now=Date.now(),lookbackDays=60}={}){
   // Direct receipt verification supplies Strategy fills omitted by a wallet API
   // query. It never assumes the keeper's entire transaction belongs to a player.
   for(const {ref:r} of refs){if(r.status!=='verified')continue;const s=referenceSwap(r);if(!grouped.has(key(s)))grouped.set(key(s),[s]);}
+  const smartProofs=new Map();
+  if(w.agent&&source.smartWalletSettlement){
+   const transactions=new Map();for(const rows of grouped.values())for(const s of rows)transactions.set(s.tx,[...(transactions.get(s.tx)||[]),s]);
+   for(const [tx,rows]of transactions){
+    try{const proof=await source.smartWalletSettlement(local.filter(s=>s.tx===tx));if(!proof)continue;
+     const intent=refs.filter(x=>x.ref.status==='verified'&&x.ref.transactionHash===tx);
+     // A leg-level private reference does not establish the intent of the
+     // entire aggregate route. Preserve attribution or explicitly leave it pending.
+     if(intent.length&&(intent.length!==1||key(referenceSwap(intent[0].ref))!==key(proof.swap)))throw Error('SMART_ROUTER_STRATEGY_ATTRIBUTION_REVIEW_REQUIRED');
+     for(const s of rows)grouped.delete(key(s));
+     const k=key(proof.swap);grouped.set(k,[proof.swap]);smartProofs.set(k,proof);
+    }catch(e){for(const s of rows)grouped.delete(key(s));unverified.add(tx+':'+w.trade_wallet);problems.push({code:e.message,participant:w.participant});}
+   }
+  }
   for(const [k,rows] of grouped){
    const s=rows[0];if(!markets.has(s.domain+':'+s.quote))continue;
    const matching=refs.filter(x=>key(referenceSwap(x.ref))===k),valid=matching.filter(x=>x.ref.status==='verified');
@@ -128,11 +142,11 @@ async function collect(snapshot,source,{now=Date.now(),lookbackDays=60}={}){
     const rc=await receipt(s.tx);if(!rc||BigInt(rc.blockNumber)>BigInt(final.number))throw Error('TRANSACTION_NOT_FINALIZED');
     const b=await block(rc.blockNumber);if(b.hash.toLowerCase()!==rc.blockHash.toLowerCase())throw Error('TRANSACTION_REORG');
     if(timestamp(b.timestamp)!==timestamp(s.executedAt))throw Error('SETTLEMENT_TIME_MISMATCH');
-    const amounts=await settlement(s,rc,source);
-    if((txCounts.get(s.tx+':'+s.wallet)||0)>1)throw Error('MULTI_FILL_TRANSACTION_REQUIRES_REVIEW');
+    const smart=smartProofs.get(k),amounts=smart?smart.amounts:await settlement(s,rc,source);
+    if(!smart&&(txCounts.get(s.tx+':'+s.wallet)||0)>1)throw Error('MULTI_FILL_TRANSACTION_REQUIRES_REVIEW');
     // References corroborate execution intent; the chain independently proves
     // amounts. For WETH, a historical public execution quote is also required.
-    const usd=volume(s);if(usd<=0n)throw Error('VOLUME_BELOW_PRECISION');
+    const usd=smart?smart.volumeMicros:volume(s);if(usd<=0n)throw Error('VOLUME_BELOW_PRECISION');
     const economicId='public:'+hash([CHAIN,s.wallet,s.tx,s.domain,s.quote]).slice(0,56);
     if(processed.has(economicId))throw Error('DUPLICATE_ECONOMIC_FILL');processed.add(economicId);
     const proof={version:2,blockHash:rc.blockHash,blockNumber:rc.blockNumber,source:'public_receipt',strategy:valid[0]?.ref.id||null,strategyRevision:valid[0]?.ref.revision||null,...amounts};

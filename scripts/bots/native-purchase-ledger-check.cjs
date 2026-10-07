@@ -6,8 +6,8 @@ const {reconstruct}=require('./lib/public-accounting.cjs');
 const {NATIVE}=require('./lib/public-native-accounting.cjs');
 const {USDC,WETH}=require('./lib/public-trade-worker.cjs');
 const at=n=>new Date(Date.UTC(2026,9,1,0,0,n)).toISOString();
-async function fixture(){
- const f=nativeRouterFixture(),p=await verifyNativeRouterPurchase(f);
+async function fixture(f=nativeRouterFixture()){
+ const p=await verifyNativeRouterPurchase(f);
  f.receipt.transactionIndex='0x0';
  const fund={tx:'0x'+'a'.repeat(64),blockHash:'0x'+'b'.repeat(64),blockNumber:'0xa',status:'0x1',transactionIndex:'0x0',logs:[]};
  const source={
@@ -20,7 +20,7 @@ async function fixture(){
   nativeRouterPurchase:async tx=>tx===fund.tx?null:p,
   hasCode:async()=>false,valueUsd:async(token,units)=>units,
   nativeBalance:async(wallet,block)=>block==='0xf'?10000n:193n,
-  balance:async(wallet,token,block)=>token===p.token&&block!=='0xf'?100000000n:0n,
+  balance:async(wallet,token,block)=>token===p.token&&block!=='0xf'?BigInt(p.units):0n,
  };
  return {p,options:{participant:'123',wallets:[f.wallet],from:Date.parse(at(30)),through:Date.parse(at(50)),markets:[{domain_token:p.token,quote_token:USDC},{domain_token:p.token,quote_token:WETH}],source,eligible:[{economicId:'native-buy',wallet:f.wallet,transactionHash:f.transaction.hash,domainToken:p.token,quoteToken:USDC,volumeUsd:'0.627563'}]}};
 }

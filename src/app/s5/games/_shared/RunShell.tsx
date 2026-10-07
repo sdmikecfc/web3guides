@@ -92,6 +92,9 @@ import {
 import { createSfx, type Sfx } from "./sfx";
 import { GAME_RULES, type PlayerStats } from "@/lib/s5/games";
 import { markFtueRun } from "@/lib/s5/ftue";
+import { arcadeShareText, lsKey } from "@/lib/arcade/mode";
+import { useArcade } from "@/lib/arcade/useArcade";
+import { ARCADE_SHELL_STRINGS } from "@/lib/arcade/shell-strings";
 
 /** The full input surface a game step may read (pointer already transformed
  * to sim coordinates; games that only use a subset just ignore the rest). */
@@ -298,7 +301,7 @@ const LS_PB_PREFIX = "s5_pb_";
 function readLocalBest(game: string): number {
   if (typeof window === "undefined") return 0;
   try {
-    const raw = localStorage.getItem(LS_PB_PREFIX + game);
+    const raw = localStorage.getItem(lsKey(LS_PB_PREFIX + game));
     const n = raw ? Number(JSON.parse(raw)) : 0;
     return Number.isFinite(n) && n >= 0 ? n : 0;
   } catch {
@@ -307,7 +310,7 @@ function readLocalBest(game: string): number {
 }
 function writeLocalBest(game: string, score: number): void {
   try {
-    localStorage.setItem(LS_PB_PREFIX + game, JSON.stringify(Math.max(0, Math.round(score))));
+    localStorage.setItem(lsKey(LS_PB_PREFIX + game), JSON.stringify(Math.max(0, Math.round(score))));
   } catch {
     // storage blocked: the local-best layer just does not persist
   }
@@ -457,7 +460,14 @@ export function RunShell<S>({
   strings,
   sfxPack,
 }: RunShellProps<S>) {
-  const T: RunShellStrings = { ...DEFAULT_STRINGS, ...strings };
+  // Arcade seam (lib/arcade). usePathname-based, so the server render and the
+  // client render agree. Outside /arcade this is false and nothing changes.
+  const arcade = useArcade();
+  const T: RunShellStrings = {
+    ...DEFAULT_STRINGS,
+    ...strings,
+    ...(arcade ? (ARCADE_SHELL_STRINGS as Partial<RunShellStrings>) : {}),
+  };
   const LS_DAILY = dailyLsKey ?? `s5_${game}_daily`;
 
   const session = useS5Session();
@@ -566,7 +576,7 @@ export function RunShell<S>({
       // death does not burn it
       if (!tooFast && dailyRef.current) {
         try {
-          localStorage.setItem(LS_DAILY, dayRef.current);
+          localStorage.setItem(lsKey(LS_DAILY), dayRef.current);
         } catch {
           // storage blocked: the next run just plays the daily again
         }
@@ -773,7 +783,7 @@ export function RunShell<S>({
     dayRef.current = today;
     let dailyOpen = false;
     try {
-      dailyOpen = localStorage.getItem(LS_DAILY) !== today;
+      dailyOpen = localStorage.getItem(lsKey(LS_DAILY)) !== today;
     } catch {
       dailyOpen = false;
     }
@@ -894,7 +904,9 @@ export function RunShell<S>({
   }, []);
 
   const copyShare = useCallback(async () => {
-    const text = payloadRef.current;
+    // Arcade seam: a copied result sends a friend to /arcade/<game>. Event
+    // handler only, so the window-based helper is safe; a no-op in a season.
+    const text = arcadeShareText(payloadRef.current);
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
@@ -1137,12 +1149,20 @@ export function RunShell<S>({
                     ) : null}
                     <br />
                     <span style={{ color: result.improved ? accent : "#87919b", fontWeight: result.improved ? 700 : 400 }}>
-                      {result.improved ? T.newBest : T.noImprove}{" "}
-                      {"· " +
-                        fill(T.attemptsLeft, {
-                          n: result.attemptsLeft ?? 0,
-                          runWord: (result.attemptsLeft ?? 0) === 1 ? "run" : "runs",
-                        })}
+                      {result.improved ? T.newBest : T.noImprove}
+                      {/* Season score routes always send attemptsLeft on an ok bank, so this
+                          always renders there. The arcade route never sends it (runs are
+                          unlimited), and the separator dot goes with it. */}
+                      {typeof result.attemptsLeft === "number" && (
+                        <>
+                          {" "}
+                          {"· " +
+                            fill(T.attemptsLeft, {
+                              n: result.attemptsLeft ?? 0,
+                              runWord: (result.attemptsLeft ?? 0) === 1 ? "run" : "runs",
+                            })}
+                        </>
+                      )}
                     </span>
                     {Boolean(result.sprint) && (result.sprintBonus ?? 0) > 0 && (
                       <div style={{ color: accent, marginTop: 4 }}>
@@ -1245,14 +1265,14 @@ export function RunShell<S>({
         <br />
         {practice ? (
           <a
-            href={`/s5/games/${game}`}
+            href={arcade ? `/arcade/${game}` : `/s5/games/${game}`}
             style={{ color: "#aab4bd", display: "inline-block", padding: "13px 10px", margin: "-13px -10px" }}
           >
             {T.realLink}
           </a>
         ) : (
           <a
-            href={`/s5/games/${game}?practice=1`}
+            href={arcade ? `/arcade/${game}?practice=1` : `/s5/games/${game}?practice=1`}
             style={{ color: "#aab4bd", display: "inline-block", padding: "13px 10px", margin: "-13px -10px" }}
           >
             {T.practiceLink}
@@ -1276,7 +1296,7 @@ export function RunShell<S>({
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <Link
-            href="/s5/play"
+            href={arcade ? "/arcade" : "/s5/play"}
             style={{
               color: "#c9d4dc",
               textDecoration: "none",

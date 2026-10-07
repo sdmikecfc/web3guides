@@ -23,6 +23,11 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { DEFAULT_THEME } from "@/lib/s4/theme";
 import { SESSION_STORAGE_KEY, type PlayerStats } from "@/lib/s4/games";
 import { useTelegram, openExternal } from "@/app/s4/_components/TelegramProvider";
+// LAUNCH WARS ARCADE (2026-09-21): under /arcade this shell banks through
+// /api/arcade/* onto the arcade board, shares the one arcade token, and skips
+// the Telegram path. Outside /arcade every helper returns the S4 value.
+import { ARCADE_NAME, apiBase, arcadeNow, tokenKey } from "@/lib/arcade/mode";
+import { useArcade } from "@/lib/arcade/useArcade";
 
 /** The one theme object every game surface reads its words from. */
 export const THEME = DEFAULT_THEME;
@@ -34,11 +39,18 @@ export const ACCENT = "#f0b340";
 // signature" caution instead of the trusted SIWE sign-in panel. The server
 // (api/s4/game-session) verifies the exact posted bytes and never parses the
 // nonce, so this is display-only and does not affect the session.
-function buildMessage(address: string, nonce: string, issuedAt: string, domain: string, uri: string) {
+function buildMessage(
+  address: string,
+  nonce: string,
+  issuedAt: string,
+  domain: string,
+  uri: string,
+  seasonName: string = THEME.seasonName,
+) {
   return (
     `${domain} wants you to sign in with your Ethereum account:\n` +
     `${address}\n\n` +
-    `Open a ${THEME.seasonName} play session. Signature only, no transaction, no gas, no approvals.\n\n` +
+    `Open a ${seasonName} play session. Signature only, no transaction, no gas, no approvals.\n\n` +
     `URI: ${uri}\n` +
     `Version: 1\n` +
     `Chain ID: 1\n` +
@@ -47,13 +59,44 @@ function buildMessage(address: string, nonce: string, issuedAt: string, domain: 
   );
 }
 
+// Token storage. In the season: sessionStorage under the S4 key, as always.
+// In the arcade: the ONE arcade key, mirrored to localStorage, because the
+// other fifteen games and the arcade landing page read it from there.
+function readToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const key = tokenKey(SESSION_STORAGE_KEY);
+    return (arcadeNow() ? localStorage.getItem(key) : null) || sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function writeToken(token: string): void {
+  try {
+    const key = tokenKey(SESSION_STORAGE_KEY);
+    sessionStorage.setItem(key, token);
+    if (arcadeNow()) localStorage.setItem(key, token);
+  } catch {
+    /* storage blocked: the session lives for this page only */
+  }
+}
+function clearToken(): void {
+  try {
+    const key = tokenKey(SESSION_STORAGE_KEY);
+    sessionStorage.removeItem(key);
+    if (arcadeNow()) localStorage.removeItem(key);
+  } catch {
+    /* nothing to clear */
+  }
+}
+
 export function useS4Session() {
   const tg = useTelegram();
+  // The arcade is web only: no Telegram session, and no waiting on the SDK poll.
+  const arcade = useArcade();
   const { address, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
-  const [token, setToken] = useState<string | null>(() =>
-    typeof window !== "undefined" ? sessionStorage.getItem(SESSION_STORAGE_KEY) : null,
-  );
+  const [token, setToken] = useState<string | null>(() => readToken());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Telegram only: the one-time web link the player must finish first. */
@@ -75,7 +118,7 @@ export function useS4Session() {
   // bound on the web; if they never did, it hands back a one-time link instead.
   // Guarded by a ref so this fires once per mount, not once per render.
   useEffect(() => {
-    if (!tg.ready || !tg.isTelegram || token || tgTried.current) return;
+    if (arcade || !tg.ready || !tg.isTelegram || token || tgTried.current) return;
     tgTried.current = true;
     let alive = true;
     (async () => {
@@ -91,7 +134,7 @@ export function useS4Session() {
         if (!alive) return;
         if (r?.needsLink && r?.url) setLinkUrl(String(r.url));
         else if (resp.ok && r?.ok && r?.token) {
-          sessionStorage.setItem(SESSION_STORAGE_KEY, String(r.token));
+          writeToken(String(r.token));
           setToken(String(r.token));
         } else setError(r?.error || "Could not start a session.");
       } catch (e) {
@@ -103,7 +146,7 @@ export function useS4Session() {
     return () => {
       alive = false;
     };
-  }, [tg.ready, tg.isTelegram, tg.initData, token, retryNonce]);
+  }, [arcade, tg.ready, tg.isTelegram, tg.initData, token, retryNonce]);
 
   // The link is finished OUT on the web, so the player leaves and comes back.
   // Re-check the moment the Mini App is visible again, otherwise they would sit
@@ -132,10 +175,13 @@ export function useS4Session() {
       const issuedAt = new Date().toISOString();
       const nonce = crypto.randomUUID().replace(/-/g, ""); // SIWE-required nonce (Rabby)
       const domain = window.location.host;
-      const uri = `${window.location.origin}/s4/play`;
-      const message = buildMessage(address, nonce, issuedAt, domain, uri);
+      const inArcade = arcadeNow();
+      const uri = `${window.location.origin}${inArcade ? "/arcade" : "/s4/play"}`;
+      const message = inArcade
+        ? buildMessage(address, nonce, issuedAt, domain, uri, ARCADE_NAME)
+        : buildMessage(address, nonce, issuedAt, domain, uri);
       const signature = await signMessageAsync({ message });
-      const resp = await fetch("/api/s4/game-session", {
+      const resp = await fetch(`${apiBase("/api/s4")}/game-session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address, message, signature }),
@@ -146,7 +192,7 @@ export function useS4Session() {
         setBusy(false);
         return;
       }
-      sessionStorage.setItem(SESSION_STORAGE_KEY, r.token);
+      writeToken(r.token);
       setToken(r.token);
       setBusy(false);
     } catch (e) {
@@ -157,7 +203,7 @@ export function useS4Session() {
   }, [address, signMessageAsync]);
 
   const reset = useCallback(() => {
-    if (typeof window !== "undefined") sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    if (typeof window !== "undefined") clearToken();
     tgTried.current = false; // let Telegram re-open a session after an expiry
     setToken(null);
   }, []);
@@ -172,8 +218,8 @@ export function useS4Session() {
     reset,
     // Telegram (Phase 2). `tgReady` = we have decided in/out; gate on it so the
     // web connect UI never flashes at a Mini App player.
-    isTelegram: tg.isTelegram,
-    tgReady: tg.ready,
+    isTelegram: arcade ? false : tg.isTelegram,
+    tgReady: arcade ? true : tg.ready,
     linkUrl,
     retrySession,
     webApp: tg.webApp,
@@ -200,7 +246,7 @@ export type ScoreResult = {
 };
 
 export async function startRun(token: string, game: string): Promise<RunStartResult> {
-  const r = await fetch("/api/s4/run-start", {
+  const r = await fetch(`${apiBase("/api/s4")}/run-start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ t: token, game }),
@@ -215,7 +261,7 @@ export async function submitScore(
   nonce: string,
   meta?: Record<string, unknown>,
 ): Promise<ScoreResult> {
-  const r = await fetch("/api/s4/score", {
+  const r = await fetch(`${apiBase("/api/s4")}/score`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ t: token, game, score, nonce, meta }),
@@ -254,6 +300,7 @@ export function SessionGate({
   session: ReturnType<typeof useS4Session>;
   children: React.ReactNode;
 }) {
+  const arcade = useArcade();
   if (session.token) return <>{children}</>;
 
   // Still deciding in/out of Telegram. Stay neutral so a Mini App player never
@@ -354,11 +401,18 @@ export function SessionGate({
           Connect to play
         </div>
         <ConnectButton showBalance={false} accountStatus="address" />
-        <p style={{ fontSize: 13, color: "#7a89b8", margin: "12px 0 0", lineHeight: 1.55 }}>
-          Sign once (no gas) to open a 12 hour play session. Scores earn{" "}
-          <b style={{ color: "#e8ecf5" }}>{THEME.playCurrency}</b> plus a little{" "}
-          <b style={{ color: ACCENT }}>{THEME.points}</b> for your {THEME.team.singular}.
-        </p>
+        {arcade ? (
+          <p style={{ fontSize: 13, color: "#7a89b8", margin: "12px 0 0", lineHeight: 1.55 }}>
+            Sign once (no gas) to open a 12 hour play session. Your best score goes on the arcade board. The arcade is
+            for fun and pays nothing.
+          </p>
+        ) : (
+          <p style={{ fontSize: 13, color: "#7a89b8", margin: "12px 0 0", lineHeight: 1.55 }}>
+            Sign once (no gas) to open a 12 hour play session. Scores earn{" "}
+            <b style={{ color: "#e8ecf5" }}>{THEME.playCurrency}</b> plus a little{" "}
+            <b style={{ color: ACCENT }}>{THEME.points}</b> for your {THEME.team.singular}.
+          </p>
+        )}
         <button
           onClick={session.openSession}
           disabled={!session.isConnected || session.busy}
