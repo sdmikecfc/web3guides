@@ -7,8 +7,9 @@ const root=path.resolve(__dirname,'../..');
 require('@next/env').loadEnvConfig(root,false,{info(){},error(){throw Error('EXISTING_SERVER_CONFIGURATION_UNAVAILABLE');}});
 const {collect}=require('./lib/public-trade-worker.cjs'),{publicSource}=require('./lib/public-trade-source.cjs');
 const {reconstruct}=require('./lib/public-accounting.cjs');
+const {rpcFailure,preflightWorkerPacket}=require('./lib/worker-contract.cjs');
 const safeCode=code=>typeof code==='string'&&/^[A-Z][A-Z0-9_]{2,100}$/.test(code)?code:'SOURCE_UNAVAILABLE';
-const workerVersion='mk-public-worker-4-smart-wallet';
+const workerVersion='mk-public-worker-5-proof-contract';
 let runStartedAt;
 const output=process.env.MK_WORKER_STATE_DIR||(process.platform==='win32'?'D:/Temp/modelkombat-tracking-review':path.join(process.env.TMPDIR||'/tmp','modelkombat-tracking-review'));
 const pollMinutes=Number(process.env.MK_WORKER_POLL_MINUTES||240);
@@ -22,7 +23,7 @@ const args=new Set(process.argv.slice(2));
 if([...args].some(a=>!['--write','--watch','--allow-old-schema-rehearsal','--test-linked-agent-only'].includes(a)))throw Error('Use --write and/or --watch; omit both for a read-only check.');
 if(args.has('--test-linked-agent-only')&&(args.has('--write')||args.has('--watch')))throw Error('Single test wallet checks are read-only and run once.');
 const db=require('@supabase/supabase-js').createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
-async function rpc(name,p={}){const r=await db.rpc(name,p).abortSignal(AbortSignal.timeout(30000));if(r.error)throw Error(name+':'+r.error.code);return r.data;}
+async function rpc(name,p={}){const r=await db.rpc(name,p).abortSignal(AbortSignal.timeout(30000));if(r.error)throw rpcFailure(name,r.error);return r.data;}
 async function legacyReadOnly(){
  // Only for pre-install testing. This fallback can NEVER write results.
  const manifest=await rpc('mkz_collector_manifest'),rows=[];let after=null;
@@ -47,6 +48,7 @@ async function run(){
  }
  await progress('VERIFYING_PUBLIC_TRADES');
  const source=publicSource({apiKey:process.env.DOMA_API_KEY}),result=await collect(snapshot,source),accounting=[];
+ if(args.has('--write'))await preflightWorkerPacket(result.packet,rpc);
  result.report.accountingProblems=[];
  const entries=new Map(snapshot.manifest.participants.map(e=>[e.participant,e]));
  const accounts=snapshot.accounts.filter(a=>snapshot.manifest.campaign.state==='draft'||entries.has(a.participant));

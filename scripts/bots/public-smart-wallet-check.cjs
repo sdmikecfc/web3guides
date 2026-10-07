@@ -71,4 +71,5 @@ async function main(){
  assert.equal(ledger.complete,true);assert.equal(ledger.openingLots.length,1);assert.equal(ledger.events.length,2);assert.equal(ledger.events[0].usd,'14.500000');assert.equal(ledger.events[0].units,'47018799');assert.equal(ledger.events[0].notionalUsd,'14.501921');assert.equal(ledger.events[1].units,'14500000');
  console.log('PASS smart-wallet settlement: three real sponsored receipts, historical contract pins, UserOp hash/signature, exact split-path conservation, pool-only volume, canonical economic fills, stable retries, Strategy attribution and fail-closed adversarial cases.');
 }
-main().catch(e=>{console.error(e);process.exitCode=1});
+if(require.main===module)main().catch(e=>{console.error(e);process.exitCode=1});
+module.exports={fixtures,context,mockSource,snapshot};

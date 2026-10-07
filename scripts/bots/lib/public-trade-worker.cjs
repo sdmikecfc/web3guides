@@ -1,6 +1,7 @@
 'use strict';
 // Model Kombat's collector. No Reporter import, private Doma endpoint or trading.
 const {createHash,randomUUID}=require('node:crypto');
+const {serializeEvidence}=require('./worker-contract.cjs');
 const CHAIN=97477, USDC='0x31eef89d5215c305304a2fa5376a1f1b6c5dc477', WETH='0x4200000000000000000000000000000000000006';
 const TRANSFER='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 const hash=x=>createHash('sha256').update(JSON.stringify(x)).digest('hex');
@@ -150,7 +151,7 @@ async function collect(snapshot,source,{now=Date.now(),lookbackDays=60}={}){
     const economicId='public:'+hash([CHAIN,s.wallet,s.tx,s.domain,s.quote]).slice(0,56);
     if(processed.has(economicId))throw Error('DUPLICATE_ECONOMIC_FILL');processed.add(economicId);
     const proof={version:2,blockHash:rc.blockHash,blockNumber:rc.blockNumber,source:'public_receipt',strategy:valid[0]?.ref.id||null,strategyRevision:valid[0]?.ref.revision||null,...amounts};
-    const fill={chainId:CHAIN,economicId,revision:1,wallet:s.wallet,transactionHash:s.tx,domainToken:s.domain,quoteToken:s.quote,executedAt:s.executedAt,volumeUsd:dollars(usd),source:valid.length?'strategy':'agent_wallet',status:'verified',evidence:JSON.stringify(proof)};
+    const fill={chainId:CHAIN,economicId,revision:1,wallet:s.wallet,transactionHash:s.tx,domainToken:s.domain,quoteToken:s.quote,executedAt:s.executedAt,volumeUsd:dollars(usd),source:valid.length?'strategy':'agent_wallet',status:'verified',evidence:serializeEvidence(proof)};
     fills.push(fill);raw.push({...s,...amounts,participant:w.participant,economicId,volumeUsd:fill.volumeUsd});
    }catch(e){unverified.add(s.tx+':'+s.wallet);problems.push({code:e.message,participant:w.participant});}
   }

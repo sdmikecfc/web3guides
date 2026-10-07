@@ -1,7 +1,9 @@
 # Model Kombat tracking audit — 7 October 2026
 
-This is a read-only audit and a prepared worker update. It has not installed a
-collector, deployed the website, changed SQL, written scores or altered Reporter.
+This records read-only audits and the prepared worker 5 repair. Worker 4 was
+installed by the user at approximately **05:31 UTC**, but its first score commit
+failed. Worker 5 has not been installed. These checks have not deployed the
+website, changed production SQL, written production scores or altered Reporter.
 
 ## Confirmed trading
 
@@ -46,9 +48,30 @@ Incremental, durable historical backfill remains necessary before these accounts
 financial calculations can be claimed complete. Unsupported basis or LP flows
 must remain explicit if encountered; this update does not change that policy.
 
-## Prepared update
+## Worker 4 failure and worker 5 repair
 
-Version: `mk-public-worker-4-smart-wallet`.
+Version: `mk-public-worker-5-proof-contract`.
+
+Worker 4's first score commit failed at **05:37:48 UTC** with `MKZ_BATCH_INVALID`:
+three verified route proofs were 1,404 / 1,404 / 1,077 characters, exceeding the
+existing SQL evidence limit of 1,000. The previous 13 fills and $165.915935 remained
+saved. This was a serialization error, not evidence that those trades were invalid.
+
+Worker 5 commits to the complete original proof with SHA-256, retains the critical
+block, operation, runtime, attribution and exact amount identifiers, and fits
+those proofs into 684 / 684 / 683 characters. Short existing proofs are unchanged.
+No verification or SQL limit is relaxed. A read-only database preflight now checks
+the actual packet before expensive accounting, and safe SQL machine codes remain
+visible in private worker health instead of becoming a generic failure.
+
+At **05:46:48 UTC**, the production read-only check accepted the exact corrected
+16-fill packet: 16 mapped, 16 registered-market and 16 eligible fills, no issues,
+`writesPerformed: 0`. An isolated local PostgreSQL test of that same packet proved
+13-to-16 commit, duplicate retry, revision correction, rollback on a rejected
+final coverage packet and preservation of prior financial snapshots. The old full
+proofs failed the same test with `MKZ_BATCH_INVALID`, reproducing the live cause.
+
+The following reviewed worker 4 changes remain in worker 5:
 
 - Pins the historically verified EntryPoint, Simple7702Account delegation and
   UniversalRouter runtime code. Validates the exact signed UserOperation and its
@@ -87,6 +110,6 @@ node scripts/bots/install-tracking-worker.cjs
 
 The package is prepared only. The command must be run to update the separate
 collector; `vercel --prod` does not update it. After installation, confirm the
-worker-4 version and a newly completed audit before describing its candidate
+worker-5 version and a newly completed audit before describing its candidate
 volume as live. ROI is still pending until historical backfill and reconciliation
 finish. Website production remains the user's own `vercel --prod` release.
