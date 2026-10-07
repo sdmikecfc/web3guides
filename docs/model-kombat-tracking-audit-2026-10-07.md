@@ -2,8 +2,9 @@
 
 This records read-only audits, the installed worker 5 repair and the prepared
 worker 6 scan update. Worker 5 saved **16 fills / $199.904189** at **08:52 UTC**.
-Overall coverage remained pending with `TRANSFER_INDEX_CHANGED`. Worker 6 is
-prepared, not installed. Local checks have not deployed the website, changed
+Its next scheduled run confirmed complete volume coverage at **09:14 UTC**;
+the public API now returns that total. Worker 6 is prepared, not installed.
+Local checks have not deployed the website, changed
 production SQL, written production scores or altered Reporter.
 
 ## Latest installed result
@@ -14,10 +15,17 @@ linked wallets, 16 agent-wallet fills, no Strategy fills and $199.904189 volume.
 A separate database snapshot confirmed all 16 rows persisted. The campaign is
 active from October 6, 14:00 UTC through November 3, 14:00 UTC.
 
-The common cutoff was **October 7, 06:10:50.936 UTC**. Coverage was incomplete,
-so the public leaderboard correctly withheld a confirmed community total. There
-were no financial rows; ROI and profit remain pending. The next scheduled audit
-started at **09:07:48.733 UTC**. This is not a claim that all tracking is ready.
+The common cutoff was **October 7, 06:10:50.936 UTC**. The first run reported
+`TRANSFER_INDEX_CHANGED` and the public API withheld the community total. Its
+next scheduled run started at **09:07:48.733 UTC** and completed at
+**09:14:48.275 UTC** with `complete: true`, `scoreWrites: true`, no trade problems
+and `VOLUME_VERIFIED_FINANCIALS_PENDING`. A **09:15:32 UTC** read confirmed both
+persisted totals and the public API's `volumeUsd: "199.904189"`, `complete: true`
+and `fresh: true`. No further installation was required for this recovery.
+
+ROI and profit remain pending: the historical ledger reached its three-minute
+accounting budget. Two participants entered after the common cutoff, so their
+later activity is not yet covered. This is not a claim that all tracking is ready.
 
 ## Confirmed trading
 
@@ -138,6 +146,10 @@ historical corrections, duplicates, reorgs, source cancellation and the existing
 receipt/accounting/proof contract cases. Explorer completeness still depends on
 its source index and the existing coverage checks; two consistent scans cannot
 prove data that the upstream source consistently omits.
+
+**No immediate reinstall is needed for the confirmed volume recovery.** Worker
+6 is a tested improvement for the next collector update, not a prerequisite for
+the $199.90 now returned by the live API. It does not finish historical ROI.
 
 **No new SQL, key or internal-AI instructions are required for this update.**
 Keep internal-AI v4 on its existing four-hour wallet/reference discovery schedule.
