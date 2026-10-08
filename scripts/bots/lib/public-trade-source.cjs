@@ -10,8 +10,12 @@ function lossless(text){
  }
  return JSON.parse(out);
 }
-function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000}){
+function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCache=null,accountingAnchor=null,accountingPriorAnchors=[]}){
  if(!apiKey)throw Error('EXISTING_DOMA_API_KEY_REQUIRED');
+ const validAnchor=a=>a&&/^0x[0-9a-f]+$/i.test(a.number)&&/^0x[0-9a-f]{64}$/i.test(a.hash);
+ if(accountingCache&&(!validAnchor(accountingAnchor)||!Array.isArray(accountingPriorAnchors)||accountingPriorAnchors.length>4||accountingPriorAnchors.some(a=>!validAnchor(a))))throw Error('INVALID_ACCOUNTING_ANCHOR');
+ const anchors=accountingCache?[accountingAnchor,...accountingPriorAnchors.filter(a=>BigInt(a.number)<=BigInt(accountingAnchor.number))].map(a=>({number:'0x'+BigInt(a.number).toString(16),hash:a.hash.toLowerCase()})):[];
+ const anchorChecks=new Map(),evidence=anchors.map(anchor=>accountingCache.namespace({kind:'finalized-rpc',scope:{anchor}}));
  let deadline=Infinity,budgetController=null;
  const checkBudget=()=>{if(Date.now()>=deadline||budgetController?.signal.aborted)throw Error('ACCOUNTING_TIME_BUDGET_EXCEEDED');};
  const pause=ms=>new Promise((resolve,reject)=>{
@@ -21,15 +25,20 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000}){
   const cancel=()=>{clearTimeout(timer);signal?.removeEventListener('abort',cancel);reject(Error('ACCOUNTING_TIME_BUDGET_EXCEEDED'));};
   if(signal?.aborted)cancel();else signal?.addEventListener('abort',cancel,{once:true});
  });
- let last=0,seq=0;const receipts=new Map(),blocks=new Map(),calls=new Map(),atBlocks=new Map(),balances=new Map(),transactions=new Map(),implementations=new Map(),native=new Map(),codes=new Map(),nativePurchases=new Map();
+ let last=0,seq=0,requestGate=Promise.resolve();const receipts=new Map(),blocks=new Map(),calls=new Map(),atBlocks=new Map(),balances=new Map(),transactions=new Map(),implementations=new Map(),native=new Map(),codes=new Map(),nativePurchases=new Map();
+ async function startRequest(run){
+  // Reserve before awaiting, then space actual starts. Responses overlap, but
+  // late timers cannot bunch reserved requests into a catch-up burst.
+  const prior=requestGate;let release;requestGate=new Promise(resolve=>{release=resolve;});await prior;
+  try{checkBudget();const wait=Math.max(0,last+delay-Date.now());if(wait)await pause(wait);checkBudget();last=Date.now();return run();}
+  finally{release();}
+ }
  async function request(url,body,headers={}){
   for(let attempt=0;attempt<4;attempt++){
    checkBudget();
-   const wait=Math.max(0,last+delay-Date.now());if(wait)await pause(wait);last=Date.now();
-   checkBudget();
    const signals=[AbortSignal.timeout(30000)];if(budgetController)signals.push(budgetController.signal);
    let r,text;
-   try{r=await fetcher(url,{method:body?'POST':'GET',redirect:'error',headers:{Accept:'application/json',...(body?{'Content-Type':'application/json'}:{}),...headers},body:body?JSON.stringify(body):undefined,signal:AbortSignal.any(signals)});text=await r.text();}
+   try{r=await startRequest(()=>fetcher(url,{method:body?'POST':'GET',redirect:'error',headers:{Accept:'application/json',...(body?{'Content-Type':'application/json'}:{}),...headers},body:body?JSON.stringify(body):undefined,signal:AbortSignal.any(signals)}));text=await r.text();}
    catch(error){checkBudget();const timeout=['AbortError','TimeoutError'].includes(error.name),network=error instanceof TypeError&&/fetch|network/i.test(error.message);
     if(!timeout&&!network)throw error;
     if(attempt===3)throw Error(timeout?'PUBLIC_REQUEST_TIMEOUT':'PUBLIC_NETWORK_UNAVAILABLE');
@@ -41,19 +50,78 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000}){
   }
   throw Error('PUBLIC_RETRIES_EXHAUSTED');
  }
- async function rpc(method,params){const p=await request('https://rpc.doma.xyz',{jsonrpc:'2.0',id:++seq,method,params});if(p.error||!p.result)throw Error('PUBLIC_RPC_UNAVAILABLE');return p.result;}
- async function code(address,at){const k=address.toLowerCase()+':'+at;if(!codes.has(k))codes.set(k,await rpc('eth_getCode',[address,at]));return codes.get(k);}
+ async function rawRpc(method,params){const p=await request('https://rpc.doma.xyz',{jsonrpc:'2.0',id:++seq,method,params});if(p.error||!p.result)throw Error('PUBLIC_RPC_UNAVAILABLE');return p.result;}
+ async function checkAnchor(index=0){
+  if(!accountingCache)return;checkBudget();const anchor=anchors[index],key=anchor.number+':'+anchor.hash;
+  if(!anchorChecks.has(key)){
+   const proof=(async()=>{
+    let finalized;
+    if(index===0){if(Number(BigInt(await rawRpc('eth_chainId',[])))!==CHAIN)throw Error('WRONG_PUBLIC_CHAIN');finalized=await rawRpc('eth_getBlockByNumber',['finalized',false]);if(BigInt(finalized.number)<BigInt(anchor.number))throw Error('ACCOUNTING_ANCHOR_NOT_FINALIZED');}
+    const block=await rawRpc('eth_getBlockByNumber',[anchor.number,false]);
+    if(block.number?.toLowerCase()!==anchor.number||block.hash?.toLowerCase()!==anchor.hash)throw Error('ACCOUNTING_ANCHOR_REORG');
+    return {block,finalized};
+   })();anchorChecks.set(key,proof);proof.catch(()=>anchorChecks.delete(key));
+  }
+  const verified=await anchorChecks.get(key);checkBudget();return verified;
+ }
+ function rpcBlock(method,params,value){
+  const at=method==='eth_getBlockByNumber'?params[0]:['eth_call','eth_getCode','eth_getBalance'].includes(method)?params[1]:method==='eth_getStorageAt'?params[2]:['eth_getTransactionReceipt','eth_getTransactionByHash'].includes(method)?value?.blockNumber:null;
+  return typeof at==='string'&&/^0x[0-9a-f]+$/i.test(at)?BigInt(at):null;
+ }
+ async function rpc(method,params){
+  const eligible=['eth_getBlockByNumber','eth_call','eth_getCode','eth_getBalance','eth_getStorageAt','eth_getTransactionReceipt','eth_getTransactionByHash'].includes(method);
+  // Alias reads are deliberately never persisted, including finalized/latest.
+  const transaction=['eth_getTransactionReceipt','eth_getTransactionByHash'].includes(method);
+  const requestedBlock=rpcBlock(method,params);
+  if(!accountingCache||!eligible||(!transaction&&(requestedBlock===null||requestedBlock>BigInt(anchors[0].number))))return rawRpc(method,params);
+  await checkAnchor();const identity={method,params};
+  for(let i=0;i<evidence.length;i++){
+   if(!transaction&&requestedBlock>BigInt(anchors[i].number))continue;
+   const value=evidence[i].get(identity);if(value===undefined)continue;const at=rpcBlock(method,params,value);
+   if(at===null||at>BigInt(anchors[i].number)||at>BigInt(anchors[0].number))continue;
+   await checkAnchor(i);return value;
+  }
+  const value=await rawRpc(method,params),at=rpcBlock(method,params,value);
+  if(at!==null&&at<=BigInt(anchors[0].number)){
+   if(transaction){
+    const id=method==='eth_getTransactionReceipt'?value.transactionHash:value.hash;
+    if(id?.toLowerCase()!==params[0].toLowerCase()||!/^0x[0-9a-f]{64}$/i.test(value.blockHash))throw Error('ACCOUNTING_CACHED_TRANSACTION_INVALID');
+    const canonical=await rpc('eth_getBlockByNumber',[value.blockNumber,false]);if(canonical.hash?.toLowerCase()!==value.blockHash.toLowerCase())throw Error('TRANSACTION_REORG');
+   }
+   evidence[0].set(identity,value);
+  }
+  return value;
+ }
+ async function code(address,at){if(!/^0x[0-9a-f]+$/i.test(at))return rpc('eth_getCode',[address,at]);const k=address.toLowerCase()+':'+at;if(!codes.has(k))codes.set(k,await rpc('eth_getCode',[address,at]));return codes.get(k);}
  const blockValue=b=>({...b,timestamp:new Date(Number(BigInt(b.timestamp))*1000).toISOString()});
- async function block(number){if(!blocks.has(number))blocks.set(number,blockValue(await rpc('eth_getBlockByNumber',[number,false])));return blocks.get(number);}
+ async function block(number){if(!/^0x[0-9a-f]+$/i.test(number))return blockValue(await rpc('eth_getBlockByNumber',[number,false]));if(!blocks.has(number))blocks.set(number,blockValue(await rpc('eth_getBlockByNumber',[number,false])));return blocks.get(number);}
  async function gql(query,variables){const p=await request('https://api.doma.xyz/graphql',{query,variables},{'Api-Key':apiKey});if(p.errors||!p.data)throw Error('PUBLIC_GRAPHQL_UNAVAILABLE');return p.data;}
  async function read(address,definition,functionName,args,at){
   const {parseAbi,encodeFunctionData,decodeFunctionResult}=require('viem'),abi=parseAbi([definition]);
   const data=encodeFunctionData({abi,functionName,args}),k=address+':'+data+':'+at;
+  if(!/^0x[0-9a-f]+$/i.test(at))return decodeFunctionResult({abi,functionName,data:await rpc('eth_call',[{to:address,data},at])});
   if(!calls.has(k))calls.set(k,decodeFunctionResult({abi,functionName,data:await rpc('eth_call',[{to:address,data},at])}));return calls.get(k);
  }
  async function blockAt(time){
+  if(!Number.isFinite(time))throw Error('INVALID_BLOCK_TIME');
   if(atBlocks.has(time))return atBlocks.get(time);
-  let lo=0n,hi=BigInt((await block('finalized')).number);
+  let upper;
+  if(accountingCache){
+   const verified=await checkAnchor();upper=blockValue(verified.block);blocks.set(anchors[0].number,upper);
+   // A stable finalized upper bound preserves the binary-search path across
+   // restarts. A millisecond cutoff may lie just after its whole-second block.
+   if(time>Date.parse(upper.timestamp)){
+    const next=BigInt(upper.number)+1n;
+    if(next>BigInt(verified.finalized.number))throw Error('ACCOUNTING_TIME_OUTSIDE_ANCHOR');
+    const boundary=await block('0x'+next.toString(16));
+    if(!/^0x[0-9a-f]+$/i.test(boundary.number)||BigInt(boundary.number)!==next||!Number.isFinite(Date.parse(boundary.timestamp)))throw Error('ACCOUNTING_BLOCK_BOUNDARY_INVALID');
+    if(boundary.parentHash&&boundary.parentHash.toLowerCase()!==anchors[0].hash)throw Error('ACCOUNTING_ANCHOR_REORG');
+    if(time>=Date.parse(boundary.timestamp))throw Error('ACCOUNTING_TIME_OUTSIDE_ANCHOR');
+    atBlocks.set(time,upper);return upper;
+   }
+  }else upper=await block('finalized');
+  if(time===Date.parse(upper.timestamp)){atBlocks.set(time,upper);return upper;}
+  let lo=0n,hi=BigInt(upper.number);
   while(lo<hi){const mid=(lo+hi+1n)/2n,b=await block('0x'+mid.toString(16));if(Date.parse(b.timestamp)<=time)lo=mid;else hi=mid-1n;}
   const b=await block('0x'+lo.toString(16));atBlocks.set(time,b);return b;
  }
@@ -79,7 +147,7 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000}){
   const {parseAbi,encodeFunctionData,decodeFunctionResult}=require('viem');
   const erc=parseAbi(['function balanceOf(address) view returns(uint256)']);
   const data=encodeFunctionData({abi:erc,functionName:'balanceOf',args:[wallet]});
-  const missing=tokens.filter(t=>!balances.has(wallet+':'+t+':'+at));
+  const missing=/^0x[0-9a-f]+$/i.test(at)?tokens.filter(t=>!balances.has(wallet+':'+t+':'+at)):tokens;
   for(let i=0;i<missing.length;i+=64){const chunk=missing.slice(i,i+64);
    const result=await read('0xca11bde05977b3631167028862be2a173976ca11','function aggregate3((address target,bool allowFailure,bytes callData)[] calls) payable returns((bool success,bytes returnData)[] returnData)','aggregate3',[chunk.map(target=>({target,allowFailure:true,callData:data}))],at);
    for(let j=0;j<chunk.length;j++){
@@ -102,16 +170,68 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000}){
   }
   throw Error('SWAP_HISTORY_PAGE_LIMIT');
  }
- async function transfers(wallet,from,through){
+ // Checkpoints retain validated page boundaries, not a claim of completeness.
+ // Both passes still make independent HTTP reads; only interrupted work resumes.
+ async function fixedWindow(scopes,{wallet,from,through,proof,identityOf,changed,kind}){
   if(!/^0x[0-9a-f]{40}$/.test(wallet))throw Error('INVALID_WALLET');
   if(!Number.isFinite(from)||!Number.isFinite(through))throw Error('INVALID_TRANSFER_WINDOW');
-  // A new entrant may be newer than the shared discovery cutoff.
   if(from>through)return [];
-  const base='https://explorer.doma.xyz/api/v2/addresses/'+wallet+'/token-transfers';
-  // Compare complete scans of the requested historical window, not the live
-  // first page. Newer transfers cannot invalidate an unchanged fixed cutoff.
-  // Keep exact event order/amounts; duplicates are errors, never deduplicated.
-  const proof=rows=>{
+  if(accountingCache)await checkAnchor();
+  const cache=accountingCache?.namespace({kind:'history-checkpoint',scope:{anchor:anchors[0],wallet,from,through,kind,queries:scopes.map(s=>s.id)}});
+  async function scan(scope,pass){
+   const identity={scope:scope.id,pass},rows=[],seen=new Set(),events=new Set();let params={},previous=Infinity,pageCount=0,lastPage=null;
+   const append=p=>{
+    if(!p||!Array.isArray(p.items))throw Error('PUBLIC_HISTORY_UNAVAILABLE');
+    const within=[];
+    for(const row of p.items){checkBudget();scope.validate?.(row);const at=Date.parse(row.timestamp);if(!Number.isFinite(at))throw Error('PUBLIC_HISTORY_TIMESTAMP_INVALID');if(at>previous)throw Error('PUBLIC_HISTORY_ORDER_CHANGED');previous=at;if(at>=from&&at<=through)within.push(row);}
+    for(const row of proof(within)){const id=identityOf(row);if(events.has(id))throw Error(kind==='native'?'NATIVE_HISTORY_DUPLICATE':'TRANSFER_HISTORY_DUPLICATE');events.add(id);}rows.push(...within);
+    const done=previous<from||!p.next_page_params;
+    if(!done){if(!p.items.length)throw Error('PUBLIC_HISTORY_EMPTY_PAGE');const cursor=hash(p.next_page_params);if(seen.has(cursor))throw Error('PUBLIC_HISTORY_CURSOR_REPEATED');seen.add(cursor);}
+    return done;
+   };
+   // The verification pass must read its entire window afresh. Reusing its
+   // saved prefix together with scan A could hide a correction to both copies.
+   const saved=pass==='a'?cache?.getCheckpoint({...identity,kind:'cursor'}):undefined;
+   if(saved&&Number.isSafeInteger(saved.pages)&&saved.pages>=0&&saved.pages<=maxPages){
+    for(let i=0;i<saved.pages;i++){
+     const page=cache.getCheckpoint({...identity,kind:'page',index:i});
+     if(!page||hash(page.params)!==hash(params)){cache.clear();throw Error('ACCOUNTING_HISTORY_CHECKPOINT_INCOMPLETE');}
+     const done=append(page.response);lastPage=page;params=page.response.next_page_params??{};pageCount++;if(done&&i+1!==saved.pages)throw Error('ACCOUNTING_HISTORY_CHECKPOINT_INVALID');
+    }
+    // Re-read the last saved keyset boundary before trusting the continuation.
+    if(lastPage){
+     const fresh=await scope.page(lastPage.params);if(!Array.isArray(fresh?.items))throw Error('PUBLIC_HISTORY_UNAVAILABLE');let order=Infinity;
+     for(const row of fresh.items){scope.validate?.(row);const at=Date.parse(row.timestamp);if(!Number.isFinite(at))throw Error('PUBLIC_HISTORY_TIMESTAMP_INVALID');if(at>order)throw Error('PUBLIC_HISTORY_ORDER_CHANGED');order=at;}
+     const window=p=>({rows:proof(p.items.filter(r=>Date.parse(r.timestamp)>=from&&Date.parse(r.timestamp)<=through)),next:p.next_page_params??null});if(hash(window(fresh))!==hash(window(lastPage.response)))throw Error(changed);
+    }
+    if(saved.done){proof(rows);return rows;}
+   }
+   while(pageCount<maxPages){
+    checkBudget();const requested=params,p=await scope.page(params),done=append(p);
+    // A duplicate never becomes an ignored/deduplicated historical transfer.
+    pageCount++;params=p.next_page_params??{};
+    if(pass==='a'&&cache?.setCheckpoint({...identity,kind:'page',index:pageCount-1},{params:requested,response:p}))cache.setCheckpoint({...identity,kind:'cursor'},{pages:pageCount,done});
+    if(done)return rows;
+   }
+   throw Error('PUBLIC_HISTORY_PAGE_LIMIT');
+  }
+  async function scanAll(pass,first){
+   const result=new Array(scopes.length);let cursor=0,failure;
+   // Different token filters/native indexes are independent. Drain the whole
+   // pass before starting fresh verification; never substitute A's data for B.
+   await Promise.allSettled(Array.from({length:Math.min(3,scopes.length)},async()=>{
+    try{while(cursor<scopes.length&&!failure){checkBudget();const index=cursor++,rows=await scan(scopes[index],pass);
+     if(first&&hash(proof(rows))!==hash(proof(first[index])))throw Error(changed);result[index]=rows;
+    }}catch(error){failure??=error;}
+   }));
+   if(failure)throw failure;checkBudget();return result;
+  }
+  try{
+   const first=await scanAll('a'),rows=(await scanAll('b',first)).flat();
+   checkBudget();cache?.clear();return rows;
+  }catch(error){if(/(?:INDEX_CHANGED|DUPLICATE|ORDER_CHANGED|CURSOR_REPEATED|_INVALID|PAGE_LIMIT)$/.test(error.message))cache?.clear();throw error;}
+ }
+ const transferProof=rows=>{
    const seen=new Set(),hex=(v,n)=>{if(typeof v!=='string'||!new RegExp('^0x[0-9a-fA-F]{'+n+'}$').test(v))throw Error('TRANSFER_HISTORY_INVALID');return v.toLowerCase();};
    const integer=v=>{if((typeof v==='number'&&!Number.isSafeInteger(v))||!/^\d+$/.test(String(v)))throw Error('TRANSFER_HISTORY_INVALID');return BigInt(v).toString();};
    return rows.map(t=>{
@@ -120,19 +240,19 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000}){
     if(seen.has(id))throw Error('TRANSFER_HISTORY_DUPLICATE');seen.add(id);
     return [hex(t.block_hash,64),integer(t.block_number),tx,log,Date.parse(t.timestamp),hex(t.from?.hash,40),hex(t.to?.hash,40),hex(t.token?.address_hash,40),integer(t.total?.value),t.total?.decimals==null?null:integer(t.total.decimals)];
    });
-  };
-  const fetchPage=async params=>{
+ };
+ function transferScope(wallet,token=null){return {id:token??'all',validate:row=>{if(token&&row.token?.address_hash?.toLowerCase()!==token)throw Error('TRANSFER_TOKEN_FILTER_MISMATCH');},page:async params=>{
    const keys=Object.keys(params);if(keys.some(k=>!['block_number','index','items_count','batch_block_hash','batch_transaction_hash','batch_log_index','index_in_batch','token_contract_address_hash','token_id','type'].includes(k)))throw Error('UNKNOWN_EXPLORER_CURSOR');
-   const url=new URL(base);url.searchParams.set('type','ERC-20');for(const [k,v]of Object.entries(params))if(v!==null)url.searchParams.set(k,String(v));
+   const url=new URL('https://explorer.doma.xyz/api/v2/addresses/'+wallet+'/token-transfers');for(const [k,v]of Object.entries(params))if(v!==null)url.searchParams.set(k,String(v));url.searchParams.set('type','ERC-20');if(token)url.searchParams.set('token',token);
    const p=await request(url.toString());
    if(p?.next_page_params)p.next_page_params=Object.fromEntries(Object.entries(p.next_page_params).sort(([a],[b])=>a.localeCompare(b)));
    return p;
-  };
-  checkBudget();
-  const first=proof(await scanPages(fetchPage,{from,through,maxPages}));
-  const rows=await scanPages(fetchPage,{from,through,maxPages});
-  if(hash(proof(rows))!==hash(first))throw Error('TRANSFER_INDEX_CHANGED');
-  checkBudget();return rows;
+  }};}
+ const transferIdentity=row=>row[2]+':'+row[3];
+ async function transfers(wallet,from,through){return fixedWindow([transferScope(wallet)],{wallet,from,through,proof:transferProof,identityOf:transferIdentity,changed:'TRANSFER_INDEX_CHANGED',kind:'erc20'});}
+ async function transfersForTokens(wallet,tokens,from,through){
+  if(!Array.isArray(tokens)||tokens.some(t=>typeof t!=='string'||!/^0x[0-9a-f]{40}$/.test(t)))throw Error('INVALID_TRANSFER_TOKEN_FILTER');
+  const rows=await fixedWindow([...new Set(tokens)].sort().map(token=>transferScope(wallet,token)),{wallet,from,through,proof:transferProof,identityOf:transferIdentity,changed:'TRANSFER_INDEX_CHANGED',kind:'erc20-filtered'});transferProof(rows);return rows;
  }
  async function hasNativeActivity(wallet,through){
   if(!/^0x[0-9a-f]{40}$/.test(wallet))throw Error('INVALID_WALLET');
@@ -152,22 +272,26 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000}){
   }
   return false;
  }
- async function nativeHistory(wallet,through){
-  if(!/^0x[0-9a-f]{40}$/.test(wallet))throw Error('INVALID_WALLET');
-  const found=new Map();
-  for(const kind of ['transactions','internal-transactions']){
-   const base='https://explorer.doma.xyz/api/v2/addresses/'+wallet+'/'+kind;let first;
-   const anchor=p=>hash({next:p.next_page_params,items:p.items?.map(t=>[t.hash||t.transaction_hash,t.block_number,t.index,t.timestamp,t.from?.hash,t.to?.hash,t.value,t.status,t.success,t.error])});
-   const page=async params=>{const u=new URL(base);for(const[k,v]of Object.entries(params)){if(!/^[a-z_]+$/.test(k))throw Error('UNKNOWN_EXPLORER_CURSOR');if(v!==null)u.searchParams.set(k,String(v));}const p=await request(u.toString());if(!Object.keys(params).length)first=anchor(p);return p;};
-   const rows=await scanPages(page,{from:0,through,maxPages});
-   if(anchor(await request(base))!==first)throw Error('NATIVE_INDEX_CHANGED');
-   for(const t of rows){const tx=(t.hash||t.transaction_hash)?.toLowerCase();if(!/^0x[0-9a-f]{64}$/.test(tx))throw Error('NATIVE_HISTORY_INVALID');found.set(tx,{tx,at:Date.parse(t.timestamp)});}
-  }
+ async function nativeHistory(wallet,through,from=0){
+  const proof=rows=>{const seen=new Set();return rows.map(t=>{
+   checkBudget();const tx=(t.hash||t.transaction_hash)?.toLowerCase(),id=tx+':'+(t.index??'transaction');if(!/^0x[0-9a-f]{64}$/.test(tx))throw Error('NATIVE_HISTORY_INVALID');if(seen.has(id))throw Error('NATIVE_HISTORY_DUPLICATE');seen.add(id);
+   return [tx,t.block_hash??null,t.block_number==null?null:String(t.block_number),t.index==null?null:String(t.index),t.timestamp,t.from?.hash?.toLowerCase()??null,t.to?.hash?.toLowerCase()??null,t.value==null?null:String(t.value),t.fee?.value==null?null:String(t.fee.value),t.status??null,t.success??null,t.error??null];
+  });};
+  const scopes=['transactions','internal-transactions'].map(kind=>({id:kind,page:async params=>{
+   const u=new URL('https://explorer.doma.xyz/api/v2/addresses/'+wallet+'/'+kind);for(const[k,v]of Object.entries(params)){if(!/^[a-z_]+$/.test(k))throw Error('UNKNOWN_EXPLORER_CURSOR');if(v!==null)u.searchParams.set(k,String(v));}const p=await request(u.toString());if(p?.next_page_params)p.next_page_params=Object.fromEntries(Object.entries(p.next_page_params).sort(([a],[b])=>a.localeCompare(b)));return p;
+  }}));
+  const rows=await fixedWindow(scopes,{wallet,from,through,proof,identityOf:row=>row[0]+':'+row[3],changed:'NATIVE_INDEX_CHANGED',kind:'native'}),found=new Map();
+  for(const t of rows){const tx=(t.hash||t.transaction_hash).toLowerCase();found.set(tx,{tx,at:Date.parse(t.timestamp)});}
   return [...found.values()];
  }
  async function nativeTransaction(tx,receipt){
   if(native.has(tx))return native.get(tx);
   if(!transactions.has(tx))transactions.set(tx,await rpc('eth_getTransactionByHash',[tx]));
+  // A failed transaction reverted every nested value transfer. Its canonical
+  // receipt still proves the paid fees; no mutable trace listing is needed.
+  if(receipt.status==='0x0'){
+   const result=require('./public-native-accounting.cjs').nativeSettlement(transactions.get(tx),receipt,[]);native.set(tx,result);return result;
+  }
   const base='https://explorer.doma.xyz/api/v2/transactions/'+tx+'/internal-transactions',rows=[],seen=new Set();let params={},first;
   const anchor=p=>hash({next:p.next_page_params,items:p.items?.map(t=>[t.transaction_hash,t.block_number,t.index,t.from?.hash,t.to?.hash,t.created_contract?.hash,t.type,t.value,t.success,t.error])});
   for(let i=0;i<maxPages;i++){
@@ -212,6 +336,18 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000}){
     poolFor:(a,b,fee,at)=>read(factory,'function getPool(address,address,uint24) view returns(address)','getPool',[a,b,fee],at),
     userOperationHash:(op,at)=>read(adapter.ENTRY,adapter.HASH_ABI,'getUserOpHash',[op],at)});
   },
+  async orderRouterSettlement(swaps,refs=[]){
+   if(!swaps.length)return null;
+   const tx=swaps[0].tx,{ROUTER,IMPLEMENTATION_SLOT}=require('./public-router-settlement.cjs');
+   if(!/^0x[0-9a-f]{64}$/.test(tx))throw Error('INVALID_TRANSACTION_HASH');
+   if(!transactions.has(tx))transactions.set(tx,await rpc('eth_getTransactionByHash',[tx]));
+   const transaction=transactions.get(tx);if(transaction.to?.toLowerCase()!==ROUTER)return null;
+   if(!receipts.has(tx))receipts.set(tx,await rpc('eth_getTransactionReceipt',[tx]));
+   const receipt=receipts.get(tx);
+   if(!implementations.has(receipt.blockNumber))implementations.set(receipt.blockNumber,'0x'+(await rpc('eth_getStorageAt',[ROUTER,IMPLEMENTATION_SLOT,receipt.blockNumber])).slice(-40));
+   return require('./public-order-route.cjs').verifyOrderRoute({swaps,refs,transaction,receipt,implementation:implementations.get(receipt.blockNumber),codeAt:code,
+    poolFor:(a,b,fee,at)=>read(factory,'function getPool(address,address,uint24) view returns(address)','getPool',[a,b,fee],at)});
+  },
   async routerSettlement(s,receipt){
    const {verifyRouterSettlement,ROUTER,IMPLEMENTATION_SLOT}=require('./public-router-settlement.cjs');
    if(!transactions.has(s.tx))transactions.set(s.tx,await rpc('eth_getTransactionByHash',[s.tx]));
@@ -233,7 +369,15 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000}){
    return p.finished_indexing===true&&Number(p.indexed_blocks_ratio)===1&&Number(p.indexed_internal_transactions_ratio)===1&&head[0]?.height!=null&&BigInt(head[0].height)>=BigInt(final.number);
   },
   receipt:async tx=>{if(!/^0x[0-9a-f]{64}$/.test(tx))throw Error('INVALID_TRANSACTION_HASH');if(!receipts.has(tx))receipts.set(tx,await rpc('eth_getTransactionReceipt',[tx]));return receipts.get(tx);},
-  block,blockAt,swaps,transfers,valueUsd,primeBalances,hasNativeActivity,nativeHistory,nativeTransaction,nativeRouterPurchase,
+  transaction:async tx=>{
+   if(!/^0x[0-9a-f]{64}$/.test(tx))throw Error('INVALID_TRANSACTION_HASH');
+   if(!transactions.has(tx))transactions.set(tx,await rpc('eth_getTransactionByHash',[tx]));
+   const value=transactions.get(tx);
+   if(value.hash?.toLowerCase()!==tx||!/^0x[0-9a-f]+$/i.test(value.blockNumber)||!/^0x[0-9a-f]{64}$/i.test(value.blockHash))throw Error('ACCOUNTING_TRANSACTION_INVALID');
+   if(accountingCache&&BigInt(value.blockNumber)>BigInt(anchors[0].number))throw Error('ACCOUNTING_TRANSACTION_OUTSIDE_ANCHOR');
+   return value;
+  },
+  block,blockAt,swaps,transfers,transfersForTokens,valueUsd,primeBalances,hasNativeActivity,nativeHistory,nativeTransaction,nativeRouterPurchase,
   nativeBalance:async(wallet,at)=>BigInt(await rpc('eth_getBalance',[wallet,at])),
   balance:async(wallet,token,at)=>{await primeBalances(wallet,[token],at);return balances.get(wallet+':'+token+':'+at);},
   hasCode:async(address,at)=>(await code(address,at))!=='0x',

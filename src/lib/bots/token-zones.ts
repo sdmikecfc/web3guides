@@ -5,7 +5,7 @@ export const DAY = 86_400_000;
 export const ZONE_FRESH_MS = 5 * 3_600_000;
 export const ZONE_CATEGORIES = ['volume', 'roi', 'profit', 'battles'] as const;
 export type ZoneCategory = typeof ZONE_CATEGORIES[number];
-export const CATEGORY_LABELS: Record<ZoneCategory, string> = {volume:'Trading volume',roi:'ROI %',profit:'Realized profit',battles:'Battle points'};
+export const CATEGORY_LABELS: Record<ZoneCategory, string> = {volume:'Trading volume',roi:'Realized ROI %',profit:'Realized profit',battles:'Battle points'};
 export const CATEGORY_WEIGHTS: Record<ZoneCategory, number> = {volume:60,roi:15,profit:15,battles:10};
 export const REWARD_ZONES = [
  {symbol:'USDC',quantity:'1000',threshold:5000,referenceUsd:1000,color:'#8dc7e8'},
@@ -26,7 +26,8 @@ export type ZoneView = {
  schemaVersion:1;rules:typeof ZONE_RULES;available:boolean;state:'draft'|'active'|'closed'|'frozen'|'unavailable';
  startsAt:string|null;endsAt:string|null;confirmedThrough:string|null;fresh:boolean;complete:boolean;issues:string[];
  volumeUsd:string|null;history:{day:number;volumeUsd:string}[];assets:ZoneAsset[];
- standings:Record<ZoneCategory,{id:string;name:string;rank:number;score:string;qualified:boolean}[]>;
+ standings:Record<ZoneCategory,{id:string;name:string;rank:number;score:string|null;qualified:boolean}[]>;
+ financials?:{verified:number;total:number;complete:boolean;confirmedThrough:string|null};
  personal:null|{scores?:Record<ZoneCategory,string|null>;id:string|null;connected:boolean;linkStatus:string;entered:boolean;weeks:(number|null)[];qualified:boolean|null;volumeUsd:string|null;attemptsRemaining:number|null;awards:ZoneAward[];challenges:string[];ranks:Record<ZoneCategory,number|null>};
 };
 export function emptyZoneView():ZoneView{return {schemaVersion:1,rules:ZONE_RULES,available:false,state:'unavailable',startsAt:null,endsAt:null,confirmedThrough:null,fresh:false,complete:false,issues:['Tracking setup is not confirmed.'],volumeUsd:null,history:[],assets:[],standings:{volume:[],roi:[],profit:[],battles:[]},personal:null};}

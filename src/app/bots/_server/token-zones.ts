@@ -32,17 +32,29 @@ export async function readTokenZones(req:Request):Promise<ZoneView>{
   if(!out.fresh)out.issues.push('Trading updates are delayed. Last verified progress is shown.');
   if(!c.financial_complete)out.issues.push('ROI and realized profit are awaiting complete accounting.');
   const participants=r.participants as any[];if(!Array.isArray(participants)||participants.length>20000)throw Error('Participant read incomplete');
-  const scores:ZoneScore[]=participants.map(p=>({id:publicId(p.participant),name:`Trader ${publicId(p.participant).slice(0,6).toUpperCase()}`,qualified:qualificationDays(p.times,c.starts_at,c.ends_at).some(n=>n>=3),scores:{volume:p.volume,roi:c.financial_complete?p.roi:null,profit:c.financial_complete?p.profit:null,battles:p.battles}}));
+  // The optional read adapter verifies each ledger against current fills and
+  // cutoff. A pending account must not hide another account's verified result.
+  // Final reward allocation still requires the original global completion gate.
+  const verified=new Map<string,{roi:string|null;profit:string|null}>();
+  if(c.financial_complete)for(const p of participants)verified.set(p.participant,{roi:p.roi,profit:p.profit});
+  else if(out.complete){
+   const {data:financial,error:financialError}=await botsDb().rpc('mkz_verified_financials');
+   if(!financialError&&financial?.available===true&&financial?.schemaVersion===1&&financial?.methodology===TOKEN_ACCOUNTING.id&&financial?.confirmedThrough===c.confirmed_through&&Array.isArray(financial.rows)){
+    for(const p of financial.rows)if(participants.some(x=>x.participant===p.participant))verified.set(p.participant,{roi:p.roi,profit:p.profit});
+   }
+  }
+  out.financials={verified:verified.size,total:participants.filter(p=>!date(p.entered_at)||Date.parse(p.entered_at)<=Date.parse(c.confirmed_through)).length,complete:c.financial_complete===true,confirmedThrough:c.confirmed_through};
+  const scores:ZoneScore[]=participants.map(p=>({id:publicId(p.participant),name:`Trader ${publicId(p.participant).slice(0,6).toUpperCase()}`,qualified:qualificationDays(p.times,c.starts_at,c.ends_at).some(n=>n>=3),scores:{volume:p.volume,roi:verified.get(p.participant)?.roi??null,profit:verified.get(p.participant)?.profit??null,battles:p.battles}}));
   // Incomplete source coverage is never presented as confirmed absence/qualification.
   if(out.complete){
    out.volumeUsd=r.volume;let total=BigInt(0);
    out.history=[{day:0,volumeUsd:'0'},...r.days.map((d:any)=>{total+=decimalUnits(d.volume);return {day:Math.min(d.day+1,(Math.min(Date.parse(c.confirmed_through),Date.parse(c.ends_at))-Date.parse(c.starts_at))/DAY),volumeUsd:unitsDecimal(total,6)};})];
-   for(const category of ZONE_CATEGORIES)out.standings[category]=ranked(scores,category).slice(0,100).map(s=>({id:s.id,name:s.name,rank:s.rank,score:s.scores[category]!,qualified:s.qualified}));
+   for(const category of ZONE_CATEGORIES)out.standings[category]=ranked(scores,category).slice(0,100).map(s=>({id:s.id,name:s.name,rank:s.rank,score:category==='profit'?null:s.scores[category]!,qualified:s.qualified}));
   }
   const own=participants.find(p=>p.participant===r.own);
   if(out.personal&&own){out.personal.entered=true;out.personal.attemptsRemaining=own.remaining;
    if(out.complete){const weeks=qualificationDays(own.times,c.starts_at,c.ends_at);out.personal.weeks=weeks;out.personal.qualified=weeks.some(n=>n>=3);out.personal.volumeUsd=own.volume;
-    out.personal.scores={volume:own.volume,roi:c.financial_complete?own.roi:null,profit:c.financial_complete?own.profit:null,battles:own.battles};
+    out.personal.scores={volume:own.volume,roi:verified.get(own.participant)?.roi??null,profit:verified.get(own.participant)?.profit??null,battles:own.battles};
     for(const category of ZONE_CATEGORIES)out.personal.ranks[category]=ranked(scores,category).find(s=>s.id===publicId(r.own))?.rank??null;
     out.personal.challenges=[...(own.times.length?['First verified trade']:[]),...(weeks.some(n=>n>=3)?['First qualifying week']:[]),...(own.domains>=3?['Three domains']:[]),...(weeks.every(n=>n>=3)?['Four-week trader']:[])];
     if(c.state==='frozen')out.personal.awards=r.awards.filter((a:any)=>a.participant===r.own).map((a:any)=>({id:publicId(r.own),symbol:a.symbol,units:a.units}));

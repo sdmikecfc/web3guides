@@ -134,6 +134,19 @@ async function collect(snapshot,source,{now=Date.now(),lookbackDays=60}={}){
     }catch(e){for(const s of rows)grouped.delete(key(s));unverified.add(tx+':'+w.trade_wallet);problems.push({code:e.message,participant:w.participant});}
    }
   }
+  if(source.orderRouterSettlement){
+   const transactions=new Map();for(const rows of grouped.values())for(const s of rows)transactions.set(s.tx,[...(transactions.get(s.tx)||[]),s]);
+   for(const [tx,rows]of transactions){
+    const intent=refs.filter(x=>x.ref.status==='verified'&&x.ref.transactionHash===tx).map(x=>x.ref);
+    if(!w.agent&&!intent.length)continue; // manual activity is accounting-only
+    try{const proof=await source.orderRouterSettlement(local.filter(s=>s.tx===tx),intent);if(!proof)continue;
+     // Both the actual domain/WETH pool and canonical domain/USDC economic
+     // quote must be registered. The quote-only conversion is never a fill.
+     if(!markets.has(proof.swap.domain+':'+WETH)||!markets.has(proof.swap.domain+':'+USDC))throw Error('ORDER_ROUTE_MARKET_UNVERIFIED');
+     for(const s of rows)grouped.delete(key(s));const k=key(proof.swap);grouped.set(k,[proof.swap]);smartProofs.set(k,proof);
+    }catch(e){for(const s of rows)grouped.delete(key(s));unverified.add(tx+':'+w.trade_wallet);problems.push({code:e.message,participant:w.participant});}
+   }
+  }
   for(const [k,rows] of grouped){
    const s=rows[0];if(!markets.has(s.domain+':'+s.quote))continue;
    const matching=refs.filter(x=>key(referenceSwap(x.ref))===k),valid=matching.filter(x=>x.ref.status==='verified');

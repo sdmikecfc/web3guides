@@ -6,10 +6,11 @@ const path=require('node:path'),fs=require('node:fs'),{randomUUID}=require('node
 const root=path.resolve(__dirname,'../..');
 require('@next/env').loadEnvConfig(root,false,{info(){},error(){throw Error('EXISTING_SERVER_CONFIGURATION_UNAVAILABLE');}});
 const {collect}=require('./lib/public-trade-worker.cjs'),{publicSource}=require('./lib/public-trade-source.cjs');
-const {reconstruct}=require('./lib/public-accounting.cjs');
+const {accountingCycle}=require('./lib/accounting-cycle.cjs');
+const {openAccountingCache}=require('./lib/accounting-cache.cjs');
 const {rpcFailure,preflightWorkerPacket}=require('./lib/worker-contract.cjs');
 const safeCode=code=>typeof code==='string'&&/^[A-Z][A-Z0-9_]{2,100}$/.test(code)?code:'SOURCE_UNAVAILABLE';
-const workerVersion='mk-public-worker-6-stable-window';
+const workerVersion='mk-public-worker-7-resumable-accounting';
 let runStartedAt;
 const output=process.env.MK_WORKER_STATE_DIR||(process.platform==='win32'?'D:/Temp/modelkombat-tracking-review':path.join(process.env.TMPDIR||'/tmp','modelkombat-tracking-review'));
 const pollMinutes=Number(process.env.MK_WORKER_POLL_MINUTES||240);
@@ -47,25 +48,22 @@ async function run(){
   snapshot={...snapshot,wallets:agents,accounts:snapshot.accounts.filter(a=>a.participant===agents[0].participant),references:[],fills:[]};
  }
  await progress('VERIFYING_PUBLIC_TRADES');
- const source=publicSource({apiKey:process.env.DOMA_API_KEY}),result=await collect(snapshot,source),accounting=[];
+ const source=publicSource({apiKey:process.env.DOMA_API_KEY}),result=await collect(snapshot,source);let accounting=[],confirmAccountingCommit=null;
  if(args.has('--write'))await preflightWorkerPacket(result.packet,rpc);
  result.report.accountingProblems=[];
- const entries=new Map(snapshot.manifest.participants.map(e=>[e.participant,e]));
- const accounts=snapshot.accounts.filter(a=>snapshot.manifest.campaign.state==='draft'||entries.has(a.participant));
- // Financial reconstruction is allowed three minutes across this entire
- // cycle. Cancellation reaches real HTTP requests; no detached Promise.race
- // continues scanning after the verified volume packet is ready to commit.
- if(result.packet.complete&&!args.has('--test-linked-agent-only')&&accounts.length)await progress('RECONSTRUCTING_ACCOUNTING',{accounts:accounts.length});
- const accountingDeadline=Date.now()+180000;
- if(result.packet.complete&&!args.has('--test-linked-agent-only'))for(const a of accounts){
-  if(Date.now()>=accountingDeadline){result.report.accountingProblems.push({code:'ACCOUNTING_TIME_BUDGET_EXCEEDED'});break;}
+ if(result.packet.complete&&!args.has('--test-linked-agent-only')){
+  await progress('RECONSTRUCTING_ACCOUNTING');
   try{
-  const ledger=await source.withDeadline(accountingDeadline,()=>reconstruct({participant:a.participant,wallets:snapshot.wallets.filter(w=>w.participant===a.participant).map(w=>w.trade_wallet),
-   from:Math.max(Date.parse(result.packet.coverageFrom),Date.parse(entries.get(a.participant)?.entered_at||result.packet.coverageFrom)),through:Date.parse(result.packet.confirmedThrough),
-   markets:snapshot.manifest.markets,references:snapshot.references.filter(r=>r.participant===a.participant),eligible:result.packet.fills.filter(f=>f.status==='verified'&&snapshot.wallets.some(w=>w.participant===a.participant&&w.trade_wallet===f.wallet)),source,priorRevision:snapshot.accountingRevisions?.[a.participant]||0}));
-  accounting.push(ledger);
- }catch(e){result.report.accountingProblems.push({code:safeCode(e.message)});}}
- if(accounts.length&&accounting.length===accounts.length){result.packet.financialComplete=true;result.packet.methodology='mk-fifo-realized-capital-1';result.report.financialComplete=true;result.report.warnings=[];}
+   const capabilities=await rpc('mkz_accounting_capabilities');
+   if(capabilities?.openingBasis!=='deferred-untouched-2'||capabilities?.verifiedFinancials!=='per-account-current-cutoff-1')throw Error('ACCOUNTING_SCHEMA_UPDATE_REQUIRED');
+   const cache=openAccountingCache({directory:path.join(output,'accounting-cache'),chainId:97477});
+   const cycle=await accountingCycle({snapshot,packet:result.packet,cache,
+    sourceFactory:options=>publicSource({apiKey:process.env.DOMA_API_KEY,...options}),
+    anchorAt:(time,deadline)=>source.withDeadline(deadline,()=>source.blockAt(time))});
+   accounting=cycle.ledgers;confirmAccountingCommit=cycle.confirmCommit;result.report.accountingProblems=cycle.problems;
+   if(cycle.complete){result.packet.financialComplete=true;result.packet.methodology='mk-fifo-realized-capital-1';result.report.financialComplete=true;result.report.warnings=[];}
+  }catch(e){result.report.accountingProblems.push({code:safeCode(e.message)});}
+ }
  // Console/disk reports intentionally omit account IDs, wallet addresses,
  // transaction hashes, source references and all secrets.
  const report={workerVersion,...result.report,problems:result.report.problems.map(({code})=>({code:safeCode(code)})),databaseWrites:false};
@@ -76,6 +74,9 @@ async function run(){
   // Never advance behind an existing checkpoint after a stale read.
   if(Date.parse(result.packet.confirmedThrough)<Date.parse(snapshot.manifest.campaign.confirmed_through||0))throw Error('SOURCE_BEHIND_SAVED_CHECKPOINT');
   await rpc('mkz_worker_commit',{p:{requestId:randomUUID(),fingerprint:snapshot.fingerprint,packet:result.packet,accounting,report}});report.databaseWrites=true;
+  // A durable sweep acknowledgement is earned only by this successful commit.
+  // Failure to save it merely forces fresh reconstruction on the next cycle.
+  try{if(confirmAccountingCommit)await confirmAccountingCommit();}catch{console.error('ACCOUNTING_CHECKPOINT_UNAVAILABLE');}
  }
  report.status=result.packet.financialComplete?'TRACKING_VERIFIED':result.packet.complete?'VOLUME_VERIFIED_FINANCIALS_PENDING':'PENDING';
  report.scoreWrites=report.databaseWrites;

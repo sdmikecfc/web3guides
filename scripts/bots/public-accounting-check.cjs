@@ -31,10 +31,14 @@ async function main(){let f=fixture(),r=await reconstruct(f.options);
  f.source.balance=async(w,t,at)=>at==='0x11'?(t===USDC?89900000n:10000000n):(t===USDC?101800000n:0n);
  r=await reconstruct(f.options);assert.equal(r.openingLots.find(l=>l.token===token).costUsd,'10.100000');assert.equal(r.events[0].usd,'11.900000');assert.equal(r.events[0].notionalUsd,'12.000000');assert.equal(r.events[1].units,'11900000');
  f=fixture();f.source.hasCode=async()=>true;r=await reconstruct(f.options);assert.equal(r.openingLots.find(l=>l.token===USDC).units,'90000000','pure quote funding may originate from a contract');
- f=fixture();f.transactions[0].logs.push(log(addr(9),wallet,outside,1));await assert.rejects(()=>reconstruct(f.options),/QUOTE_DEPOSIT_EXCHANGE_REVIEW_REQUIRED/);
+ // Earlier quote funding provenance is irrelevant once its exact entry-block
+ // balance/value is evidenced; the same unexplained exchange after entry fails.
+ f=fixture();f.transactions[0].logs.push(log(addr(9),wallet,outside,1));r=await reconstruct(f.options);assert.equal(r.openingLots.find(l=>l.token===USDC).units,'90000000');
+ f=fixture();f.transactions[2].block='0x30';f.transactions.push({at:35,hash:'0x'+'9'.repeat(64),block:'0x20',blockHash:'0x'+'8'.repeat(64),logs:[log(USDC,outside,wallet,1000000),log(addr(9),wallet,outside,1)]});await assert.rejects(()=>reconstruct(f.options),/QUOTE_DEPOSIT_EXCHANGE_REVIEW_REQUIRED/);
  f=fixture();f.source.nativeBalance=async()=>1n;await assert.rejects(()=>reconstruct(f.options),/NATIVE_CAPITAL_LEDGER_REQUIRED/);
- f=fixture();f.source.balance=async()=>0n;await assert.rejects(()=>reconstruct(f.options),/OPENING_BALANCE_MISMATCH/);
+ f=fixture();const priorBalance=f.source.balance;f.source.balance=async(w,t,at)=>t===token&&at==='0x11'?11000000n:priorBalance(w,t,at);await assert.rejects(()=>reconstruct(f.options),/OPENING_BALANCE_MISMATCH/);
  f=fixture();f.transactions[0].logs=[log(token,outside,wallet,100000000)];await assert.rejects(()=>reconstruct(f.options),/EXTERNAL_DOMAIN_COST_BASIS_REQUIRED/);
  console.log('PASS independent accounting reconstruction: public FIFO history, fee-inclusive cost, quote funding, balance reconciliation, and rejection of unknown basis or unsupported exchange flows.');
 }
-main().catch(e=>{console.error(e);process.exitCode=1;});
+if(require.main===module)main().catch(e=>{console.error(e);process.exitCode=1;});
+module.exports={fixture};

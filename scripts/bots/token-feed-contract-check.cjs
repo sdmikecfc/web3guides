@@ -49,13 +49,24 @@ async function main(){
  env.BB_SESSION_SECRET='fixture-only-'+ 'x'.repeat(40);authenticated={wallet:addr(1)};
  const day=86400000,start=Date.now()-3*day,at=n=>new Date(start+n*day).toISOString();
  const view={campaign:{rules:'mk-token-zones-1',state:'active',starts_at:at(0),ends_at:at(28),confirmed_through:at(3),complete:true,financial_complete:false},assets:[],own:'123',volume:'80',days:[{day:0,volume:'20'},{day:1,volume:'30'},{day:2,volume:'30'}],participants:[{participant:'123',volume:'80',roi:'33.3',profit:'40',battles:'1',times:[at(0),at(1),at(2)],remaining:11,domains:1}]};
- db={async rpc(name){assert.equal(name,'mkz_read');return {data:view,error:null}},from(){const q={select(){return q},eq(){return q},async maybeSingle(){return {data:{status:'linked'},error:null}}};return q}};
+ let verifiedFinancials=null;
+ db={async rpc(name){if(name==='mkz_verified_financials')return {data:verifiedFinancials,error:verifiedFinancials?null:{code:'PGRST202'}};assert.equal(name,'mkz_read');return {data:view,error:null}},from(){const q={select(){return q},eq(){return q},async maybeSingle(){return {data:{status:'linked'},error:null}}};return q}};
  const visible=await feed.readTokenZones(new Request('http://local'));
  assert.equal(visible.available,true);assert.equal(visible.volumeUsd,'80');assert.equal(visible.standings.volume[0].score,'80');
  assert.equal(visible.standings.roi.length,0);assert.equal(visible.standings.profit.length,0);
  assert.equal(visible.personal.qualified,true);assert.equal(visible.personal.scores.roi,null);assert.equal(visible.personal.scores.profit,null);
  assert.equal(visible.personal.ranks.roi,null);assert.equal(visible.personal.awards.length,0);
  assert.ok(visible.issues.some(i=>i.includes('awaiting complete accounting')));
+ // Verified account results may be provisional while other accounts are pending.
+ // Public responses contain percentages/ranks, never individual profit amounts.
+ verifiedFinancials={schemaVersion:1,available:true,methodology:'mk-fifo-realized-capital-1',confirmedThrough:view.campaign.confirmed_through,rows:[{participant:'123',roi:'12.5',profit:'123456.789012'}]};
+ authenticated=null;let performance=await feed.readTokenZones(new Request('http://local'));
+ assert.equal(performance.standings.roi[0].score,'12.5');assert.equal(performance.standings.profit[0].rank,1);assert.equal(performance.standings.profit[0].score,null);
+ assert.equal(performance.financials.verified,1);assert.equal(performance.financials.complete,false);
+ assert.ok(!JSON.stringify(performance).includes('123456.789012'));assert.equal(performance.personal,null);
+ verifiedFinancials.confirmedThrough=at(2);performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.standings.roi.length,0,'stale snapshot cannot showcase a result');
+ view.campaign.financial_complete=true;performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.standings.profit[0].score,null,'even final public profit scores stay private');
+ view.campaign.financial_complete=false;authenticated={wallet:addr(1)};
  view.campaign.complete=false;const incomplete=await feed.readTokenZones(new Request('http://local'));
  assert.equal(incomplete.volumeUsd,null);assert.equal(incomplete.personal.qualified,null);assert.equal(incomplete.standings.volume.length,0);
  authenticated=null;

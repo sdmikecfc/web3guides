@@ -9,7 +9,10 @@ const files=[
  'scripts/bots/lib/public-trade-worker.cjs',
  'scripts/bots/lib/public-trade-source.cjs',
  'scripts/bots/lib/public-router-settlement.cjs',
+ 'scripts/bots/lib/public-order-route.cjs',
  'scripts/bots/lib/public-accounting.cjs',
+ 'scripts/bots/lib/accounting-cache.cjs',
+ 'scripts/bots/lib/accounting-cycle.cjs',
  'scripts/bots/lib/public-native-accounting.cjs',
  'scripts/bots/lib/public-native-router.cjs',
  'scripts/bots/lib/public-native-quote-router.cjs',
@@ -19,7 +22,13 @@ const files=[
  'scripts/bots/lib/worker-release.cjs',
  'scripts/bots/public-trade-worker-check.cjs',
  'scripts/bots/public-router-settlement-check.cjs',
+ 'scripts/bots/public-order-route-check.cjs',
  'scripts/bots/public-accounting-check.cjs',
+ 'scripts/bots/public-accounting-scoped-check.cjs',
+ 'scripts/bots/public-accounting-deferred-in-check.cjs',
+ 'scripts/bots/public-accounting-source-check.cjs',
+ 'scripts/bots/accounting-cache-check.cjs',
+ 'scripts/bots/accounting-cycle-check.cjs',
  'scripts/bots/public-native-accounting-check.cjs',
  'scripts/bots/public-native-router-check.cjs',
  'scripts/bots/native-purchase-ledger-check.cjs',
@@ -29,20 +38,22 @@ const files=[
  'scripts/bots/public-transfer-window-check.cjs',
  'scripts/bots/worker-contract-check.cjs',
  'scripts/bots/fixtures/smart-wallet/runtime-code.json',
+ 'scripts/bots/fixtures/order-route-runtimes.json',
  'scripts/bots/fixtures/smart-wallet/a80aed76.json',
  'scripts/bots/fixtures/smart-wallet/4e9590d2.json',
  'scripts/bots/fixtures/smart-wallet/3dfb75e1.json',
  'scripts/bots/fixtures/smart-wallet/README.md',
- 'docs/model-kombat-tracking-audit-2026-10-07.md',
+ 'docs/model-kombat-roi-release-2026-10-08.md',
+ 'scripts/sql/bots-token-zone-opening-basis.sql',
  'scripts/bots/install-tracking-worker.sh',
 ];
 if(fs.existsSync(out)&&fs.readdirSync(out).some(x=>!['scripts','docs','package.json','package-lock.json','README.txt','manifest.json'].includes(x)))throw Error('PACKAGE_DIRECTORY_CONTAINS_OTHER_FILES');
 fs.mkdirSync(out,{recursive:true});
 const manifest={createdAt:new Date().toISOString(),purpose:'Model Kombat public trade collector',deployed:false,files:[]};
 for(const name of files){const data=fs.readFileSync(path.join(root,name)),dest=path.join(out,name);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.writeFileSync(dest,data);manifest.files.push({path:name,sha256:createHash('sha256').update(data).digest('hex')});}
-const checks=['public-router-settlement-check','public-trade-worker-check','public-accounting-check','public-native-accounting-check','public-native-router-check','native-purchase-ledger-check','public-native-quote-router-check','public-smart-wallet-check','public-source-budget-check','worker-contract-check','public-transfer-window-check'];
+const checks=['public-router-settlement-check','public-order-route-check','public-trade-worker-check','public-accounting-check','public-native-accounting-check','public-native-router-check','native-purchase-ledger-check','public-native-quote-router-check','public-smart-wallet-check','public-source-budget-check','worker-contract-check','public-transfer-window-check','public-accounting-scoped-check','public-accounting-deferred-in-check','public-accounting-source-check','accounting-cache-check','accounting-cycle-check'];
 fs.writeFileSync(path.join(out,'package.json'),JSON.stringify({name:'model-kombat-tracking-worker',private:true,version:'1.0.0',engines:{node:'>=20'},scripts:{test:checks.map(name=>'node scripts/bots/'+name+'.cjs').join(' && '),check:'node scripts/bots/run-trade-worker.cjs',start:'node scripts/bots/run-trade-worker.cjs --write --watch'},dependencies:{'@next/env':'14.2.3','@supabase/supabase-js':'2.99.1','viem':'2.51.2'}},null,2)+'\n');
-fs.writeFileSync(path.join(out,'README.txt'),"MODEL KOMBAT COLLECTOR 6 - PREPARED, NOT INSTALLED\n\nThis update compares two complete scans of the same historical transfer window. Transfers after the cutoff no longer invalidate an unchanged scoring window. Changes, duplicates, reorgs, incomplete pagination and failed requests still leave coverage pending. The worker 5 full-proof commitment and database preflight remain intact.\n\nNo new SQL, key, internal-AI instructions or website deployment are needed. Keep internal-AI v4 running. Update only the separate collector using the source checkout's existing scripts/bots/install-tracking-worker.cjs. It checks disk space, database setup and all eleven included tests before replacing that collector. Do not rerun old setup SQL for this update.\n\nThis package contains public transaction regression fixtures, not private account mappings. It contains no credentials, private player data, game art or Reporter code. Use Node 20+ and the existing Model Kombat settings.\n\nThe service waits 15 minutes between completed cycles. Wallet and Strategy-reference discovery remains on its separate four-hour schedule. Read-only checks never write scores. Installation success is not financial audit success. Accounting has a three-minute total cycle budget with real cancellation, so large historical backfills leave ROI pending. Existing financial snapshots are retained.\n\nLive result on 7 October 2026: worker 5 saved 16 verified economic trades totaling $199.904189 at 08:52 UTC. The first run left coverage pending with TRANSFER_INDEX_CHANGED. Its next scheduled run completed at 09:14 UTC with complete volume coverage; a 09:15 UTC read confirmed the live API returns $199.904189. No immediate reinstall is needed for that recovery. ROI still hit the accounting time budget. All eight participant-wallet windows passed the revised read-only scan through the common 06:10:50.936 UTC cutoff; four windows belong to entrants newer than that cutoff and correctly require no historical scan. One transient Explorer HTTP 500 recovered through the existing retry. No production writes were performed by these local checks. The original production mismatch was not reproduced in those later live reads; the moving-head failure is reproduced by regression tests. ROI/profit remains unconfirmed until linked-account history and balances reconcile.\n\nAfter installation, verify mk-public-worker-6-stable-window and inspect its completed audit. This package is prepared only. Reporter, shared accounting, campaign dates and reward rules are unchanged. See docs/model-kombat-tracking-audit-2026-10-07.md for evidence and remaining limitations.\n");
+fs.writeFileSync(path.join(out,'README.txt'),"MODEL KOMBAT COLLECTOR 7 - PREPARED, NOT INSTALLED\n\nRun scripts/sql/bots-token-zone-opening-basis.sql once in the existing Model Kombat Supabase SQL editor, then run node scripts/bots/install-tracking-worker.cjs from the source checkout. This additive patch preserves campaign settings, inventories and stored snapshots. The installer checks the new capabilities before replacing the service. No new keys or internal-AI changes are needed.\n\nThis update reconstructs opening quote capital directly, preserves unknown FIFO cost for untouched old domain holdings, and backfills actual history before any old domain holding is consumed. A bounded private disk cache preserves finalized evidence across restarts. Accounts take turns within the time budget. Independent fresh verification scans still reject corrections, incomplete coverage and reorganizations. Per-account verified results may appear provisionally while another account is pending; final award gates remain unchanged.\n\nThe package contains no credentials or private player data. Read-only checks never write scores. Seventeen portable tests run before installation. Native PostgreSQL migration tests are run separately on an isolated local database, not on the droplet.\n\nThe worker waits 15 minutes between completed cycles. Wallet and Strategy-reference discovery remains on its separate four-hour schedule. Installation success is not financial audit success: inspect a completed mk-public-worker-7-resumable-accounting audit before claiming all accounting is verified.\n\nThis package does not deploy the website, alter Reporter or shared accounting, open the campaign, or change rewards. Public ROI is a percentage; public realized-profit standings hide dollar scores. Website publication remains the user's vercel --prod.\n");
 for(const name of ['package.json','README.txt'])manifest.files.push({path:name,sha256:createHash('sha256').update(fs.readFileSync(path.join(out,name))).digest('hex')});
 const lock=path.join(root,'scripts/bots/tracking-worker-lock.json');
 if(fs.existsSync(lock)){const bytes=fs.readFileSync(lock),parsed=JSON.parse(bytes),pkg=JSON.parse(fs.readFileSync(path.join(out,'package.json')));if(JSON.stringify(parsed.packages[''].dependencies)!==JSON.stringify(pkg.dependencies)||Object.values(parsed.packages).some(p=>p.resolved&&(!p.resolved.startsWith('https://registry.npmjs.org/')||p.link)))throw Error('NONPORTABLE_WORKER_LOCK');fs.writeFileSync(path.join(out,'package-lock.json'),bytes);manifest.files.push({path:'package-lock.json',sha256:createHash('sha256').update(bytes).digest('hex')});}

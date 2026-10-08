@@ -4,7 +4,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const root=path.resolve(__dirname,'../..');
 function load(file,imports={}){const module={exports:{}};const code=ts.transpileModule(fs.readFileSync(path.join(root,file),'utf8'),{fileName:file,compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;vm.runInNewContext(code,{module,exports:module.exports,require:name=>{if(name in imports)return imports[name];throw Error('Unexpected dependency '+name)},console,Intl,Date,Number,Set,Map,BigInt},{filename:file});return module.exports;}
 const zones=load('src/lib/bots/token-zones.ts');
-const {ZoneOverview}=load('src/app/bots/_game/TokenZoneBoard.tsx',{
+const {ZoneOverview,FinancialLeaders}=load('src/app/bots/_game/TokenZoneBoard.tsx',{
  react:React,'react/jsx-runtime':require('react/jsx-runtime'),'next/dynamic':()=>()=>null,'./EntryDialog':()=>null,'./QuickHelp':()=>null,
  '@/lib/bots/token-zones':zones,'@/lib/bots/workshop8/entry':{PLAY_ENTRY_URL:'/bots/play'},'./token-zone-board.module.css':{__esModule:true,default:new Proxy({},{get:(_,key)=>String(key)})}
 });
@@ -29,6 +29,12 @@ html=render({volumeUsd:'25000',complete:false});assert.match(html,/Last reported
 for(const state of ['closed','frozen']){html=render({state,volumeUsd:'750000'});assert.match(html,/Nov 3, 2026/);assert.match(html,/14:00 UTC/);assert.match(html,state==='closed'?/Closed · reconciling/:/Final results/);assert.doesNotMatch(html,/28-day competition/);}
 html=render({volumeUsd:null,endsAt:'invalid',confirmedThrough:'invalid'});assert.doesNotMatch(html,/Invalid Date/);assert.equal((html.match(/class="summaryCard/g)||[]).length,4);assert.equal((html.match(/class="unlockSegment/g)||[]).length,9);
 console.log('PASS: four rendered summary cards; null/incomplete/unavailable safety; draft; confirmed zero; all nine exact thresholds and token amounts; partial segment fill; sub-dollar remainder; approximate reference values; active/closed/frozen dates; last-confirmed vs incomplete metadata; update cadence. Offline only.');
+const leaders=delta=>renderToStaticMarkup(React.createElement(FinancialLeaders,{view:{...base,...delta}}));
+html=leaders({});assert.match(html,/Verifying results/);assert.doesNotMatch(html,/#1|NaN%/);
+html=leaders({standings:{volume:[],battles:[],roi:[{name:'Trader ONE',rank:1,score:'12.50'}],profit:[{name:'Trader TWO',rank:1,score:null}]},financials:{verified:2,total:4,complete:false}});
+assert.match(html,/\+12\.50%/);assert.match(html,/Trader ONE/);assert.match(html,/Trader TWO/);assert.match(html,/#1/);assert.match(html,/2 of 4 accounts verified/);assert.match(html,/Past results/);assert.doesNotMatch(html,/\$|USDC|NaN/);
+html=leaders({complete:false,standings:{volume:[],battles:[],roi:[{name:'STALE',rank:1,score:'99'}],profit:[{name:'STALE',rank:1,score:null}]}});assert.doesNotMatch(html,/STALE|99%|#1/);
+console.log('PASS: realized ROI showcase, private-profit rank, pending/stale results and provisional account coverage.');
 if(process.argv.includes('--strict')){
  const config=ts.readConfigFile(path.join(root,'tsconfig.json'),ts.sys.readFile).config,options=ts.convertCompilerOptionsFromJson(config.compilerOptions,root).options;options.incremental=false;
  const program=ts.createProgram(['next-env.d.ts','src/app/bots/_game/TokenZoneBoard.tsx'].map(p=>path.join(root,p)),options),errors=ts.getPreEmitDiagnostics(program);

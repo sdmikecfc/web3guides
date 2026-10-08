@@ -56,13 +56,14 @@ async function main(){
  // External fee sponsorship is not charged to the trader.
  f=nativeLedgerFixture();f.rows[4].payer=external;f.source.nativeBalance=async(w,b)=>w===agent?1000n:98995n;
  r=await reconstruct(f.options);assert.equal(r.events.find(e=>e.economicId==='sale').usd,'12.000000');
- // Missing a native deposit cannot turn native holdings into zero capital.
- f=nativeLedgerFixture();f.rows[0].moves=[];await assert.rejects(()=>reconstruct(f.options),/HISTORICAL_COST_BASIS_MISSING/);
- f=nativeLedgerFixture();f.source.nativeBalance=async()=>1n;await assert.rejects(()=>reconstruct(f.options),/NATIVE_OPENING_BALANCE_MISMATCH/);
+ // Entry-block native holdings establish opening capital without reconstructing
+ // old funding. Current-period native events still reconcile to closing balance.
+ f=nativeLedgerFixture();f.rows[0].moves=[];r=await reconstruct(f.options);assert.equal(r.openingLots.filter(l=>l.token===NATIVE).reduce((v,l)=>v+BigInt(l.units),0n),99995n);
+ f=nativeLedgerFixture();f.source.nativeBalance=async(w,b)=>w===agent?1000n:b===hex(29)?98995n:1n;await assert.rejects(()=>reconstruct(f.options),/NATIVE_CLOSING_BALANCE_MISMATCH/);
  f=nativeLedgerFixture();
  // Isolate a native sponsor deposit from the unrelated USDC deposit fixture.
  f.rows[0].moves[0].from=a(8);f.source.hasCode=async address=>address===a(8);r=await reconstruct(f.options);assert.equal(r.openingLots.filter(l=>l.token===NATIVE).reduce((v,l)=>v+BigInt(l.units),0n),99995n);
- f.rows[0].logs=[log(token,wallet,a(8),100)];await assert.rejects(()=>reconstruct(f.options),/NATIVE_CONTRACT_FLOW_REVIEW_REQUIRED/);
+ f.rows.push({n:35,tx:topic(hex(35)),block:hex(35),blockHash:topic(hex(135)),fee:0n,payer:external,moves:[{from:a(8),to:wallet,units:100n}],logs:[log(token,wallet,a(8),100)]});await assert.rejects(()=>reconstruct(f.options),/NATIVE_CONTRACT_FLOW_REVIEW_REQUIRED/);
  f=nativeLedgerFixture();f.rows.push({n:41,tx:topic(hex(41)),block:hex(41),blockHash:topic(hex(141)),fee:7n,payer:wallet,moves:[],status:'0x0',logs:[]});
  f.source.nativeBalance=async(w,b)=>w===agent?1000n:b===hex(29)?98995n:98983n;
  r=await reconstruct(f.options);assert.equal(r.events.filter(e=>e.token===NATIVE&&e.kind==='out').length,2,'failed transaction fee is reconciled as an outflow');assert.equal(r.events.find(e=>e.economicId==='sale').usd,'11.999995');
@@ -87,7 +88,7 @@ async function main(){
   else body={items:[{hash:tx.hash,timestamp:at(20),from:{hash:wallet},to:{hash:agent},value:'100'}],next_page_params:{block_number:20,index:0,items_count:1}};
   pages++;return {ok:true,status:200,text:async()=>JSON.stringify(body)};
  }});
- assert.equal((await history.nativeHistory(wallet,Date.parse(at(30)))).length,2);assert.equal(pages,5,'history and immutable pagination anchors are checked');
+ assert.equal((await history.nativeHistory(wallet,Date.parse(at(30)))).length,2);assert.equal(pages,6,'two complete native-history window scans are checked');
  console.log('PASS native ETH accounting: exact gas/L1 fees, failed calls, sponsor exclusion, linked transfers, separate native/WETH capital, wrapping, missing history, balance reconciliation and unchanged volume.');
 }
 if(require.main===module)main().catch(e=>{console.error(e);process.exitCode=1;});
