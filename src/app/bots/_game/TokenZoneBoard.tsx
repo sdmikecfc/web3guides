@@ -54,7 +54,7 @@ export function FinancialLeaders({view}:{view:ZoneView}){
    <article><span className={css.metricLabel}>Best realized ROI</span><strong>{roi?.score!=null?`${Number(roi.score)>0?'+':''}${Number(roi.score).toFixed(2)}%`:'Verifying results'}</strong><small>{roi?(tied>1?`${tied} traders tied`:roi.name):'Appears after accounting is verified'}</small></article>
    <article><span className={css.metricLabel}>Realized-profit leader</span><strong>{profits.length?'#1':'Verifying results'}</strong><small>{profits.length?names(profits):'Rank only · profit amounts stay private'}</small></article>
   </div>
-  <p>Closed-trade results from eligible Doma trading. {view.financials?`${view.financials.verified} of ${view.financials.total} accounts verified. `:''}{view.state==='frozen'?'Final results.':'Provisional; ranks can change as accounts are verified.'} Past results don’t guarantee future returns.</p>
+  <p>Closed-trade results from eligible Doma trading. {view.financials?`${view.financials.verified} of ${view.financials.total} trading accounts verified. `:''}{view.state==='frozen'?'Final results.':'Provisional; ranks can change as accounts are verified.'} Past results don’t guarantee future returns.</p>
  </section>;
 }
 function ZoneChart({view}:{view:ZoneView}){

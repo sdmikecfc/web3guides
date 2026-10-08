@@ -11,7 +11,7 @@ async function main(){fs.mkdirSync(out,{recursive:true});const browser=await chr
  for(const[width,height]of [[1280,720],[390,844],[844,390]]){
   await page.setViewportSize({width,height});await page.goto(origin+'/bots/leaderboard',{waitUntil:'networkidle'});
   const leaders=page.getByRole('region',{name:'Verified trading results'});await leaders.waitFor();
-  const text=await leaders.innerText();assert.match(text,/\+12\.50%/);assert.match(text,/Trader SAMPLE/);assert.match(text,/2 of 4 accounts verified/);assert.match(text,/Provisional/);assert.doesNotMatch(text,/\$|NaN|undefined/);
+  const text=await leaders.innerText();assert.match(text,/\+12\.50%/);assert.match(text,/Trader SAMPLE/);assert.match(text,/2 of 4 trading accounts verified/);assert.match(text,/Provisional/);assert.doesNotMatch(text,/\$|NaN|undefined/);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'no horizontal overflow');
   await leaders.screenshot({path:path.join(out,`roi-fixture-${width}x${height}.png`)});
  }

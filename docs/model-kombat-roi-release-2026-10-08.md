@@ -1,52 +1,37 @@
 # Model Kombat ROI update
 
-Prepared for installation. This is not a production deployment or confirmation that every account has verified returns.
+Worker 7 installed successfully. Its live audit verified trading volume but did **not** finish ROI. Worker 8 is the follow-up prepared here; it is not installed automatically.
 
-## Install in three steps
+## What to do
 
-1. In the existing Model Kombat Supabase SQL editor, run **all of `scripts/sql/bots-token-zone-opening-basis.sql`** once. Do not edit it or rerun the original setup.
-2. In PowerShell, from `C:\Users\Mike\Desktop\web3guides`, run **`node scripts/bots/install-tracking-worker.cjs`**. Use the usual SSH password. The installer tests the package and checks the database before replacing the service.
-3. Publish the website with your usual **`vercel --prod`** from the source checkout. Only the project owner runs this command.
+1. Open the existing Model Kombat Supabase SQL editor. Run **the whole `scripts/sql/bots-token-zone-financial-scope.sql` file**. Nothing needs editing. The opening-basis SQL from worker 7 must already be installed; this file checks that first.
+2. In PowerShell, from `C:\Users\Mike\Desktop\web3guides`, run **`node scripts/bots/install-tracking-worker.cjs`**. Use your normal SSH password. Tests and a database check run before the service is replaced.
+3. Publish the website with **`vercel --prod`** from that same folder. Only the project owner publishes production.
 
-After installation, check a completed `mk-public-worker-7-resumable-accounting` audit and the public leaderboard. Installation passing is not the same as every financial account passing.
+No new keys, internal-AI instructions, wallet setup or Reporter changes are needed. Installation success is not a verified financial result: check the completed `mk-public-worker-8-eligible-accounting` audit afterward.
 
-No new secret, internal-AI job, wallet setup or Reporter update is needed. The existing internal AI still supplies only wallet associations and Strategy execution references.
+## What changed
+
+- Accounts proven to have no eligible competition trades stay **unranked**, with null ROI/profit. They no longer require reconstruction of unrelated personal trading or liquidity positions. Complete trade coverage and SQL verification are required; a new or corrected eligible trade immediately requires accounting.
+- Actual traders retain the same full FIFO cost-basis, capital, fee and balance checks. Unknown costs are never assumed to be zero. Unsupported activity affecting a trader's accounting still leaves that account pending.
+- Fixed the Explorer's token-filtered pagination cursor. A changed or unrelated token filter is rejected.
+- Added narrowly verified direct UniversalRouter ERC20 settlements for accounting. Exact runtime, pool, fee and transfer conservation are checked. This does **not** make external manual trades eligible for prizes.
+- Bounded evidence caching preserves reconstruction work between attempts. Accounts take turns. Accounting permits up to 20 minutes per account and 30 minutes per cycle; measured fresh-history reads exceeded the old five-minute limit even with cached receipts. Exact-cutoff verification markers expire after four hours and invalidate on changed evidence, ownership, revision or chain anchor. They contain no substitute financial scores.
 
 ## What players see
 
-- **Best realized ROI:** the verified percentage and trader label.
-- **Realized-profit leader:** rank and trader label, with dollar scores withheld from the public response.
-- Pending accounts remain pending. Verified subsets are explicitly provisional and show how many accounts are covered.
-- Closed-trade returns are historical results, not a promise of future returns. The existing realized-profit / capital methodology is unchanged.
+**Best realized ROI** shows the verified percentage and trader label. **Realized-profit leader** shows rank and trader label; public responses contain no individual profit dollars or token holdings. Signed-in players retain their own private statistics.
 
-Public highlights do not display individual token holdings or profit amounts. Signed-in players retain their own existing private statistics. Community volume and the advertised reward basket remain visible.
+Only trading accounts appear in the verification count. Pending results are never shown as confirmed zero. Standings remain provisional until complete reconciliation. Past results do not guarantee future returns.
 
-## Accounting changes
+## Verified evidence and remaining limits
 
-- Reconstruct opening capital at the actual enrollment boundary, preserving sub-millisecond timestamps.
-- Keep untouched holdings and direct token deposits with unknown acquisition costs identifiable. Never assume their cost is zero; consuming an unproven FIFO lot remains pending.
-- Verify actual Strategy USDC-to-WETH-to-domain router settlements and count one economic fill, with fee-inclusive accounting and pool-only competition volume.
-- Cache bounded, pinned public-chain evidence outside the release directory. Fresh history verification still detects changed pages, corrections and reorganizations.
-- Process accounts fairly with cancellable source requests. A slow account cannot monopolize every cycle.
-- Combine a fixed-cutoff verification sweep across runs only after each database commit succeeds. Markers contain evidence identity and revision, never a substitute ledger; they expire after one hour and invalidate on changed evidence, failed verification or a chain reorganization.
-- Recalculate each published financial result against current eligible fills, wallet ownership and the exact coverage cutoff.
+The first worker-7 audit completed on **8 October at 06:07:59 UTC**. It saved complete trade coverage through **02:11:01 UTC**, with **37 eligible fills: 32 linked-agent and 5 Strategy fills**. It did not save verified financial snapshots.
 
-The additive SQL changes functions only. It does not alter campaign dates, token awards, inventory or existing stored snapshots. The service-role-only financial read cannot be called by an anonymous browser.
+At that cutoff, eight entrants comprise **two accounts with eligible trades, five with none, and one enrolled after the cutoff**. One current Strategy account was independently reconstructed and accepted through the actual SQL accounting path in isolated PostgreSQL. The other trader's longer historical reconstruction is still being checked. These local checks do not publish production scores.
 
-## Evidence and limits
+Regression checks cover corrections, new trades, exact enrollment timestamps, incomplete coverage, null-score non-traders, transaction rollback, private permissions, real router receipts and public profit privacy. Generated builds and private audit evidence stay on D:.
 
-The clean D-drive Next.js production build passed. Public financial privacy, pending-state rendering and API contracts passed. Browser checks passed at 1280×720, 390×844 and 844×390; these are emulated sizes, not physical-phone tests.
+The worker waits 15 minutes after a completed cycle. Internal-AI wallet discovery and Strategy-reference coverage still run every four hours. New enrollment after the current coverage cutoff remains pending until coverage advances.
 
-Isolated PostgreSQL checks cover FIFO, capital and fees, unknown-cost disposal rejection, exact enrollment, corrected fills, changed ownership, private RPC permissions and repeat migration safety. Live ledger reconstruction is validated against this same SQL without writing production scores.
-
-Four real accounts enrolled before the saved **7 October, 10:10:46 UTC** cutoff were independently reconstructed and then validated together through the full PostgreSQL accounting path: **4 accepted, 0 rejected, 4 verified, 0 pending**. Three had no eligible completed sales and realized ROI of 0%. The fourth had 16 eligible sales and approximately −0.08% realized ROI. A fifth entrant joined after that cutoff and was correctly excluded from this historical check. These results establish working calculations, not a positive-return promotional claim or a current production score.
-
-The measured final source reconstructions completed in approximately 123–173 seconds per tested account. Laptop-suspended attempts were discarded as performance measurements. Durable evidence caching improves repeated work; successful source reads and complete current coverage remain necessary.
-
-At the latest read-only production check on **8 October, 03:05 UTC**, the installed version was worker 5. It had saved 37 economic fills: 32 linked-agent and 5 Strategy fills. Production contained no accounting snapshots yet. The internal-AI feed had recovered and the latest completed audit had fresh, complete trade coverage through **8 October, 02:11:01 UTC**, covering seven entrants and fourteen trade wallets. Financial checks still reported `ACCOUNTING_TIME_BUDGET_EXCEEDED` on that older worker.
-
-No internal-AI action is currently needed. Keep its existing v4 wallet-link and Strategy-reference job, connection, keys and four-hour schedule. The four validated historical ledgers are not a claim that all seven current entrants have been financially verified.
-
-The public worker waits 15 minutes after a completed cycle; the internal-AI discovery schedule is four hours. Current financial standings still depend on current, complete source evidence. Unsupported history is not silently omitted from ROI.
-
-No production SQL, worker installation, website deployment, campaign change or production score write was performed during this local verification.
+Campaign dates, reward allocations, inventories, historical records, Reporter and shared accounting are unchanged. No production SQL, service installation or website deployment is performed by these local checks.

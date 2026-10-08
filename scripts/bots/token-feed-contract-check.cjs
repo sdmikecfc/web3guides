@@ -66,6 +66,15 @@ async function main(){
  assert.ok(!JSON.stringify(performance).includes('123456.789012'));assert.equal(performance.personal,null);
  verifiedFinancials.confirmedThrough=at(2);performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.standings.roi.length,0,'stale snapshot cannot showcase a result');
  view.campaign.financial_complete=true;performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.standings.profit[0].score,null,'even final public profit scores stay private');
+ view.participants.push({participant:'456',volume:'0',roi:'999',profit:'888888',battles:'0',times:[],remaining:12,domains:0});
+ performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.financials.total,1);assert.equal(performance.financials.verified,1);assert.equal(performance.standings.roi.length,1,'a non-trader with an old stored score remains unranked');assert.ok(!JSON.stringify(performance).includes('888888'));
+ view.participants[1].times=[at(4)];performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.financials.total,1,'future activity is outside the verified cutoff');
+ view.participants[1].times=[at(1)];view.campaign.financial_complete=false;verifiedFinancials.confirmedThrough=view.campaign.confirmed_through;
+ performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.financials.total,2);assert.equal(performance.financials.verified,1,'a new trader counts as pending until its own ledger is verified');
+ Object.assign(verifiedFinancials,{financialScope:'eligible-traders-1',tradingAccounts:1,scopePending:0});
+ performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.financials.total,1,'exact SQL scope overrides raw historical activity counts');
+ view.campaign.financial_complete=true;verifiedFinancials.rows=[];verifiedFinancials.tradingAccounts=0;
+ performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.financials.verified,0);assert.equal(performance.standings.roi.length,0,'current SQL scope removes an old financial score even after global completion');
  view.campaign.financial_complete=false;authenticated={wallet:addr(1)};
  view.campaign.complete=false;const incomplete=await feed.readTokenZones(new Request('http://local'));
  assert.equal(incomplete.volumeUsd,null);assert.equal(incomplete.personal.qualified,null);assert.equal(incomplete.standings.volume.length,0);

@@ -32,18 +32,22 @@ export async function readTokenZones(req:Request):Promise<ZoneView>{
   if(!out.fresh)out.issues.push('Trading updates are delayed. Last verified progress is shown.');
   if(!c.financial_complete)out.issues.push('ROI and realized profit are awaiting complete accounting.');
   const participants=r.participants as any[];if(!Array.isArray(participants)||participants.length>20000)throw Error('Participant read incomplete');
+  const traders=new Set<string>(participants.filter(p=>Array.isArray(p.times)&&p.times.some((t:unknown)=>date(t)&&Date.parse(t as string)<=Date.parse(c.confirmed_through))).map(p=>p.participant));
   // The optional read adapter verifies each ledger against current fills and
   // cutoff. A pending account must not hide another account's verified result.
   // Final reward allocation still requires the original global completion gate.
   const verified=new Map<string,{roi:string|null;profit:string|null}>();
-  if(c.financial_complete)for(const p of participants)verified.set(p.participant,{roi:p.roi,profit:p.profit});
-  else if(out.complete){
+  let financialTotal=traders.size;
+  if(c.financial_complete){for(const p of participants)if(traders.has(p.participant))verified.set(p.participant,{roi:p.roi,profit:p.profit});}
+  if(out.complete&&c.state!=='frozen'){
    const {data:financial,error:financialError}=await botsDb().rpc('mkz_verified_financials');
    if(!financialError&&financial?.available===true&&financial?.schemaVersion===1&&financial?.methodology===TOKEN_ACCOUNTING.id&&financial?.confirmedThrough===c.confirmed_through&&Array.isArray(financial.rows)){
-    for(const p of financial.rows)if(participants.some(x=>x.participant===p.participant))verified.set(p.participant,{roi:p.roi,profit:p.profit});
+    const exactScope=financial.financialScope==='eligible-traders-1'&&Number.isSafeInteger(financial.tradingAccounts)&&financial.tradingAccounts>=0&&financial.tradingAccounts<=participants.length;
+    if(exactScope){verified.clear();financialTotal=financial.tradingAccounts;}
+    if(exactScope||!c.financial_complete)for(const p of financial.rows)if(exactScope?participants.some(x=>x.participant===p.participant):traders.has(p.participant))verified.set(p.participant,{roi:p.roi,profit:p.profit});
    }
   }
-  out.financials={verified:verified.size,total:participants.filter(p=>!date(p.entered_at)||Date.parse(p.entered_at)<=Date.parse(c.confirmed_through)).length,complete:c.financial_complete===true,confirmedThrough:c.confirmed_through};
+  out.financials={verified:verified.size,total:financialTotal,complete:c.financial_complete===true,confirmedThrough:c.confirmed_through};
   const scores:ZoneScore[]=participants.map(p=>({id:publicId(p.participant),name:`Trader ${publicId(p.participant).slice(0,6).toUpperCase()}`,qualified:qualificationDays(p.times,c.starts_at,c.ends_at).some(n=>n>=3),scores:{volume:p.volume,roi:verified.get(p.participant)?.roi??null,profit:verified.get(p.participant)?.profit??null,battles:p.battles}}));
   // Incomplete source coverage is never presented as confirmed absence/qualification.
   if(out.complete){

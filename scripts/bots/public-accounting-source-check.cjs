@@ -31,6 +31,33 @@ async function filteredChecks(){
  assert.deepEqual(await source.transfersForTokens(wallet,[],start,through),[]);assert.deepEqual(await source.transfersForTokens(wallet,[token],through+1,through),[]);
  console.log('PASS token-filtered coverage: exact token query, both independent scans, integer precision, wrong-token rejection even outside window and corrections');
 }
+async function filteredCursorChecks(){
+ const first=transfer(5,5),second=transfer(3,3),calls=[];
+ const source=publicSource({apiKey:'fixture',delay:0,fetcher:async url=>{
+  const u=new URL(url);assert.equal(u.origin,'https://explorer.doma.xyz');assert.equal(u.pathname,'/api/v2/addresses/'+wallet+'/token-transfers');assert.equal(u.searchParams.get('token'),token);assert.equal(u.searchParams.get('type'),'ERC-20');
+  const next=u.searchParams.has('block_number');calls.push(next?1:0);
+  if(next){assert.equal(u.searchParams.get('block_number'),'5');assert.equal(u.searchParams.get('index'),'0');return response(page([second]));}
+  // Actual Blockscout filtered-cursor shape: index, token, block_number.
+  return response(page([first],{index:0,token,block_number:5}));
+ }});
+ assert.deepEqual(await source.transfersForTokens(wallet,[token],start,through),[first,second]);assert.deepEqual(calls,[0,1,0,1],'Both independent scans follow the echoed token cursor');
+ for(const value of [other,null,{},[token],'https://example.invalid']){
+  let reads=0;const rejected=publicSource({apiKey:'fixture',delay:0,fetcher:async()=>{reads++;return response(page([first],{index:0,token:value,block_number:5}));}});
+  await assert.rejects(()=>rejected.transfersForTokens(wallet,[token],start,through),/TRANSFER_CURSOR_TOKEN_MISMATCH/);assert.equal(reads,1,'Invalid cursor never causes a follow-up request');
+ }
+ let reads=0;const unfiltered=publicSource({apiKey:'fixture',delay:0,fetcher:async()=>{reads++;return response(page([first],{index:0,token,block_number:5}));}});
+ await assert.rejects(()=>unfiltered.transfers(wallet,start,through),/TRANSFER_CURSOR_TOKEN_MISMATCH/);assert.equal(reads,1,'A cursor cannot narrow an unfiltered wallet scan');
+ const unknown=publicSource({apiKey:'fixture',delay:0,fetcher:async()=>response(page([first],{index:0,token,block_number:5,url:'https://example.invalid'}))});await assert.rejects(()=>unknown.transfersForTokens(wallet,[token],start,through),/UNKNOWN_EXPLORER_CURSOR/);
+ const store=cache(),network=rpcFixture(),retried=[];let corrected=false;
+ const resumable=()=>publicSource({apiKey:'fixture',delay:0,accountingCache:store,accountingAnchor:anchor,fetcher:async(url,options)=>{
+  if(url==='https://rpc.doma.xyz')return network.reply(options);
+  const next=new URL(url).searchParams.has('block_number');retried.push(next?1:0);
+  return response(next?page([second]):page([first],{index:0,token:corrected?token:other,block_number:5}));
+ }});
+ await assert.rejects(()=>resumable().transfersForTokens(wallet,[token],start,through),/TRANSFER_CURSOR_TOKEN_MISMATCH/);assert.deepEqual(retried,[0]);
+ corrected=true;retried.length=0;assert.deepEqual(await resumable().transfersForTokens(wallet,[token],start,through),[first,second]);assert.deepEqual(retried,[0,1,0,1],'Rejected cursor is discarded; corrected feed starts fresh instead of reusing a poisoned checkpoint');
+ console.log('PASS actual filtered cursor: echoed token pagination in both scans, unchanged host/path/filter, and rejection of changed, missing, malformed, unrequested or unknown cursor fields');
+}
 async function nativeChecks(){
  const counts={transactions:0,'internal-transactions':0};
  const tx=(n,h)=>({hash:hash(n),block_hash:hash(n+100),block_number:n,timestamp:at(h),from:{hash:wallet},to:{hash:other},value:'10000000000000000001',fee:{value:'5'},status:'ok'});
@@ -88,6 +115,27 @@ async function blockLookupChecks(){
  assert.equal((await publicSource({apiKey:'fixture',delay:0,fetcher}).blockAt(150*30000+558)).number,hex(150),'Uncached volume source retains its finalized-head search');
  console.log('PASS anchored block lookup: stable cached search across head movement, exact/subsecond/30-second cutoff boundaries, outside-anchor rejection and reorg validation');
 }
+async function universalDispatchChecks(){
+ const v=require('viem'),{fixture}=require('./public-universal-settlement-check.cjs'),{ROUTER,RUNTIME_HASH}=require('./lib/public-universal-settlement.cjs');
+ const runtime=require('./fixtures/order-route-runtimes.json').codes[ROUTER];assert.equal(v.keccak256(runtime),RUNTIME_HASH);
+ function setup({badRuntime=false,unsupported=false}={}){
+  const c=fixture(),calls=[];
+  if(unsupported){const abi=v.parseAbi(['function execute(bytes commands,bytes[] inputs) payable']);c.transaction.input=v.encodeFunctionData({abi,functionName:'execute',args:['0x800604',c.inputs]});}
+  const source=publicSource({apiKey:'fixture',delay:0,fetcher:async(url,options)=>{
+   assert.equal(url,'https://rpc.doma.xyz');const {method,params}=JSON.parse(options.body);calls.push(method);
+   if(method==='eth_getTransactionByHash'){assert.equal(params[0],c.swap.tx);return response({result:c.transaction});}
+   if(method==='eth_getCode'){assert.equal(params[0],ROUTER);assert.equal(params[1],c.receipt.blockNumber);return response({result:badRuntime?'0x00':runtime});}
+   assert.equal(method,'eth_call','Direct UniversalRouter must not read the unrelated OrderRouter implementation slot');
+   assert.equal(params[0].to,'0x2e50b586d5bcd04cb6125e028a6a669f7f3cf1c2');assert.equal(params[1],c.receipt.blockNumber);
+   const decoded=v.decodeFunctionData({abi:v.parseAbi(['function getPool(address,address,uint24) view returns(address)']),data:params[0].data});assert.equal(decoded.functionName,'getPool');assert.equal(decoded.args[0].toLowerCase(),c.swap.quote);assert.equal(decoded.args[1].toLowerCase(),c.swap.domain);assert.equal(decoded.args[2],500);
+   return response({result:v.encodeAbiParameters([{type:'address'}],[c.pool])});
+  }});return {c,calls,source};
+ }
+ const good=setup(),result=await good.source.routerSettlement(good.c.swap,good.c.receipt);assert.equal(result.walletDomainUnits,'1998000');assert.equal(result.walletQuoteUnits,'1000000');assert.deepEqual(good.calls,['eth_getTransactionByHash','eth_getCode','eth_call']);
+ await good.source.routerSettlement(good.c.swap,good.c.receipt);assert.equal(good.calls.length,3,'Source reuses the same numeric-block runtime and factory reads');
+ for(const [options,expected]of [[{badRuntime:true},/UNREVIEWED_RUNTIME/],[{unsupported:true},/UNSUPPORTED_COMMANDS/]]){const bad=setup(options);await assert.rejects(()=>bad.source.routerSettlement(bad.c.swap,bad.c.receipt),expected);assert.deepEqual(bad.calls,['eth_getTransactionByHash','eth_getCode'],'Unproved target route cannot fall back to legacy or net transfer inference');}
+ console.log('PASS UniversalRouter source dispatch: historical pinned runtime and factory proof, exact fee-inclusive result, cached immutable reads and fail-closed runtime/command rejection');
+}
 async function failedNativeChecks(){
  const transaction={hash:hash(3000),blockHash:hash(40),blockNumber:hex(40),from:wallet,to:other,value:'0x100',type:'0x2'};
  const receipt={transactionHash:transaction.hash,blockHash:transaction.blockHash,blockNumber:transaction.blockNumber,status:'0x0',gasUsed:'0x2',effectiveGasPrice:'0x3',l1Fee:'0x4',logs:[]};
@@ -138,7 +186,7 @@ async function parallelWindowChecks(){
  console.log('PASS parallel history scopes: concurrency3, complete A-before-B barrier, deterministic ordering, fresh independent reads and drained failures/deadlines');
 }
 async function resumableChecks(){
- const a=transfer(5,5),b=transfer(3,3),c=transfer(2,2),old=transfer(1,-1),pages=[page([a],{block_number:5,index:0}),page([b,c],{block_number:2,index:0}),page([old])];
+ const a=transfer(5,5),b=transfer(3,3),c=transfer(2,2),old=transfer(1,-1),pages=[page([a],{block_number:5,index:0,token}),page([b,c],{block_number:2,index:0,token}),page([old])];
  function fixture(store,{abortAt=-1,correct=false,reorg=false}={}){
   const network=rpcFixture(),calls=[];if(reorg)network.overrides.set(100,hash(999));let active=0,aborted=0;
   const source=publicSource({apiKey:'fixture',delay:0,accountingCache:store,accountingAnchor:anchor,fetcher:async(url,options)=>{
@@ -160,5 +208,5 @@ async function resumableChecks(){
  const reorgCache=cache(),beforeReorg=fixture(reorgCache,{abortAt:3});await assert.rejects(()=>beforeReorg.source.withDeadline(Date.now()+400,()=>beforeReorg.source.transfersForTokens(wallet,[token],start,through)),/ACCOUNTING_TIME_BUDGET_EXCEEDED/);const reorg=fixture(reorgCache,{reorg:true});await assert.rejects(()=>reorg.source.transfersForTokens(wallet,[token],start,through),/ACCOUNTING_ANCHOR_REORG/);assert.equal(reorg.calls.length,0);
  console.log('PASS durable pagination: real cancellation in either scan, restart cursor/order verification, fully fresh second pass including interrupted prefixes, corrections discard checkpoints, reorg rejects reuse and no partial coverage returned');
 }
-async function main(){try{await filteredChecks();await nativeChecks();await immutableChecks();await transactionProofChecks();await blockLookupChecks();await failedNativeChecks();await concurrentRequestChecks();await parallelWindowChecks();await resumableChecks();console.log('Offline source checks complete.')}finally{const resolved=path.resolve(directory);assert.equal(path.dirname(resolved),path.resolve(tempBase));assert.ok(path.basename(resolved).startsWith('mk-accounting-source-check-'));fs.rmSync(resolved,{recursive:true,force:true});}}
+async function main(){try{await filteredChecks();await filteredCursorChecks();await nativeChecks();await immutableChecks();await transactionProofChecks();await blockLookupChecks();await universalDispatchChecks();await failedNativeChecks();await concurrentRequestChecks();await parallelWindowChecks();await resumableChecks();console.log('Offline source checks complete.')}finally{const resolved=path.resolve(directory);assert.equal(path.dirname(resolved),path.resolve(tempBase));assert.ok(path.basename(resolved).startsWith('mk-accounting-source-check-'));fs.rmSync(resolved,{recursive:true,force:true});}}
 main().catch(error=>{console.error(error);process.exitCode=1});

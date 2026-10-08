@@ -32,7 +32,7 @@ console.log('PASS: four rendered summary cards; null/incomplete/unavailable safe
 const leaders=delta=>renderToStaticMarkup(React.createElement(FinancialLeaders,{view:{...base,...delta}}));
 html=leaders({});assert.match(html,/Verifying results/);assert.doesNotMatch(html,/#1|NaN%/);
 html=leaders({standings:{volume:[],battles:[],roi:[{name:'Trader ONE',rank:1,score:'12.50'}],profit:[{name:'Trader TWO',rank:1,score:null}]},financials:{verified:2,total:4,complete:false}});
-assert.match(html,/\+12\.50%/);assert.match(html,/Trader ONE/);assert.match(html,/Trader TWO/);assert.match(html,/#1/);assert.match(html,/2 of 4 accounts verified/);assert.match(html,/Past results/);assert.doesNotMatch(html,/\$|USDC|NaN/);
+assert.match(html,/\+12\.50%/);assert.match(html,/Trader ONE/);assert.match(html,/Trader TWO/);assert.match(html,/#1/);assert.match(html,/2 of 4 trading accounts verified/);assert.match(html,/Past results/);assert.doesNotMatch(html,/\$|USDC|NaN/);
 html=leaders({complete:false,standings:{volume:[],battles:[],roi:[{name:'STALE',rank:1,score:'99'}],profit:[{name:'STALE',rank:1,score:null}]}});assert.doesNotMatch(html,/STALE|99%|#1/);
 console.log('PASS: realized ROI showcase, private-profit rank, pending/stale results and provisional account coverage.');
 if(process.argv.includes('--strict')){

@@ -229,7 +229,7 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
   try{
    const first=await scanAll('a'),rows=(await scanAll('b',first)).flat();
    checkBudget();cache?.clear();return rows;
-  }catch(error){if(/(?:INDEX_CHANGED|DUPLICATE|ORDER_CHANGED|CURSOR_REPEATED|_INVALID|PAGE_LIMIT)$/.test(error.message))cache?.clear();throw error;}
+  }catch(error){if(/(?:INDEX_CHANGED|DUPLICATE|ORDER_CHANGED|CURSOR_REPEATED|CURSOR_TOKEN_MISMATCH|_INVALID|PAGE_LIMIT)$/.test(error.message))cache?.clear();throw error;}
  }
  const transferProof=rows=>{
    const seen=new Set(),hex=(v,n)=>{if(typeof v!=='string'||!new RegExp('^0x[0-9a-fA-F]{'+n+'}$').test(v))throw Error('TRANSFER_HISTORY_INVALID');return v.toLowerCase();};
@@ -242,7 +242,10 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
    });
  };
  function transferScope(wallet,token=null){return {id:token??'all',validate:row=>{if(token&&row.token?.address_hash?.toLowerCase()!==token)throw Error('TRANSFER_TOKEN_FILTER_MISMATCH');},page:async params=>{
-   const keys=Object.keys(params);if(keys.some(k=>!['block_number','index','items_count','batch_block_hash','batch_transaction_hash','batch_log_index','index_in_batch','token_contract_address_hash','token_id','type'].includes(k)))throw Error('UNKNOWN_EXPLORER_CURSOR');
+   const keys=Object.keys(params);if(keys.some(k=>!['block_number','index','items_count','batch_block_hash','batch_transaction_hash','batch_log_index','index_in_batch','token_contract_address_hash','token_id','type','token'].includes(k)))throw Error('UNKNOWN_EXPLORER_CURSOR');
+   // Blockscout echoes the active token filter in its pagination cursor. It
+   // may preserve that filter, never introduce or switch the requested token.
+   if(keys.includes('token')&&(!token||typeof params.token!=='string'||params.token.toLowerCase()!==token))throw Error('TRANSFER_CURSOR_TOKEN_MISMATCH');
    const url=new URL('https://explorer.doma.xyz/api/v2/addresses/'+wallet+'/token-transfers');for(const [k,v]of Object.entries(params))if(v!==null)url.searchParams.set(k,String(v));url.searchParams.set('type','ERC-20');if(token)url.searchParams.set('token',token);
    const p=await request(url.toString());
    if(p?.next_page_params)p.next_page_params=Object.fromEntries(Object.entries(p.next_page_params).sort(([a],[b])=>a.localeCompare(b)));
@@ -356,6 +359,10 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
     const purchase=await nativeRouterPurchase(s.tx,receipt,await nativeTransaction(s.tx,receipt),[s.wallet]);
     if(!purchase||s.side!=='buy'||s.domain!==purchase.token||s.quote!==purchase.domainQuoteToken||s.domainUnits!==purchase.domainPoolUnits||s.quoteUnits!==purchase.domainQuoteUnits)throw Error('NATIVE_ROUTER_INDEX_MISMATCH');
     return {walletDomainUnits:purchase.units,walletQuoteUnits:purchase.nativeSpent,walletQuoteToken:require('./public-native-accounting.cjs').NATIVE,nativeCostWei:purchase.nativeSpent,router:purchase.router,pools:purchase.pools,routerFeeUnits:'0',routerDomainFeeUnits:(BigInt(purchase.domainPoolUnits)-BigInt(purchase.units)).toString()};
+   }
+   if(transaction.to?.toLowerCase()===require('./public-universal-settlement.cjs').ROUTER){
+    const {verifyUniversalSettlement,ROUTER:universal}=require('./public-universal-settlement.cjs');
+    return verifyUniversalSettlement(s,receipt,{transaction,codeHash:require('viem').keccak256(await code(universal,receipt.blockNumber)),poolFor:(a,b,fee,at)=>read(factory,'function getPool(address,address,uint24) view returns(address)','getPool',[a,b,fee],at)});
    }
    if(!implementations.has(receipt.blockNumber))implementations.set(receipt.blockNumber,'0x'+(await rpc('eth_getStorageAt',[ROUTER,IMPLEMENTATION_SLOT,receipt.blockNumber])).slice(-40));
    return verifyRouterSettlement(s,receipt,{transaction:transactions.get(s.tx),implementation:implementations.get(receipt.blockNumber),poolFor:(a,b,fee,at)=>read(factory,'function getPool(address,address,uint24) view returns(address)','getPool',[a,b,fee],at)});

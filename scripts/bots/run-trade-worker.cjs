@@ -10,7 +10,7 @@ const {accountingCycle}=require('./lib/accounting-cycle.cjs');
 const {openAccountingCache}=require('./lib/accounting-cache.cjs');
 const {rpcFailure,preflightWorkerPacket}=require('./lib/worker-contract.cjs');
 const safeCode=code=>typeof code==='string'&&/^[A-Z][A-Z0-9_]{2,100}$/.test(code)?code:'SOURCE_UNAVAILABLE';
-const workerVersion='mk-public-worker-7-resumable-accounting';
+const workerVersion='mk-public-worker-8-eligible-accounting';
 let runStartedAt;
 const output=process.env.MK_WORKER_STATE_DIR||(process.platform==='win32'?'D:/Temp/modelkombat-tracking-review':path.join(process.env.TMPDIR||'/tmp','modelkombat-tracking-review'));
 const pollMinutes=Number(process.env.MK_WORKER_POLL_MINUTES||240);
@@ -55,12 +55,13 @@ async function run(){
   await progress('RECONSTRUCTING_ACCOUNTING');
   try{
    const capabilities=await rpc('mkz_accounting_capabilities');
-   if(capabilities?.openingBasis!=='deferred-untouched-2'||capabilities?.verifiedFinancials!=='per-account-current-cutoff-1')throw Error('ACCOUNTING_SCHEMA_UPDATE_REQUIRED');
+   if(capabilities?.openingBasis!=='deferred-untouched-2'||capabilities?.verifiedFinancials!=='per-account-current-cutoff-1'||capabilities?.financialScope!=='eligible-traders-1')throw Error('ACCOUNTING_SCHEMA_UPDATE_REQUIRED');
    const cache=openAccountingCache({directory:path.join(output,'accounting-cache'),chainId:97477});
    const cycle=await accountingCycle({snapshot,packet:result.packet,cache,
     sourceFactory:options=>publicSource({apiKey:process.env.DOMA_API_KEY,...options}),
     anchorAt:(time,deadline)=>source.withDeadline(deadline,()=>source.blockAt(time))});
    accounting=cycle.ledgers;confirmAccountingCommit=cycle.confirmCommit;result.report.accountingProblems=cycle.problems;
+   result.report.accountingScope={verified:cycle.completed,noEligibleTrades:cycle.noTrades,notStarted:cycle.notStarted,total:cycle.total};
    if(cycle.complete){result.packet.financialComplete=true;result.packet.methodology='mk-fifo-realized-capital-1';result.report.financialComplete=true;result.report.warnings=[];}
   }catch(e){result.report.accountingProblems.push({code:safeCode(e.message)});}
  }
