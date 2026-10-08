@@ -16,6 +16,7 @@ No new keys, internal-AI instructions, wallet setup or Reporter changes are need
 - Actual traders retain the same full FIFO cost-basis, capital, fee and balance checks. Unknown costs are never assumed to be zero. Unsupported activity affecting a trader's accounting still leaves that account pending.
 - Fixed the Explorer's token-filtered pagination cursor. A changed or unrelated token filter is rejected.
 - Added narrowly verified direct UniversalRouter ERC20 settlements for accounting. Exact runtime, pool, fee and transfer conservation are checked. This does **not** make external manual trades eligible for prizes.
+- Added the specific ETH-funded, two-hop exact-input purchase found in the remaining trader's history. The verifier checks the actual wrapped amount, both pool exchanges, proportional output fee and final sweep. This supplies accounting evidence; it does not turn a manual purchase into a qualifying competition trade.
 - Bounded evidence caching preserves reconstruction work between attempts. Accounts take turns. Accounting permits up to 20 minutes per account and 30 minutes per cycle; measured fresh-history reads exceeded the old five-minute limit even with cached receipts. Exact-cutoff verification markers expire after four hours and invalidate on changed evidence, ownership, revision or chain anchor. They contain no substitute financial scores.
 
 ## What players see
@@ -28,7 +29,7 @@ Only trading accounts appear in the verification count. Pending results are neve
 
 The first worker-7 audit completed on **8 October at 06:07:59 UTC**. It saved complete trade coverage through **02:11:01 UTC**, with **37 eligible fills: 32 linked-agent and 5 Strategy fills**. It did not save verified financial snapshots.
 
-At that cutoff, eight entrants comprise **two accounts with eligible trades, five with none, and one enrolled after the cutoff**. One current Strategy account was independently reconstructed and accepted through the actual SQL accounting path in isolated PostgreSQL. The other trader's longer historical reconstruction is still being checked. These local checks do not publish production scores.
+At that cutoff, eight entrants comprise **two accounts with eligible trades, five with none, and one enrolled after the cutoff**. One current Strategy account was independently reconstructed and accepted through the actual SQL accounting path in isolated PostgreSQL. The other trader's audit checked 870 historical receipts and reached one unsupported ETH-funded purchase. Its narrow settlement adapter is included in this update. That account still needs a completed full financial audit; passing the transaction proof does not verify its entire ROI ledger. These local checks do not publish production scores.
 
 Regression checks cover corrections, new trades, exact enrollment timestamps, incomplete coverage, null-score non-traders, transaction rollback, private permissions, real router receipts and public profit privacy. Generated builds and private audit evidence stay on D:.
 

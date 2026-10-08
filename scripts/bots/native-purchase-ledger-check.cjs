@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict');
-const {nativeRouterFixture}=require('./public-native-router-check.cjs');
+const {nativeRouterFixture,nativeExactInputFixture}=require('./public-native-router-check.cjs');
 const {verifyNativeRouterPurchase}=require('./lib/public-native-router.cjs');
 const {reconstruct}=require('./lib/public-accounting.cjs');
 const {NATIVE}=require('./lib/public-native-accounting.cjs');
@@ -34,7 +34,23 @@ async function main(){
  assert.equal(ledger.openingLots[0].valueUsd,'0.010000');
  options.source.nativeBalance=async(wallet,block)=>block==='0xf'?10000n:194n;
  await assert.rejects(()=>reconstruct(options),/NATIVE_CLOSING_BALANCE_MISMATCH/);
+ const exact=await fixture(nativeExactInputFixture());
+ exact.options.source.nativeBalance=async(wallet,block)=>block==='0xf'?20000n:9993n;
+ const exactLedger=await reconstruct(exact.options),exactBuy=exactLedger.events.find(e=>e.kind==='buy');
+ assert.equal(exactBuy.units,'99900000','FIFO receives the net domain quantity after the proportional output fee');
+ assert.equal(exactBuy.usd,'0.010007','full exact-input native spend plus actual gas is acquisition cost');
+ assert.equal(exactBuy.economicId,'native-buy');assert.equal(exactBuy.notionalUsd,'0.627563','final registered domain-pool quote is counted once, separately from native funding');
+ assert.equal(exactLedger.events.filter(e=>e.token===NATIVE&&e.kind==='out').reduce((n,e)=>n+BigInt(e.units),0n),10007n);
+ assert.equal(exactLedger.events.filter(e=>e.kind==='in').length,0,'wrap and intermediate router settlement create no contributed capital');
+ assert.equal(exactLedger.events.filter(e=>[USDC,WETH].includes(e.token)).length,0,'both routed hops remain outside wallet inventory');
+ exact.options.eligible=[];
+ const manual=await reconstruct(exact.options),manualBuy=manual.events.find(e=>e.kind==='buy');
+ assert.equal(manualBuy.usd,exactBuy.usd);assert.equal(manualBuy.units,exactBuy.units);
+ assert.equal(manualBuy.economicId,undefined);assert.equal(manualBuy.notionalUsd,undefined,'a proven manual purchase supplies FIFO basis, never competition volume');
+ exact.options.source.nativeBalance=async(wallet,block)=>block==='0xf'?20000n:9994n;
+ await assert.rejects(()=>reconstruct(exact.options),/NATIVE_CLOSING_BALANCE_MISMATCH/);
  console.log('PASS native purchase ledger: exact spend plus gas, no refund capital, no intermediate wallet holdings, pool-only volume and closing reconciliation.');
+ console.log('PASS native exact-input ledger: net token inventory, fee-inclusive native cost plus gas, one pool notional, manual ineligibility and exact closing balance.');
 }
 if(require.main===module)main().catch(e=>{console.error(e);process.exitCode=1});
 module.exports={nativePurchaseLedgerFixture:fixture};

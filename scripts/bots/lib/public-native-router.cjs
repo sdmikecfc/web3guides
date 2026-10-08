@@ -1,6 +1,7 @@
 'use strict';
 // Narrow historical basis adapter for the reviewed UniversalRouter native-ETH
-// exact-output purchase. This does not create an eligible competition fill.
+// exact-output purchase or two-hop exact-input purchase. This does not create
+// an eligible competition fill; eligibility is still checked by the collector.
 // Reviewed source: deployed Dispatcher, Payments and V3SwapRouter at
 // explorer.doma.xyz/address/0x5089863e97196773038f98459262d866f2281f58.
 const {CHAIN,USDC,WETH,TRANSFER,receiptFlows}=require('./public-trade-worker.cjs');
@@ -22,6 +23,7 @@ async function verifyNativeRouterPurchase({transaction:tx,receipt,native,wallet,
  const abi=parseAbi(['function execute(bytes commands,bytes[] inputs) payable']);
  let call;try{call=decodeFunctionData({abi,data:tx.input});if(lower(encodeFunctionData({abi,functionName:call.functionName,args:call.args}))!==lower(tx.input))fail('CALLDATA_INVALID');}catch{fail('CALLDATA_INVALID');}
  const [commands,inputs]=call.args,withFee=commands==='0x0b0105040c';
+ if(commands==='0x0b000604')return verifyExactInput({tx,receipt,native,wallet,value,inputs,poolFor});
  const quoteConversion=await require('./public-native-quote-router.cjs').verifyNativeQuoteConversion({transaction:tx,receipt,native,wallet,router:ROUTER,value,commands,inputs,poolFor});
  if(quoteConversion)return {...quoteConversion,routerRuntimeHash:RUNTIME_HASH};
  if(!withFee&&commands!=='0x0b01040c'||inputs.length!==(withFee?5:4))fail('UNSUPPORTED_COMMANDS');
@@ -78,5 +80,57 @@ async function verifyNativeRouterPurchase({transaction:tx,receipt,native,wallet,
  if(transfers.length!==expectedTransfers.length||transfers.map(transferKey).sort().join('|')!==expectedTransfers.map(transferKey).sort().join('|'))fail('UNEXPLAINED_TRANSFER');
  const net=receiptFlows(receipt,wallet);if(net.size!==1||net.get(token)!==received)fail('WALLET_NOT_RECONCILED');
  return {wallet,token,units:received.toString(),nativeSpent:spent.toString(),router:ROUTER,pools,routerRuntimeHash:RUNTIME_HASH,transactionHash:lower(tx.hash),nativeInput:value.toString(),nativeRefund:refund.toString(),poolOutput:outputAmount.toString(),domainPoolUnits:outputAmount.toString(),domainQuoteToken:tokens[1],domainQuoteUnits:amounts[0].input.toString(),outputFeeUnits:outputFee.toString(),path:tokens,pathFees:fees};
+}
+// Reviewed Dispatcher commands: WRAP_ETH, V3_SWAP_EXACT_IN, PAY_PORTION,
+// SWEEP. Both hops settle through the router; no refund or quote balance is
+// inferred. A different command/path remains unsupported.
+async function verifyExactInput({tx,receipt,native,wallet,value,inputs,poolFor}){
+ const {parseAbi,decodeAbiParameters,encodeAbiParameters,decodeEventLog,toEventSelector}=require('viem');
+ if(inputs.length!==4)fail('UNSUPPORTED_COMMANDS');
+ const params=(names,data)=>{try{const ts=types(...names),p=decodeAbiParameters(ts,data);if(lower(encodeAbiParameters(ts,p))!==lower(data))fail('CALLDATA_INVALID');return p;}catch{fail('CALLDATA_INVALID');}};
+ const resolve=x=>BigInt(x)===1n?wallet:BigInt(x)===2n?ROUTER:lower(x);
+ const [wrapTo,wrapAmount]=params(['address','uint256'],inputs[0]);
+ const [swapTo,inputAmount,outputMin,path,payerIsUser]=params(['address','uint256','uint256','bytes','bool'],inputs[1]);
+ if(resolve(wrapTo)!==ROUTER||wrapAmount!==value||resolve(swapTo)!==ROUTER||inputAmount!==value||payerIsUser)fail('COMMAND_AMOUNT_MISMATCH');
+ if(!/^0x[0-9a-f]{132}$/.test(path))fail('UNSUPPORTED_PATH');
+ const tokens=['0x'+path.slice(2,42),'0x'+path.slice(48,88),'0x'+path.slice(94,134)],fees=[Number.parseInt(path.slice(42,48),16),Number.parseInt(path.slice(88,94),16)];
+ const token=tokens[2];
+ if(tokens[0]!==WETH||tokens[1]!==USDC||[USDC,WETH,'0x'+'0'.repeat(40)].includes(token)||fees.some(f=>![100,500,3000,10000].includes(f)))fail('UNSUPPORTED_PATH');
+ const [feeToken,feeRecipient,bips]=params(['address','address','uint256'],inputs[2]);
+ const [sweepToken,sweepTo,sweepMin]=params(['address','address','uint256'],inputs[3]);
+ const feeTo=resolve(feeRecipient);
+ if(lower(feeToken)!==token||bips<=0n||bips>=10000n||[wallet,ROUTER,...tokens,'0x'+'0'.repeat(40)].includes(feeTo))fail('INVALID_OUTPUT_FEE');
+ if(lower(sweepToken)!==token||resolve(sweepTo)!==wallet)fail('RECIPIENT_MISMATCH');
+ const pools=[];
+ for(let i=0;i<2;i++){const pool=address(await poolFor(tokens[i],tokens[i+1],fees[i],receipt.blockNumber));if(!pool||pool==='0x'+'0'.repeat(40)||[wallet,ROUTER,feeTo,...tokens,...pools].includes(pool))fail('UNREGISTERED_POOL');pools.push(pool);}
+ const swapAbi=parseAbi(['event Swap(address indexed sender,address indexed recipient,int256 amount0,int256 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick)']);
+ const swapTopic=lower(toEventSelector(swapAbi[0])),deposit=lower(toEventSelector('Deposit(address,uint256)')),withdrawal=lower(toEventSelector('Withdrawal(address,uint256)'));
+ if(!/^0x[0-9a-f]{64}$/.test(lower(tx.hash))||!/^0x[0-9a-f]{64}$/.test(lower(receipt.blockHash)))fail('TRANSACTION_MISMATCH');
+ const logs=receipt.logs||[],seen=new Set();
+ for(const l of logs){if(l.removed||lower(l.transactionHash)!==lower(tx.hash)||lower(l.blockHash)!==lower(receipt.blockHash)||(l.blockNumber!=null&&BigInt(l.blockNumber)!==BigInt(receipt.blockNumber))||!/^0x[0-9a-f]+$/i.test(l.logIndex)||seen.has(BigInt(l.logIndex).toString()))fail('LOG_IDENTITY_INVALID');seen.add(BigInt(l.logIndex).toString());}
+ const swapLogs=logs.filter(l=>lower(l.topics?.[0])===swapTopic);
+ if(swapLogs.length!==2)fail('AMBIGUOUS_POOL');
+ const amounts=[];
+ for(let i=0;i<2;i++){
+  const ls=swapLogs.filter(l=>lower(l.address)===pools[i]);if(ls.length!==1)fail('AMBIGUOUS_POOL');
+  let s;try{s=decodeEventLog({abi:swapAbi,data:ls[0].data,topics:ls[0].topics,strict:true}).args;}catch{fail('SWAP_EVENT_INVALID');}
+  const input0=BigInt(tokens[i])<BigInt(tokens[i+1]),input=input0?s.amount0:s.amount1,output=-(input0?s.amount1:s.amount0);
+  if(input<=0n||output<=0n||lower(s.sender)!==ROUTER||lower(s.recipient)!==ROUTER||input!==(i===0?value:amounts[0].output))fail('POOL_AMOUNT_MISMATCH');
+  amounts.push({input,output});
+ }
+ const output=amounts[1].output,outputFee=output*bips/10000n,received=output-outputFee;
+ if(output<outputMin||received<sweepMin)fail('SWEEP_AMOUNT_MISMATCH');
+ const nativeKey=m=>[lower(m.from),lower(m.to),String(m.units)].join(':');
+ const expectedNative=[{from:wallet,to:ROUTER,units:value},{from:ROUTER,to:WETH,units:value}];
+ if(!Array.isArray(native.moves)||native.moves.length!==2||native.moves.map(nativeKey).sort().join('|')!==expectedNative.map(nativeKey).sort().join('|'))fail('NATIVE_FLOW_MISMATCH');
+ const wrapLogs=logs.filter(l=>lower(l.address)===WETH&&[deposit,withdrawal].includes(lower(l.topics?.[0])));
+ if(wrapLogs.length!==1||lower(wrapLogs[0].topics[0])!==deposit||wrapLogs[0].topics.length!==2||lower(wrapLogs[0].topics[1])!=='0x'+ROUTER.slice(2).padStart(64,'0')||!/^0x[0-9a-f]{64}$/i.test(wrapLogs[0].data)||BigInt(wrapLogs[0].data)!==value)fail('WRAP_AMOUNT_MISMATCH');
+ const expectedTransfers=[{token:WETH,from:ROUTER,to:pools[0],amount:value},{token:USDC,from:pools[0],to:ROUTER,amount:amounts[0].output},{token:USDC,from:ROUTER,to:pools[1],amount:amounts[1].input},{token,from:pools[1],to:ROUTER,amount:output},{token,from:ROUTER,to:wallet,amount:received}];
+ if(outputFee)expectedTransfers.push({token,from:ROUTER,to:feeTo,amount:outputFee});
+ const transfers=logs.filter(l=>lower(l.topics?.[0])===TRANSFER).map(l=>{if(l.topics.length!==3||!/^0x[0-9a-f]{64}$/i.test(l.data)||l.topics.slice(1).some(t=>!/^0x0{24}[0-9a-f]{40}$/i.test(t)))fail('TRANSFER_INVALID');return {token:lower(l.address),from:'0x'+l.topics[1].slice(-40).toLowerCase(),to:'0x'+l.topics[2].slice(-40).toLowerCase(),amount:BigInt(l.data)};}).filter(t=>t.amount!==0n);
+ const transferKey=t=>[t.token,t.from,t.to,String(t.amount)].join(':');
+ if(transfers.length!==expectedTransfers.length||transfers.map(transferKey).sort().join('|')!==expectedTransfers.map(transferKey).sort().join('|'))fail('UNEXPLAINED_TRANSFER');
+ const net=receiptFlows(receipt,wallet);if(net.size!==1||net.get(token)!==received)fail('WALLET_NOT_RECONCILED');
+ return {wallet,token,units:received.toString(),nativeSpent:value.toString(),router:ROUTER,pools,routerRuntimeHash:RUNTIME_HASH,transactionHash:lower(tx.hash),nativeInput:value.toString(),nativeRefund:'0',poolOutput:output.toString(),domainPoolUnits:output.toString(),domainQuoteToken:USDC,domainQuoteUnits:amounts[1].input.toString(),outputFeeUnits:outputFee.toString(),path:tokens,pathFees:fees};
 }
 module.exports={verifyNativeRouterPurchase,ROUTER,RUNTIME_HASH};
