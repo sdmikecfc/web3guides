@@ -73,6 +73,7 @@ async function main(){
  await sweepChecks();
  await scopeChecks();
  await isolationChecks();
+ await progressiveChecks();
  await defaultBudgetChecks();
  await upgradeChecks();
  console.log('PASS accounting scheduling: exact entry timestamp, restart fairness, bounded slices, fresh public-history verification, correction invalidation, cutoff catch-up, future entries and anchor rejection.');
@@ -140,5 +141,13 @@ async function isolationChecks(){
  reject.snapshot.accountingRevisions['2']=1;reject.calls=[];
  const after=await reject.run();assert.equal(after.completed,3);assert.equal(after.complete,false,'rejected account cannot form a completed sweep from a failed submission');
  console.log('PASS independent accounting: only complete participant windows are reconstructed; good ledgers survive other trade/FIFO failures; no zero-score exemption or final-award bypass.');
+}
+async function progressiveChecks(){
+ const s=sweepFixture(),saved=[];s.fail='2';
+ const r=await s.run({budgetMs:1000,onLedger:async l=>{saved.push(l.participant);s.snapshot.accountingRevisions[l.participant]=l.revision;return true;}});
+ assert.deepEqual(saved,['1','3','4']);assert.equal(r.completed,3);assert.equal(r.confirmCommit(),0,'published markers are already acknowledged');
+ const rejected=sweepFixture();const q=await rejected.run({budgetMs:1000,onLedger:async l=>l.participant!=='2'});assert.equal(q.completed,3);assert.equal(q.complete,false);assert.deepEqual(q.ledgers.map(l=>l.participant),['1','3','4']);
+ const failed=sweepFixture(),published=[];await assert.rejects(()=>failed.run({budgetMs:1000,onLedger:async l=>{if(l.participant==='2')throw Error('SOURCE_CHANGED');published.push(l.participant);return true;}}),/SOURCE_CHANGED/);assert.deepEqual(published,['1'],'already committed account survives an interrupted later publication');assert.deepEqual(failed.calls,['1','2'],'concurrent evidence change halts further accounting');
+ console.log('PASS incremental accounting: immediate per-account acknowledgement, later account timeout/rejection isolation, and no lost earlier publication after an interrupted write.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

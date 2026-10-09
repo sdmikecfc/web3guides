@@ -29,8 +29,16 @@ async function main(){
  f=fixture({agent:false,refs:[{participant:'123',ref}]});f.source.swaps=async()=>[];
  r=await collect(f.snapshot,f.source,{now});assert.equal(r.packet.fills.length,1);assert.equal(r.packet.fills[0].source,'strategy','missing wallet-axis Strategy index is recovered from private reference + receipt');
  f.snapshot.fills=r.packet.fills;f.snapshot.references[0].ref={...ref,revision:2,status:'revoked'};r=await collect(f.snapshot,f.source,{now});assert.equal(r.packet.fills[0].status,'revoked');assert.equal(r.packet.fills[0].revision,2);
- f.snapshot.accounts[0].coverage.complete=false;r=await collect(f.snapshot,f.source,{now});assert.equal(r.packet.complete,false);assert.equal(r.packet.fills.length,0,'failed private query cannot erase prior scores');
- f=fixture();f.snapshot.accounts[0].coverage.updated_at=at(-6*3600);r=await collect(f.snapshot,f.source,{now});assert.equal(r.packet.complete,false,'older than five hours is pending');
+ f.snapshot.accounts[0].coverage.complete=false;await assert.rejects(()=>collect(f.snapshot,f.source,{now}),/PRIVATE_COVERAGE_PENDING/,'failed private query cannot advance coverage or erase prior scores');
+ f=fixture();f.snapshot.accounts[0].coverage.updated_at=at(-6*3600);f.snapshot.accounts[0].coverage.confirmed_through=at(-6*3600);f.row.date=at(-7*3600);r=await collect(f.snapshot,f.source,{now});assert.equal(r.packet.complete,true,'late heartbeat does not revoke completed historical coverage');assert.equal(r.packet.confirmedThrough,at(-6*3600));assert.equal(r.packet.fills.length,1);assert.ok(r.report.warnings.some(w=>w.includes('delayed')));
+ f=fixture();const beyond={...f.row,date:at(-100)},originalSwaps=f.source.swaps;f.source.swaps=async()=>[...(await originalSwaps()),beyond];f.snapshot.accounts[0].coverage.updated_at=at(-6*3600);r=await collect(f.snapshot,f.source,{now});assert.equal(r.packet.fills.length,1,'late heartbeat never admits activity after proved private cutoff');assert.equal(r.packet.confirmedThrough,at(-180));
+ for(const change of [
+  f=>f.snapshot.accounts[0].coverage.complete=false,
+  f=>f.snapshot.accounts[0].coverage.confirmed_through=at(1),
+  f=>f.snapshot.accounts[0].coverage.coverage_from=at(-500),
+  f=>{f.snapshot.manifest.campaign.confirmed_through=at(-150);},
+  f=>{f.snapshot.accounts=[];f.snapshot.wallets=[];},
+ ]){f=fixture();change(f);let reads=0;f.source.indexStatus=async()=>{reads++;return true};f.source.swaps=async()=>{reads++;return []};f.source.transfers=async()=>{reads++;return []};await assert.rejects(()=>collect(f.snapshot,f.source,{now}),/PRIVATE_COVERAGE_PENDING/);assert.equal(reads,0,'no usable private window exits before costly public history scans');}
  f=fixture();f.source.block=async()=>({hash:'0x'+'a'.repeat(64),timestamp:f.row.date});r=await collect(f.snapshot,f.source,{now});assert.equal(r.packet.complete,false,'reorg detected');
  f=fixture();f.source.transfers=async()=>{throw Error('PUBLIC_HISTORY_PAGE_LIMIT')};r=await collect(f.snapshot,f.source,{now});assert.equal(r.packet.complete,false,'bounded work does not imply complete history');
  // Two actual collection paths: a rejected smart-wallet trade must not block
@@ -55,8 +63,9 @@ async function main(){
  assert.equal(isolated.packet.fills.length,1);assert.equal(isolated.packet.fills[0].wallet,wallet);assert.equal(isolated.packet.fills[0].status,'revoked','healthy-account correction proceeds despite another account failure');
  assert.ok(!isolated.packet.fills.some(f=>f.wallet===other),'failed account retains prior stored fills without silent revocation');
  multi.snapshot.accounts[1].coverage.complete=false;multi.source.smartWalletSettlement=async()=>null;
+ const seenWallets=[];multi.source.swaps=async w=>{seenWallets.push(w);return w===wallet?[]:[otherRow]};
  isolated=await collect(multi.snapshot,multi.source,{now});
- assert.equal(isolated.packet.confirmedThrough,at(-180));assert.equal(isolated.accountCoverage.find(a=>a.participant==='123').complete,true,'failed private coverage cannot push healthy accounts beyond their verified cutoff');
+ assert.equal(isolated.packet.confirmedThrough,at(-180));assert.equal(isolated.accountCoverage.find(a=>a.participant==='123').complete,true,'failed private coverage cannot push healthy accounts beyond their verified cutoff');assert.deepEqual(seenWallets,[wallet],'known incomplete private owner does not slow healthy account by scanning its history');
  multi.snapshot.accounts[1].coverage.complete=true;
  multi.snapshot.manifest.campaign.confirmed_through=at(-360);
  multi.snapshot.accounts[1].coverage.confirmed_through=at(-720);
@@ -68,7 +77,7 @@ async function main(){
  multi.source.indexStatus=async()=>false;isolated=await collect(multi.snapshot,multi.source,{now});assert.ok(isolated.accountCoverage.every(a=>!a.complete),'shared index outage is not participant-local');
  multi.source.indexStatus=async()=>true;multi.snapshot.manifest.participants.push({participant:'789',entered_at:at(-86400)});
  isolated=await collect(multi.snapshot,multi.source,{now});assert.deepEqual(isolated.accountCoverage.find(a=>a.participant==='789').problems,['ACCOUNT_LINK_PENDING']);
- console.log('PASS participant isolation: rejected trades and stale private coverage affect only their owner; healthy corrections proceed; shared source failures and unlinked entries stay pending.');
+ console.log('PASS participant isolation: rejected trades and incomplete private coverage affect only their owner; delayed heartbeats preserve verified historical windows; healthy corrections proceed; shared source failures and unlinked entries stay pending.');
  const rows=await scanPages(async p=>p.page?{items:[{timestamp:at(-400)}],next_page_params:null}:{items:[{timestamp:at(-200)}],next_page_params:{page:1}},{from:now-500000,through:now-100000});assert.equal(rows.length,2);
  await assert.rejects(()=>scanPages(async()=>({items:[{timestamp:at(-200)}],next_page_params:{page:1}}),{from:now-500000,through:now-100000}),/CURSOR_REPEATED/);
  console.log('PASS public collector: integer precision, receipt amounts, finalized blocks, keeper Strategy references, manual exclusion, common coverage cutoff, duplicate/ambiguous batches, corrections, failed-source preservation, stale data, reorgs and pagination.');

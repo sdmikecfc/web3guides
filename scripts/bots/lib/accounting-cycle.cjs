@@ -25,7 +25,7 @@ function eligibleCompetitionFills(snapshot,packet,wallets,periodStart,through){
 // The observed 870-transaction trader needs over eight minutes of fresh trace
 // reads even with immutable facts cached. A five-minute slice can never finish.
 // Keep both limits finite, preserve fair rotation and abort all work at deadline.
-async function accountingCycle({snapshot,packet,accountCoverage=null,cache,sourceFactory,anchorAt,budgetMs=1800000,sliceMs=1200000,now=Date.now,reconstructLedger=reconstruct}){
+async function accountingCycle({snapshot,packet,accountCoverage=null,cache,sourceFactory,anchorAt,budgetMs=1800000,sliceMs=1200000,now=Date.now,reconstructLedger=reconstruct,onLedger=null}){
  // Preserve v7 pending cutoff/anchor pointers, not its completion claims. Raw
  // finalized evidence can then be reused while sweep2 requires fresh validation.
  const jobs=cache.namespace({kind:'accounting',scope:{purpose:'mk-accounting-jobs-1',engine:JOBS_VERSION}});
@@ -131,15 +131,21 @@ async function accountingCycle({snapshot,packet,accountCoverage=null,cache,sourc
    // derived scores never substitute for checking corrected public evidence.
    jobs.setCheckpoint(identity,{through,anchor,priorAnchors:prior,fingerprint,finished:true});
    if(ledger.complete!==true||ledger.participant!==a.participant||ledger.periodStart!==periodStart||Date.parse(ledger.confirmedThrough)!==Date.parse(through)||!Number.isSafeInteger(ledger.revision)||ledger.revision!==Number(snapshot.accountingRevisions?.[a.participant]||0)+1||typeof ledger.requestId!=='string')throw Error('ACCOUNTING_LEDGER_IDENTITY_INVALID');
+   let published=false;
+   if(onLedger){
+    try{published=await onLedger(ledger);}catch(e){e.accountingPublicationFailed=true;throw e;}
+    if(published!==true){verified.delete(a.participant);sweep.setCheckpoint(a.participant,null);problems.push({code:'ACCOUNTING_PUBLICATION_REJECTED'});continue;}
+   }
    if(through===packet.confirmedThrough){
-    const marker={participant:a.participant,periodStart,through,anchor,fingerprint,ledgerRevision:ledger.revision,requestId:ledger.requestId,checkedAt:now(),committed:false};
-    sweep.setCheckpoint(a.participant,marker);staged.push(marker);verified.set(a.participant,marker);
+    const marker={participant:a.participant,periodStart,through,anchor,fingerprint,ledgerRevision:ledger.revision,requestId:ledger.requestId,checkedAt:now(),committed:published};
+    sweep.setCheckpoint(a.participant,marker);if(!published)staged.push(marker);verified.set(a.participant,marker);
    }
    ledgers.push(ledger);
    // Once a fresh attempt completes the sweep, do not spend the remaining
    // slice replacing another valid marker and risk undoing the completed set.
    if(allCovered())break;
   }catch(e){
+   if(e.accountingPublicationFailed)throw e;
    if(['ACCOUNTING_ANCHOR_CHANGED','ACCOUNTING_CACHE_ANCHOR_CHANGED','ACCOUNTING_ANCHOR_REORG'].includes(e.message))jobs.setCheckpoint(identity,{through:packet.confirmedThrough,finished:false,priorAnchors:[]});
    problems.push({code:code(e)});
   }

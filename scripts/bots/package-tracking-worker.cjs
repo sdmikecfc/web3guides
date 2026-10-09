@@ -14,6 +14,7 @@ const files=[
  'scripts/bots/lib/public-accounting.cjs',
  'scripts/bots/lib/accounting-cache.cjs',
  'scripts/bots/lib/accounting-cycle.cjs',
+ 'scripts/bots/lib/progressive-publication.cjs',
  'scripts/bots/lib/public-native-accounting.cjs',
  'scripts/bots/lib/public-native-router.cjs',
  'scripts/bots/lib/public-native-quote-router.cjs',
@@ -31,6 +32,8 @@ const files=[
  'scripts/bots/public-accounting-source-check.cjs',
  'scripts/bots/accounting-cache-check.cjs',
  'scripts/bots/accounting-cycle-check.cjs',
+ 'scripts/bots/progressive-publication-check.cjs',
+ 'scripts/bots/worker-retry-check.cjs',
  'scripts/bots/public-native-accounting-check.cjs',
  'scripts/bots/public-native-router-check.cjs',
  'scripts/bots/native-purchase-ledger-check.cjs',
@@ -47,29 +50,28 @@ const files=[
  'scripts/bots/fixtures/smart-wallet/permit-portion-sweep.json',
  'scripts/bots/fixtures/smart-wallet/portion-sweep.json',
  'scripts/bots/fixtures/smart-wallet/README.md',
- 'docs/model-kombat-account-isolation-2026-10-09.md',
+ 'docs/model-kombat-result-publication-2026-10-09.md',
  'scripts/sql/bots-token-zone-opening-basis.sql',
  'scripts/sql/bots-token-zone-financial-scope.sql',
  'scripts/sql/bots-token-zone-account-isolation.sql',
+ 'scripts/sql/bots-token-zone-result-publication.sql',
  'scripts/bots/install-tracking-worker.sh',
 ];
 if(fs.existsSync(out)&&fs.readdirSync(out).some(x=>!['scripts','docs','package.json','package-lock.json','README.txt','manifest.json'].includes(x)))throw Error('PACKAGE_DIRECTORY_CONTAINS_OTHER_FILES');
 fs.mkdirSync(out,{recursive:true});
 const manifest={createdAt:new Date().toISOString(),purpose:'Model Kombat public trade collector',deployed:false,files:[]};
 for(const name of files){const data=fs.readFileSync(path.join(root,name)),dest=path.join(out,name);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.writeFileSync(dest,data);manifest.files.push({path:name,sha256:createHash('sha256').update(data).digest('hex')});}
-const checks=['public-router-settlement-check','public-order-route-check','public-universal-settlement-check','public-trade-worker-check','public-accounting-check','public-native-accounting-check','public-native-router-check','native-purchase-ledger-check','public-native-quote-router-check','public-smart-wallet-check','public-source-budget-check','worker-contract-check','public-transfer-window-check','public-accounting-scoped-check','public-accounting-deferred-in-check','public-accounting-source-check','accounting-cache-check','accounting-cycle-check'];
+const checks=['public-router-settlement-check','public-order-route-check','public-universal-settlement-check','public-trade-worker-check','public-accounting-check','public-native-accounting-check','public-native-router-check','native-purchase-ledger-check','public-native-quote-router-check','public-smart-wallet-check','public-source-budget-check','worker-contract-check','public-transfer-window-check','public-accounting-scoped-check','public-accounting-deferred-in-check','public-accounting-source-check','accounting-cache-check','accounting-cycle-check','progressive-publication-check','worker-retry-check'];
 fs.writeFileSync(path.join(out,'package.json'),JSON.stringify({name:'model-kombat-tracking-worker',private:true,version:'1.0.0',engines:{node:'>=20'},scripts:{test:checks.map(name=>'node scripts/bots/'+name+'.cjs').join(' && '),check:'node scripts/bots/run-trade-worker.cjs',start:'node scripts/bots/run-trade-worker.cjs --write --watch'},dependencies:{'@next/env':'14.2.3','@supabase/supabase-js':'2.99.1','viem':'2.51.2'}},null,2)+'\n');
-fs.writeFileSync(path.join(out,'README.txt'),`MODEL KOMBAT COLLECTOR 9 - PREPARED, NOT INSTALLED
+fs.writeFileSync(path.join(out,'README.txt'),`MODEL KOMBAT COLLECTOR 10 - PREPARED, NOT INSTALLED
 
-Run the entire scripts/sql/bots-token-zone-account-isolation.sql file in the existing Model Kombat Supabase SQL editor. Worker 8's financial-scope patch must already be installed. Then run node scripts/bots/install-tracking-worker.cjs from the source checkout. The installer checks database capabilities before replacing the service. No new keys or internal-AI changes are needed.
+Publish the compatible website first using your own vercel --prod. Then run the whole scripts/sql/bots-token-zone-result-publication.sql file in the existing Supabase SQL editor. Finally run node scripts/bots/install-tracking-worker.cjs from the source checkout. The account-isolation patch must already be present; the installer verifies database capabilities before replacing the service. No new credentials or internal-AI changes.
 
-Unsupported trades and failed accounting checks hold back only the affected participant. Other independently verified accounts continue updating. The two observed sponsored fee/sweep routes are supported, including the approval-and-permit variant. Routine discovery heartbeats do not erase unchanged completed evidence. Confirmed zero-trade accounts stay NULL/unranked and do not require unrelated personal-history reconstruction. SQL independently checks complete current coverage, registered pairs and enrollment after corrections. Actual traders retain the original FIFO/capital rules. New activity immediately requires accounting. Future entries and incomplete evidence remain pending. Explorer token-filtered pagination is corrected; direct UniversalRouter ERC20 settlement and the observed ETH-funded two-hop exact-input purchase are narrowly verified without granting manual trades competition eligibility.
+Last verified results remain visible at their original timestamps while newer activity is delayed. Material corrections or ownership changes invalidate the affected proof. Completed trade results publish before accounting; each verified ROI ledger publishes immediately. Strict returned transaction fingerprints prevent accepting concurrent source changes. Final awards still require complete reconciliation. Previously verified historical coverage does not expire merely because its discovery heartbeat is late; activity after its cutoff remains unscored.
 
-A bounded private cache preserves finalized evidence between attempts. Accounting allows 20 minutes per account and 30 minutes per cycle; large cold histories can require several cycles. Fresh verification still checks corrections, incomplete coverage and chain reorganizations. Per-account verified results can appear provisionally; final awards still require complete reconciliation. The package has no credentials or private player data. Eighteen portable tests run before installation. SQL migration tests run separately on isolated local PostgreSQL.
+The first publication still requires the public-trade scan. This release does not promise instantaneous new-history reconstruction. Accounting retains its bounded cache and 20-minute account / 30-minute cycle budgets. The installed worker waits 15 minutes after a cycle; wallet and Strategy discovery remains every four hours.
 
-The worker waits 15 minutes after each completed cycle. Wallet and Strategy-reference discovery keeps its four-hour schedule. Installation success is not financial audit success: inspect a completed mk-public-worker-9-account-isolation audit before claiming all ROI is verified.
-
-This package does not deploy the website, alter Reporter or shared accounting, open the campaign, or change rewards. Public ROI is a percentage; public realized-profit standings hide dollar scores. Website publication remains the user's vercel --prod.
+Twenty portable checks run before installation. SQL and website tests run separately on D:. No credentials or private player data are packaged. Confirm mk-public-worker-10-progressive-results in the private report. Website publication remains the user's vercel --prod; this installer does not deploy it or change prizes, dates, Reporter or shared accounting.
 `);
 for(const name of ['package.json','README.txt'])manifest.files.push({path:name,sha256:createHash('sha256').update(fs.readFileSync(path.join(out,name))).digest('hex')});
 const lock=path.join(root,'scripts/bots/tracking-worker-lock.json');

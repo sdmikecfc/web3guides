@@ -100,12 +100,17 @@ async function collect(snapshot,source,{now=Date.now(),lookbackDays=60}={}){
  // Public trades may arrive between private discovery runs. Score only through
  // the common completed cutoff; do not pretend newer Strategy intent is known.
  const savedCutoff=Date.parse(c.confirmed_through||'');
- const readyCoverage=accounts.filter(a=>{
-  const cv=a.coverage,required=Math.max(from,draft?(a.reference_since?timestamp(a.reference_since):from):timestamp(entries.get(a.participant).entered_at));
-  return cv?.complete&&Number.isFinite(Date.parse(cv.updated_at))&&now-Date.parse(cv.updated_at)<=5*3600000
-   &&Date.parse(cv.coverage_from)<=required&&Date.parse(cv.confirmed_through)>=Math.max(required,Number.isFinite(savedCutoff)?savedCutoff:from);
- });
- if(readyCoverage.length)through=Math.min(through,...readyCoverage.map(a=>timestamp(a.coverage.confirmed_through)));
+ const coverageReady=(account,minimum)=>{
+  const cv=account.coverage,required=Math.max(from,draft?(account.reference_since?timestamp(account.reference_since):from):timestamp(entries.get(account.participant).entered_at));
+  return cv?.complete===true&&Date.parse(cv.coverage_from)<=required
+   &&Date.parse(cv.confirmed_through)>=Math.max(required,minimum)&&Date.parse(cv.confirmed_through)<=now;
+ };
+ // A delayed discovery heartbeat does not invalidate its completed historical
+ // window. Never pretend newer Strategy intent is known by advancing to now.
+ const readyCoverage=accounts.filter(a=>coverageReady(a,Number.isFinite(savedCutoff)?savedCutoff:from));
+ if(!readyCoverage.length)throw Error('PRIVATE_COVERAGE_PENDING');
+ through=Math.min(through,...readyCoverage.map(a=>timestamp(a.coverage.confirmed_through)));
+ if(readyCoverage.some(a=>!Number.isFinite(Date.parse(a.coverage.updated_at))||now-Date.parse(a.coverage.updated_at)>5*3600000||Date.parse(a.coverage.updated_at)>now))warnings.push('Trading updates are delayed. Verified historical results remain available through the last completed source window.');
  if(through<from)throw Error('PRIVATE_COVERAGE_BEFORE_COMPETITION');
  const wallets=snapshot.wallets.filter(w=>accounts.some(a=>a.participant===w.participant));
  const markets=new Set(snapshot.manifest.markets.map(m=>m.domain_token+':'+m.quote_token));
@@ -115,12 +120,12 @@ async function collect(snapshot,source,{now=Date.now(),lookbackDays=60}={}){
  async function receipt(tx){if(!receiptCache.has(tx))receiptCache.set(tx,await source.receipt(tx));return receiptCache.get(tx);}
  async function block(n){if(!blockCache.has(n))blockCache.set(n,await source.block(n));return blockCache.get(n);}
  for(const account of accounts){
-  const cv=account.coverage,required=Math.max(from,draft?(account.reference_since?timestamp(account.reference_since):from):timestamp(entries.get(account.participant).entered_at));
-  if(!cv?.complete||timestamp(cv.coverage_from)>required||timestamp(cv.confirmed_through)<through||now-timestamp(cv.updated_at)>5*3600000)
+  if(!coverageReady(account,through))
    problems.push({code:'STRATEGY_COVERAGE_PENDING',participant:account.participant});
  }
  const processed=new Set(),txCounts=new Map(),unverified=new Set();
  for(const w of wallets){
+  if(problems.some(p=>p.participant===w.participant&&p.code==='STRATEGY_COVERAGE_PENDING'))continue;
   const account=accounts.find(a=>a.participant===w.participant);
   const required=Math.max(from,draft?(account.reference_since?timestamp(account.reference_since):from):timestamp(entries.get(w.participant).entered_at));
   let swaps,transfers;
