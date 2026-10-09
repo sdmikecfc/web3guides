@@ -19,7 +19,7 @@ function fixture(){
   hasCode:async()=>false,valueUsd:async(t,n)=>n,
   balance:async(w,t,at)=>at==='0x11'?(t===USDC?90000000n:10000000n):(t===USDC?102000000n:0n),
  };
- const options={participant:'123',wallets:[wallet],from:Date.parse(time(30)),through:Date.parse(time(50)),markets:[{domain_token:token,quote_token:USDC}],eligible:[{economicId:'sale',wallet,transactionHash:transactions[2].hash,domainToken:token,quoteToken:USDC,volumeUsd:'12.000000'}],source};
+ const options={participant:'123',wallets:[wallet],from:Date.parse(time(30)),through:Date.parse(time(50)),markets:[{domain_token:token,quote_token:USDC}],eligible:[{economicId:'sale',wallet,transactionHash:transactions[2].hash,domainToken:token,quoteToken:USDC,volumeUsd:'12.000000',executedAt:time(40)}],source};
  return {options,source,transactions};
 }
 async function main(){let f=fixture(),r=await reconstruct(f.options);

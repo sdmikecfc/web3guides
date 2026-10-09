@@ -29,7 +29,7 @@ function nativeLedgerFixture(){
   balance:async(w,t,b)=>w===agent?0n:t===WETH?0n:b===hex(29)?t===USDC?90000000n:10000000n:t===USDC?102000000n:0n,
   hasCode:async()=>false,valueUsd:async(t,n)=>n,
  };
- const options={participant:'123',wallets:[wallet,agent],from:Date.parse(at(30)),through:Date.parse(at(50)),markets:[{domain_token:token,quote_token:USDC},{domain_token:token,quote_token:WETH}],eligible:[{economicId:'sale',wallet,transactionHash:rows[4].tx,domainToken:token,quoteToken:USDC,volumeUsd:'12.000000'}],source};
+ const options={participant:'123',wallets:[wallet,agent],from:Date.parse(at(30)),through:Date.parse(at(50)),markets:[{domain_token:token,quote_token:USDC},{domain_token:token,quote_token:WETH}],eligible:[{economicId:'sale',wallet,transactionHash:rows[4].tx,domainToken:token,quoteToken:USDC,volumeUsd:'12.000000',executedAt:at(40)}],source};
  return {rows,source,options};
 }
 async function main(){

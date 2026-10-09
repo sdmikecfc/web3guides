@@ -22,7 +22,7 @@ async function fixture(f=nativeRouterFixture()){
   nativeBalance:async(wallet,block)=>block==='0xf'?10000n:193n,
   balance:async(wallet,token,block)=>token===p.token&&block!=='0xf'?BigInt(p.units):0n,
  };
- return {p,options:{participant:'123',wallets:[f.wallet],from:Date.parse(at(30)),through:Date.parse(at(50)),markets:[{domain_token:p.token,quote_token:USDC},{domain_token:p.token,quote_token:WETH}],source,eligible:[{economicId:'native-buy',wallet:f.wallet,transactionHash:f.transaction.hash,domainToken:p.token,quoteToken:USDC,volumeUsd:'0.627563'}]}};
+ return {p,options:{participant:'123',wallets:[f.wallet],from:Date.parse(at(30)),through:Date.parse(at(50)),markets:[{domain_token:p.token,quote_token:USDC},{domain_token:p.token,quote_token:WETH}],source,eligible:[{economicId:'native-buy',wallet:f.wallet,transactionHash:f.transaction.hash,domainToken:p.token,quoteToken:USDC,volumeUsd:'0.627563',executedAt:at(40)}]}};
 }
 async function main(){
  const {p,options}=await fixture(),ledger=await reconstruct(options),buy=ledger.events.find(e=>e.kind==='buy');

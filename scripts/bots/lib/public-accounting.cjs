@@ -1,12 +1,13 @@
 'use strict';
 // Reconstruct a complete supported-asset ledger on our host. Unknown basis and
 // contract flows are explicit failures, never deposits with an invented cost.
-const {randomUUID}=require('node:crypto');
+const {randomUUID,createHash}=require('node:crypto');
 const {normalizePublicSwap,receiptFlows,settlement,key,referenceSwap,USDC,WETH,TRANSFER}=require('./public-trade-worker.cjs');
 const {NATIVE}=require('./public-native-accounting.cjs');
 const usd=n=>(n/1000000n)+'.'+String(n%1000000n).padStart(6,'0');
 const micros=s=>{if(!/^\d+\.\d{6}$/.test(s))throw Error('ACCOUNTING_VALUE_INVALID');return BigInt(s.replace('.',''));};
 const abs=n=>n<0n?-n:n;
+const canonicalJson=value=>JSON.stringify(value,(_key,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
 function accountingStartMillis(timestamp){
  const floor=Date.parse(timestamp);if(!Number.isFinite(floor))throw Error('ACCOUNTING_PERIOD_INVALID');
  const fraction=String(timestamp).match(/T\d{2}:\d{2}:\d{2}\.(\d+)(?:Z|[+-]\d{2}:\d{2})$/i)?.[1]||'';
@@ -92,6 +93,8 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
  const swapFrom=[...all.values()].reduce((earliest,t)=>Math.min(earliest,t.at),from);
  for(const wallet of wallets)for(const s of await source.swaps(wallet,swapFrom,through)){check();const n=normalizePublicSwap(s);if(n&&n.wallet===wallet&&all.has(n.tx)){if(indexedSwaps.has(key(n)))throw Error('ACCOUNTING_DUPLICATE_INDEX_ROW');publicSwaps.set(key(n),n);indexedSwaps.set(key(n),n);}}
  for(const {ref}of references)if(ref.status==='verified'&&walletSet.has(ref.wallet)&&all.has(ref.transactionHash)&&Date.parse(ref.executedAt)<=through){const r=referenceSwap(ref);if(!publicSwaps.has(key(r)))publicSwaps.set(key(r),r);}
+ // Direction and FIFO connectivity come from the full receipt-proven ledger.
+ const unknownConsumedBuckets=new Set();
  const events=[],lots=[],opening=[],tokens=new Set();let order=1,opened=false;
  const balances=new Map();
  function replay(e){
@@ -106,8 +109,14 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
    check();
    // Pre-entry inventory may be exhausted without its old cost affecting a
    // competition result. Preserve null basis, never invent a zero cost.
-   // Every scored-period consumption of a surviving unknown lot still fails.
-   if(l.cost==null&&Date.parse(e.executedAt)>=from)throw Error('ACCOUNTING_OPENING_BASIS_REQUIRED');
+   // Any eligible sale of a surviving unknown lot still fails.
+   if(l.cost==null&&Date.parse(e.executedAt)>=from){
+    // Defer only unscored domain consumption, retaining real null-cost FIFO.
+    // Full transfer connectivity and all proven sales are checked before a
+    // score-only view can isolate this inventory from scored inventory.
+    if(!domains.has(e.token)||[USDC,WETH,NATIVE].includes(e.token)||e.economicId)throw Error('ACCOUNTING_OPENING_BASIS_REQUIRED');
+    unknownConsumedBuckets.add(e.wallet+':'+e.token);
+   }
    const take=need<l.units?need:l.units,cost=l.cost==null?null:take===l.units?l.cost:l.cost*take/l.units;
    l.units-=take;if(l.cost!=null)l.cost-=cost;need-=take;
    if(e.kind==='transfer')lots.push({...l,id:e.id+':'+l.id,wallet:e.toWallet,units:take,cost});
@@ -312,8 +321,31 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
   for(const e of batch){replay(e);if(t.at>=from)events.push(e);}
  }
  await captureOpening();
- for(const wallet of wallets)for(const token of supported){check();if(await chainBalance(wallet,token,end.number)!==(balances.get(wallet+':'+token)||0n))throw Error(token===NATIVE?'NATIVE_CLOSING_BALANCE_MISMATCH':'CLOSING_BALANCE_MISMATCH');}
- if(eligible.some(f=>!events.some(e=>e.economicId===f.economicId)))throw Error('ACCOUNTING_FILL_MISSING');
- return {schemaVersion:1,campaignId:'model-kombat-zones-1',methodology:'mk-fifo-realized-capital-1',participant,requestId:randomUUID(),revision:priorRevision+1,periodStart:exactStart,confirmedThrough:new Date(through).toISOString(),complete:true,evidence:'Independent public chain reconstruction; entry balances, opening domain FIFO; opening '+start.number+' closing '+end.number,openingLots:opening,events};
+ const closingBalances=[];
+ for(const wallet of wallets)for(const token of supported){check();const units=await chainBalance(wallet,token,end.number);if(units!==(balances.get(wallet+':'+token)||0n))throw Error(token===NATIVE?'NATIVE_CLOSING_BALANCE_MISMATCH':'CLOSING_BALANCE_MISMATCH');closingBalances.push({wallet,token,units:units.toString()});}
+ if(eligible.some(f=>events.filter(e=>e.economicId===f.economicId&&e.wallet===f.wallet&&e.token===f.domainToken&&['buy','sell'].includes(e.kind)&&Date.parse(e.executedAt)===Date.parse(f.executedAt)&&e.notionalUsd===f.volumeUsd&&(f.side===undefined||f.side===e.kind)).length!==1))throw Error('ACCOUNTING_FILL_MISSING');
+ let scoringEvents=events,projection={};
+ if(unknownConsumedBuckets.size){
+  // A token's wallet inventories are coupled only by actual linked transfers.
+  // Include EVERY current transfer, including bridges later than a disposal,
+  // so a later connection to scored inventory disables the entire component.
+  const parent=new Map(),bucket=(wallet,token)=>wallet+':'+token;
+  const find=k=>{if(!parent.has(k))parent.set(k,k);let r=k;while(parent.get(r)!==r)r=parent.get(r);while(parent.get(k)!==k){const next=parent.get(k);parent.set(k,r);k=next;}return r;};
+  for(const wallet of wallets)for(const token of domains)find(bucket(wallet,token));
+  for(const e of events)if(e.kind==='transfer'&&domains.has(e.token)){const a=find(bucket(e.wallet,e.token)),b=find(bucket(e.toWallet,e.token));if(a!==b)parent.set(b,a);}
+  const isolatedRoots=new Set([...unknownConsumedBuckets].map(find));
+  const isolated=e=>domains.has(e.token)&&isolatedRoots.has(find(bucket(e.wallet,e.token)));
+  if(events.some(e=>e.kind==='sell'&&e.economicId&&isolated(e)))throw Error('ACCOUNTING_OPENING_BASIS_REQUIRED');
+  const omitted=events.filter(e=>isolated(e)&&['sell','out','transfer'].includes(e.kind));
+  const isolatedBuckets=[...parent.keys()].filter(k=>isolatedRoots.has(find(k))).sort().map(k=>{const[wallet,token]=k.split(':');return {wallet,token};});
+  if(omitted.some(e=>e.economicId)||isolatedBuckets.some(b=>!domains.has(b.token)||[USDC,WETH,NATIVE].includes(b.token)))throw Error('ACCOUNTING_PROJECTION_INVALID');
+  // This is a score-only view for the existing SQL calculator, never inventory.
+  // Keep the full, reconciled events and exact closing balances as evidence.
+  // All entry values and incoming capital remain, so the denominator is intact.
+  const fullReconciliation={version:'mk-full-quantity-ledger-1',periodStart:exactStart,confirmedThrough:new Date(through).toISOString(),openingBlock:{number:start.number,hash:start.hash},closingBlock:{number:end.number,hash:end.hash},openingLots:opening,events,closingBalances};
+  const omittedIds=new Set(omitted.map(e=>e.id));scoringEvents=events.filter(e=>!omittedIds.has(e.id));
+  projection={scoringProjection:{version:'mk-isolated-unscored-components-2',isolatedBuckets,omittedEventIds:[...omittedIds],fullLedgerSha256:createHash('sha256').update(canonicalJson(fullReconciliation)).digest('hex')},fullReconciliation};
+ }
+ return {schemaVersion:1,campaignId:'model-kombat-zones-1',methodology:'mk-fifo-realized-capital-1',participant,requestId:randomUUID(),revision:priorRevision+1,periodStart:exactStart,confirmedThrough:new Date(through).toISOString(),complete:true,evidence:'Independent public chain reconstruction; entry balances, opening domain FIFO; opening '+start.number+' closing '+end.number+(unknownConsumedBuckets.size?'; Score-sufficient projection; full quantity ledger and reconciled closing balances retained in fullReconciliation.':''),openingLots:opening,events:scoringEvents,...projection};
 }
 module.exports={reconstruct,accountingStartMillis};
