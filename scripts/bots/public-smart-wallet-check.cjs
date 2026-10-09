@@ -67,8 +67,48 @@ async function feeTests(){
  }
 }
 
+
+// Exercise the allowance route independently of the already tested signature
+// oracle, as feeIntent does above. Both real signed initializer variants are
+// additionally verified against historical RPC facts in private launch proofs.
+function allowanceContext(){
+ const f=clone(fixtures[0]),c=context(f),op=v.decodeFunctionData({abi:entryAbi,data:f.transaction.input}).args[0][0];
+ const [target,value,data]=v.decodeFunctionData({abi:v.parseAbi(['function execute(address target,uint256 value,bytes data)']),data:op.callData}).args;
+ const router=v.decodeFunctionData({abi:v.parseAbi(['function execute(bytes commands,bytes[] inputs,uint256 deadline) payable']),data}).args;
+ const total=router[1].reduce((sum,input)=>sum+v.decodeAbiParameters(v.parseAbiParameters('address,uint256,uint256,bytes,bool'),input)[1],0n),token=USDC,expiration=BigInt(Math.floor(Date.parse(c.swaps[0].executedAt)/1000)+3600);
+ const calls=[{target:token,value:0n,data:v.encodeFunctionData({abi:v.parseAbi(['function approve(address spender,uint256 amount)']),functionName:'approve',args:[adapter.PERMIT2,total]})},{target:adapter.PERMIT2,value:0n,data:v.encodeFunctionData({abi:v.parseAbi(['function approve(address token,address spender,uint160 amount,uint48 expiration)']),functionName:'approve',args:[token,adapter.ROUTER,total,expiration]})},{target,value,data}];
+ alterOp(c,op=>op.callData=v.encodeFunctionData({abi:v.parseAbi(['function executeBatch((address target,uint256 value,bytes data)[] calls)']),functionName:'executeBatch',args:[calls]}));
+ const envelope=clone(c.receipt.logs[0]),wallet=c.swaps[0].wallet;
+ c.receipt.logs.push({...envelope,address:token,logIndex:'0xff01',topics:[v.toEventSelector('Approval(address,address,uint256)'),v.pad(wallet),v.pad(adapter.PERMIT2)],data:v.encodeAbiParameters(v.parseAbiParameters('uint256'),[total])});
+ c.receipt.logs.push({...envelope,address:adapter.PERMIT2,logIndex:'0xff02',topics:[v.toEventSelector('Approval(address,address,address,uint160,uint48)'),v.pad(wallet),v.pad(token),v.pad(adapter.ROUTER)],data:v.encodeAbiParameters(v.parseAbiParameters('uint160,uint48'),[total,expiration])});
+ c.userOperationHash=async()=>f.expected.userOperationHash;return {f,c,total,expiration};
+}
+function alterAllowance(c,change){const op=v.decodeFunctionData({abi:entryAbi,data:c.transaction.input}).args[0][0],abi=v.parseAbi(['function executeBatch((address target,uint256 value,bytes data)[] calls)']),calls=v.decodeFunctionData({abi,data:op.callData}).args[0];change(calls);alterOp(c,op=>op.callData=v.encodeFunctionData({abi,functionName:'executeBatch',args:[calls]}));}
+async function allowanceTests(){
+ for(const initCode of ['0x',adapter.EIP7702_INIT_CODE]){const {f,c}=allowanceContext();alterOp(c,op=>op.initCode=initCode);const proof=await adapter.verifySmartWalletSettlement(c);assert.equal(proof.amounts.route,'SMART_ALLOWANCE_EXACT_INPUT_1');assert.equal(proof.amounts.walletQuoteUnits,f.expected.quoteUnits);assert.equal(proof.swap.domainUnits,f.expected.domainUnits);assert.equal(proof.volumeMicros.toString(),f.expected.volumeMicros);}
+ const approveAbi=v.parseAbi(['function approve(address token,address spender,uint160 amount,uint48 expiration)']);
+ const modify=(c,change)=>alterAllowance(c,calls=>{const args=v.decodeFunctionData({abi:approveAbi,data:calls[1].data}).args;change(args);calls[1].data=v.encodeFunctionData({abi:approveAbi,functionName:'approve',args});});
+ const cases=[
+  ['wrong token',({c})=>modify(c,args=>args[0]=WETH),/UNSUPPORTED_ALLOWANCE/],
+  ['wrong spender',({c})=>modify(c,args=>args[1]=adapter.ENTRY),/UNSUPPORTED_ALLOWANCE/],
+  ['expired allowance',({c})=>modify(c,args=>args[3]=0n),/UNSUPPORTED_ALLOWANCE/],
+  ['extra call',({c})=>alterAllowance(c,calls=>calls.push(clone(calls[0]))),/UNSUPPORTED_ACCOUNT_BATCH/],
+  ['native approval value',({c})=>alterAllowance(c,calls=>calls[1].value=1n),/UNSUPPORTED_ACCOUNT_BATCH/],
+  ['missing allowance event',({c})=>c.receipt.logs=c.receipt.logs.filter(l=>l.logIndex!=='0xff02'),/ALLOWANCE_EVENT_MISMATCH/],
+  ['wrong allowance event owner',({c})=>c.receipt.logs.find(l=>l.logIndex==='0xff02').topics[1]=v.pad(adapter.ENTRY),/ALLOWANCE_EVENT_MISMATCH/],
+  ['missing ERC20 approval',({c})=>c.receipt.logs=c.receipt.logs.filter(l=>l.logIndex!=='0xff01'),/APPROVAL_EVENT_MISMATCH/],
+  ['wrong approved amount',({c})=>c.receipt.logs.find(l=>l.logIndex==='0xff01').data=v.toHex(1n,{size:32}),/APPROVAL_EVENT_MISMATCH/],
+  ['unknown Permit2',({c})=>{const original=c.codeAt;c.codeAt=async a=>a===adapter.PERMIT2?'0x':original(a);},/UNREVIEWED_PERMIT2/],
+  ['wrong UserOp hash',({c})=>c.userOperationHash=async()=> '0x'+'0'.repeat(64),/OPERATION_EVENT_MISMATCH/],
+  ['wrong signature',({c})=>alterOp(c,op=>op.signature=v.decodeFunctionData({abi:entryAbi,data:fixtures[1].transaction.input}).args[0][0].signature),/OPERATION_SIGNATURE_MISMATCH/],
+ ];
+ for(const [label,change,code]of cases){const f=allowanceContext();change(f);await assert.rejects(()=>adapter.verifySmartWalletSettlement(f.c),code,label);}
+ for(const amount of [1n,allowanceContext().total-1n]){const {c,expiration}=allowanceContext();modify(c,args=>args[2]=amount);c.receipt.logs.find(l=>l.logIndex==='0xff02').data=v.encodeAbiParameters(v.parseAbiParameters('uint160,uint48'),[amount,expiration]);await assert.rejects(()=>adapter.verifySmartWalletSettlement(c),/UNSUPPORTED_ALLOWANCE/,'the full split route must fit the granted allowance');}
+}
+
 async function main(){
  await feeTests();
+ await allowanceTests();
  for(const f of fixtures){const result=await adapter.verifySmartWalletSettlement(context(f));assert.equal(result.swap.domainUnits,f.expected.domainUnits);assert.equal(result.amounts.walletQuoteUnits,f.expected.quoteUnits);assert.equal(result.volumeMicros.toString(),f.expected.volumeMicros);assert.equal(result.swap.quote,USDC);assert.equal(result.amounts.paths.length,f.rows.length);}
  await rejected('unknown runtime',c=>{c.codeAt=async()=>codes[adapter.ACCOUNT]},/UNREVIEWED_RUNTIME/);
  await rejected('unknown account delegation',c=>{const previous=c.codeAt;c.codeAt=async a=>a===c.swaps[0].wallet?'0xef0100'+'0'.repeat(40):previous(a)},/UNREVIEWED_ACCOUNT/);
@@ -77,6 +117,9 @@ async function main(){
  await rejected('removed log',c=>c.receipt.logs[1].removed=true,/LOG_IDENTITY_INVALID/);
  await rejected('duplicate log identity',c=>c.receipt.logs.push(clone(c.receipt.logs[1])),/LOG_IDENTITY_INVALID/);
  await rejected('multiple operations',c=>alterOp(c,(_,args)=>args[0].push(clone(args[0][0]))),/MULTIPLE_OPERATIONS/);
+ for(const initCode of ['0x7703'+'00'.repeat(18),adapter.EIP7702_INIT_CODE+'00','0x7702','0x'+'11'.repeat(20)])await rejected('noncanonical initialization rejected',c=>alterOp(c,op=>op.initCode=initCode),/OPERATION_MISMATCH/);
+ await rejected('marker cannot authorize wrong delegate',c=>{alterOp(c,op=>op.initCode=adapter.EIP7702_INIT_CODE);const previous=c.codeAt;c.codeAt=async a=>a===c.swaps[0].wallet?'0xef0100'+'1'.repeat(40):previous(a);},/UNREVIEWED_ACCOUNT/);
+ await rejected('forged operation signature',(c,f)=>{alterOp(c,op=>op.signature=v.decodeFunctionData({abi:entryAbi,data:fixtures[1].transaction.input}).args[0][0].signature);c.userOperationHash=async()=>f.expected.userOperationHash;},/OPERATION_SIGNATURE_MISMATCH/);
  await rejected('wrong operation hash',c=>c.userOperationHash=async()=> '0x'+'0'.repeat(64),/OPERATION_EVENT_MISMATCH/);
  await rejected('wrong operation nonce',c=>alterOp(c,op=>op.nonce++),/OPERATION_EVENT_MISMATCH/);
  await rejected('failed user operation',c=>{const l=c.receipt.logs.find(l=>l.topics[0]===v.toEventSelector(eventAbi[0]));const e=v.decodeEventLog({abi:eventAbi,data:l.data,topics:l.topics}).args;l.data=v.encodeAbiParameters([{type:'uint256'},{type:'bool'},{type:'uint256'},{type:'uint256'}],[e.nonce,false,e.actualGasCost,e.actualGasUsed]);},/OPERATION_EVENT_MISMATCH/);
