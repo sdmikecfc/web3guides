@@ -76,6 +76,16 @@ async function scanPages(fetchPage,{from,through,maxPages=1000}){
  }
  throw Error('PUBLIC_HISTORY_PAGE_LIMIT');
 }
+// Failed accounts stay pending; independently verified accounts can publish.
+function accountCoverage(snapshot,packet,problems){
+ const ids=snapshot.manifest.campaign.state==='draft'?snapshot.accounts.map(a=>a.participant):snapshot.manifest.participants.map(e=>e.participant);
+ const global=problems.filter(p=>!p.participant);
+ return [...new Set(ids)].map(participant=>{
+  const own=[...global,...problems.filter(p=>p.participant===participant)].map(p=>/^[A-Z][A-Z0-9_]{2,100}$/.test(p.code)?p.code:'SOURCE_UNAVAILABLE');
+  if(!snapshot.accounts.some(a=>a.participant===participant)||!snapshot.wallets.some(w=>w.participant===participant))own.push('ACCOUNT_LINK_PENDING');
+  return {participant,coverageFrom:packet.coverageFrom,confirmedThrough:packet.confirmedThrough,complete:own.length===0,problems:[...new Set(own)].sort()};
+ });
+}
 async function collect(snapshot,source,{now=Date.now(),lookbackDays=60}={}){
  const c=snapshot.manifest.campaign,draft=c.state==='draft';
  const referenceStarts=snapshot.accounts.map(a=>a.reference_since).filter(Boolean).map(timestamp);
@@ -86,9 +96,16 @@ async function collect(snapshot,source,{now=Date.now(),lookbackDays=60}={}){
  const problems=[],warnings=[],fills=[],raw=[],references=snapshot.references||[];
  const entries=new Map(snapshot.manifest.participants.map(e=>[e.participant,e]));
  const accounts=snapshot.accounts.filter(a=>draft||entries.has(a.participant));
+ if(!draft)for(const [participant]of entries)if(!accounts.some(a=>a.participant===participant))problems.push({code:'ACCOUNT_LINK_PENDING',participant});
  // Public trades may arrive between private discovery runs. Score only through
  // the common completed cutoff; do not pretend newer Strategy intent is known.
- if(accounts.length&&accounts.every(a=>a.coverage?.complete))through=Math.min(through,...accounts.map(a=>timestamp(a.coverage.confirmed_through)));
+ const savedCutoff=Date.parse(c.confirmed_through||'');
+ const readyCoverage=accounts.filter(a=>{
+  const cv=a.coverage,required=Math.max(from,draft?(a.reference_since?timestamp(a.reference_since):from):timestamp(entries.get(a.participant).entered_at));
+  return cv?.complete&&Number.isFinite(Date.parse(cv.updated_at))&&now-Date.parse(cv.updated_at)<=5*3600000
+   &&Date.parse(cv.coverage_from)<=required&&Date.parse(cv.confirmed_through)>=Math.max(required,Number.isFinite(savedCutoff)?savedCutoff:from);
+ });
+ if(readyCoverage.length)through=Math.min(through,...readyCoverage.map(a=>timestamp(a.coverage.confirmed_through)));
  if(through<from)throw Error('PRIVATE_COVERAGE_BEFORE_COMPETITION');
  const wallets=snapshot.wallets.filter(w=>accounts.some(a=>a.participant===w.participant));
  const markets=new Set(snapshot.manifest.markets.map(m=>m.domain_token+':'+m.quote_token));
@@ -182,16 +199,20 @@ async function collect(snapshot,source,{now=Date.now(),lookbackDays=60}={}){
  }
  const existing=snapshot.fills||[],updated=[];
  for(const f of fills){const old=existing.find(x=>x.economicId===f.economicId&&x.chainId===f.chainId);if(old){f.revision=old.revision; if(!equivalent({...old,revision:0},{...f,revision:0}))f.revision=old.revision+1;}updated.push(f);}
- // Revocations are safe only after complete source coverage. A transient API
- // failure must not erase trades. Corrected reference amounts replace old fills.
- if(problems.length===0)for(const old of existing){if(!old.economicId.startsWith('public:')||old.status==='revoked'||fills.some(f=>f.economicId===old.economicId))continue;
+ if(existing.some(f=>!f.economicId.startsWith('public:')&&f.status==='verified'))problems.push({code:'LEGACY_FEED_RECONCILIATION_REQUIRED'});
+ const scopes=accountCoverage(snapshot,{coverageFrom:new Date(from).toISOString(),confirmedThrough:new Date(through).toISOString()},problems);
+ const completeAccounts=new Set(scopes.filter(s=>s.complete).map(s=>s.participant));
+ // Reconcile each complete account independently. A failed account keeps its
+ // prior fills pending; it cannot prevent another account's valid correction.
+ for(const old of existing){if(!old.economicId.startsWith('public:')||old.status==='revoked'||fills.some(f=>f.economicId===old.economicId))continue;
+  const owners=snapshot.wallets.filter(w=>w.trade_wallet===old.wallet).map(w=>w.participant);
+  if(owners.length!==1||!completeAccounts.has(owners[0]))continue;
   updated.push({...old,revision:old.revision+1,status:'revoked'});
  }
- if(existing.some(f=>!f.economicId.startsWith('public:')&&f.status==='verified'))problems.push({code:'LEGACY_FEED_RECONCILIATION_REQUIRED'});
  warnings.push('ROI/profit pending: complete opening cost basis, quote capital, transfers and LP reconciliation must be independently evidenced. Trade receipts alone are insufficient.');
- const packet={schemaVersion:1,rules:'mk-token-zones-1',campaignId:c.id,requestId:randomUUID(),coverageFrom:new Date(from).toISOString(),confirmedThrough:new Date(through).toISOString(),complete:problems.length===0,financialComplete:false,financials:[],fills:updated};
+ const packet={schemaVersion:1,rules:'mk-token-zones-1',campaignId:c.id,requestId:randomUUID(),coverageFrom:new Date(from).toISOString(),confirmedThrough:new Date(through).toISOString(),complete:problems.length===0&&scopes.every(s=>s.complete),financialComplete:false,financials:[],fills:updated};
  const counts={accounts:accounts.length,wallets:wallets.length,verifiedFills:fills.length,volumeUsd:dollars(fills.reduce((n,f)=>n+decimal(f.volumeUsd).n*1000000n/decimal(f.volumeUsd).d,0n)),strategyFills:fills.filter(f=>f.source==='strategy').length,agentFills:fills.filter(f=>f.source==='agent_wallet').length};
  const report={checkedAt:new Date(now).toISOString(),state:c.state,coverageFrom:packet.coverageFrom,confirmedThrough:packet.confirmedThrough,complete:packet.complete,financialComplete:false,counts,problems,warnings};
- return {packet,report,raw};
+ return {packet,report,raw,accountCoverage:scopes};
 }
-module.exports={collect,scanPages,normalizePublicSwap,receiptFlows,chainMatch,settlement,volume,key,referenceSwap,hash,integer,CHAIN,USDC,WETH,TRANSFER};
+module.exports={collect,scanPages,normalizePublicSwap,receiptFlows,chainMatch,settlement,volume,key,referenceSwap,hash,integer,CHAIN,USDC,WETH,TRANSFER,accountCoverage};

@@ -1,13 +1,16 @@
 'use strict';
 // Reviewed, deliberately narrow ERC-4337 route: EntryPoint v0.8 ->
-// Simple7702Account.execute -> UniversalRouter V3 exact-input swaps.
+// Simple7702Account.execute / approval batch -> UniversalRouter V3 exact-input swaps.
 // Verified source/runtime evidence: explorer.doma.xyz/api/v2/smart-contracts/
-// followed by the three pinned addresses below (reviewed 2026-10-07).
-// No other account implementation, batch call, router command or fee is inferred.
+// followed by the pinned addresses below (fee/permit path reviewed 2026-10-09).
+// Fee routes allow one exact-input pool, optional Permit2 single permit, output fee and sweep.
+// Batch support is limited to one exact input-token approval followed by that route.
 const {CHAIN,USDC,WETH,TRANSFER,receiptFlows,key,volume}=require('./public-trade-worker.cjs');
 const ENTRY='0x4337084d9e255ff0702461cf8895ce9e3b5ff108';
 const ACCOUNT='0x4cd241e8d1510e30b2076397afc7508ae59c66c9';
 const ROUTER='0x5089863e97196773038f98459262d866f2281f58';
+const PERMIT2='0x000000000022d473030f116ddee9f6b43ac78ba3';
+const PERMIT2_HASH='0xef1ed184f18f79781d7abbb97561b742b149c59c424a2a9d4d7f8a4190db6830';
 const HASHES={
  [ENTRY]:'0xa5cad34161f9f9136442e82e95306ba5ae4aad426137dab1c3fb0975c1e25674',
  [ACCOUNT]:'0x82c1e6c0f83d22eef579344e8eff26baf24db4dabe5408d681b00d0512bc3ec4',
@@ -21,7 +24,7 @@ const addr=x=>/^0x[0-9a-f]{40}$/.test(lower(x))?lower(x):null;
 const zero='0x'+'0'.repeat(40);
 async function verifySmartWalletSettlement({swaps,transaction:tx,receipt,codeAt,poolFor,userOperationHash}){
  if(lower(tx?.to)!==ENTRY)return null;
- const {parseAbi,decodeFunctionData,encodeFunctionData,decodeAbiParameters,encodeAbiParameters,decodeEventLog,toEventSelector,keccak256,recoverAddress}=require('viem');
+ const {parseAbi,parseAbiParameters,decodeFunctionData,encodeFunctionData,decodeAbiParameters,encodeAbiParameters,decodeEventLog,toEventSelector,keccak256,recoverAddress,recoverTypedDataAddress}=require('viem');
  if(!swaps.length||new Set(swaps.map(key)).size!==swaps.length)fail('DUPLICATE_INDEX_ROW');
  const first=swaps[0],wallet=addr(first.wallet),domain=addr(first.domain);
  if(!wallet||!domain||[USDC,WETH,zero].includes(domain)||swaps.some(s=>s.wallet!==wallet||s.tx!==first.tx||s.domain!==domain||s.side!==first.side||s.executedAt!==first.executedAt))fail('AMBIGUOUS_ECONOMIC_FILL');
@@ -32,10 +35,20 @@ async function verifySmartWalletSettlement({swaps,transaction:tx,receipt,codeAt,
  const [ops]=decode(parseAbi([`function handleOps(${OP}[] ops,address beneficiary)`]),tx.input);
  if(ops.length!==1)fail('MULTIPLE_OPERATIONS');
  const op=ops[0];if(lower(op.sender)!==wallet||op.initCode!=='0x')fail('OPERATION_MISMATCH');
- const [target,value,data]=decode(parseAbi(['function execute(address target,uint256 value,bytes data)']),op.callData);
+ let target,value,data,approval=null;
+ if(lower(op.callData).startsWith('0x34fcd5be')){
+  const [calls]=decode(parseAbi(['function executeBatch((address target,uint256 value,bytes data)[] calls)']),op.callData);
+  if(calls.length!==2||calls[0].value!==0n)fail('UNSUPPORTED_ACCOUNT_BATCH');
+  const [spender,amount]=decode(parseAbi(['function approve(address spender,uint256 amount)']),calls[0].data);
+  if(lower(spender)!==PERMIT2||amount<=0n)fail('UNSUPPORTED_APPROVAL');
+  approval={token:lower(calls[0].target),amount};({target,value,data}=calls[1]);
+ }else [target,value,data]=decode(parseAbi(['function execute(address target,uint256 value,bytes data)']),op.callData);
  if(lower(target)!==ROUTER||value!==0n)fail('UNSUPPORTED_ACCOUNT_CALL');
- const [commands,inputs]=decode(parseAbi(['function execute(bytes commands,bytes[] inputs,uint256 deadline) payable']),data);
- if(!/^0x(?:00){1,2}$/.test(commands)||inputs.length!==(commands.length-2)/2)fail('UNSUPPORTED_COMMANDS');
+ const [commands,allInputs,deadline]=decode(parseAbi(['function execute(bytes commands,bytes[] inputs,uint256 deadline) payable','function execute(bytes commands,bytes[] inputs) payable']),data);
+ if(deadline!==undefined&&deadline<BigInt(Math.floor(Date.parse(first.executedAt)/1000)))fail('EXPIRED_DEADLINE');
+ const withPermit=commands==='0x0a000604',withFee=withPermit||commands==='0x000604';
+ if(!(withFee||/^0x(?:00){1,2}$/.test(commands))||allInputs.length!==(commands.length-2)/2||approval&&!withPermit)fail('UNSUPPORTED_COMMANDS');
+ const inputs=withFee?[allInputs[withPermit?1:0]]:allInputs;
  const logs=receipt.logs||[],seen=new Set();
  for(const l of logs){if(l.removed||lower(l.transactionHash)!==first.tx||lower(l.blockHash)!==lower(receipt.blockHash)||BigInt(l.blockNumber)!==BigInt(receipt.blockNumber)||!/^0x[0-9a-f]+$/i.test(l.logIndex)||seen.has(BigInt(l.logIndex).toString()))fail('LOG_IDENTITY_INVALID');seen.add(BigInt(l.logIndex).toString());}
  const eventAbi=parseAbi(['event UserOperationEvent(bytes32 indexed userOpHash,address indexed sender,address indexed paymaster,uint256 nonce,bool success,uint256 actualGasCost,uint256 actualGasUsed)']);
@@ -45,6 +58,26 @@ async function verifySmartWalletSettlement({swaps,transaction:tx,receipt,codeAt,
  const paymaster=op.paymasterAndData==='0x'?zero:lower(op.paymasterAndData.slice(0,42));
  if(!event.success||lower(event.sender)!==wallet||event.nonce!==op.nonce||lower(event.paymaster)!==paymaster||lower(event.userOpHash)!==lower(await userOperationHash(op,receipt.blockNumber)))fail('OPERATION_EVENT_MISMATCH');
  if(lower(await recoverAddress({hash:event.userOpHash,signature:op.signature}))!==wallet)fail('OPERATION_SIGNATURE_MISMATCH');
+ const paramsDecode=(params,data)=>{try{const p=decodeAbiParameters(params,data);if(lower(encodeAbiParameters(params,p))!==lower(data))fail('CALLDATA_INVALID');return p;}catch{fail('CALLDATA_INVALID');}};
+ const types=(...names)=>names.map(type=>({type})),resolve=a=>BigInt(a)===1n?wallet:BigInt(a)===2n?ROUTER:lower(a);
+ let permit=null,feeCommand=null,sweepCommand=null,totalFee=0n;
+ if(withFee){
+  if(keccak256(await codeAt(PERMIT2,receipt.blockNumber))!==PERMIT2_HASH)fail('UNREVIEWED_PERMIT2');
+  feeCommand=paramsDecode(types('address','address','uint256'),allInputs[withPermit?2:1]);
+  sweepCommand=paramsDecode(types('address','address','uint256'),allInputs[withPermit?3:2]);
+ }
+ if(withPermit){
+  const [p,signature]=paramsDecode(parseAbiParameters('((address token,uint160 amount,uint48 expiration,uint48 nonce) details,address spender,uint256 sigDeadline) permit,bytes signature'),allInputs[0]);permit=p;
+  const at=BigInt(Math.floor(Date.parse(first.executedAt)/1000));
+  if(lower(p.spender)!==ROUTER||BigInt(p.details.expiration)<at||p.sigDeadline<at)fail('PERMIT_MISMATCH');
+  let signer;try{signer=await recoverTypedDataAddress({domain:{name:'Permit2',chainId:CHAIN,verifyingContract:PERMIT2},types:{PermitDetails:[{name:'token',type:'address'},{name:'amount',type:'uint160'},{name:'expiration',type:'uint48'},{name:'nonce',type:'uint48'}],PermitSingle:[{name:'details',type:'PermitDetails'},{name:'spender',type:'address'},{name:'sigDeadline',type:'uint256'}]},primaryType:'PermitSingle',message:p,signature});}catch{fail('PERMIT_SIGNATURE_INVALID');}
+  if(lower(signer)!==wallet)fail('PERMIT_SIGNATURE_MISMATCH');
+  const permitAbi=parseAbi(['event Permit(address indexed owner,address indexed token,address indexed spender,uint160 amount,uint48 expiration,uint48 nonce)']);
+  const ls=logs.filter(l=>lower(l.address)===PERMIT2&&lower(l.topics?.[0])===lower(toEventSelector(permitAbi[0])));
+  if(ls.length!==1)fail('PERMIT_EVENT_MISMATCH');
+  const actual=decodeEventLog({abi:permitAbi,data:ls[0].data,topics:ls[0].topics,strict:true}).args;
+  if(lower(actual.owner)!==wallet||lower(actual.token)!==lower(p.details.token)||lower(actual.spender)!==ROUTER||actual.amount!==p.details.amount||actual.expiration!==p.details.expiration||actual.nonce!==p.details.nonce)fail('PERMIT_EVENT_MISMATCH');
+ }
  const swapAbi=parseAbi(['event Swap(address indexed sender,address indexed recipient,int256 amount0,int256 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick)']);
  const swapLogs=logs.filter(l=>lower(l.topics?.[0])===lower(toEventSelector(swapAbi[0]))),used=new Set(),paths=[],expectedTransfers=[],legs=[];
  const params=['address','uint256','uint256','bytes','bool'].map(type=>({type}));
@@ -52,13 +85,16 @@ async function verifySmartWalletSettlement({swaps,transaction:tx,receipt,codeAt,
  for(const input of inputs){
   let p;try{p=decodeAbiParameters(params,input);if(lower(encodeAbiParameters(params,p))!==lower(input))fail('CALLDATA_INVALID');}catch{fail('CALLDATA_INVALID');}
   const [recipient,amountIn,minOut,path,payer]=p;
-  if(!payer||![wallet,'0x'+'1'.padStart(40,'0')].includes(lower(recipient))||amountIn<=0n)fail('COMMAND_MISMATCH');
+  if(!payer||resolve(recipient)!==(withFee?ROUTER:wallet)||amountIn<=0n)fail('COMMAND_MISMATCH');
   if(!/^0x[0-9a-f]+$/.test(path)||![88,134].includes(path.length))fail('UNSUPPORTED_PATH');
   const tokens=['0x'+path.slice(2,42)],fees=[];
   for(let i=42;i<path.length;i+=46){fees.push(parseInt(path.slice(i,i+6),16));tokens.push('0x'+path.slice(i+6,i+46));}
   const buy=first.side==='buy',q=buy?tokens[0]:tokens.at(-1);
   if(![USDC,WETH].includes(q)||(quote&&quote!==q)||(buy?tokens.at(-1):tokens[0])!==domain||new Set(tokens).size!==tokens.length||fees.some(f=>![100,500,3000,10000].includes(f))||(tokens.length===3&&(q!==USDC||tokens[1]!==WETH)))fail('UNSUPPORTED_PATH');
   quote=q;let inputUnits=amountIn,domainLeg;
+  if(withFee&&tokens.length!==2)fail('UNSUPPORTED_PATH');
+  if(permit&&(lower(permit.details.token)!==tokens[0]||permit.details.amount<amountIn))fail('PERMIT_MISMATCH');
+  if(approval&&(approval.token!==tokens[0]||approval.amount<amountIn))fail('UNSUPPORTED_APPROVAL');
   const pools=[];
   for(let i=0;i<fees.length;i++){
    const pool=addr(await poolFor(tokens[i],tokens[i+1],fees[i],receipt.blockNumber));
@@ -66,13 +102,21 @@ async function verifySmartWalletSettlement({swaps,transaction:tx,receipt,codeAt,
    const matches=swapLogs.filter(l=>!used.has(l)&&lower(l.address)===pool);
    if(matches.length!==1)fail('AMBIGUOUS_POOL');const log=matches[0];used.add(log);
    let s;try{s=decodeEventLog({abi:swapAbi,data:log.data,topics:log.topics,strict:true}).args;}catch{fail('SWAP_EVENT_INVALID');}
-   const input0=BigInt(tokens[i])<BigInt(tokens[i+1]),actualIn=input0?s.amount0:s.amount1,output=-(input0?s.amount1:s.amount0),to=i===fees.length-1?wallet:ROUTER;
+   const input0=BigInt(tokens[i])<BigInt(tokens[i+1]),actualIn=input0?s.amount0:s.amount1,output=-(input0?s.amount1:s.amount0),to=i===fees.length-1&&!withFee?wallet:ROUTER;
    if(actualIn!==inputUnits||output<=0n||lower(s.sender)!==ROUTER||lower(s.recipient)!==to)fail('POOL_AMOUNT_MISMATCH');
    expectedTransfers.push({token:tokens[i],from:i===0?wallet:ROUTER,to:pool,units:actualIn.toString()},{token:tokens[i+1],from:pool,to,units:output.toString()});
    if(tokens[i]===domain||tokens[i+1]===domain)domainLeg={quote:tokens[i]===domain?tokens[i+1]:tokens[i],domainUnits:(tokens[i]===domain?actualIn:output).toString(),quoteUnits:(tokens[i]===domain?output:actualIn).toString(),pool};
    inputUnits=output;
   }
   if(inputUnits<minOut||!domainLeg)fail('MINIMUM_OUTPUT_MISMATCH');
+  if(withFee){
+   const output=tokens.at(-1),feeTo=resolve(feeCommand[1]),bips=feeCommand[2];
+   if(lower(feeCommand[0])!==output||bips<=0n||bips>=10000n||[zero,wallet,ROUTER,PERMIT2,...tokens,...pools].includes(feeTo))fail('INVALID_FEE');
+   totalFee=inputUnits*bips/10000n;const received=inputUnits-totalFee;
+   if(lower(sweepCommand[0])!==output||resolve(sweepCommand[1])!==wallet||sweepCommand[2]>received)fail('SWEEP_MISMATCH');
+   if(totalFee)expectedTransfers.push({token:output,from:ROUTER,to:feeTo,units:totalFee.toString()});
+   expectedTransfers.push({token:output,from:ROUTER,to:wallet,units:received.toString()});inputUnits=received;
+  }
   walletDomain+=buy?inputUnits:amountIn;walletQuote+=buy?amountIn:inputUnits;
   legs.push(domainLeg);paths.push({tokens,fees,pools});
  }
@@ -91,7 +135,7 @@ async function verifySmartWalletSettlement({swaps,transaction:tx,receipt,codeAt,
  if(indexed.size!==legs.length||legs.some(l=>!indexed.has(legKey(l))))fail('INDEX_MISMATCH');
  const volumeMicros=legs.reduce((sum,l)=>sum+volume(indexed.get(legKey(l))),0n);
  const swap={...first,quote,domainUnits:walletDomain.toString(),quoteUnits:walletQuote.toString()};
- const amounts={walletDomainUnits:swap.domainUnits,walletQuoteUnits:swap.quoteUnits,routerFeeUnits:'0',router:ROUTER,entryPoint:ENTRY,accountImplementation:ACCOUNT,userOperationHash:event.userOpHash,paths,poolLegs:legs,routerRuntimeHash:HASHES[ROUTER]};
+ const amounts={walletDomainUnits:swap.domainUnits,walletQuoteUnits:swap.quoteUnits,routerFeeUnits:(first.side==='sell'?totalFee:0n).toString(),...(withFee?{routerDomainFeeUnits:(first.side==='buy'?totalFee:0n).toString(),route:withPermit?'SMART_PERMIT_EXACT_INPUT_PORTION_SWEEP_1':'SMART_EXACT_INPUT_PORTION_SWEEP_1'}:{}),router:ROUTER,entryPoint:ENTRY,accountImplementation:ACCOUNT,userOperationHash:event.userOpHash,paths,poolLegs:legs,routerRuntimeHash:HASHES[ROUTER]};
  return {swap,amounts,volumeMicros};
 }
-module.exports={verifySmartWalletSettlement,ENTRY,ACCOUNT,ROUTER,HASHES,HASH_ABI};
+module.exports={verifySmartWalletSettlement,ENTRY,ACCOUNT,ROUTER,HASHES,HASH_ABI,PERMIT2,PERMIT2_HASH};

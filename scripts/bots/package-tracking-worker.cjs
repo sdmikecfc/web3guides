@@ -44,10 +44,13 @@ const files=[
  'scripts/bots/fixtures/smart-wallet/a80aed76.json',
  'scripts/bots/fixtures/smart-wallet/4e9590d2.json',
  'scripts/bots/fixtures/smart-wallet/3dfb75e1.json',
+ 'scripts/bots/fixtures/smart-wallet/permit-portion-sweep.json',
+ 'scripts/bots/fixtures/smart-wallet/portion-sweep.json',
  'scripts/bots/fixtures/smart-wallet/README.md',
- 'docs/model-kombat-roi-release-2026-10-08.md',
+ 'docs/model-kombat-account-isolation-2026-10-09.md',
  'scripts/sql/bots-token-zone-opening-basis.sql',
  'scripts/sql/bots-token-zone-financial-scope.sql',
+ 'scripts/sql/bots-token-zone-account-isolation.sql',
  'scripts/bots/install-tracking-worker.sh',
 ];
 if(fs.existsSync(out)&&fs.readdirSync(out).some(x=>!['scripts','docs','package.json','package-lock.json','README.txt','manifest.json'].includes(x)))throw Error('PACKAGE_DIRECTORY_CONTAINS_OTHER_FILES');
@@ -56,15 +59,15 @@ const manifest={createdAt:new Date().toISOString(),purpose:'Model Kombat public 
 for(const name of files){const data=fs.readFileSync(path.join(root,name)),dest=path.join(out,name);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.writeFileSync(dest,data);manifest.files.push({path:name,sha256:createHash('sha256').update(data).digest('hex')});}
 const checks=['public-router-settlement-check','public-order-route-check','public-universal-settlement-check','public-trade-worker-check','public-accounting-check','public-native-accounting-check','public-native-router-check','native-purchase-ledger-check','public-native-quote-router-check','public-smart-wallet-check','public-source-budget-check','worker-contract-check','public-transfer-window-check','public-accounting-scoped-check','public-accounting-deferred-in-check','public-accounting-source-check','accounting-cache-check','accounting-cycle-check'];
 fs.writeFileSync(path.join(out,'package.json'),JSON.stringify({name:'model-kombat-tracking-worker',private:true,version:'1.0.0',engines:{node:'>=20'},scripts:{test:checks.map(name=>'node scripts/bots/'+name+'.cjs').join(' && '),check:'node scripts/bots/run-trade-worker.cjs',start:'node scripts/bots/run-trade-worker.cjs --write --watch'},dependencies:{'@next/env':'14.2.3','@supabase/supabase-js':'2.99.1','viem':'2.51.2'}},null,2)+'\n');
-fs.writeFileSync(path.join(out,'README.txt'),`MODEL KOMBAT COLLECTOR 8 - PREPARED, NOT INSTALLED
+fs.writeFileSync(path.join(out,'README.txt'),`MODEL KOMBAT COLLECTOR 9 - PREPARED, NOT INSTALLED
 
-Run the entire scripts/sql/bots-token-zone-financial-scope.sql file in the existing Model Kombat Supabase SQL editor. Worker 7's opening-basis patch must already be installed. Then run node scripts/bots/install-tracking-worker.cjs from the source checkout. The installer checks database capabilities before replacing the service. No new keys or internal-AI changes are needed.
+Run the entire scripts/sql/bots-token-zone-account-isolation.sql file in the existing Model Kombat Supabase SQL editor. Worker 8's financial-scope patch must already be installed. Then run node scripts/bots/install-tracking-worker.cjs from the source checkout. The installer checks database capabilities before replacing the service. No new keys or internal-AI changes are needed.
 
-Confirmed zero-trade accounts stay NULL/unranked and do not require unrelated personal-history reconstruction. SQL independently checks complete current coverage, registered pairs and enrollment after corrections. Actual traders retain the original FIFO/capital rules. New activity immediately requires accounting. Future entries and incomplete evidence remain pending. Explorer token-filtered pagination is corrected; direct UniversalRouter ERC20 settlement and the observed ETH-funded two-hop exact-input purchase are narrowly verified without granting manual trades competition eligibility.
+Unsupported trades and failed accounting checks hold back only the affected participant. Other independently verified accounts continue updating. The two observed sponsored fee/sweep routes are supported, including the approval-and-permit variant. Routine discovery heartbeats do not erase unchanged completed evidence. Confirmed zero-trade accounts stay NULL/unranked and do not require unrelated personal-history reconstruction. SQL independently checks complete current coverage, registered pairs and enrollment after corrections. Actual traders retain the original FIFO/capital rules. New activity immediately requires accounting. Future entries and incomplete evidence remain pending. Explorer token-filtered pagination is corrected; direct UniversalRouter ERC20 settlement and the observed ETH-funded two-hop exact-input purchase are narrowly verified without granting manual trades competition eligibility.
 
 A bounded private cache preserves finalized evidence between attempts. Accounting allows 20 minutes per account and 30 minutes per cycle; large cold histories can require several cycles. Fresh verification still checks corrections, incomplete coverage and chain reorganizations. Per-account verified results can appear provisionally; final awards still require complete reconciliation. The package has no credentials or private player data. Eighteen portable tests run before installation. SQL migration tests run separately on isolated local PostgreSQL.
 
-The worker waits 15 minutes after each completed cycle. Wallet and Strategy-reference discovery keeps its four-hour schedule. Installation success is not financial audit success: inspect a completed mk-public-worker-8-eligible-accounting audit before claiming all ROI is verified.
+The worker waits 15 minutes after each completed cycle. Wallet and Strategy-reference discovery keeps its four-hour schedule. Installation success is not financial audit success: inspect a completed mk-public-worker-9-account-isolation audit before claiming all ROI is verified.
 
 This package does not deploy the website, alter Reporter or shared accounting, open the campaign, or change rewards. Public ROI is a percentage; public realized-profit standings hide dollar scores. Website publication remains the user's vercel --prod.
 `);

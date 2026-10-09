@@ -4,6 +4,7 @@ const v=require('viem'),adapter=require('./lib/public-smart-wallet-settlement.cj
 const {collect,normalizePublicSwap,USDC,WETH,TRANSFER}=require('./lib/public-trade-worker.cjs');
 const dir=path.join(__dirname,'fixtures/smart-wallet'),codes=JSON.parse(fs.readFileSync(path.join(dir,'runtime-code.json')));
 const fixtures=['a80aed76','4e9590d2','3dfb75e1'].map(n=>JSON.parse(fs.readFileSync(path.join(dir,n+'.json'))));
+const feeFixtures=['permit-portion-sweep','portion-sweep'].map(n=>JSON.parse(fs.readFileSync(path.join(dir,n+'.json'))));
 const clone=structuredClone,lower=x=>x.toLowerCase();
 const OP='(address sender,uint256 nonce,bytes initCode,bytes callData,bytes32 accountGasLimits,uint256 preVerificationGas,bytes32 gasFees,bytes paymasterAndData,bytes signature)';
 const entryAbi=v.parseAbi([`function handleOps(${OP}[] ops,address beneficiary)`]);
@@ -27,7 +28,47 @@ function mockSource(fsx){const byTx=new Map(fsx.map(f=>[f.transaction.hash,f])),
  smartWalletSettlement:async swaps=>adapter.verifySmartWalletSettlement({...context(byTx.get(swaps[0].tx)),swaps}),
  };}
 function snapshot(){const w=normalizePublicSwap(fixtures[0].rows[0]).wallet,d=normalizePublicSwap(fixtures[0].rows[0]).domain;return {manifest:{campaign:{id:'model-kombat-zones-1',state:'active',starts_at:'2026-10-06T14:00:00Z',ends_at:'2026-11-03T14:00:00Z'},participants:[{participant:'test',entered_at:'2026-10-06T22:14:50Z'}],markets:[{domain_token:d,quote_token:USDC},{domain_token:d,quote_token:WETH}]},accounts:[{participant:'test',coverage:{complete:true,coverage_from:'2026-10-06T14:00:00Z',confirmed_through:'2026-10-06T23:00:00Z',updated_at:'2026-10-06T23:00:00Z'}}],wallets:[{participant:'test',trade_wallet:w,agent:true}],references:[],fills:[]};}
+
+async function feeRejected(index,label,change,code){const f=clone(feeFixtures[index]),c=context(f);change(c,f);await assert.rejects(()=>adapter.verifySmartWalletSettlement(c),code,label);}
+function feeIntent(c,f,change){
+ const op=v.decodeFunctionData({abi:entryAbi,data:c.transaction.input}).args[0][0];
+ const batch=op.callData.startsWith('0x34fcd5be'),account=v.parseAbi([batch?'function executeBatch((address target,uint256 value,bytes data)[] calls)':'function execute(address target,uint256 value,bytes data)']);
+ const a=v.decodeFunctionData({abi:account,data:op.callData}).args,calls=batch?a[0]:[{target:a[0],value:a[1],data:a[2]}];
+ const router=v.parseAbi(['function execute(bytes commands,bytes[] inputs) payable']),r=v.decodeFunctionData({abi:router,data:calls.at(-1).data}).args;
+ change(calls,r);calls.at(-1).data=v.encodeFunctionData({abi:router,functionName:'execute',args:r});
+ op.callData=v.encodeFunctionData({abi:account,functionName:batch?'executeBatch':'execute',args:batch?[calls]:[calls[0].target,calls[0].value,calls[0].data]});
+ alterOp(c,target=>Object.assign(target,op));
+ // Isolate route validation after the separately tested historical UserOp hash
+ // and signature boundary. Production still reads getUserOpHash for this op.
+ c.userOperationHash=async()=>f.expected.userOperationHash;
+}
+async function feeTests(){
+ for(const f of feeFixtures){const r=await adapter.verifySmartWalletSettlement(context(f));assert.equal(r.swap.domainUnits,f.expected.domainUnits);assert.equal(r.swap.quoteUnits,f.expected.quoteUnits);assert.equal(r.volumeMicros.toString(),f.expected.volumeMicros);assert.equal(r.amounts.routerFeeUnits,f.expected.routerFeeUnits);assert.equal(r.amounts.routerDomainFeeUnits,f.expected.routerDomainFeeUnits);assert.equal(r.amounts.route,f.expected.route);
+  const s=normalizePublicSwap(f.rows[0]),at=Date.parse(s.executedAt),from=new Date(at-60000).toISOString(),through=new Date(at+60000).toISOString(),snap={manifest:{campaign:{id:'test',state:'active',starts_at:from,ends_at:new Date(at+3600000).toISOString()},participants:[{participant:'test',entered_at:from}],markets:[{domain_token:s.domain,quote_token:s.quote}]},accounts:[{participant:'test',coverage:{complete:true,coverage_from:from,confirmed_through:through,updated_at:through}}],wallets:[{participant:'test',trade_wallet:s.wallet,agent:true}],references:[],fills:[]};
+  const source={...mockSource([f]),finalized:async()=>({number:'0xffffff',timestamp:through})};let result=await collect(snap,source,{now:at+120000});assert.equal(result.report.complete,true);assert.equal(result.packet.fills.length,1);assert.equal(result.packet.fills[0].source,'agent_wallet');const prior=clone(result.packet.fills);result=await collect({...snap,fills:prior},source,{now:at+120000});assert.deepEqual(result.packet.fills,prior);
+  result=await collect({...snap,wallets:[{...snap.wallets[0],agent:false}]},source,{now:at+120000});assert.equal(result.packet.fills.length,0,'wallet association does not turn external manual trading into MCP');
+ }
+ await feeRejected(0,'unknown Permit2 runtime',c=>{const prev=c.codeAt;c.codeAt=async a=>a===adapter.PERMIT2?'0x':prev(a)},/UNREVIEWED_PERMIT2/);
+ await feeRejected(0,'extra batch call',(c,f)=>feeIntent(c,f,calls=>calls.splice(0,0,clone(calls[0]))),/UNSUPPORTED_ACCOUNT_BATCH/);
+ await feeRejected(0,'native value in approval',(c,f)=>feeIntent(c,f,calls=>calls[0].value=1n),/UNSUPPORTED_ACCOUNT_BATCH/);
+ await feeRejected(0,'approval to unreviewed spender',(c,f)=>feeIntent(c,f,calls=>{calls[0].data=v.encodeFunctionData({abi:v.parseAbi(['function approve(address,uint256)']),functionName:'approve',args:[adapter.ROUTER,1n]});}),/UNSUPPORTED_APPROVAL/);
+ await feeRejected(0,'approval to wrong token',(c,f)=>feeIntent(c,f,calls=>calls[0].target=USDC),/UNSUPPORTED_APPROVAL/);
+ await feeRejected(0,'approval insufficient',(c,f)=>feeIntent(c,f,calls=>{calls[0].data=v.encodeFunctionData({abi:v.parseAbi(['function approve(address,uint256)']),functionName:'approve',args:[adapter.PERMIT2,1n]});}),/UNSUPPORTED_APPROVAL/);
+ const permitParams=v.parseAbiParameters('((address token,uint160 amount,uint48 expiration,uint48 nonce) details,address spender,uint256 sigDeadline) permit,bytes signature');
+ for(const [label,change,code]of [['expired permit',p=>p[0].sigDeadline=0n,/PERMIT_MISMATCH/],['wrong permit spender',p=>p[0].spender=adapter.PERMIT2,/PERMIT_MISMATCH/],['tampered permit token',p=>p[0].details.token=USDC,/PERMIT_SIGNATURE_MISMATCH/],['tampered permit amount',p=>p[0].details.amount=1n,/PERMIT_SIGNATURE_MISMATCH/],['tampered permit signature',p=>p[1]='0x'+'11'.repeat(64)+'1b',/PERMIT_SIGNATURE_MISMATCH|signature|point/i]])await feeRejected(0,label,(c,f)=>feeIntent(c,f,(_,r)=>{const p=v.decodeAbiParameters(permitParams,r[1][0]);change(p);r[1][0]=v.encodeAbiParameters(permitParams,p);}),code);
+ const permitEvent=v.toEventSelector('Permit(address,address,address,uint160,uint48,uint48)');
+ await feeRejected(0,'missing Permit event',c=>c.receipt.logs=c.receipt.logs.filter(l=>l.topics[0]!==permitEvent),/PERMIT_EVENT_MISMATCH/);
+ await feeRejected(0,'wrong Permit nonce',c=>{const l=c.receipt.logs.find(l=>l.topics[0]===permitEvent),ts=v.parseAbiParameters('uint160,uint48,uint48'),d=v.decodeAbiParameters(ts,l.data);d[2]++;l.data=v.encodeAbiParameters(ts,d);},/PERMIT_EVENT_MISMATCH/);
+ for(const index of [0,1]){
+  await feeRejected(index,'unpaid fee',c=>{const transfer=c.receipt.logs.find(l=>l.topics[0]===TRANSFER&&l.topics[1].slice(-40).toLowerCase()===adapter.ROUTER.slice(2));transfer.data=v.toHex(BigInt(transfer.data)+1n,{size:32});},/UNEXPLAINED_TRANSFER/);
+  await feeRejected(index,'wrong sweep recipient',(c,f)=>feeIntent(c,f,(_,r)=>{const n=r[1].length-1,ts=v.parseAbiParameters('address,address,uint256'),p=v.decodeAbiParameters(ts,r[1][n]);p[1]=adapter.PERMIT2;r[1][n]=v.encodeAbiParameters(ts,p);}),/SWEEP_MISMATCH/);
+  await feeRejected(index,'excessive fee',(c,f)=>feeIntent(c,f,(_,r)=>{const n=r[1].length-2,ts=v.parseAbiParameters('address,address,uint256'),p=v.decodeAbiParameters(ts,r[1][n]);p[2]=10000n;r[1][n]=v.encodeAbiParameters(ts,p);}),/INVALID_FEE/);
+  await feeRejected(index,'duplicate pool',c=>{const l=clone(c.receipt.logs.find(l=>l.topics[0]===v.toEventSelector('Swap(address,address,int256,int256,uint160,uint128,int24)')));l.logIndex='0xffff';c.receipt.logs.push(l);},/AMBIGUOUS_POOL/);
+ }
+}
+
 async function main(){
+ await feeTests();
  for(const f of fixtures){const result=await adapter.verifySmartWalletSettlement(context(f));assert.equal(result.swap.domainUnits,f.expected.domainUnits);assert.equal(result.amounts.walletQuoteUnits,f.expected.quoteUnits);assert.equal(result.volumeMicros.toString(),f.expected.volumeMicros);assert.equal(result.swap.quote,USDC);assert.equal(result.amounts.paths.length,f.rows.length);}
  await rejected('unknown runtime',c=>{c.codeAt=async()=>codes[adapter.ACCOUNT]},/UNREVIEWED_RUNTIME/);
  await rejected('unknown account delegation',c=>{const previous=c.codeAt;c.codeAt=async a=>a===c.swaps[0].wallet?'0xef0100'+'0'.repeat(40):previous(a)},/UNREVIEWED_ACCOUNT/);
@@ -69,7 +110,7 @@ async function main(){
  };
  const ledger=await require('./lib/public-accounting.cjs').reconstruct({participant:'test',wallets:[s.wallet],from:opened,through:cutoff,markets:snap.manifest.markets,references:[{ref}],eligible:result.packet.fills.filter(fill=>fill.transactionHash===s.tx),source:accountingSource});
  assert.equal(ledger.complete,true);assert.equal(ledger.openingLots.length,1);assert.equal(ledger.events.length,2);assert.equal(ledger.events[0].usd,'14.500000');assert.equal(ledger.events[0].units,'47018799');assert.equal(ledger.events[0].notionalUsd,'14.501921');assert.equal(ledger.events[1].units,'14500000');
- console.log('PASS smart-wallet settlement: three real sponsored receipts, historical contract pins, UserOp hash/signature, exact split-path conservation, pool-only volume, canonical economic fills, stable retries, Strategy attribution and fail-closed adversarial cases.');
+ console.log('PASS smart-wallet settlement: five real sponsored receipts, exact approval/Permit2 signature and fee/sweep paths, historical contract pins, UserOp hash/signature, exact split-path conservation, pool-only volume, canonical economic fills, stable retries, Strategy attribution and fail-closed adversarial cases.');
 }
 if(require.main===module)main().catch(e=>{console.error(e);process.exitCode=1});
 module.exports={fixtures,context,mockSource,snapshot};

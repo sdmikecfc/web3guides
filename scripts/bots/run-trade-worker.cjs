@@ -10,7 +10,7 @@ const {accountingCycle}=require('./lib/accounting-cycle.cjs');
 const {openAccountingCache}=require('./lib/accounting-cache.cjs');
 const {rpcFailure,preflightWorkerPacket}=require('./lib/worker-contract.cjs');
 const safeCode=code=>typeof code==='string'&&/^[A-Z][A-Z0-9_]{2,100}$/.test(code)?code:'SOURCE_UNAVAILABLE';
-const workerVersion='mk-public-worker-8-eligible-accounting';
+const workerVersion='mk-public-worker-9-account-isolation';
 let runStartedAt;
 const output=process.env.MK_WORKER_STATE_DIR||(process.platform==='win32'?'D:/Temp/modelkombat-tracking-review':path.join(process.env.TMPDIR||'/tmp','modelkombat-tracking-review'));
 const pollMinutes=Number(process.env.MK_WORKER_POLL_MINUTES||240);
@@ -51,13 +51,13 @@ async function run(){
  const source=publicSource({apiKey:process.env.DOMA_API_KEY}),result=await collect(snapshot,source);let accounting=[],confirmAccountingCommit=null;
  if(args.has('--write'))await preflightWorkerPacket(result.packet,rpc);
  result.report.accountingProblems=[];
- if(result.packet.complete&&!args.has('--test-linked-agent-only')){
+ if(result.accountCoverage.some(a=>a.complete)&&!args.has('--test-linked-agent-only')){
   await progress('RECONSTRUCTING_ACCOUNTING');
   try{
    const capabilities=await rpc('mkz_accounting_capabilities');
-   if(capabilities?.openingBasis!=='deferred-untouched-2'||capabilities?.verifiedFinancials!=='per-account-current-cutoff-1'||capabilities?.financialScope!=='eligible-traders-1')throw Error('ACCOUNTING_SCHEMA_UPDATE_REQUIRED');
+   if(capabilities?.openingBasis!=='deferred-untouched-2'||capabilities?.verifiedFinancials!=='per-account-current-cutoff-1'||capabilities?.financialScope!=='eligible-traders-2'||capabilities?.accountIsolation!=='per-account-coverage-1')throw Error('ACCOUNTING_SCHEMA_UPDATE_REQUIRED');
    const cache=openAccountingCache({directory:path.join(output,'accounting-cache'),chainId:97477});
-   const cycle=await accountingCycle({snapshot,packet:result.packet,cache,
+   const cycle=await accountingCycle({snapshot,packet:result.packet,accountCoverage:result.accountCoverage,cache,
     sourceFactory:options=>publicSource({apiKey:process.env.DOMA_API_KEY,...options}),
     anchorAt:(time,deadline)=>source.withDeadline(deadline,()=>source.blockAt(time))});
    accounting=cycle.ledgers;confirmAccountingCommit=cycle.confirmCommit;result.report.accountingProblems=cycle.problems;
@@ -74,10 +74,13 @@ async function run(){
   if(!snapshot.fingerprint)throw Error('DISCOVERY_SETUP_REQUIRED');
   // Never advance behind an existing checkpoint after a stale read.
   if(Date.parse(result.packet.confirmedThrough)<Date.parse(snapshot.manifest.campaign.confirmed_through||0))throw Error('SOURCE_BEHIND_SAVED_CHECKPOINT');
-  await rpc('mkz_worker_commit',{p:{requestId:randomUUID(),fingerprint:snapshot.fingerprint,packet:result.packet,accounting,report}});report.databaseWrites=true;
+  const committed=await rpc('mkz_worker_commit',{p:{requestId:randomUUID(),fingerprint:snapshot.fingerprint,packet:result.packet,accountCoverage:result.accountCoverage,accounting,report}});report.databaseWrites=true;
+  const rejected=committed.accountingRejected||[];
+  if(!Array.isArray(rejected)||rejected.some(r=>!accounting.some(l=>l.participant===r.participant)||typeof r.code!=='string'))throw Error('ACCOUNTING_COMMIT_RESPONSE_INVALID');
+  if(rejected.length){result.packet.financialComplete=false;report.financialComplete=false;report.accountingProblems.push(...rejected.map(r=>({code:safeCode(r.code)})));}
   // A durable sweep acknowledgement is earned only by this successful commit.
   // Failure to save it merely forces fresh reconstruction on the next cycle.
-  try{if(confirmAccountingCommit)await confirmAccountingCommit();}catch{console.error('ACCOUNTING_CHECKPOINT_UNAVAILABLE');}
+  try{if(confirmAccountingCommit)await confirmAccountingCommit(rejected.map(r=>r.participant));}catch{console.error('ACCOUNTING_CHECKPOINT_UNAVAILABLE');}
  }
  report.status=result.packet.financialComplete?'TRACKING_VERIFIED':result.packet.complete?'VOLUME_VERIFIED_FINANCIALS_PENDING':'PENDING';
  report.scoreWrites=report.databaseWrites;

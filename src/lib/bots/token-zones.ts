@@ -27,8 +27,9 @@ export type ZoneView = {
  startsAt:string|null;endsAt:string|null;confirmedThrough:string|null;fresh:boolean;complete:boolean;issues:string[];
  volumeUsd:string|null;history:{day:number;volumeUsd:string}[];assets:ZoneAsset[];
  standings:Record<ZoneCategory,{id:string;name:string;rank:number;score:string|null;qualified:boolean}[]>;
- financials?:{verified:number;total:number;complete:boolean;confirmedThrough:string|null};
- personal:null|{scores?:Record<ZoneCategory,string|null>;id:string|null;connected:boolean;linkStatus:string;entered:boolean;weeks:(number|null)[];qualified:boolean|null;volumeUsd:string|null;attemptsRemaining:number|null;awards:ZoneAward[];challenges:string[];ranks:Record<ZoneCategory,number|null>};
+ tracking?:{verified:number;total:number;partial:boolean};
+ financials?:{verified:number|null;total:number|null;complete:boolean;confirmedThrough:string|null};
+ personal:null|{syncStatus?:'verified'|'syncing'|'review';financialStatus?:'verified'|'syncing'|'no_trades'|'review';scores?:Record<ZoneCategory,string|null>;id:string|null;connected:boolean;linkStatus:string;entered:boolean;weeks:(number|null)[];qualified:boolean|null;volumeUsd:string|null;attemptsRemaining:number|null;awards:ZoneAward[];challenges:string[];ranks:Record<ZoneCategory,number|null>};
 };
 export function emptyZoneView():ZoneView{return {schemaVersion:1,rules:ZONE_RULES,available:false,state:'unavailable',startsAt:null,endsAt:null,confirmedThrough:null,fresh:false,complete:false,issues:['Tracking setup is not confirmed.'],volumeUsd:null,history:[],assets:[],standings:{volume:[],roi:[],profit:[],battles:[]},personal:null};}
 /** Decimal strings avoid floating-point ranking and preserve token base units. */

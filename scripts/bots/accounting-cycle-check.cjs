@@ -72,6 +72,7 @@ async function main(){
  result=await run({sourceFactory:()=>({block:async()=>({...anchor,hash:'0x'+'b'.repeat(64)}),withDeadline:async(_d,task)=>task()})});assert.equal(result.complete,false);assert.ok(result.problems.every(p=>p.code==='ACCOUNTING_ANCHOR_CHANGED'));
  await sweepChecks();
  await scopeChecks();
+ await isolationChecks();
  await defaultBudgetChecks();
  await upgradeChecks();
  console.log('PASS accounting scheduling: exact entry timestamp, restart fairness, bounded slices, fresh public-history verification, correction invalidation, cutoff catch-up, future entries and anchor rejection.');
@@ -124,5 +125,20 @@ async function scopeChecks(){
  const closed=structuredClone(snapshot);closed.manifest.campaign.ends_at=boundary.confirmedThrough;
  assert.equal(eligibleCompetitionFills(closed,boundary,[wallet(1)],entry,boundary.confirmedThrough).length,1,'closing time is exclusive');
  console.log('PASS financial scope: complete zero-trade accounts remain unranked without history reads; new/corrected activity, missing coverage, future entries and exact eligible boundaries require independent verification.');
+}
+async function isolationChecks(){
+ const s=sweepFixture();s.packet.complete=false;
+ const coverage=[1,2,3,4].map(i=>({participant:String(i),coverageFrom:start,confirmedThrough:through,complete:i!==2,problems:i===2?['SMART_ROUTER_CALLDATA_INVALID']:[]}));
+ let r=await s.run({accountCoverage:coverage,budgetMs:1000});
+ assert.deepEqual(s.calls,['1','3','4']);assert.equal(r.ledgers.length,3);assert.equal(r.completed,3);assert.equal(r.complete,false,'partial results never finalize all financial awards');s.commit(r);
+ s.calls=[];s.packet.fills=[];r=await s.run({accountCoverage:coverage,budgetMs:1000});assert.equal(r.noTrades,3);assert.deepEqual(s.calls,[]);assert.equal(r.complete,false,'failed trade coverage never becomes a confirmed zero-trade account');
+ s.packet.fills=[fill(1),fill(2),fill(3),fill(4)];s.fail='3';s.calls=[];r=await s.run({accountCoverage:coverage,budgetMs:1000});assert.equal(r.ledgers.length,2);assert.deepEqual(r.ledgers.map(l=>l.participant),['1','4'],'independent FIFO failure cannot remove successful accounts');
+ for(const changed of [coverage.map(a=>({...a,confirmedThrough:'2026-10-07T07:00:00Z'})),[...coverage,coverage[0]],coverage.map(a=>a.participant==='1'?{...a,problems:['BAD']}:a)])await assert.rejects(()=>s.run({accountCoverage:changed}),/ACCOUNTING_COVERAGE_INVALID/);
+ const missing=sweepFixture();missing.packet.complete=false;const pending=await missing.run();assert.equal(pending.ledgers.length,0,'partial batch without per-account proof never grants verification');
+ const reject=sweepFixture(),staged=await reject.run();
+ assert.equal(staged.confirmCommit(['1']),1,'SQL rejection acknowledges only successfully saved ledgers');
+ reject.snapshot.accountingRevisions['2']=1;reject.calls=[];
+ const after=await reject.run();assert.equal(after.completed,3);assert.equal(after.complete,false,'rejected account cannot form a completed sweep from a failed submission');
+ console.log('PASS independent accounting: only complete participant windows are reconstructed; good ledgers survive other trade/FIFO failures; no zero-score exemption or final-award bypass.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

@@ -56,7 +56,7 @@ async function main(){
  assert.equal(visible.standings.roi.length,0);assert.equal(visible.standings.profit.length,0);
  assert.equal(visible.personal.qualified,true);assert.equal(visible.personal.scores.roi,null);assert.equal(visible.personal.scores.profit,null);
  assert.equal(visible.personal.ranks.roi,null);assert.equal(visible.personal.awards.length,0);
- assert.ok(visible.issues.some(i=>i.includes('awaiting complete accounting')));
+ assert.ok(visible.issues.some(i=>i.includes('ROI calculations are still syncing')));
  // Verified account results may be provisional while other accounts are pending.
  // Public responses contain percentages/ranks, never individual profit amounts.
  verifiedFinancials={schemaVersion:1,available:true,methodology:'mk-fifo-realized-capital-1',confirmedThrough:view.campaign.confirmed_through,rows:[{participant:'123',roi:'12.5',profit:'123456.789012'}]};
@@ -78,7 +78,31 @@ async function main(){
  view.campaign.financial_complete=false;authenticated={wallet:addr(1)};
  view.campaign.complete=false;const incomplete=await feed.readTokenZones(new Request('http://local'));
  assert.equal(incomplete.volumeUsd,null);assert.equal(incomplete.personal.qualified,null);assert.equal(incomplete.standings.volume.length,0);
+ assert.equal(incomplete.financials.verified,null,'incomplete legacy response did not check accounts; never manufacture zero verified');
+ // Exact private per-account coverage permits healthy rows while one account
+ // needs investigation. Failed rows cannot supply volume, eligibility or scores.
+ view.accountScope='per-account-coverage-1';view.own='123';
+ Object.assign(view.participants[0],{tradeComplete:true,tradeThrough:view.campaign.confirmed_through,tradeProblem:false});
+ Object.assign(view.participants[1],{tradeComplete:false,tradeThrough:null,tradeProblem:true});
+ Object.assign(verifiedFinancials,{available:true,financialScope:'eligible-traders-2',confirmedThrough:view.campaign.confirmed_through,tradingAccounts:1,scopePending:1,rows:[{participant:'123',roi:'12.5',profit:'123456.789012'},{participant:'456',roi:'999',profit:'888888'}]});
+ performance=await feed.readTokenZones(new Request('http://local'));
+ assert.equal(performance.complete,false);assert.equal(performance.tracking.verified,1);assert.equal(performance.tracking.total,2);assert.equal(performance.tracking.partial,true);
+ assert.equal(performance.volumeUsd,'80');assert.equal(performance.standings.volume.length,1);assert.equal(performance.standings.battles.length,1);assert.equal(performance.standings.roi.length,1);assert.equal(performance.standings.roi[0].score,'12.5');
+ assert.equal(performance.personal.qualified,true);assert.equal(performance.personal.syncStatus,'verified');assert.equal(performance.personal.financialStatus,'verified');assert.equal(performance.personal.awards.length,0,'partial accounting cannot award tokens');
+ assert.equal(performance.financials.verified,1);assert.equal(performance.financials.total,null,'failed trade coverage cannot establish how many total traders exist');
+ authenticated=null;performance=await feed.readTokenZones(new Request('http://local'));assert.ok(!JSON.stringify(performance).includes('123456.789012'));assert.ok(!JSON.stringify(performance).includes('888888'));assert.equal(performance.personal,null);
+ authenticated={wallet:addr(4)};view.own='456';performance=await feed.readTokenZones(new Request('http://local'));
+ assert.equal(performance.personal.syncStatus,'review');assert.equal(performance.personal.qualified,null);assert.equal(performance.personal.volumeUsd,null);assert.equal(performance.personal.ranks.roi,null);assert.equal(performance.personal.scores,undefined);
+ view.participants[1].tradeProblem=false;performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.personal.syncStatus,'syncing','new account sync is not accused of a bad trade');
+ view.own='123';view.participants[0].financialProblem=true;verifiedFinancials.rows=[];performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.personal.syncStatus,'verified');assert.equal(performance.personal.financialStatus,'review');assert.equal(performance.personal.volumeUsd,'80','accounting issue does not remove verified trade volume');view.participants[0].financialProblem=false;
+ verifiedFinancials.confirmedThrough=at(2);performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.standings.roi.length,0,'stale accounting cannot ride on valid trade coverage');assert.equal(performance.financials.verified,null);
+ verifiedFinancials.confirmedThrough=view.campaign.confirmed_through;view.participants[0].tradeThrough=at(2);performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.tracking,undefined);assert.equal(performance.volumeUsd,null);assert.equal(performance.standings.roi.length,0,'mismatched account cutoff must fail closed');
+ view.campaign.complete=true;view.campaign.financial_complete=true;performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.available,false,'invalid new scope cannot fallback to old global completeness');assert.equal(performance.standings.roi.length,0);
+ view.participants[0].tradeThrough=view.campaign.confirmed_through.replace(/Z$/,'001Z');performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.available,false,'even sub-millisecond cutoff drift fails closed');
+ view.participants[0].tradeThrough=view.campaign.confirmed_through;view.participants[0].tradeComplete=false;view.volume='0';view.days=[];performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.complete,false);assert.equal(performance.volumeUsd,null,'no checked accounts must not manufacture zero volume');assert.equal(performance.history.length,0);assert.equal(performance.tracking.verified,0);
+ view.campaign.complete=false;view.campaign.financial_complete=false;view.participants[0].tradeComplete=true;view.participants[0].times=[];view.participants[0].volume='0';performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.volumeUsd,'0','a checked no-trade account can establish partial zero');
  authenticated=null;
+ console.log('PASS isolated accounts: independent volume/ROI, failed account excluded, private support status, unknown counts stay null, stale scope rejected and final awards unchanged.');
  console.log('PASS independent coverage: verified volume/qualification visible, pending or old ROI/profit withheld, incomplete trade coverage never shown as zero.');
  console.log('PASS feed contract: legacy secret, rotation, malformed/duplicate/oversized input, draft read-only rehearsal, source-wallet checks, registered markets, enrollment, accounting and pagination.');
  const config=ts.readConfigFile(path.join(root,'tsconfig.json'),ts.sys.readFile).config,options=ts.convertCompilerOptionsFromJson(config.compilerOptions,root).options;options.incremental=false;options.noEmit=true;

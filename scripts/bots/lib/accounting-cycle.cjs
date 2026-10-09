@@ -25,7 +25,7 @@ function eligibleCompetitionFills(snapshot,packet,wallets,periodStart,through){
 // The observed 870-transaction trader needs over eight minutes of fresh trace
 // reads even with immutable facts cached. A five-minute slice can never finish.
 // Keep both limits finite, preserve fair rotation and abort all work at deadline.
-async function accountingCycle({snapshot,packet,cache,sourceFactory,anchorAt,budgetMs=1800000,sliceMs=1200000,now=Date.now,reconstructLedger=reconstruct}){
+async function accountingCycle({snapshot,packet,accountCoverage=null,cache,sourceFactory,anchorAt,budgetMs=1800000,sliceMs=1200000,now=Date.now,reconstructLedger=reconstruct}){
  // Preserve v7 pending cutoff/anchor pointers, not its completion claims. Raw
  // finalized evidence can then be reused while sweep2 requires fresh validation.
  const jobs=cache.namespace({kind:'accounting',scope:{purpose:'mk-accounting-jobs-1',engine:JOBS_VERSION}});
@@ -33,6 +33,15 @@ async function accountingCycle({snapshot,packet,cache,sourceFactory,anchorAt,bud
  const sweep=cache.namespace({kind:'accounting',scope:{purpose:'mk-accounting-verification-1',engine:ENGINE_VERSION,campaign}});
  const entries=new Map(snapshot.manifest.participants.map(e=>[e.participant,e]));
  const accounts=snapshot.accounts.filter(a=>snapshot.manifest.campaign.state==='draft'||entries.has(a.participant)).sort((a,b)=>a.participant.localeCompare(b.participant));
+ const coverage=new Map();
+ if(accountCoverage!==null){
+  if(!Array.isArray(accountCoverage))throw Error('ACCOUNTING_COVERAGE_INVALID');
+  for(const row of accountCoverage){
+   if(!row||typeof row.participant!=='string'||coverage.has(row.participant)||typeof row.complete!=='boolean'||!Array.isArray(row.problems)||instant(row.coverageFrom)!==instant(packet.coverageFrom)||instant(row.confirmedThrough)!==instant(packet.confirmedThrough)||row.complete&&row.problems.length)throw Error('ACCOUNTING_COVERAGE_INVALID');
+   coverage.set(row.participant,row);
+  }
+ }
+ const accountReady=participant=>accountCoverage===null?packet.complete===true:coverage.get(participant)?.complete===true;
  const ledgers=[],problems=[],end=now()+budgetMs,target=Date.parse(packet.confirmedThrough);
  if(!Number.isFinite(target))throw Error('ACCOUNTING_PERIOD_INVALID');
  const initial=jobs.getCheckpoint('cursor'),offset=Number.isInteger(initial?.next)?initial.next%Math.max(accounts.length,1):0;
@@ -53,7 +62,7 @@ async function accountingCycle({snapshot,packet,cache,sourceFactory,anchorAt,bud
  // Keep them NULL/unranked instead of inventing a zero return or reconstructing
  // an unrelated personal portfolio. SQL independently repeats this classification
  // against the post-correction fill set; no client exemption list is submitted.
- for(const c of contexts)if(packet.complete===true&&['active','closed'].includes(snapshot.manifest.campaign.state)&&snapshot.manifest.campaign.ends_at&&c.wallets.length&&instant(c.periodStart)<=instant(packet.confirmedThrough)&&c.eligible.length===0){
+ for(const c of contexts)if(accountReady(c.a.participant)&&['active','closed'].includes(snapshot.manifest.campaign.state)&&snapshot.manifest.campaign.ends_at&&c.wallets.length&&instant(c.periodStart)<=instant(packet.confirmedThrough)&&c.eligible.length===0){
   noTrades.add(c.a.participant);sweep.setCheckpoint(c.a.participant,null);
  }
  const allCovered=()=>verified.size+noTrades.size===accounts.length;
@@ -74,6 +83,7 @@ async function accountingCycle({snapshot,packet,cache,sourceFactory,anchorAt,bud
  // worker's same-revision write from validating an uncommitted local result.
  for(const context of contexts){
   const {a,periodStart,fingerprint}=context,marker=sweep.getCheckpoint(a.participant);
+  if(!accountReady(a.participant)){sweep.setCheckpoint(a.participant,null);continue;}
   if(noTrades.has(a.participant))continue;
   if(!marker)continue;
   const age=now()-marker.checkedAt;
@@ -87,6 +97,7 @@ async function accountingCycle({snapshot,packet,cache,sourceFactory,anchorAt,bud
  async function getAnchor(through){if(!anchors.has(through))anchors.set(through,await anchorAt(Date.parse(through),end));return anchors.get(through);}
  for(let n=0;n<accounts.length;n++){
   const index=(offset+n)%accounts.length,{a,periodStart,wallets,identity}=contexts[index];
+  if(!accountReady(a.participant)){problems.push({code:'ACCOUNT_TRADE_COVERAGE_PENDING'});continue;}
   if(noTrades.has(a.participant))continue;
   if(instant(periodStart)>instant(packet.confirmedThrough)){notStarted++;continue;}
   if(now()>=end){if(!allCovered())problems.push({code:'ACCOUNTING_TIME_BUDGET_EXCEEDED'});break;}
@@ -138,10 +149,14 @@ async function accountingCycle({snapshot,packet,cache,sourceFactory,anchorAt,bud
  for(const [participant,marker]of verified){const age=now()-marker.checkedAt;
   if(!Number.isFinite(age)||age<0||age>VERIFICATION_MAX_AGE_MS){verified.delete(participant);sweep.setCheckpoint(participant,null);}
  }
- function confirmCommit(){
+ function confirmCommit(rejectedParticipants=[]){
+  const rejected=new Set(rejectedParticipants);
   let confirmed=0;
   for(const marker of staged){const current=sweep.getCheckpoint(marker.participant);
-   if(current?.committed===false&&hash(current)===hash(marker)){sweep.setCheckpoint(marker.participant,{...marker,committed:true});confirmed++;}
+   if(current?.committed===false&&hash(current)===hash(marker)){
+    if(rejected.has(marker.participant)){sweep.setCheckpoint(marker.participant,null);continue;}
+    sweep.setCheckpoint(marker.participant,{...marker,committed:true});confirmed++;
+   }
   }
   return confirmed;
  }

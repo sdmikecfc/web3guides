@@ -28,43 +28,53 @@ export async function readTokenZones(req:Request):Promise<ZoneView>{
   if(!date(c.starts_at)||!date(c.ends_at)||Date.parse(c.ends_at)-Date.parse(c.starts_at)!==28*DAY)throw Error('Dates invalid');
   out.startsAt=c.starts_at;out.endsAt=c.ends_at;out.confirmedThrough=c.confirmed_through;
   out.complete=c.complete===true;out.fresh=c.state==='frozen'||(date(c.confirmed_through)&&Math.min(Date.now(),Date.parse(c.ends_at))-Date.parse(c.confirmed_through)<=ZONE_FRESH_MS);
-  if(!out.complete)out.issues.push('Trade coverage is incomplete. Totals and rewards are not confirmed.');
-  if(!out.fresh)out.issues.push('Trading updates are delayed. Last verified progress is shown.');
-  if(!c.financial_complete)out.issues.push('ROI and realized profit are awaiting complete accounting.');
   const participants=r.participants as any[];if(!Array.isArray(participants)||participants.length>20000)throw Error('Participant read incomplete');
-  const traders=new Set<string>(participants.filter(p=>Array.isArray(p.times)&&p.times.some((t:unknown)=>date(t)&&Date.parse(t as string)<=Date.parse(c.confirmed_through))).map(p=>p.participant));
-  // The optional read adapter verifies each ledger against current fills and
-  // cutoff. A pending account must not hide another account's verified result.
-  // Final reward allocation still requires the original global completion gate.
+  // Per-account coverage comes from the private SQL verifier, never the client.
+  // Legacy responses still require whole-feed completeness.
+  const isolated=r.accountScope==='per-account-coverage-1'&&date(c.confirmed_through)&&participants.every(p=>typeof p.tradeComplete==='boolean'&&(!p.tradeComplete||(date(p.tradeThrough)&&p.tradeThrough===c.confirmed_through)));
+  if(r.accountScope!==undefined&&!isolated)throw Error('Account coverage contract invalid');
+  const tradeVerified=new Set<string>(participants.filter(p=>isolated?p.tradeComplete:out.complete).map(p=>p.participant));
+  if(isolated&&tradeVerified.size!==participants.length)out.complete=false;
+  const showTrades=isolated?(tradeVerified.size>0||participants.length===0):out.complete;
+  if(isolated)out.tracking={verified:tradeVerified.size,total:participants.length,partial:!out.complete};
+  if(!showTrades)out.issues.push('We’re updating trade history. No action is needed from you.');
+  else if(!out.complete)out.issues.push('Verified results so far. Some accounts are still syncing.');
+  if(!out.fresh)out.issues.push('Trading updates are delayed.');
+  const traders=new Set<string>(participants.filter(p=>tradeVerified.has(p.participant)&&Array.isArray(p.times)&&p.times.some((t:unknown)=>date(t)&&Date.parse(t as string)<=Date.parse(c.confirmed_through))).map(p=>p.participant));
   const verified=new Map<string,{roi:string|null;profit:string|null}>();
-  let financialTotal=traders.size;
-  if(c.financial_complete){for(const p of participants)if(traders.has(p.participant))verified.set(p.participant,{roi:p.roi,profit:p.profit});}
-  if(out.complete&&c.state!=='frozen'){
+  let financialTotal:number|null=traders.size,financialKnown=false;
+  if(c.financial_complete&&out.complete){for(const p of participants)if(traders.has(p.participant))verified.set(p.participant,{roi:p.roi,profit:p.profit});financialKnown=true;}
+  if(c.state!=='frozen'){
    const {data:financial,error:financialError}=await botsDb().rpc('mkz_verified_financials');
    if(!financialError&&financial?.available===true&&financial?.schemaVersion===1&&financial?.methodology===TOKEN_ACCOUNTING.id&&financial?.confirmedThrough===c.confirmed_through&&Array.isArray(financial.rows)){
-    const exactScope=financial.financialScope==='eligible-traders-1'&&Number.isSafeInteger(financial.tradingAccounts)&&financial.tradingAccounts>=0&&financial.tradingAccounts<=participants.length;
-    if(exactScope){verified.clear();financialTotal=financial.tradingAccounts;}
-    if(exactScope||!c.financial_complete)for(const p of financial.rows)if(exactScope?participants.some(x=>x.participant===p.participant):traders.has(p.participant))verified.set(p.participant,{roi:p.roi,profit:p.profit});
+    const perAccount=isolated&&financial.financialScope==='eligible-traders-2';
+    const exactScope=(perAccount||(out.complete&&financial.financialScope==='eligible-traders-1'))&&Number.isSafeInteger(financial.tradingAccounts)&&financial.tradingAccounts>=0&&financial.tradingAccounts<=participants.length;
+    if(exactScope){verified.clear();financialTotal=financial.scopePending>0?null:financial.tradingAccounts;financialKnown=true;}
+    if(exactScope||(out.complete&&!c.financial_complete)){
+     financialKnown=true;
+     for(const p of financial.rows)if(tradeVerified.has(p.participant)&&(exactScope||traders.has(p.participant)))verified.set(p.participant,{roi:p.roi,profit:p.profit});
+    }
    }
   }
-  out.financials={verified:verified.size,total:financialTotal,complete:c.financial_complete===true,confirmedThrough:c.confirmed_through};
-  const scores:ZoneScore[]=participants.map(p=>({id:publicId(p.participant),name:`Trader ${publicId(p.participant).slice(0,6).toUpperCase()}`,qualified:qualificationDays(p.times,c.starts_at,c.ends_at).some(n=>n>=3),scores:{volume:p.volume,roi:verified.get(p.participant)?.roi??null,profit:verified.get(p.participant)?.profit??null,battles:p.battles}}));
-  // Incomplete source coverage is never presented as confirmed absence/qualification.
-  if(out.complete){
+  out.financials={verified:financialKnown?verified.size:null,total:financialKnown?financialTotal:null,complete:c.financial_complete===true&&out.complete,confirmedThrough:c.confirmed_through};
+  if(!c.financial_complete&&showTrades)out.issues.push(verified.size?'Verified ROI results are shown while the remaining accounts are checked.':'ROI calculations are still syncing.');
+  const scores:ZoneScore[]=participants.map(p=>({id:publicId(p.participant),name:`Trader ${publicId(p.participant).slice(0,6).toUpperCase()}`,qualified:tradeVerified.has(p.participant)&&qualificationDays(p.times,c.starts_at,c.ends_at).some(n=>n>=3),scores:{volume:tradeVerified.has(p.participant)?p.volume:null,roi:verified.get(p.participant)?.roi??null,profit:verified.get(p.participant)?.profit??null,battles:tradeVerified.has(p.participant)?p.battles:null}}));
+  if(showTrades){
    out.volumeUsd=r.volume;let total=BigInt(0);
    out.history=[{day:0,volumeUsd:'0'},...r.days.map((d:any)=>{total+=decimalUnits(d.volume);return {day:Math.min(d.day+1,(Math.min(Date.parse(c.confirmed_through),Date.parse(c.ends_at))-Date.parse(c.starts_at))/DAY),volumeUsd:unitsDecimal(total,6)};})];
    for(const category of ZONE_CATEGORIES)out.standings[category]=ranked(scores,category).slice(0,100).map(s=>({id:s.id,name:s.name,rank:s.rank,score:category==='profit'?null:s.scores[category]!,qualified:s.qualified}));
   }
   const own=participants.find(p=>p.participant===r.own);
   if(out.personal&&own){out.personal.entered=true;out.personal.attemptsRemaining=own.remaining;
-   if(out.complete){const weeks=qualificationDays(own.times,c.starts_at,c.ends_at);out.personal.weeks=weeks;out.personal.qualified=weeks.some(n=>n>=3);out.personal.volumeUsd=own.volume;
+   out.personal.syncStatus=tradeVerified.has(own.participant)?'verified':isolated&&own.tradeProblem?'review':'syncing';
+   out.personal.financialStatus=verified.has(own.participant)?'verified':isolated&&own.financialProblem?'review':tradeVerified.has(own.participant)&&!traders.has(own.participant)?'no_trades':'syncing';
+   if(tradeVerified.has(own.participant)){const weeks=qualificationDays(own.times,c.starts_at,c.ends_at);out.personal.weeks=weeks;out.personal.qualified=weeks.some(n=>n>=3);out.personal.volumeUsd=own.volume;
     out.personal.scores={volume:own.volume,roi:verified.get(own.participant)?.roi??null,profit:verified.get(own.participant)?.profit??null,battles:own.battles};
     for(const category of ZONE_CATEGORIES)out.personal.ranks[category]=ranked(scores,category).find(s=>s.id===publicId(r.own))?.rank??null;
     out.personal.challenges=[...(own.times.length?['First verified trade']:[]),...(weeks.some(n=>n>=3)?['First qualifying week']:[]),...(own.domains>=3?['Three domains']:[]),...(weeks.every(n=>n>=3)?['Four-week trader']:[])];
     if(c.state==='frozen')out.personal.awards=r.awards.filter((a:any)=>a.participant===r.own).map((a:any)=>({id:publicId(r.own),symbol:a.symbol,units:a.units}));
-    else if(out.fresh&&c.financial_complete&&out.assets.length===9){
-     // The allocator uses immutable account IDs for rounding, just like finalization.
-     // Public pseudonyms must not change which participant receives a remainder unit.
+    else if(out.complete&&out.fresh&&c.financial_complete&&out.assets.length===9){
+     // Partial rankings must never become final or estimated token entitlements.
      const allocationScores=scores.map((s,i)=>({...s,id:participants[i].participant}));
      out.personal.awards=tokenAwards(r.volume,out.assets,allocationScores).filter(a=>a.id===r.own).map(a=>({...a,id:publicId(a.id)}));
     }
