@@ -10,8 +10,9 @@ function lossless(text){
  }
  return JSON.parse(out);
 }
-function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCache=null,accountingAnchor=null,accountingPriorAnchors=[]}){
+function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCache=null,accountingAnchor=null,accountingPriorAnchors=[],erc20History='explorer',pricingMode='batched'}){
  if(!apiKey)throw Error('EXISTING_DOMA_API_KEY_REQUIRED');
+ if(!['explorer','rpc','hybrid'].includes(erc20History))throw Error('INVALID_ERC20_HISTORY_SOURCE');
  const validAnchor=a=>a&&/^0x[0-9a-f]+$/i.test(a.number)&&/^0x[0-9a-f]{64}$/i.test(a.hash);
  if(accountingCache&&(!validAnchor(accountingAnchor)||!Array.isArray(accountingPriorAnchors)||accountingPriorAnchors.length>4||accountingPriorAnchors.some(a=>!validAnchor(a))))throw Error('INVALID_ACCOUNTING_ANCHOR');
  const anchors=accountingCache?[accountingAnchor,...accountingPriorAnchors.filter(a=>BigInt(a.number)<=BigInt(accountingAnchor.number))].map(a=>({number:'0x'+BigInt(a.number).toString(16),hash:a.hash.toLowerCase()})):[];
@@ -125,8 +126,41 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
   while(lo<hi){const mid=(lo+hi+1n)/2n,b=await block('0x'+mid.toString(16));if(Date.parse(b.timestamp)<=time)lo=mid;else hi=mid-1n;}
   const b=await block('0x'+lo.toString(16));atBlocks.set(time,b);return b;
  }
- const factory='0x2e50b586d5bcd04cb6125e028a6a669f7f3cf1c2';
+ const factory='0x2e50b586d5bcd04cb6125e028a6a669f7f3cf1c2',pricingCalls=new Map();
+ async function pricingReadMany(specs,at,{cacheOnly=false}={}){
+  if(!Array.isArray(specs)||specs.length>12||!/^0x[0-9a-f]+$/i.test(at))throw Error('HISTORICAL_PRICE_BATCH_INVALID');
+  const {parseAbi,encodeFunctionData,decodeFunctionResult,keccak256}=require('viem');
+  const rows=specs.map(s=>{const abi=parseAbi([s.definition]),data=encodeFunctionData({abi,functionName:s.functionName,args:s.args}),params=[{to:s.address,data},at];return {...s,abi,data,params,key:s.address+':'+data+':'+at};}),out=rows.map(r=>calls.has(r.key)?{success:true,value:calls.get(r.key)}:pricingCalls.has(r.key)?{success:true,value:pricingCalls.get(r.key)}:null);
+  const cacheable=accountingCache&&BigInt(at)<=BigInt(anchors[0].number);
+  if(cacheable&&out.some(v=>v===null)){
+   await checkAnchor();for(let n=0;n<rows.length;n++){if(out[n]!==null)continue;const row=rows[n];
+    for(let i=0;i<evidence.length;i++){if(BigInt(at)>BigInt(anchors[i].number))continue;const raw=evidence[i].get({method:'eth_call',params:row.params});if(raw===undefined)continue;await checkAnchor(i);const value=decodeFunctionResult({abi:row.abi,functionName:row.functionName,data:raw});calls.set(row.key,value);out[n]={success:true,value};break;}
+   }
+  }
+  if(cacheOnly)return out;
+  const missing=rows.map((r,i)=>({...r,index:i})).filter(r=>out[r.index]===null);if(!missing.length)return out;
+  const target='0xca11bde05977b3631167028862be2a173976ca11',runtime=await code(target,at);
+  // Before Multicall3 existed, the original direct getter path still works.
+  if(runtime==='0x'){
+   for(const row of missing){try{out[row.index]={success:true,value:await read(row.address,row.definition,row.functionName,row.args,at)};}catch(e){if(e.message==='ACCOUNTING_TIME_BUDGET_EXCEEDED')throw e;out[row.index]={success:false};}}
+   return out;
+  }
+  if(keccak256(runtime)!=='0xd5c15df687b16f2ff992fc8d767b4216323184a2bbc6ee2f9c398c318e770891')throw Error('HISTORICAL_PRICE_MULTICALL_UNREVIEWED');
+  // Persist only the actual aggregate eth_call. Nested results are never
+  // relabelled as direct eth_call evidence; existing direct evidence is reusable.
+  const result=await read(target,'function aggregate3((address target,bool allowFailure,bytes callData)[] calls) payable returns((bool success,bytes returnData)[] returnData)','aggregate3',[missing.map(r=>({target:r.address,allowFailure:true,callData:r.data}))],at);
+  if(!Array.isArray(result)||result.length!==missing.length)throw Error('HISTORICAL_PRICE_BATCH_INVALID');
+  for(let i=0;i<missing.length;i++){
+   const row=missing[i],r=result[i];if(!r||typeof r.success!=='boolean'||typeof r.returnData!=='string')throw Error('HISTORICAL_PRICE_BATCH_INVALID');
+   if(!r.success||r.returnData==='0x'){out[row.index]={success:false};continue;}
+   try{const value=decodeFunctionResult({abi:row.abi,functionName:row.functionName,data:r.returnData});pricingCalls.set(row.key,value);out[row.index]={success:true,value};}
+   catch(e){if(e.message.startsWith('ACCOUNTING_CACHE_'))throw e;out[row.index]={success:false};}
+  }
+  return out;
+ }
  async function valueUsd(token,units,at){
+  if(pricingMode==='batched'&&/^0x[0-9a-f]+$/i.test(at))return require('./historical-price.cjs').historicalValueUsd({token,units,at,quote:USDC,factory,readMany:pricingReadMany});
+
   if(token===USDC)return units;
   // Exact integer conversion from an evidenced historical pool observation.
   // Missing/illiquid quotes leave accounting pending; no current-price fallback.
@@ -252,8 +286,17 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
    return p;
   }};}
  const transferIdentity=row=>row[2]+':'+row[3];
- async function transfers(wallet,from,through){return fixedWindow([transferScope(wallet)],{wallet,from,through,proof:transferProof,identityOf:transferIdentity,changed:'TRANSFER_INDEX_CHANGED',kind:'erc20'});}
+ async function transferReceipt(tx){if(!/^0x[0-9a-f]{64}$/.test(tx))throw Error('INVALID_TRANSACTION_HASH');if(!receipts.has(tx))receipts.set(tx,await rpc('eth_getTransactionReceipt',[tx]));return receipts.get(tx);}
+ const rpcTransfers=erc20History!=='explorer'?require('./public-erc20-log-history.cjs').rpcErc20History({rpc:rawRpc,blockAt,receipt:transferReceipt,checkBudget,maxRanges:maxPages,
+  cacheFor:accountingCache?scope=>{const ns=accountingCache.namespace({kind:'history-checkpoint',scope:{...scope,source:'rpc-erc20-history-1'}});return {get:key=>ns.getCheckpoint(key),set:(key,value)=>ns.setCheckpoint(key,value)};}:null}):null;
+ async function transfers(wallet,from,through){
+  if(rpcTransfers){if(accountingCache)await checkAnchor();return rpcTransfers(wallet,from,through);}
+  return fixedWindow([transferScope(wallet)],{wallet,from,through,proof:transferProof,identityOf:transferIdentity,changed:'TRANSFER_INDEX_CHANGED',kind:'erc20'});
+ }
  async function transfersForTokens(wallet,tokens,from,through){
+  // Hybrid selects RPC for the short account window and the existing exact
+  // token-filtered Explorer proof for old FIFO lots. This is not error fallback.
+  if(rpcTransfers&&erc20History==='rpc'){if(accountingCache)await checkAnchor();return rpcTransfers(wallet,from,through,tokens);}
   if(!Array.isArray(tokens)||tokens.some(t=>typeof t!=='string'||!/^0x[0-9a-f]{40}$/.test(t)))throw Error('INVALID_TRANSFER_TOKEN_FILTER');
   const rows=await fixedWindow([...new Set(tokens)].sort().map(token=>transferScope(wallet,token)),{wallet,from,through,proof:transferProof,identityOf:transferIdentity,changed:'TRANSFER_INDEX_CHANGED',kind:'erc20-filtered'});transferProof(rows);return rows;
  }
@@ -327,6 +370,37 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
    const timer=setTimeout(()=>budgetController?.abort(),Math.max(0,at-Date.now()));
    try{checkBudget();const result=await task();checkBudget();return result;}
    finally{clearTimeout(timer);budgetController=null;deadline=Infinity;}
+  },
+  async nativeQuoteOutput(tx,receipt,native,wallets){
+   if(!/^0x[0-9a-f]{64}$/.test(tx))throw Error('INVALID_TRANSACTION_HASH');
+   if(!transactions.has(tx))transactions.set(tx,await rpc('eth_getTransactionByHash',[tx]));const transaction=transactions.get(tx);
+   const {ROUTER}=require('./public-universal-settlement.cjs');
+   if(transaction.to?.toLowerCase()!==ROUTER||BigInt(transaction.value||0)!==0n)return null;
+   return require('./public-native-quote-output.cjs').verifyNativeQuoteOutput({transaction,receipt,native,wallets,
+    codeHash:require('viem').keccak256(await code(ROUTER,receipt.blockNumber)),
+    poolFor:(a,b,fee,at)=>read(factory,'function getPool(address,address,uint24) view returns(address)','getPool',[a,b,fee],at)});
+  },
+  async historicalNativeGas(tx,receipt){
+   if(!/^0x[0-9a-f]{64}$/.test(tx))throw Error('INVALID_TRANSACTION_HASH');
+   if(!transactions.has(tx))transactions.set(tx,await rpc('eth_getTransactionByHash',[tx]));
+   const transaction=transactions.get(tx);
+   if(transaction.hash?.toLowerCase()!==tx||!/^0x[0-9a-f]+$/i.test(transaction.blockNumber)||!/^0x[0-9a-f]{64}$/i.test(transaction.blockHash)
+    ||transaction.blockHash.toLowerCase()!==receipt.blockHash?.toLowerCase()||BigInt(transaction.blockNumber)!==BigInt(receipt.blockNumber))throw Error('NATIVE_RECEIPT_MISMATCH');
+   if(BigInt(transaction.value)!==0n)return null;
+   const canonical=await block(transaction.blockNumber);if(canonical.hash.toLowerCase()!==transaction.blockHash.toLowerCase())throw Error('TRANSACTION_REORG');
+   const proof=require('./public-native-accounting.cjs').nativeSettlement(transaction,receipt,[]);
+   // Historical gas-only proof deliberately contains no invented value moves.
+   return {transactionHash:transaction.hash.toLowerCase(),blockHash:transaction.blockHash.toLowerCase(),blockNumber:transaction.blockNumber,value:'0',fee:proof.fee,payer:proof.payer};
+  },
+  async universalRouterSettlement(swaps){
+   if(!swaps.length)return null;
+   const tx=swaps[0].tx,adapter=require('./public-universal-settlement.cjs');
+   if(!/^0x[0-9a-f]{64}$/.test(tx))throw Error('INVALID_TRANSACTION_HASH');
+   if(!transactions.has(tx))transactions.set(tx,await rpc('eth_getTransactionByHash',[tx]));const transaction=transactions.get(tx);
+   if(transaction.to?.toLowerCase()!==adapter.ROUTER||BigInt(transaction.value||0)>0n)return null;
+   if(!receipts.has(tx))receipts.set(tx,await rpc('eth_getTransactionReceipt',[tx]));const receipt=receipts.get(tx);
+   return adapter.verifyUniversalRoute({swaps,transaction,receipt,codeHash:require('viem').keccak256(await code(adapter.ROUTER,receipt.blockNumber)),
+    poolFor:(a,b,fee,at)=>read(factory,'function getPool(address,address,uint24) view returns(address)','getPool',[a,b,fee],at)});
   },
   async smartWalletSettlement(swaps){
    if(!swaps.length)return null;

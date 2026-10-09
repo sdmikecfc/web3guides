@@ -76,6 +76,7 @@ async function main(){
  await progressiveChecks();
  await defaultBudgetChecks();
  await upgradeChecks();
+ await transientRetryChecks();
  console.log('PASS accounting scheduling: exact entry timestamp, restart fairness, bounded slices, fresh public-history verification, correction invalidation, cutoff catch-up, future entries and anchor rejection.');
 }
 async function upgradeChecks(){
@@ -149,5 +150,40 @@ async function progressiveChecks(){
  const rejected=sweepFixture();const q=await rejected.run({budgetMs:1000,onLedger:async l=>l.participant!=='2'});assert.equal(q.completed,3);assert.equal(q.complete,false);assert.deepEqual(q.ledgers.map(l=>l.participant),['1','3','4']);
  const failed=sweepFixture(),published=[];await assert.rejects(()=>failed.run({budgetMs:1000,onLedger:async l=>{if(l.participant==='2')throw Error('SOURCE_CHANGED');published.push(l.participant);return true;}}),/SOURCE_CHANGED/);assert.deepEqual(published,['1'],'already committed account survives an interrupted later publication');assert.deepEqual(failed.calls,['1','2'],'concurrent evidence change halts further accounting');
  console.log('PASS incremental accounting: immediate per-account acknowledgement, later account timeout/rejection isolation, and no lost earlier publication after an interrupted write.');
+}
+
+async function transientRetryChecks(){
+ const one=()=>{const s=sweepFixture();s.snapshot.accounts=s.snapshot.accounts.slice(0,1);s.snapshot.wallets=s.snapshot.wallets.slice(0,1);s.snapshot.manifest.participants=s.snapshot.manifest.participants.slice(0,1);s.packet.fills=[fill(1)];return s;};
+ const ledger=p=>({participant:p.participant,periodStart:p.periodStart,confirmedThrough:new Date(p.through).toISOString(),requestId:'retried',revision:p.priorRevision+1,complete:true});
+ for(const failure of ['PUBLIC_RETRIES_EXHAUSTED','PUBLIC_REQUEST_TIMEOUT','PUBLIC_NETWORK_UNAVAILABLE']){
+  const s=one(),sources=[],deadlines=[],published=[];let tries=0,anchors=0;
+  const r=await s.run({sourceFactory:()=>{const source={proofs:new Map(),block:async()=>{anchors++;return anchor;},withDeadline:async(d,task)=>{deadlines.push(d);return task();}};sources.push(source);return source;},
+   reconstructLedger:async p=>{tries++;assert.equal(p.source,sources[0]);assert.equal(p.source.proofs.size,tries-1,'same-audit completed proofs survive transient retry');p.source.proofs.set(tries,true);s.clock+=10;if(tries<3)throw Error(failure);return ledger(p);},
+   onLedger:async l=>{published.push(l);return true;}});
+  assert.equal(r.complete,true);assert.equal(r.attempted,1);assert.equal(r.ledgers.length,1);assert.equal(tries,3);assert.equal(anchors,3);assert.equal(sources.length,1);assert.deepEqual(deadlines,[1060]);assert.equal(published.length,1,'one successful ledger produces exactly one publication');
+ }
+ for(const failure of ['PUBLIC_RETRIES_EXHAUSTED','PUBLIC_REQUEST_TIMEOUT','PUBLIC_NETWORK_UNAVAILABLE','UNIVERSAL_ROUTER_UNSUPPORTED_COMMANDS','ACCOUNTING_RECEIPT_MISMATCH','ACCOUNTING_ANCHOR_REORG','ACCOUNTING_TIME_BUDGET_EXCEEDED']){
+  const s=one();let tries=0,published=0;
+  const r=await s.run({reconstructLedger:async()=>{tries++;throw Error(failure);},onLedger:async()=>{published++;return true;}});
+  assert.equal(tries,failure.startsWith('PUBLIC_')?3:1,'retry only bounded transient reads');assert.equal(published,0);assert.equal(r.complete,false);assert.equal(r.ledgers.length,0);assert.ok(r.problems.some(p=>p.code===failure));
+ }
+ for(const sliceMs of [20,60]){
+  const s=one(),deadlines=[];let tries=0,published=0;
+  const r=await s.run({budgetMs:20,sliceMs,sourceFactory:()=>({block:async()=>anchor,withDeadline:async(d,task)=>{deadlines.push(d);return task();}}),reconstructLedger:async()=>{tries++;s.clock+=20;throw Error('PUBLIC_REQUEST_TIMEOUT');},onLedger:async()=>{published++;return true;}});
+  assert.equal(tries,1,'expired original account/cycle deadline prevents another attempt');assert.deepEqual(deadlines,[1020]);assert.equal(published,0);assert.ok(r.problems.some(p=>p.code==='ACCOUNTING_TIME_BUDGET_EXCEEDED'));
+ }
+ const cancelled=one();let tries=0,checks=0;
+ const stopped=await cancelled.run({sourceFactory:()=>({block:async()=>anchor,checkBudget:()=>{if(++checks>1)throw Error('ACCOUNTING_TIME_BUDGET_EXCEEDED');},withDeadline:async(_d,task)=>task()}),reconstructLedger:async()=>{tries++;throw Error('PUBLIC_NETWORK_UNAVAILABLE');}});
+ assert.equal(tries,1,'source cancellation prevents retry even if the local clock has not advanced');assert.ok(stopped.problems.some(p=>p.code==='ACCOUNTING_TIME_BUDGET_EXCEEDED'));
+ const changed=one();let anchors=0,reads=0;
+ const reorg=await changed.run({sourceFactory:()=>({block:async()=>++anchors===1?anchor:{...anchor,hash:'0x'+'b'.repeat(64)},withDeadline:async(_d,task)=>task()}),reconstructLedger:async()=>{reads++;throw Error('PUBLIC_RETRIES_EXHAUSTED');}});
+ assert.equal(reads,1);assert.equal(anchors,2);assert.ok(reorg.problems.some(p=>p.code==='ACCOUNTING_ANCHOR_CHANGED'),'anchor changes fail before retry reconstruction');
+ const write=one();let publications=0,reconstructions=0;
+ await assert.rejects(()=>write.run({reconstructLedger:async p=>{reconstructions++;return ledger(p);},onLedger:async()=>{publications++;throw Error('PUBLIC_REQUEST_TIMEOUT');}}),/PUBLIC_REQUEST_TIMEOUT/);
+ assert.equal(reconstructions,1);assert.equal(publications,1,'uncertain publication cannot trigger reconstruction or a second write');
+ const fresh=one(),instances=[];let sameAuditTries=0;
+ const run=()=>fresh.run({sourceFactory:()=>{const source={proofs:new Map(),block:async()=>anchor,withDeadline:async(_d,task)=>task()};instances.push(source);return source;},reconstructLedger:async p=>{sameAuditTries++;p.source.proofs.set(sameAuditTries,true);throw Error('PUBLIC_RETRIES_EXHAUSTED');}});
+ await run();await run();assert.equal(instances.length,2);assert.notEqual(instances[0],instances[1],'a later audit receives a fresh source rather than cached mutable histories');assert.equal(instances[0].proofs.size,3);assert.equal(instances[1].proofs.size,3);
+ console.log('PASS bounded accounting retries: three same-source read attempts, preserved same-audit proofs, original deadline/cancellation, anchor mismatch rejection, proof failures excluded and one publication only.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

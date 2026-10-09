@@ -104,9 +104,12 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
   balances.set(bucket,(balances.get(bucket)||0n)-qty);let need=qty;
   for(const l of lots.filter(l=>l.wallet===e.wallet&&l.token===e.token&&l.units>0n).sort((a,b)=>a.acquiredAt.localeCompare(b.acquiredAt)||a.acquisitionOrder-b.acquisitionOrder)){
    check();
-   if(l.cost==null)throw Error('ACCOUNTING_OPENING_BASIS_REQUIRED');
-   const take=need<l.units?need:l.units,cost=take===l.units?l.cost:l.cost*take/l.units;
-   l.units-=take;l.cost-=cost;need-=take;
+   // Pre-entry inventory may be exhausted without its old cost affecting a
+   // competition result. Preserve null basis, never invent a zero cost.
+   // Every scored-period consumption of a surviving unknown lot still fails.
+   if(l.cost==null&&Date.parse(e.executedAt)>=from)throw Error('ACCOUNTING_OPENING_BASIS_REQUIRED');
+   const take=need<l.units?need:l.units,cost=l.cost==null?null:take===l.units?l.cost:l.cost*take/l.units;
+   l.units-=take;if(l.cost!=null)l.cost-=cost;need-=take;
    if(e.kind==='transfer')lots.push({...l,id:e.id+':'+l.id,wallet:e.toWallet,units:take,cost});
    if(!need)break;
   }
@@ -128,7 +131,20 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
  // chronological. Wait for every started task, including deadline failures.
  if(source.nativeTransaction){let cursor=0,failure;
   await Promise.allSettled(Array.from({length:Math.min(3,transactions.length)},async()=>{
-   try{while(cursor<transactions.length&&!failure){check();const t=transactions[cursor++];t.native=await source.nativeTransaction(t.tx,t.receipt);if(!t.native||!Array.isArray(t.native.moves)||typeof t.native.fee!=='bigint'||t.native.fee<0n)throw Error('NATIVE_TRANSACTION_PROOF_UNAVAILABLE');}}
+   try{while(cursor<transactions.length&&!failure){check();const t=transactions[cursor++];
+    // Before entry, only consumed domain lots and their own gas are replayed.
+    // A pinned zero-value transaction cannot use the native-purchase path; its
+    // fee is proved by the transaction/receipt without claiming native moves.
+    if(t.at<from&&source.historicalNativeGas){
+     const gas=await source.historicalNativeGas(t.tx,t.receipt);
+     if(gas!==null){
+      if(!gas||gas.transactionHash?.toLowerCase()!==t.tx.toLowerCase()||gas.blockHash?.toLowerCase()!==t.receipt.blockHash?.toLowerCase()
+       ||!/^0x[0-9a-f]+$/i.test(gas.blockNumber||'')||BigInt(gas.blockNumber)!==BigInt(t.receipt.blockNumber)||gas.value!=='0'
+       ||typeof gas.fee!=='bigint'||gas.fee<0n||!/^0x[0-9a-f]{40}$/.test(gas.payer||'')||Object.hasOwn(gas,'moves'))throw Error('HISTORICAL_NATIVE_GAS_PROOF_INVALID');
+      t.historicalGas=gas;continue;
+     }
+    }
+    t.native=await source.nativeTransaction(t.tx,t.receipt);if(!t.native||!Array.isArray(t.native.moves)||typeof t.native.fee!=='bigint'||t.native.fee<0n)throw Error('NATIVE_TRANSACTION_PROOF_UNAVAILABLE');}}
    catch(e){failure??=e;}
   }));
   if(failure)throw failure;check();
@@ -138,13 +154,14 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
   if(t.at>=from)await captureOpening();
   const receipt=t.receipt,block=await source.block(receipt.blockNumber);
   if(block.hash!==receipt.blockHash||Date.parse(block.timestamp)!==t.at||BigInt(receipt.blockNumber)>BigInt(end.number))throw Error('ACCOUNTING_RECEIPT_MISMATCH');
-  const batch=[],matched=new Set(),native=t.native||{moves:[],fee:0n,payer:null};
+  if(t.historicalGas&&t.at>=from)throw Error('HISTORICAL_NATIVE_GAS_AFTER_ENTRY');
+  const batch=[],matched=new Set(),native=t.historicalGas||t.native||{moves:[],fee:0n,payer:null};
   const successful=receipt.status==='0x1';
   if(!successful&&receipt.status!=='0x0')throw Error('ACCOUNTING_RECEIPT_STATUS_INVALID');
   if(successful)for(const wallet of wallets)rejectNetZeroAssetMovement(receipt,wallet,t.at<from?historicalDomains:domains);
-  const nativePurchase=successful&&source.nativeRouterPurchase?await source.nativeRouterPurchase(t.tx,receipt,native,wallets):null;
+  const nativePurchase=successful&&!t.historicalGas&&source.nativeRouterPurchase?await source.nativeRouterPurchase(t.tx,receipt,native,wallets):null;
   const paidGas=walletSet.has(native.payer)?native.fee:0n;
-  const gasUsd=paidGas?await valueUsd(NATIVE,paidGas,receipt.blockNumber):0n;
+  let pricedGas;const gasUsd=()=>pricedGas??=(paidGas?valueUsd(NATIVE,paidGas,receipt.blockNumber):Promise.resolve(0n));
   if(nativePurchase){
    const p=nativePurchase;
    const quoteConversion=p.kind==='quote_conversion'&&p.token===USDC;
@@ -153,8 +170,24 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
    const eligibleFill=quoteConversion?null:eligible.find(f=>f.wallet===p.wallet&&f.transactionHash===t.tx&&f.domainToken===p.token&&f.quoteToken===p.domainQuoteToken);
    batch.push(event(t.tx,t.at,{wallet:p.wallet,token:NATIVE,units:p.nativeSpent,kind:'out'}));
    if(paidGas)batch.push(event(t.tx,t.at,{wallet:native.payer,token:NATIVE,units:paidGas.toString(),kind:'out'}));
-   batch.push(event(t.tx,t.at,{wallet:p.wallet,token:p.token,units:p.units,kind:'buy',usd:usd(cost+(native.payer===p.wallet?gasUsd:0n)),...(eligibleFill?{economicId:eligibleFill.economicId,notionalUsd:eligibleFill.volumeUsd}:{})}));
+   batch.push(event(t.tx,t.at,{wallet:p.wallet,token:p.token,units:p.units,kind:'buy',usd:usd(cost+(native.payer===p.wallet?await gasUsd():0n)),...(eligibleFill?{economicId:eligibleFill.economicId,notionalUsd:eligibleFill.volumeUsd}:{})}));
    for(const e of batch){if(t.at<from&&!historicalDomains.has(e.token))continue;replay(e);if(t.at>=from)events.push(e);}
+   continue;
+  }
+  const nativeQuoteOutput=successful&&!t.historicalGas&&source.nativeQuoteOutput?await source.nativeQuoteOutput(t.tx,receipt,native,wallets):null;
+  if(nativeQuoteOutput){
+   const p=nativeQuoteOutput;
+   if(!walletSet.has(p.wallet)||p.kind!=='native_quote_conversion'||p.inputToken!==USDC
+    ||!/^\d+$/.test(String(p.inputUnits))||BigInt(p.inputUnits)<=0n||!/^\d+$/.test(String(p.nativeReceived))||BigInt(p.nativeReceived)<=0n
+    ||wallets.some(w=>w!==p.wallet&&(receiptFlows(receipt,w).size||native.moves.some(m=>m.from===w||m.to===w))))throw Error('NATIVE_QUOTE_ACCOUNT_MISMATCH');
+   // Quote conversions create neither a domain fill nor an external deposit.
+   // Pre-entry quote funding is already proved by entry-block balances.
+   if(t.at>=from){
+    batch.push(event(t.tx,t.at,{wallet:p.wallet,token:USDC,units:String(p.inputUnits),kind:'out'}));
+    if(paidGas)batch.push(event(t.tx,t.at,{wallet:native.payer,token:NATIVE,units:paidGas.toString(),kind:'out'}));
+    batch.push(event(t.tx,t.at,{wallet:p.wallet,token:NATIVE,units:String(p.nativeReceived),kind:'buy',usd:usd(BigInt(p.inputUnits))}));
+    for(const e of batch){replay(e);events.push(e);}
+   }
    continue;
   }
   if(t.at<from){
@@ -166,19 +199,29 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
     let swaps=[...publicSwaps.values()].filter(s=>s.tx===t.tx&&s.wallet===wallet);
     const smart=swaps.length&&source.smartWalletSettlement?await source.smartWalletSettlement([...indexedSwaps.values()].filter(s=>s.tx===t.tx&&s.wallet===wallet)):null;
     const route=!smart&&swaps.length&&source.orderRouterSettlement?await source.orderRouterSettlement([...indexedSwaps.values()].filter(s=>s.tx===t.tx&&s.wallet===wallet),references.filter(r=>r.ref.status==='verified'&&r.ref.wallet===wallet&&r.ref.transactionHash===t.tx).map(r=>r.ref)):null;
-    const proof=smart||route;if(proof)swaps=[proof.swap];
+    const universal=!smart&&!route&&swaps.length&&source.universalRouterSettlement?await source.universalRouterSettlement([...indexedSwaps.values()].filter(s=>s.tx===t.tx&&s.wallet===wallet)):null;
+    const proof=smart||route||universal;if(proof)swaps=[proof.swap];
     if(swaps.length>1)throw Error('ACCOUNTING_MULTI_FILL_ALLOCATION_REQUIRED');
     if(swaps.length){const s=swaps[0];if(flows.size!==1||!flows.has(s.domain)||new Map([...receiptFlows(receipt,wallet)].filter(([token])=>supported.has(token))).size!==2)throw Error('ACCOUNTING_COMPLEX_SWAP');
-     const amounts=proof?proof.amounts:await settlement(s,receipt,source),money=s.quote===USDC?BigInt(amounts.walletQuoteUnits):await valueUsd(s.quote,BigInt(amounts.walletQuoteUnits),receipt.blockNumber),costGas=wallet===native.payer?gasUsd:0n;
-     if(s.side==='sell'&&money<costGas)throw Error('GAS_EXCEEDS_SWAP_PROCEEDS');
-     batch.push(event(t.tx,t.at,{wallet,token:s.domain,units:amounts.walletDomainUnits,kind:s.side,usd:usd(s.side==='buy'?money+costGas:money-costGas)}));continue;
+     const amounts=proof?proof.amounts:await settlement(s,receipt,source);
+     // Historical disposals consume FIFO quantities only. Their proceeds and
+     // gas never enter competition profit or the remaining opening lot cost.
+     if(s.side==='sell'){batch.push(event(t.tx,t.at,{wallet,token:s.domain,units:amounts.walletDomainUnits,kind:'sell'}));continue;}
+     const money=s.quote===USDC?BigInt(amounts.walletQuoteUnits):await valueUsd(s.quote,BigInt(amounts.walletQuoteUnits),receipt.blockNumber),costGas=wallet===native.payer?await gasUsd():0n;
+     batch.push(event(t.tx,t.at,{wallet,token:s.domain,units:amounts.walletDomainUnits,kind:'buy',usd:usd(money+costGas)}));continue;
     }
     for(const[token,delta]of flows){const marker=wallet+':'+token;if(matched.has(marker))continue;
      const counter=linkedCounterparty(receipt,wallet,token,delta,walletSet);
      if(counter){matched.add(marker);matched.add(counter+':'+token);batch.push(event(t.tx,t.at,{wallet:delta<0n?wallet:counter,toWallet:delta<0n?counter:wallet,token,units:abs(delta).toString(),kind:'transfer'}));continue;}
-     if(delta>0n)throw Error('EXTERNAL_DOMAIN_COST_BASIS_REQUIRED');
+     if(delta>0n){
+      // A canonical receipt proves incoming quantity, not acquisition cost.
+      requireSingleTransfer(receipt,wallet,token);
+      batch.push(event(t.tx,t.at,{wallet,token,units:delta.toString(),kind:'in',costKnown:false}));continue;
+     }
      const endpoints=(receipt.logs||[]).filter(l=>l.address.toLowerCase()===token&&l.topics?.[0]===TRANSFER&&l.topics.length===3&&('0x'+l.topics[1].slice(-40)).toLowerCase()===wallet).map(l=>('0x'+l.topics[2].slice(-40)).toLowerCase());
-     if(endpoints.length!==1||await source.hasCode(endpoints[0],receipt.blockNumber))throw Error('UNSUPPORTED_CONTRACT_OR_LP_FLOW');
+     // Before entry an exact single outgoing leg only disposes quantity.
+     // A later contract/LP return remains unknown basis, never a new purchase.
+     if(endpoints.length!==1)throw Error('UNSUPPORTED_CONTRACT_OR_LP_FLOW');
      batch.push(event(t.tx,t.at,{wallet,token,units:abs(delta).toString(),kind:'out'}));
     }
    }
@@ -228,12 +271,13 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
    let swaps=[...publicSwaps.values()].filter(s=>s.tx===t.tx&&s.wallet===wallet);
    const smart=swaps.length&&source.smartWalletSettlement?await source.smartWalletSettlement([...indexedSwaps.values()].filter(s=>s.tx===t.tx&&s.wallet===wallet)):null;
    const route=!smart&&swaps.length&&source.orderRouterSettlement?await source.orderRouterSettlement([...indexedSwaps.values()].filter(s=>s.tx===t.tx&&s.wallet===wallet),references.filter(r=>r.ref.status==='verified'&&r.ref.wallet===wallet&&r.ref.transactionHash===t.tx).map(r=>r.ref)):null;
-   const proof=smart||route;if(proof)swaps=[proof.swap];
+   const universal=!smart&&!route&&swaps.length&&source.universalRouterSettlement?await source.universalRouterSettlement([...indexedSwaps.values()].filter(s=>s.tx===t.tx&&s.wallet===wallet)):null;
+    const proof=smart||route||universal;if(proof)swaps=[proof.swap];
    if(swaps.length>1)throw Error('ACCOUNTING_MULTI_FILL_ALLOCATION_REQUIRED');
    if(swaps.length){const s=swaps[0];if(flows.size!==2)throw Error('ACCOUNTING_COMPLEX_SWAP');
     const amounts=proof?proof.amounts:await settlement(s,receipt,source);
     const money=s.quote===USDC?BigInt(amounts.walletQuoteUnits):await valueUsd(s.quote,BigInt(amounts.walletQuoteUnits),receipt.blockNumber);
-    const costGas=wallet===native.payer?gasUsd:0n;
+    const costGas=wallet===native.payer?await gasUsd():0n;
     if(s.side==='sell'&&money<costGas)throw Error('GAS_EXCEEDS_SWAP_PROCEEDS');
     const netMoney=s.side==='buy'?money+costGas:money-costGas;
     const f=eligible.find(f=>f.wallet===wallet&&f.transactionHash===t.tx&&f.domainToken===s.domain&&f.quoteToken===s.quote);

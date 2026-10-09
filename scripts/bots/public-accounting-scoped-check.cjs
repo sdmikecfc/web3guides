@@ -93,7 +93,7 @@ async function main(){
   indirect.options.wallets.push(other);indirect.transactions[2].block='0x30';
   indirect.transactions.push({at,hash:'0x'+'9'.repeat(64),block:'0x20',blockHash:'0x'+'8'.repeat(64),logs:[transfer(t,w,external,5000000),transfer(t,external,other,5000000)]});
   const originalBalance=indirect.source.balance;indirect.source.balance=async(wallet,token,block)=>wallet===other?0n:originalBalance(wallet,token,block);
-  await assert.rejects(()=>reconstruct(indirect.options),/EXTERNAL_DOMAIN_COST_BASIS_REQUIRED/);
+  await assert.rejects(()=>reconstruct(indirect.options),at<30?/OPENING_BALANCE_MISMATCH/:/EXTERNAL_DOMAIN_COST_BASIS_REQUIRED/,'unrelated external legs cannot inherit linked basis or certify false opening balances');
  }
  // A self-transfer is not a disposal and must not manufacture a pending basis.
  const self=scoped(fixture()),sw=self.options.wallets[0],st=self.options.markets[0].domain_token;

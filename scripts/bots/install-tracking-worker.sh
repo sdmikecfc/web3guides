@@ -164,7 +164,7 @@ sleep 2
 systemctl is-active --quiet model-kombat-tracking.service || { journalctl -u model-kombat-tracking.service -n 15 --no-pager; exit 1; }
 confirmed=0
 for attempt in {1..10}; do
- if /opt/model-kombat-tracking/runtime/node -e 'const fs=require("fs");try{const s=JSON.parse(fs.readFileSync("/var/lib/model-kombat-tracking/backend-worker-status.json","utf8"));process.exit(s.workerVersion==="mk-public-worker-11-source-revalidation"&&Date.parse(s.updatedAt)>=Number(process.argv[1])?0:1);}catch{process.exit(1);}' "$started_ms"; then confirmed=1; break; fi
+ if /opt/model-kombat-tracking/runtime/node -e 'const fs=require("fs");try{const s=JSON.parse(fs.readFileSync("/var/lib/model-kombat-tracking/backend-worker-status.json","utf8"));process.exit(s.workerVersion==="mk-public-worker-12-router-reconciliation"&&Date.parse(s.updatedAt)>=Number(process.argv[1])?0:1);}catch{process.exit(1);}' "$started_ms"; then confirmed=1; break; fi
  sleep 1
 done
 if [[ "$confirmed" != 1 ]]; then
@@ -179,7 +179,7 @@ fi
 # Prune only hash-verified collector releases, after successful new startup.
 # Current plus one previous release are retained; unknown paths are untouched.
 "$node_path" "$release_tool" prune "$release" "$previous" || echo 'Old-release cleanup skipped; collector startup was confirmed.'
-echo 'Confirmed running version: mk-public-worker-11-source-revalidation'
+echo 'Confirmed running version: mk-public-worker-12-router-reconciliation'
 echo 'Model Kombat collector installed and running. It restarts after a reboot.'
 echo 'The first audit is running. Cash tracking is not confirmed until its report passes.'
 echo 'Campaign dates, website, Reporter and shared accounting were not changed.'

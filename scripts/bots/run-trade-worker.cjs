@@ -11,7 +11,7 @@ const {startPublication}=require('./lib/start-publication.cjs');
 const {openAccountingCache}=require('./lib/accounting-cache.cjs');
 const {rpcFailure,preflightWorkerPacket}=require('./lib/worker-contract.cjs');
 const safeCode=code=>typeof code==='string'&&/^[A-Z][A-Z0-9_]{2,100}$/.test(code)?code:'SOURCE_UNAVAILABLE';
-const workerVersion='mk-public-worker-11-source-revalidation';
+const workerVersion='mk-public-worker-12-router-reconciliation';
 let runStartedAt,runPublishedScores=false;
 const output=process.env.MK_WORKER_STATE_DIR||(process.platform==='win32'?'D:/Temp/modelkombat-tracking-review':path.join(process.env.TMPDIR||'/tmp','modelkombat-tracking-review'));
 const pollMinutes=Number(process.env.MK_WORKER_POLL_MINUTES||240);
@@ -50,7 +50,7 @@ async function run(){
  }
  if(args.has('--write')){const caps=await rpc('mkz_accounting_capabilities');if(caps?.resultPublication!=='per-account-retained-1')throw Error('RESULT_PUBLICATION_SCHEMA_REQUIRED');}
  await progress('VERIFYING_PUBLIC_TRADES');
- const source=publicSource({apiKey:process.env.DOMA_API_KEY}),result=await collect(snapshot,source);let publisher=null;
+ const source=publicSource({erc20History:'hybrid',apiKey:process.env.DOMA_API_KEY}),result=await collect(snapshot,source);let publisher=null;
  const safeReport=()=>({workerVersion,...result.report,problems:result.report.problems.map(({code})=>({code:safeCode(code)}))});
  if(args.has('--write'))await preflightWorkerPacket(result.packet,rpc);
  result.report.accountingProblems=[];
@@ -67,7 +67,7 @@ async function run(){
    if(capabilities?.openingBasis!=='deferred-untouched-2'||capabilities?.verifiedFinancials!=='per-account-current-cutoff-1'||capabilities?.financialScope!=='eligible-traders-2'||capabilities?.accountIsolation!=='per-account-coverage-1')throw Error('ACCOUNTING_SCHEMA_UPDATE_REQUIRED');
    const cache=openAccountingCache({directory:path.join(output,'accounting-cache'),chainId:97477});
    const cycle=await accountingCycle({snapshot,packet:result.packet,accountCoverage:result.accountCoverage,cache,
-    sourceFactory:options=>publicSource({apiKey:process.env.DOMA_API_KEY,...options}),
+    sourceFactory:options=>publicSource({erc20History:'hybrid',apiKey:process.env.DOMA_API_KEY,...options}),
     anchorAt:(time,deadline)=>source.withDeadline(deadline,()=>source.blockAt(time)),
     onLedger:publisher?async ledger=>{const accepted=await publisher.ledger(ledger,safeReport());await progress('RECONSTRUCTING_ACCOUNTING',{publishedAccounts:publisher.published},{...safeReport(),scoreWrites:true,status:result.packet.complete?'VOLUME_VERIFIED_FINANCIALS_PENDING':'PENDING'});return accepted;}:null});
    result.report.accountingProblems=cycle.problems;

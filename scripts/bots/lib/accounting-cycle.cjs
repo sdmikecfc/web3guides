@@ -120,12 +120,23 @@ async function accountingCycle({snapshot,packet,accountCoverage=null,cache,sourc
    if(!job||job.fingerprint!==fingerprint){job={through,anchor,priorAnchors:prior,fingerprint,finished:false};jobs.setCheckpoint(identity,job);}
    const deadline=Math.min(end,now()+sliceMs);
    const ledger=await source.withDeadline(deadline,async()=>{
-    // Explicit numeric block read forces the source's saved-anchor check even
-    // when the ledger itself is already reconstructed.
-    const canonical=await source.block(anchor.number);
-    if(canonical.hash!==anchor.hash)throw Error('ACCOUNTING_ANCHOR_CHANGED');
-    return reconstructLedger({participant:a.participant,wallets,from:Date.parse(periodStart),periodStart,through:Date.parse(through),
-     markets:snapshot.manifest.markets,references,eligible,source,priorRevision:snapshot.accountingRevisions?.[a.participant]||0});
+    // An exhausted transient HTTP request must not discard hundreds of already
+    // verified same-audit proofs. Retry only reads, on this same source, within
+    // the original deadline. Each reconstruction owns a fresh derived ledger;
+    // publication is outside this loop and is never retried here.
+    for(let attempt=0;;attempt++){
+     if(now()>=deadline)throw Error('ACCOUNTING_TIME_BUDGET_EXCEEDED');
+     source.checkBudget?.();
+     try{
+      // Recheck the saved anchor before every reconstruction attempt.
+      const canonical=await source.block(anchor.number);
+      if(canonical.hash!==anchor.hash)throw Error('ACCOUNTING_ANCHOR_CHANGED');
+      return await reconstructLedger({participant:a.participant,wallets,from:Date.parse(periodStart),periodStart,through:Date.parse(through),
+       markets:snapshot.manifest.markets,references,eligible,source,priorRevision:snapshot.accountingRevisions?.[a.participant]||0});
+     }catch(e){
+      if(attempt>=2||!['PUBLIC_RETRIES_EXHAUSTED','PUBLIC_REQUEST_TIMEOUT','PUBLIC_NETWORK_UNAVAILABLE'].includes(e?.message))throw e;
+     }
+    }
    });
    // Persist scheduling/progress only. RPC facts remain cached independently;
    // derived scores never substitute for checking corrected public evidence.

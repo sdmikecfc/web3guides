@@ -37,7 +37,8 @@ async function main(){let f=fixture(),r=await reconstruct(f.options);
  f=fixture();f.transactions[2].block='0x30';f.transactions.push({at:35,hash:'0x'+'9'.repeat(64),block:'0x20',blockHash:'0x'+'8'.repeat(64),logs:[log(USDC,outside,wallet,1000000),log(addr(9),wallet,outside,1)]});await assert.rejects(()=>reconstruct(f.options),/QUOTE_DEPOSIT_EXCHANGE_REVIEW_REQUIRED/);
  f=fixture();f.source.nativeBalance=async()=>1n;await assert.rejects(()=>reconstruct(f.options),/NATIVE_CAPITAL_LEDGER_REQUIRED/);
  f=fixture();const priorBalance=f.source.balance;f.source.balance=async(w,t,at)=>t===token&&at==='0x11'?11000000n:priorBalance(w,t,at);await assert.rejects(()=>reconstruct(f.options),/OPENING_BALANCE_MISMATCH/);
- f=fixture();f.transactions[0].logs=[log(token,outside,wallet,100000000)];await assert.rejects(()=>reconstruct(f.options),/EXTERNAL_DOMAIN_COST_BASIS_REQUIRED/);
+ f=fixture();f.transactions[0].logs=[log(token,outside,wallet,100000000)];await assert.rejects(()=>reconstruct(f.options),/OPENING_BALANCE_MISMATCH/);
+ f=fixture();f.transactions[0].logs.push(log(token,outside,wallet,100000000));const evidencedBalance=f.source.balance;f.source.balance=async(w,t,at)=>t===token?(at==='0x11'?110000000n:100000000n):evidencedBalance(w,t,at);await assert.rejects(()=>reconstruct(f.options),/ACCOUNTING_OPENING_BASIS_REQUIRED/,'a surviving unexplained lot cannot fund a scored sale');
  console.log('PASS independent accounting reconstruction: public FIFO history, fee-inclusive cost, quote funding, balance reconciliation, and rejection of unknown basis or unsupported exchange flows.');
 }
 if(require.main===module)main().catch(e=>{console.error(e);process.exitCode=1;});
