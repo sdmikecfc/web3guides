@@ -18,7 +18,7 @@ async function scenario(error,{watch=true,published=false}={}){
  return {record:records[0],report:reports[0],wait:pauses.reduce((a,b)=>a+b,0),exitCode:context.process.exitCode};
 }
 (async()=>{
- for(const reason of ['PRIVATE_COVERAGE_PENDING','SOURCE_BEHIND_SAVED_CHECKPOINT','WORKER_COMMIT_MK_WORKER_SOURCE_CHANGED','ACCOUNTING_PUBLICATION_INTERRUPTED']){
+ for(const reason of ['PUBLICATION_SOURCE_CHANGED','PRIVATE_COVERAGE_PENDING','SOURCE_BEHIND_SAVED_CHECKPOINT','WORKER_COMMIT_MK_WORKER_SOURCE_CHANGED','ACCOUNTING_PUBLICATION_INTERRUPTED']){
   const x=await scenario(reason,{published:reason==='ACCOUNTING_PUBLICATION_INTERRUPTED'});
   assert.equal(x.record.phase,'AUDIT_COMPLETE');assert.equal(x.report.status,'PENDING');assert.equal(x.wait,300000);assert.equal(x.record.detail.nextCheckMinutes,5);assert.equal(x.report.scoresConfirmed,false);assert.equal(x.report.scoreWrites,reason==='ACCOUNTING_PUBLICATION_INTERRUPTED');
  }

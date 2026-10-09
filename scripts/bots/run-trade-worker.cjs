@@ -7,11 +7,11 @@ const root=path.resolve(__dirname,'../..');
 require('@next/env').loadEnvConfig(root,false,{info(){},error(){throw Error('EXISTING_SERVER_CONFIGURATION_UNAVAILABLE');}});
 const {collect}=require('./lib/public-trade-worker.cjs'),{publicSource}=require('./lib/public-trade-source.cjs');
 const {accountingCycle}=require('./lib/accounting-cycle.cjs');
-const {progressivePublication}=require('./lib/progressive-publication.cjs');
+const {startPublication}=require('./lib/start-publication.cjs');
 const {openAccountingCache}=require('./lib/accounting-cache.cjs');
 const {rpcFailure,preflightWorkerPacket}=require('./lib/worker-contract.cjs');
 const safeCode=code=>typeof code==='string'&&/^[A-Z][A-Z0-9_]{2,100}$/.test(code)?code:'SOURCE_UNAVAILABLE';
-const workerVersion='mk-public-worker-10-progressive-results';
+const workerVersion='mk-public-worker-11-source-revalidation';
 let runStartedAt,runPublishedScores=false;
 const output=process.env.MK_WORKER_STATE_DIR||(process.platform==='win32'?'D:/Temp/modelkombat-tracking-review':path.join(process.env.TMPDIR||'/tmp','modelkombat-tracking-review'));
 const pollMinutes=Number(process.env.MK_WORKER_POLL_MINUTES||240);
@@ -56,8 +56,8 @@ async function run(){
  result.report.accountingProblems=[];
  if(args.has('--write')&&['active','closed'].includes(snapshot.manifest.campaign.state)){
   if(Date.parse(result.packet.confirmedThrough)<Date.parse(snapshot.manifest.campaign.confirmed_through||0))throw Error('SOURCE_BEHIND_SAVED_CHECKPOINT');
-  publisher=progressivePublication({snapshot,packet:result.packet,accountCoverage:result.accountCoverage,rpc});
-  await publisher.start(safeReport());runPublishedScores=true;
+  publisher=await startPublication({snapshot,packet:result.packet,accountCoverage:result.accountCoverage,rpc,report:safeReport()});
+  runPublishedScores=true;
   await progress('RECONSTRUCTING_ACCOUNTING',{}, {...safeReport(),scoreWrites:true,status:result.packet.complete?'VOLUME_VERIFIED_FINANCIALS_PENDING':'PENDING'});
  }
  if(result.accountCoverage.some(a=>a.complete)&&!args.has('--test-linked-agent-only')){
@@ -93,7 +93,7 @@ async function run(){
  console.log(JSON.stringify(report,null,2));return report;
 }
 let stopping=false;process.on('SIGINT',()=>{stopping=true;});process.on('SIGTERM',()=>{stopping=true;});
-const waitingCodes=new Set(['PRIVATE_COVERAGE_PENDING','SOURCE_BEHIND_SAVED_CHECKPOINT','WORKER_COMMIT_MK_WORKER_SOURCE_CHANGED','ACCOUNTING_PUBLICATION_INTERRUPTED']);
+const waitingCodes=new Set(['PUBLICATION_SOURCE_CHANGED','PRIVATE_COVERAGE_PENDING','SOURCE_BEHIND_SAVED_CHECKPOINT','WORKER_COMMIT_MK_WORKER_SOURCE_CHANGED','ACCOUNTING_PUBLICATION_INTERRUPTED']);
 async function main(){do{
  let waitMinutes=pollMinutes;
  try{await run();}catch(e){

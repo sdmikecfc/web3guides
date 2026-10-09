@@ -15,6 +15,8 @@ const files=[
  'scripts/bots/lib/accounting-cache.cjs',
  'scripts/bots/lib/accounting-cycle.cjs',
  'scripts/bots/lib/progressive-publication.cjs',
+ 'scripts/bots/lib/publication-source-check.cjs',
+ 'scripts/bots/lib/start-publication.cjs',
  'scripts/bots/lib/public-native-accounting.cjs',
  'scripts/bots/lib/public-native-router.cjs',
  'scripts/bots/lib/public-native-quote-router.cjs',
@@ -33,6 +35,8 @@ const files=[
  'scripts/bots/accounting-cache-check.cjs',
  'scripts/bots/accounting-cycle-check.cjs',
  'scripts/bots/progressive-publication-check.cjs',
+ 'scripts/bots/publication-source-check.cjs',
+ 'scripts/bots/start-publication-check.cjs',
  'scripts/bots/worker-retry-check.cjs',
  'scripts/bots/public-native-accounting-check.cjs',
  'scripts/bots/public-native-router-check.cjs',
@@ -61,18 +65,9 @@ if(fs.existsSync(out)&&fs.readdirSync(out).some(x=>!['scripts','docs','package.j
 fs.mkdirSync(out,{recursive:true});
 const manifest={createdAt:new Date().toISOString(),purpose:'Model Kombat public trade collector',deployed:false,files:[]};
 for(const name of files){const data=fs.readFileSync(path.join(root,name)),dest=path.join(out,name);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.writeFileSync(dest,data);manifest.files.push({path:name,sha256:createHash('sha256').update(data).digest('hex')});}
-const checks=['public-router-settlement-check','public-order-route-check','public-universal-settlement-check','public-trade-worker-check','public-accounting-check','public-native-accounting-check','public-native-router-check','native-purchase-ledger-check','public-native-quote-router-check','public-smart-wallet-check','public-source-budget-check','worker-contract-check','public-transfer-window-check','public-accounting-scoped-check','public-accounting-deferred-in-check','public-accounting-source-check','accounting-cache-check','accounting-cycle-check','progressive-publication-check','worker-retry-check'];
+const checks=['public-router-settlement-check','public-order-route-check','public-universal-settlement-check','public-trade-worker-check','public-accounting-check','public-native-accounting-check','public-native-router-check','native-purchase-ledger-check','public-native-quote-router-check','public-smart-wallet-check','public-source-budget-check','worker-contract-check','public-transfer-window-check','public-accounting-scoped-check','public-accounting-deferred-in-check','public-accounting-source-check','accounting-cache-check','accounting-cycle-check','progressive-publication-check','publication-source-check','start-publication-check','worker-retry-check'];
 fs.writeFileSync(path.join(out,'package.json'),JSON.stringify({name:'model-kombat-tracking-worker',private:true,version:'1.0.0',engines:{node:'>=20'},scripts:{test:checks.map(name=>'node scripts/bots/'+name+'.cjs').join(' && '),check:'node scripts/bots/run-trade-worker.cjs',start:'node scripts/bots/run-trade-worker.cjs --write --watch'},dependencies:{'@next/env':'14.2.3','@supabase/supabase-js':'2.99.1','viem':'2.51.2'}},null,2)+'\n');
-fs.writeFileSync(path.join(out,'README.txt'),`MODEL KOMBAT COLLECTOR 10 - PREPARED, NOT INSTALLED
-
-Publish the compatible website first using your own vercel --prod. Then run the whole scripts/sql/bots-token-zone-result-publication.sql file in the existing Supabase SQL editor. Finally run node scripts/bots/install-tracking-worker.cjs from the source checkout. The account-isolation patch must already be present; the installer verifies database capabilities before replacing the service. No new credentials or internal-AI changes.
-
-Last verified results remain visible at their original timestamps while newer activity is delayed. Material corrections or ownership changes invalidate the affected proof. Completed trade results publish before accounting; each verified ROI ledger publishes immediately. Strict returned transaction fingerprints prevent accepting concurrent source changes. Final awards still require complete reconciliation. Previously verified historical coverage does not expire merely because its discovery heartbeat is late; activity after its cutoff remains unscored.
-
-The first publication still requires the public-trade scan. This release does not promise instantaneous new-history reconstruction. Accounting retains its bounded cache and 20-minute account / 30-minute cycle budgets. The installed worker waits 15 minutes after a cycle; wallet and Strategy discovery remains every four hours.
-
-Twenty portable checks run before installation. SQL and website tests run separately on D:. No credentials or private player data are packaged. Confirm mk-public-worker-10-progressive-results in the private report. Website publication remains the user's vercel --prod; this installer does not deploy it or change prizes, dates, Reporter or shared accounting.
-`);
+fs.writeFileSync(path.join(out,'README.txt'),"MODEL KOMBAT COLLECTOR 11 - PREPARED, NOT INSTALLED\n\nFor an existing worker10 installation, this update requires no SQL, website deployment, new key or internal-AI change. It corrects publication rejection caused by unrelated wallet registrations and routine discovery timestamps.\n\nBefore publication, the worker compares the actual enrolled identities, trade attribution, covered references, market contracts, persisted fills and accounting revisions. It accepts only irrelevant registry changes or forward-only source coverage. The database still atomically checks the exact fresh fingerprint; material corrections and uncertain writes remain rejected.\n\nThe live worker10 began publishing at 2026-10-09 16:05 UTC: 181 fills, verified volume 5507.109919, and the first ROI row. This is evidence of existing production data, not a claim that worker11 is deployed. Two traders remained pending when this package was prepared.\n\nTwenty-two portable checks run before installation. No secrets or private player data are packaged. Normal service installation uses node scripts/bots/install-tracking-worker.cjs. Confirm mk-public-worker-11-source-revalidation in the private report. Production website releases remain the user's vercel --prod; this package changes no website, dates, rewards, Reporter or shared accounting.\n");
 for(const name of ['package.json','README.txt'])manifest.files.push({path:name,sha256:createHash('sha256').update(fs.readFileSync(path.join(out,name))).digest('hex')});
 const lock=path.join(root,'scripts/bots/tracking-worker-lock.json');
 if(fs.existsSync(lock)){const bytes=fs.readFileSync(lock),parsed=JSON.parse(bytes),pkg=JSON.parse(fs.readFileSync(path.join(out,'package.json')));if(JSON.stringify(parsed.packages[''].dependencies)!==JSON.stringify(pkg.dependencies)||Object.values(parsed.packages).some(p=>p.resolved&&(!p.resolved.startsWith('https://registry.npmjs.org/')||p.link)))throw Error('NONPORTABLE_WORKER_LOCK');fs.writeFileSync(path.join(out,'package-lock.json'),bytes);manifest.files.push({path:'package-lock.json',sha256:createHash('sha256').update(bytes).digest('hex')});}
