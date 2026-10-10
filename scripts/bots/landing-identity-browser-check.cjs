@@ -8,6 +8,7 @@ const zone=(identity,entered=false)=>({schemaVersion:1,rules:'mk-token-zones-1',
 async function main(){fs.mkdirSync(output,{recursive:true});const browser=await chromium.launch({headless:true});try{
  const page=await browser.newPage({viewport:{width:1280,height:720}}),errors=[];page.setDefaultTimeout(20000);page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(({SESSION})=>{sessionStorage.setItem(SESSION,JSON.stringify({token:'fixture-A',address:'0x0000000000000000000000000000000000000001'}));localStorage.setItem('mk.trading-guide.2',JSON.stringify({step:3,method:'strategy'}))},{SESSION});
+ async function refresh(){const button=page.getByRole('button',{name:'Refresh status',exact:true});if(!await button.isVisible())await page.getByText('Reward rules & updates',{exact:true}).click();await button.click();}
  let readMode='normal',posts=0,entered=false,holdRead=null,holdPost=null,deferPost=false;
  await page.route('**/api/**',async route=>{const req=route.request(),url=new URL(req.url());if(url.pathname!=='/api/bots/campaign/zones')return route.fulfill({status:503,json:{ok:false,error:'Not part of this local fixture'}});
   const token=(req.headers().authorization||'').replace('Bearer ','');
@@ -22,14 +23,26 @@ async function main(){fs.mkdirSync(output,{recursive:true});const browser=await 
  await page.evaluate(SESSION=>sessionStorage.setItem(SESSION,JSON.stringify({token:'fixture-B'})),SESSION);await page.getByRole('button',{name:'Enter competition →',exact:true}).click();
  await page.getByRole('heading',{name:'Account status unavailable',exact:true}).waitFor();assert.equal(posts,0);assert.equal(await page.getByRole('button',{name:'Enter competition →',exact:true}).count(),0);
  await page.getByRole('button',{name:'Check status again →',exact:true}).click();await page.getByRole('heading',{name:'Ready to enter',exact:true}).waitFor();
+ assert.equal(await page.getByRole('link',{name:'Open Doma Strategies ↗',exact:true}).count(),0);
  // Authentication failure clears prior entered/ready facts and offers sign-in.
- entered=true;await page.getByRole('button',{name:'Refresh status',exact:true}).click();await page.getByRole('heading',{name:'You’re entered',exact:true}).waitFor();
- readMode='401';await page.getByRole('button',{name:'Refresh status',exact:true}).click();await page.getByRole('button',{name:'Sign in again →',exact:true}).waitFor();assert.equal(await page.getByRole('heading',{name:'You’re entered',exact:true}).count(),0);assert.ok(!(await page.locator('body').innerText()).includes('SECRET_DATABASE_DETAIL'));
+ entered=true;await refresh();await page.getByRole('heading',{name:'You’re entered',exact:true}).waitFor();
+ assert.equal(await page.getByRole('link',{name:'Open Doma Strategies ↗',exact:true}).getAttribute('href'),'https://app.doma.xyz/auto-trading');
+ assert.equal(await page.getByRole('link',{name:'MCP setup help ↗',exact:true}).getAttribute('href'),'https://docs.doma.xyz/agentic-commerce/mcp-server/connect');
+ assert.equal(await page.getByRole('link',{name:'Strategy help ↗',exact:true}).getAttribute('href'),'https://app.doma.xyz/help#help-category-trade');
+ await page.getByRole('heading',{name:'Start trading now.',exact:true}).waitFor();
+ await page.getByText('Reward rules & updates',{exact:true}).evaluate(summary=>summary.parentElement.open=false);
+ for(const viewport of [{width:1280,height:800},{width:390,height:844},{width:844,height:390}]){
+  await page.setViewportSize(viewport);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  for(const name of ['Open Doma Strategies ↗','MCP setup help ↗']){const box=await page.getByRole('link',{name,exact:true}).boundingBox();assert.ok(box.width>=200&&box.height>=54,'Actions must be large enough for touch');}
+  await page.screenshot({path:path.join(output,'entered-'+viewport.width+'x'+viewport.height+'.png'),fullPage:true});
+ }
+ await page.setViewportSize({width:1280,height:720});
+ readMode='401';await refresh();await page.getByRole('button',{name:'Sign in again →',exact:true}).waitFor();assert.equal(await page.getByRole('heading',{name:'You’re entered',exact:true}).count(),0);assert.ok(!(await page.locator('body').innerText()).includes('SECRET_DATABASE_DETAIL'));
  // An anonymous 200 response with a bearer is not a confirmed wallet save.
- readMode='anonymous';await page.getByRole('button',{name:'Refresh status',exact:true}).click();await page.getByRole('button',{name:'Sign in again →',exact:true}).waitFor();assert.equal(posts,0);
- readMode='normal';entered=false;await page.getByRole('button',{name:'Refresh status',exact:true}).click();await page.getByRole('heading',{name:'Ready to enter',exact:true}).waitFor();
+ readMode='anonymous';await refresh();await page.getByRole('button',{name:'Sign in again →',exact:true}).waitFor();assert.equal(posts,0);
+ readMode='normal';entered=false;await refresh();await page.getByRole('heading',{name:'Ready to enter',exact:true}).waitFor();
  // A late read must not install the old account after the credential changed.
- readMode='defer';await page.getByRole('button',{name:'Refresh status',exact:true}).click();await page.getByRole('button',{name:'Checking status…',exact:true}).waitFor();
+ readMode='defer';await refresh();await page.getByRole('button',{name:'Checking status…',exact:true}).waitFor();
  await page.evaluate(SESSION=>sessionStorage.setItem(SESSION,JSON.stringify({token:'fixture-C'})),SESSION);while(!holdRead)await new Promise(resolve=>setTimeout(resolve,10));holdRead();holdRead=null;
  await page.getByRole('heading',{name:'Account status unavailable',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Enter competition →',exact:true}).count(),0);
  readMode='normal';await page.getByRole('button',{name:'Check status again →',exact:true}).click();await page.getByRole('heading',{name:'Ready to enter',exact:true}).waitFor();
