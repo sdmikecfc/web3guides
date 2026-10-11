@@ -1,5 +1,7 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict'),ts=require('typescript');
 const root=path.resolve(__dirname,'../..'),cache=new Map(),env={BOTS_TOKEN_ZONES:'1',MK_WALLET_RESOLVER_TOKEN:'test-only-existing-'+ 'x'.repeat(40)};
+const labelTimers=new Set();
+const trackedTimeout=(fn,ms,...args)=>{const timer=setTimeout(()=>{labelTimers.delete(timer);fn(...args)},ms);labelTimers.add(timer);return timer},trackedClear=timer=>{labelTimers.delete(timer);clearTimeout(timer)};
 let db,authenticated=null;class Refusal extends Error{constructor(status,message){super(message);this.status=status;}}
 function load(file){file=path.resolve(root,file);if(cache.has(file))return cache.get(file);const m={exports:{}};cache.set(file,m.exports);
  const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
@@ -7,7 +9,7 @@ function load(file){file=path.resolve(root,file);if(cache.has(file))return cache
   if(n==='server-only')return {};if(n==='./db')return {Refusal,botsDb:()=>db};
   if(n==='./session')return {sessionFromRequest:()=>authenticated};if(n==='./workshop-journey')return {sameOrigin(){}};
   if(n.startsWith('@/'))return load('src/'+n.slice(2)+'.ts');if(n.startsWith('.'))return load(path.resolve(path.dirname(file),n+'.ts'));return require(n);
- },Buffer,Request,Response,Date,URL,process:{env},console});return m.exports;
+ },Buffer,Request,Response,Date,URL,AbortController,setTimeout:trackedTimeout,clearTimeout:trackedClear,process:{env},console});return m.exports;
 }
 const feed=load('src/app/bots/_server/token-zones.ts'),contract=load('src/app/bots/_server/token-zone-feed.ts'),credentials=load('src/app/bots/_server/tracking-credential.ts');
 const addr=n=>'0x'+n.toString(16).padStart(40,'0'),stamp='2026-09-20T12:00:00.000Z',opening='2026-09-20T00:00:00.000Z';
@@ -49,8 +51,19 @@ async function main(){
  env.BB_SESSION_SECRET='fixture-only-'+ 'x'.repeat(40);authenticated={wallet:addr(1)};
  const day=86400000,start=Date.now()-3*day,at=n=>new Date(start+n*day).toISOString();
  const view={campaign:{rules:'mk-token-zones-1',state:'active',starts_at:at(0),ends_at:at(28),confirmed_through:at(3),complete:true,financial_complete:false},assets:[],own:'123',volume:'80',days:[{day:0,volume:'20'},{day:1,volume:'30'},{day:2,volume:'30'}],participants:[{participant:'123',volume:'80',roi:'33.3',profit:'40',battles:'1',times:[at(0),at(1),at(2)],remaining:11,domains:1}]};
- let verifiedFinancials=null;
- db={async rpc(name){if(name==='mkz_verified_financials')return {data:verifiedFinancials,error:verifiedFinancials?null:{code:'PGRST202'}};assert.equal(name,'mkz_read');return {data:view,error:null}},from(){const q={select(){return q},eq(){return q},async maybeSingle(){return {data:{status:'linked'},error:null}}};return q}};
+ let verifiedFinancials=null,labelMode='normal',labelRows=[{participant:'123',wallet:addr(1)}],labelActive=0,labelAborts=0;
+ db={async rpc(name){if(name==='mkz_verified_financials')return {data:verifiedFinancials,error:verifiedFinancials?null:{code:'PGRST202'}};assert.equal(name,'mkz_read');return {data:view,error:null}},from(table){
+  if(table==='mkz_entries'){
+   if(labelMode==='throw')throw Error('PRIVATE_LABEL_LOOKUP_DETAIL');
+   let signal;const q={select(fields){assert.equal(fields,'participant,wallet');return q},eq(key,value){assert.equal(key,'campaign_id');assert.equal(value,'model-kombat-zones-1');return q},range(from,to){assert.equal(from,0);assert.equal(to,19999);return q},abortSignal(value){assert.ok(value instanceof AbortSignal);signal=value;return q},then(resolve,reject){
+    assert.ok(signal,'Optional labels must have an abortable deadline');
+    if(labelMode==='reject')return Promise.reject(Error('PRIVATE_LABEL_LOOKUP_DETAIL')).then(resolve,reject);
+    if(labelMode==='delayed')return new Promise((done,fail)=>{labelActive++;let completed=false;const finish=(aborted)=>{if(completed)return;completed=true;clearTimeout(timer);signal.removeEventListener('abort',abort);labelActive--;if(aborted){labelAborts++;fail(new DOMException('Labels timed out','AbortError'))}else done({data:labelRows,error:null})},abort=()=>finish(true),timer=setTimeout(()=>finish(false),5000);signal.addEventListener('abort',abort,{once:true});if(signal.aborted)abort()}).then(resolve,reject);
+    return Promise.resolve(labelMode==='error'?{data:null,error:{message:'PRIVATE_LABEL_LOOKUP_DETAIL'}}:{data:labelMode==='malformed'?{unexpected:'shape'}:labelRows,error:null}).then(resolve,reject);
+   }};return q;
+  }
+  assert.equal(table,'mkz_wallet_discovery');const q={select(){return q},eq(){return q},async maybeSingle(){return {data:{status:'linked'},error:null}}};return q;
+ }};
  const visible=await feed.readTokenZones(new Request('http://local'));
  assert.equal(visible.available,true);assert.equal(visible.volumeUsd,'80');assert.equal(visible.standings.volume[0].score,'80');
  assert.equal(visible.standings.roi.length,0);assert.equal(visible.standings.profit.length,0);
@@ -64,6 +77,21 @@ async function main(){
  assert.equal(performance.standings.roi[0].score,'12.5');assert.equal(performance.standings.profit[0].rank,1);assert.equal(performance.standings.profit[0].score,null);
  assert.equal(performance.financials.verified,1);assert.equal(performance.financials.complete,false);
  assert.ok(!JSON.stringify(performance).includes('123456.789012'));assert.equal(performance.personal,null);
+ // Optional labels never determine availability, financial proof, ranks or privacy.
+ const withoutNames=value=>{const copy=JSON.parse(JSON.stringify(value));for(const rows of Object.values(copy.standings))for(const row of rows)delete row.name;return copy};
+ const verifiedBaseline=withoutNames(performance);assert.equal(performance.standings.volume[0].name,'0x0000…0001');assert.equal(performance.standings.roi[0].name,'0x0000…0001');
+ for(const failure of ['throw','reject','error','malformed','badRows','delayed']){
+  labelMode=failure;const originalRows=labelRows;if(failure==='badRows')labelRows=[null,undefined,7,{participant:123,wallet:addr(1)},{participant:'123',wallet:null},{participant:'123',wallet:{toString:()=>addr(1)}},{participant:'123',wallet:'invalid'}];
+  const started=Date.now(),abortsBefore=labelAborts,result=await feed.readTokenZones(new Request('http://local'));
+  assert.deepEqual(withoutNames(result),verifiedBaseline,failure+' must preserve all verified results');assert.match(result.standings.volume[0].name,/^Trader [0-9A-F]{6}$/);assert.equal(result.personal,null);
+  assert.ok(!JSON.stringify(result).includes('123456.789012'));assert.ok(!JSON.stringify(result).includes('PRIVATE_LABEL_LOOKUP_DETAIL'));assert.equal(labelTimers.size,0,'Optional-label timer is cleaned up');assert.equal(labelActive,0,'No optional lookup remains in flight');
+  if(failure==='delayed'){assert.equal(labelAborts,abortsBefore+1,'The actual in-flight lookup is aborted');assert.ok(Date.now()-started<2500,'Optional label deadline is bounded');}
+  labelRows=originalRows;
+ }
+ labelMode='normal';labelRows=[null,{participant:'123',wallet:addr(1)},{participant:'bad',wallet:'not-an-address'}];
+ const recoveredLabels=await feed.readTokenZones(new Request('http://local'));assert.deepEqual(withoutNames(recoveredLabels),verifiedBaseline);assert.equal(recoveredLabels.standings.volume[0].name,'0x0000…0001');assert.equal(labelTimers.size,0);
+ labelRows=[{participant:'123',wallet:addr(1)}];
+ console.log('PASS optional wallet labels: shortened names, thrown/rejected/error/malformed fallback, real abort deadline, no orphan lookup, exact standings/privacy preservation and recovery.');
  verifiedFinancials.confirmedThrough=at(2);performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.standings.roi.length,0,'stale snapshot cannot showcase a result');
  view.campaign.financial_complete=true;performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.standings.profit[0].score,null,'even final public profit scores stay private');
  view.participants.push({participant:'456',volume:'0',roi:'999',profit:'888888',battles:'0',times:[],remaining:12,domains:0});

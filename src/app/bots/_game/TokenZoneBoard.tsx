@@ -93,12 +93,40 @@ export default function TokenZoneBoard({compact=false}:{compact?:boolean}){
   const token=credential();if(entering.current&&identity.current===token)return;if(entering.current){entering.current=false;setBusy(false)}const id=++requestId.current;
   if(identity.current!==token){identity.current=token;clearPersonal()}
   controller.current?.abort();const c=new AbortController();controller.current=c;const timeout=setTimeout(()=>c.abort(),12000);setLoading(true);setError('');
-  try{const auth=headers(token);if(token&&registered.current!==token){const saved=await fetch('/api/bots/campaign/zones/register',{method:'POST',headers:auth,signal:c.signal});if(!saved.ok)throw issue(saved.status===401?'auth':'unavailable');if(!alive.current||id!==requestId.current)return;if(credential()!==token)throw issue('identity');registered.current=token;}
-   const r=await fetch('/api/bots/campaign/zones',{headers:auth,cache:'no-store',signal:c.signal});if(!r.ok)throw issue(r.status===401?'auth':'unavailable');const v=await r.json();if(v.schemaVersion!==1)throw issue('unavailable');
-   if(!alive.current||id!==requestId.current)return;if(credential()!==token)throw issue('identity');if(token&&v.available&&!v.personal?.connected)throw issue('auth');
-   confirmedIdentity.current=token;setView({...v,personal:token?v.personal:null});
-  }catch(e){if(alive.current&&id===requestId.current){clearPersonal();setError(issueText(e));setView(emptyZoneView())}}
-  finally{clearTimeout(timeout);if(alive.current&&id===requestId.current)setLoading(false)}
+  // Public standings do not depend on this browser's wallet session. Publish
+  // them while registration/sign-in is checked separately, with no personal
+  // data accepted until both the credential and registration are confirmed.
+  let personalAccepted=false,publicAccepted=false;
+  const current=()=>alive.current&&id===requestId.current;
+  const sameIdentity=()=>current()&&credential()===token;
+  async function readZones(bearer:string):Promise<ZoneView>{
+   const r=await fetch('/api/bots/campaign/zones',{headers:headers(bearer),cache:'no-store',signal:c.signal});
+   if(!r.ok)throw issue(r.status===401?'auth':'unavailable');
+   const v=await r.json();if(v?.schemaVersion!==1||!v.available)throw issue('unavailable');return v;
+  }
+  const publicRead=(async()=>{
+   const v=await readZones('');
+   if(sameIdentity()&&!personalAccepted){publicAccepted=true;setView({...v,personal:null})}
+  })();
+  const personalRead=token?(async()=>{
+   if(registered.current!==token){
+    const saved=await fetch('/api/bots/campaign/zones/register',{method:'POST',headers:headers(token),signal:c.signal});
+    if(!saved.ok)throw issue(saved.status===401?'auth':'unavailable');
+    const ack=await saved.json();if(ack?.ok!==true)throw issue('unavailable');
+    if(!current())return;if(!sameIdentity())throw issue('identity');registered.current=token;
+   }
+   const v=await readZones(token);
+   if(!current())return;if(!sameIdentity())throw issue('identity');
+   if(!v.personal?.connected)throw issue('auth');
+   personalAccepted=true;confirmedIdentity.current=token;setView(v);
+  })():Promise.resolve();
+  try{
+   const [publicResult,personalResult]=await Promise.allSettled([publicRead,personalRead]);
+   if(!current())return;
+   if(!sameIdentity()){clearPersonal();setError(issueText(issue('identity')));return;}
+   if(token&&personalResult.status==='rejected'){clearPersonal();setError(publicAccepted&&!['auth','identity'].includes(personalResult.reason?.kind)?'Your wallet status could not be checked. Try again.':issueText(personalResult.reason));}
+   if(!publicAccepted&&!personalAccepted){clearPersonal();setView(emptyZoneView());if(!token||personalResult.status==='fulfilled')setError(issueText(publicResult.status==='rejected'?publicResult.reason:issue('unavailable')));}
+  }finally{clearTimeout(timeout);if(current())setLoading(false)}
  },[clearPersonal]);
  useEffect(()=>{alive.current=true;void refresh();const id=setInterval(()=>{if(!document.hidden)void refresh()},60000),storage=(event:StorageEvent)=>{if(event.key==='mk8.wallet-session.v1')void refresh()};window.addEventListener('storage',storage);return()=>{alive.current=false;controller.current?.abort();clearInterval(id);window.removeEventListener('storage',storage)}},[refresh]);
  const p=view.available&&confirmedIdentity.current===credential()?view.personal:null,volume=verifiedVolume(view),linked=p?.linkStatus==='linked';
@@ -110,7 +138,7 @@ export default function TokenZoneBoard({compact=false}:{compact?:boolean}){
   }catch(e){if(alive.current&&id===requestId.current){clearPersonal();setError((e as {kind?:string})?.kind==='auth'||(e as {kind?:string})?.kind==='identity'?issueText(e):'Entry could not be confirmed. Refresh your status before trading for points.')}}
   finally{clearTimeout(timeout);if(alive.current&&id===requestId.current){entering.current=false;setBusy(false)}}
  }
- const action=!p?'Connect wallet':view.state==='active'&&!p.entered&&linked?'Enter competition':linked?'Continue trading':'Set up trading';
+ const action=!p?(error===issueText(issue('auth'))?'Sign in again':'Connect wallet'):view.state==='active'&&!p.entered&&linked?'Enter competition':linked?'Continue trading':'Set up trading';
  return <section className={`${css.root} ${compact?css.compact:''}`} aria-label='Model Kombat token rewards'>
  <header className={css.header}><a className={css.brand} href='/bots/start'>MODEL <b>KOMBAT</b><small>TRADE TOGETHER. CLIMB HIGHER.</small></a><nav aria-label='Competition navigation'><a href='/bots/start?setup=1'>Trading setup</a><a href={PLAY_ENTRY_URL}>Play</a><QuickHelp topic='trading'/></nav></header>
  <div className={css.hero}><div><p className={css.eyebrow}>28 DAYS · 9 TOKEN ZONES · ONE COMMUNITY</p><h1>Your climb.<br/><em>Your rewards.</em></h1><p className={css.lead}>Unlock rewards initially valued at approximately <strong>$4,000.</strong></p><p className={css.subtle}>Eight domain tokens + USDC. Fixed token rewards. Dollar values can change.</p></div><div className={css.heroAside}>{view.available&&view.state==='active'?<span className={css.clock}>Competition live</span>:<span className={css.clock}>{!view.available?'Competition status unavailable':view.state==='draft'?openingText(view):view.state==='closed'?'Competition closed · reconciling':view.state==='frozen'?'Final results':'Competition setup being verified'}</span>}<button className={css.primary} disabled={busy||(loading&&action==='Enter competition')} onClick={()=>!p?setConnect(true):action==='Enter competition'?void enter():window.location.assign('/bots/start?setup=1')}>{busy?'Entering…':action} →</button><small>Trading uses real funds and can lose money.</small></div></div>
