@@ -1,9 +1,10 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount, useSignMessage } from "wagmi";
-import { useAccountModal, useConnectModal } from "@rainbow-me/rainbowkit";
+import { useAccountModal, useChainModal, useConnectModal } from "@rainbow-me/rainbowkit";
 import { WalletProviders } from "./ModelKombatWalletProviders";
 import { signInErrorMessage, signInToWorkshop, type SignInStage } from "@/lib/bots/workshop8/wallet-sign-in";
+import { useWalletDialogHandoff } from "./useWalletDialogHandoff";
 import css from './entry.module.css';
 
 type Props = { onConnected(token: string, wallet: string): void };
@@ -14,8 +15,10 @@ const stageLabels: Record<SignInStage, string> = {
 function SignIn({ onConnected }: Props) {
   const { address, status } = useAccount();
   const { signMessageAsync } = useSignMessage();
-  const { openConnectModal } = useConnectModal();
-  const { openAccountModal } = useAccountModal();
+  const { openConnectModal, connectModalOpen } = useConnectModal();
+  const { openAccountModal, accountModalOpen } = useAccountModal();
+  const { chainModalOpen } = useChainModal();
+  const surface = useWalletDialogHandoff(connectModalOpen || accountModalOpen || chainModalOpen);
   const [stage, setStage] = useState<SignInStage | null>(null);
   const [error, setError] = useState("");
   const [continueAfterConnect, setContinueAfterConnect] = useState(false);
@@ -60,7 +63,7 @@ function SignIn({ onConnected }: Props) {
     openConnectModal?.();
   }
 
-  return <div>
+  return <div ref={surface}>
     <p>Choose the wallet you use on Doma. Sign a free message to prove it’s yours.</p>
     <button className={css.primary} type="button" disabled={stage !== null || (!address && !openConnectModal)} onClick={connect}>
       {stage ? stageLabels[stage] : error ? "Try sign-in again" : address ? "Sign in with this wallet" : "Connect wallet"}
