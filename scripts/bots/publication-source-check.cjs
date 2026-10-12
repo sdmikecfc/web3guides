@@ -10,6 +10,14 @@ const accountCoverage=['1','2'].map(participant=>({participant,coverageFrom:star
 let cases=0;
 function accepts(name,mutate){const current=clone(original);current.fingerprint='b'.repeat(32);mutate(current);assert.equal(check({original,current,packet,accountCoverage}),current.fingerprint,name);cases++;}
 function rejects(name,mutate,reason){const current=clone(original);current.fingerprint='b'.repeat(32);mutate(current);assert.throws(()=>check({original,current,packet,accountCoverage}),e=>e.message==='PUBLICATION_SOURCE_CHANGED'&&(!reason||e.sourceReason===reason),name);cases++;}
+accepts('new entrant after cutoff',s=>{s.manifest.participants.push({participant:'9',wallet:address(9),entered_at:later});});
+accepts('new entrant after cutoff lacks discovery',s=>{s.manifest.participants.push({participant:'10',wallet:address(10),entered_at:later});});
+rejects('entry removed',s=>{s.manifest.participants.pop();},'ENTRIES');
+rejects('new entrant exactly at cutoff',s=>{s.manifest.participants.push({participant:'9',wallet:address(9),entered_at:cutoff});},'ENTRIES');
+rejects('new entrant malformed time',s=>{s.manifest.participants.push({participant:'9',wallet:address(9),entered_at:'unknown'});},'ENTRIES');
+rejects('new entrant overlaps an enrolled wallet',s=>{s.manifest.participants.push({participant:'9',wallet:address(1),entered_at:later});},'WALLET_OWNERSHIP');
+rejects('new entrant acquires an enrolled trading wallet',s=>{s.manifest.participants.push({participant:'9',wallet:address(9),entered_at:later});s.wallets.push({participant:'9',trade_wallet:address(1),agent:false});},'WALLET_OWNERSHIP');
+rejects('new entrant cannot hide old reference correction',s=>{s.manifest.participants.push({participant:'9',wallet:address(9),entered_at:later});s.references[0].ref.revision++;},'REFERENCES');
 accepts('unchanged source',()=>{});
 accepts('unordered database arrays',s=>{s.accounts.reverse();s.wallets.reverse();s.references.reverse();s.manifest.participants.reverse();});
 accepts('unrelated registry heartbeat and linking',s=>{s.accounts[2].coverage.updated_at=later;s.accounts[2].coverage.confirmed_through=later;s.accounts.push({...clone(s.accounts[2]),participant:'10'});s.wallets.push({participant:'10',trade_wallet:address(10),agent:true});s.references.push(reference('10','new',start));});

@@ -21,6 +21,23 @@ function database(context,onRead,onCommit){
 }
 async function main(){
  {
+  const f=fixture(),before=clone(f),db=database(f),newEntry={participant:'2',wallet:'0x'+'2'.repeat(40),entered_at:'2026-10-09T14:00:00.000Z'};
+  db.current.manifest.participants.push(newEntry);db.advance();
+  const p=await startPublication({...f,rpc:db.rpc,report:{complete:true,financialComplete:true}});
+  const body=db.bodies[0];assert.equal(p.pendingEntrants,1);assert.equal(body.packet.complete,false);assert.equal(body.packet.financialComplete,false);assert.equal(body.report.complete,false);
+  assert.deepEqual(body.accountCoverage[0],f.accountCoverage[0]);assert.deepEqual(body.accountCoverage[1],{participant:'2',coverageFrom:start,confirmedThrough:cutoff,complete:false,problems:['ACCOUNT_NOT_STARTED_AT_CUTOFF']});
+  assert.deepEqual(body.packet.fills,f.packet.fills);assert.deepEqual(f,before,'new entrant handling does not mutate the original scan');
+  await p.ledger({participant:'1'});await p.finish({complete:false});assert.equal(db.reads,1);assert.ok(db.bodies.every(x=>x.packet.complete===false&&x.accountCoverage[1].complete===false));
+ }
+ {
+  const f=fixture(),db=database(f,({current,advance,reads})=>{if(reads===1){current.manifest.participants.push({participant:'2',wallet:'0x'+'2'.repeat(40),entered_at:'2026-10-09T14:00:00.000Z'});advance();}});
+  const p=await startPublication({...f,rpc:db.rpc});assert.equal(db.reads,2);assert.equal(db.commits,2);assert.equal(p.pendingEntrants,1);assert.equal(db.bodies[1].accountCoverage.length,2,'entrant arriving between read and commit receives explicit pending coverage after CAS retry');
+ }
+ {
+  const f=fixture(),db=database(f);db.current.manifest.participants.push({participant:'2',wallet:'0x'+'2'.repeat(40),entered_at:cutoff});db.advance();
+  await assert.rejects(()=>startPublication({...f,rpc:db.rpc}),e=>e.message==='PUBLICATION_SOURCE_CHANGED'&&e.sourceReason==='ENTRIES');assert.equal(db.commits,0);
+ }
+ {
   const f=fixture(),before=clone(f),db=database(f);db.current.accounts[0].coverage.updated_at='2026-10-09T14:00:00.000Z';db.advance();
   const p=await startPublication({...f,rpc:db.rpc,report:{label:'first-publication'}});
   assert.equal(db.reads,1);assert.equal(db.commits,1);assert.equal(db.bodies[0].fingerprint,'00000000000000000000000000000015');assert.equal(db.bodies[0].report.label,'first-publication');assert.deepEqual(db.bodies[0].packet.fills,f.packet.fills);assert.deepEqual(f,before,'the original proof and scan remain unchanged');
@@ -41,6 +58,11 @@ async function main(){
  {
   const f=fixture(),db=database(f,({current,advance})=>{current.accounts[0].coverage.updated_at=new Date().toISOString();advance();});
   await assert.rejects(()=>startPublication({...f,rpc:db.rpc}),/WORKER_COMMIT_MK_WORKER_SOURCE_CHANGED/);assert.equal(db.reads,3);assert.equal(db.commits,3,'continually moving source stops after exactly three attempts');
+ }
+ {
+  const f=fixture(),db=database(f),p=await startPublication({...f,rpc:db.rpc});
+  db.current.manifest.participants.push({participant:'2',wallet:'0x'+'2'.repeat(40),entered_at:'2026-10-09T14:00:00.000Z'});db.advance();
+  await assert.rejects(()=>p.ledger({participant:'1'}),/WORKER_COMMIT_MK_WORKER_SOURCE_CHANGED/);assert.equal(p.stopped,true);assert.equal(db.reads,1,'after trade publication, a changed source stops accounting without adopting a new fingerprint');assert.equal(db.bodies[0].packet.fills.length,1);
  }
  for(const code of ['NETWORK_UNAVAILABLE','WORKER_COMMIT_MKZ_BATCH_INVALID','PUBLICATION_RESPONSE_INVALID']){
   const f=fixture(),db=database(f,null,({advance})=>{advance();if(code==='PUBLICATION_RESPONSE_INVALID')return {ok:true,nextFingerprint:'invalid'};throw Error(code);});

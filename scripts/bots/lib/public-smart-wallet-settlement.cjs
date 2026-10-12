@@ -3,7 +3,8 @@
 // Simple7702Account.execute / approval batch -> UniversalRouter V3 exact-input swaps.
 // Verified source/runtime evidence: explorer.doma.xyz/api/v2/smart-contracts/
 // followed by the pinned addresses below (fee/permit path reviewed 2026-10-09).
-// Fee routes allow one exact-input pool, optional Permit2 single permit, output fee and sweep.
+// Fee routes allow the same one/two-hop exact-input paths, optional Permit2
+// single permit, output fee and sweep; two-hop paths must bridge through WETH.
 // Batch support is limited to one exact input-token approval followed by that route.
 const {CHAIN,USDC,WETH,TRANSFER,receiptFlows,key,volume}=require('./public-trade-worker.cjs');
 const ENTRY='0x4337084d9e255ff0702461cf8895ce9e3b5ff108';
@@ -115,7 +116,8 @@ async function verifySmartWalletSettlement({swaps,transaction:tx,receipt,codeAt,
   const buy=first.side==='buy',q=buy?tokens[0]:tokens.at(-1);
   if(![USDC,WETH].includes(q)||(quote&&quote!==q)||(buy?tokens.at(-1):tokens[0])!==domain||new Set(tokens).size!==tokens.length||fees.some(f=>![100,500,3000,10000].includes(f))||(tokens.length===3&&(q!==USDC||tokens[1]!==WETH)))fail('UNSUPPORTED_PATH');
   quote=q;let inputUnits=amountIn,domainLeg;
-  if(withFee&&tokens.length!==2)fail('UNSUPPORTED_PATH');
+  // Both fee and direct routes use the bounded path rules above. Each hop,
+  // output fee and final wallet amount must reconcile with the complete receipt.
   if(permit&&(lower(permit.details.token)!==tokens[0]||permit.details.amount<amountIn))fail('PERMIT_MISMATCH');
   if(approval&&(approval.token!==tokens[0]||approval.amount<amountIn))fail('UNSUPPORTED_APPROVAL');
   if(allowance&&(allowance.token!==tokens[0]||allowance.amount<amountIn))fail('UNSUPPORTED_ALLOWANCE');

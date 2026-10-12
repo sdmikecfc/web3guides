@@ -41,6 +41,24 @@ async function main(){const db=new PGlite();try{
  assert.equal(view.accountScope,'retained-account-results-1');assert.equal(finance.financialScope,'retained-account-financials-1');
  assert.equal(finance.checked,2);assert.ok(finance.rows.every(r=>r.current&&!r.retained));
  assert.equal(view.volume,'24.000000');assert.equal(view.participants.find(p=>p.participant==='789').volume,'0');
+ // A concurrent entrant after the scan cutoff cannot starve older accounts.
+ // Exercise the real publication entry point and transactional SQL, then roll
+ // back this isolated scenario so the remaining retention fixtures stay exact.
+ await q('begin');
+ const originalScan=await read('mkz_worker_snapshot'),freshPacket={...packet,fills:[],complete:true};
+ const newcomerWallet=addr(99),newcomerTime=new Date(Date.parse(cutoff)+1000).toISOString();
+ await q('select mkz_register_wallet($1)',[newcomerWallet]);await resolve('999',newcomerWallet,newcomerWallet);
+ await q('insert into mkz_entries values($1,$2,$3,$4)',[cid,'999',newcomerWallet,newcomerTime]);
+ const publication=await require('./lib/start-publication.cjs').startPublication({snapshot:originalScan,packet:freshPacket,accountCoverage:cov([]),rpc:async(name,args)=>name==='mkz_worker_snapshot'?read(name):call(name,args.p),report:{complete:true}});
+ assert.equal(publication.pendingEntrants,1);
+ let newcomerView=await board(),newcomer=newcomerView.participants.find(p=>p.participant==='999');
+ assert.equal(newcomerView.participants.find(p=>p.participant==='123').tradeVerified,true);assert.equal(newcomerView.participants.find(p=>p.participant==='123').volume,'12.000000');
+ assert.equal(newcomer.volume,null);assert.equal(newcomer.tradeVerified,false);assert.equal(newcomer.tradeProblem,false,'joined after cutoff is normal pending, not a verification error');
+ const newCoverage=(await q('select complete,problems from mkz_account_coverage where participant=$1',['999']))[0];assert.equal(newCoverage.complete,false);assert.deepEqual(newCoverage.problems,['ACCOUNT_NOT_STARTED_AT_CUTOFF']);
+ assert.equal(newcomerView.campaign.complete,false);await publication.finish({complete:false});
+ const stalePublication={requestId:randomUUID(),fingerprint:originalScan.fingerprint,packet:freshPacket,accountCoverage:publication.accountCoverage,accounting:[],report:{}};
+ await assert.rejects(()=>call('mkz_worker_commit',stalePublication),/MK_WORKER_SOURCE_CHANGED/);
+ await q('rollback');
  // Newer unavailable scans do not overwrite the last verified publication.
  const later='2026-10-01T00:10:00.000Z';
  const delayedCoverage=cov(['123','456','789']).map(a=>({...a,confirmedThrough:later,problems:['STRATEGY_COVERAGE_MISSING']}));

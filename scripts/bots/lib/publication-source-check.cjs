@@ -23,7 +23,12 @@ function assertPublicationSourceUnchanged({original,current,packet,accountCovera
  same(without(c,['complete','financial_complete']),without(after.campaign,['complete','financial_complete']),'CAMPAIGN');
  same(without(before,['campaign','participants','markets']),without(after,['campaign','participants','markets']),'MANIFEST');
  const entries=rows(before.participants,r=>r.participant,'ENTRIES'),nextEntries=rows(after.participants,r=>r.participant,'ENTRIES');
- same(entries,nextEntries,'ENTRIES');const enrolled=new Set(entries.map(([id])=>id));
+ const enrolled=new Set(entries.map(([id])=>id));
+ // A new entrant after this scan's cutoff cannot have eligible trades in its
+ // window. Keep that entrant pending without discarding existing accounts'
+ // verified work. Removed, corrected or backdated entries still need a rescan.
+ same(entries,nextEntries.filter(([id])=>enrolled.has(id)),'ENTRIES');
+ for(const[id,entry]of nextEntries)if(!enrolled.has(id)&&(!Number.isFinite(time(entry.entered_at))||time(entry.entered_at)<=through))changed('ENTRIES');
  const coverage=rows(accountCoverage,r=>r.participant,'SCAN_COVERAGE');
  same(coverage.map(([id])=>id),entries.map(([id])=>id),'SCAN_COVERAGE');
  for(const[,a]of coverage)if(typeof a.complete!=='boolean'||a.coverageFrom!==packet.coverageFrom||a.confirmedThrough!==packet.confirmedThrough)changed('SCAN_COVERAGE');
@@ -45,6 +50,7 @@ function assertPublicationSourceUnchanged({original,current,packet,accountCovera
  const wallets=s=>rows(s.wallets.filter(w=>enrolled.has(w?.participant)),w=>w.participant+':'+w.trade_wallet,'WALLETS');
  const oldWallets=wallets(original),newWallets=wallets(current);same(oldWallets,newWallets,'WALLETS');
  const addresses=new Set(oldWallets.map(([,w])=>w.trade_wallet));
+ for(const[id,entry]of nextEntries)if(!enrolled.has(id)&&addresses.has(entry.wallet))changed('WALLET_OWNERSHIP');
  // A formerly unrelated account cannot acquire an enrolled wallet unnoticed.
  const ownership=s=>rows(s.wallets.filter(w=>addresses.has(w?.trade_wallet)),w=>w.participant+':'+w.trade_wallet,'WALLET_OWNERSHIP');
  same(ownership(original),ownership(current),'WALLET_OWNERSHIP');

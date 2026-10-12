@@ -106,7 +106,72 @@ async function allowanceTests(){
  for(const amount of [1n,allowanceContext().total-1n]){const {c,expiration}=allowanceContext();modify(c,args=>args[2]=amount);c.receipt.logs.find(l=>l.logIndex==='0xff02').data=v.encodeAbiParameters(v.parseAbiParameters('uint160,uint48'),[amount,expiration]);await assert.rejects(()=>adapter.verifySmartWalletSettlement(c),/UNSUPPORTED_ALLOWANCE/,'the full split route must fit the granted allowance');}
 }
 
+
+// Generated identities and freshly signed operations; no participant receipts.
+async function twoHopFeeFixture(side='buy',changeRoute=null,withPermit=true){
+ const signer=require('viem/accounts').privateKeyToAccount('0x'+'1'.repeat(64));
+ const wallet=signer.address.toLowerCase(),domain='0x'+'11'.repeat(20),feeTo='0x'+'bb'.repeat(20),outside='0x'+'dd'.repeat(20);
+ const buy=side==='buy',tokens=buy?[USDC,WETH,domain]:[domain,WETH,USDC],fees=buy?[100,500]:[500,100],pools=['0x'+'aa'.repeat(19)+'01','0x'+'aa'.repeat(19)+'02'];
+ const amountIn=buy?2000000n:13039919n,intermediate=buy?802290685459543n:800687868121909n,gross=buy?13052971n:1995705n,fee=gross/1000n,net=gross-fee;
+ const executedAt=buy?'2026-10-10T00:00:20.000Z':'2026-10-10T00:00:40.000Z',tx='0x'+(buy?'3':'4').repeat(64),blockHash='0x'+(buy?'5':'6').repeat(64),blockNumber=buy?'0x10':'0x20';
+ const permit={details:{token:tokens[0],amount:amountIn,expiration:2000000000,nonce:1},spender:adapter.ROUTER,sigDeadline:2000000000n};
+ const permitTypes={PermitDetails:[{name:'token',type:'address'},{name:'amount',type:'uint160'},{name:'expiration',type:'uint48'},{name:'nonce',type:'uint48'}],PermitSingle:[{name:'details',type:'PermitDetails'},{name:'spender',type:'address'},{name:'sigDeadline',type:'uint256'}]};
+ const signature=await signer.signTypedData({domain:{name:'Permit2',chainId:97477,verifyingContract:adapter.PERMIT2},types:permitTypes,primaryType:'PermitSingle',message:permit});
+ const path='0x'+tokens[0].slice(2)+fees.map((fee,i)=>fee.toString(16).padStart(6,'0')+tokens[i+1].slice(2)).join('');
+ const inputs=[...(withPermit?[v.encodeAbiParameters(v.parseAbiParameters('((address token,uint160 amount,uint48 expiration,uint48 nonce) details,address spender,uint256 sigDeadline),bytes'),[permit,signature])]:[]),v.encodeAbiParameters(v.parseAbiParameters('address,uint256,uint256,bytes,bool'),['0x'+'0'.repeat(39)+'2',amountIn,0n,path,true]),v.encodeAbiParameters(v.parseAbiParameters('address,address,uint256'),[tokens[2],feeTo,10n]),v.encodeAbiParameters(v.parseAbiParameters('address,address,uint256'),[tokens[2],wallet,net])];
+ const route=[withPermit?'0x0a000604':'0x000604',inputs];if(changeRoute)changeRoute(route,{tokens,fees,wallet,domain,withPermit});
+ const routerData=v.encodeFunctionData({abi:v.parseAbi(['function execute(bytes commands,bytes[] inputs) payable']),functionName:'execute',args:route});
+ const op={sender:wallet,nonce:1n,initCode:'0x',callData:v.encodeFunctionData({abi:v.parseAbi(['function execute(address target,uint256 value,bytes data)']),functionName:'execute',args:[adapter.ROUTER,0n,routerData]}),accountGasLimits:'0x'+'0'.repeat(64),preVerificationGas:1n,gasFees:'0x'+'0'.repeat(64),paymasterAndData:'0x',signature:'0x'};
+ // The RPC is an exact operation-bound mock. Production still calls the pinned
+ // EntryPoint's historical getUserOpHash; actual on-chain cases are read-tested.
+ const operationHash=actual=>v.keccak256(v.encodeAbiParameters(v.parseAbiParameters(OP),[{...actual,signature:'0x'}]));
+ const userOpHash=operationHash(op);op.signature=await signer.sign({hash:userOpHash});
+ const transaction={hash:tx,chainId:v.toHex(97477),value:'0x0',to:adapter.ENTRY,blockHash,blockNumber,input:v.encodeFunctionData({abi:entryAbi,functionName:'handleOps',args:[[op],outside]})};
+ const logs=[],refs={};
+ const log=(name,address,topics,data)=>{const row={address,topics,data,removed:false,transactionHash:tx,blockHash,blockNumber,transactionIndex:'0x0',logIndex:v.toHex(logs.length)};logs.push(row);refs[name]=row;return row;};
+ const transfer=(name,token,from,to,units)=>log(name,token,[TRANSFER,v.pad(from),v.pad(to)],v.toHex(units,{size:32}));
+ const swapEvent=v.parseAbi(['event Swap(address indexed sender,address indexed recipient,int256 amount0,int256 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick)']);
+ function swap(name,i,input,output){const input0=BigInt(tokens[i])<BigInt(tokens[i+1]);log(name,pools[i],v.encodeEventTopics({abi:swapEvent,eventName:'Swap',args:{sender:adapter.ROUTER,recipient:adapter.ROUTER}}),v.encodeAbiParameters(v.parseAbiParameters('int256,int256,uint160,uint128,int24'),[input0?input:-output,input0?-output:input,1n,1n,0]));}
+ if(withPermit)log('permit',adapter.PERMIT2,v.encodeEventTopics({abi:v.parseAbi(['event Permit(address indexed owner,address indexed token,address indexed spender,uint160 amount,uint48 expiration,uint48 nonce)']),eventName:'Permit',args:{owner:wallet,token:tokens[0],spender:adapter.ROUTER}}),v.encodeAbiParameters(v.parseAbiParameters('uint160,uint48,uint48'),[amountIn,2000000000,1]));
+ transfer('input',tokens[0],wallet,pools[0],amountIn);swap('hop0',0,amountIn,intermediate);transfer('middleOut',WETH,pools[0],adapter.ROUTER,intermediate);transfer('middleIn',WETH,adapter.ROUTER,pools[1],intermediate);swap('hop1',1,intermediate,gross);transfer('gross',tokens[2],pools[1],adapter.ROUTER,gross);transfer('fee',tokens[2],adapter.ROUTER,feeTo,fee);transfer('sweep',tokens[2],adapter.ROUTER,wallet,net);
+ log('operation',adapter.ENTRY,v.encodeEventTopics({abi:eventAbi,eventName:'UserOperationEvent',args:{userOpHash,sender:wallet,paymaster:'0x'+'0'.repeat(40)}}),v.encodeAbiParameters(v.parseAbiParameters('uint256,bool,uint256,uint256'),[1n,true,1n,1n]));
+ const row={txHash:tx,date:executedAt,userAddress:wallet,buyerAddress:wallet,contractType:'UNISWAP_V3_POOL',fractionalToken:{address:domain,chain:{networkId:'eip155:97477'},params:{decimals:6}},quoteToken:{symbol:'WETH',decimals:18},fractionalTokenAmount:(buy?gross:-amountIn).toString(),quoteTokenAmount:(buy?-intermediate:intermediate).toString(),priceUsd:buy?0.15319853234945516:0.1530455058808264};
+ const receipt={status:'0x1',transactionHash:tx,to:adapter.ENTRY,blockHash,blockNumber,transactionIndex:'0x0',logs};
+ const poolKeys=new Map(fees.map((fee,i)=>[[...tokens.slice(i,i+2)].sort().join(':')+':'+fee,pools[i]]));
+ const c={swaps:[normalizePublicSwap(row)],transaction,receipt,codeAt:async a=>a===wallet?'0xef0100'+adapter.ACCOUNT.slice(2):codes[a]||'0x',poolFor:async(a,b,fee)=>poolKeys.get([a,b].sort().join(':')+':'+fee)||'0x'+'0'.repeat(40),userOperationHash:async actual=>operationHash(actual)};
+ return {c,row,refs,wallet,domain,side,fee,net,amountIn,intermediate,gross,executedAt,tx,outside,swapEvent};
+}
+async function twoHopFeeTests(){
+ const buy=await twoHopFeeFixture('buy'),sell=await twoHopFeeFixture('sell');
+ for(const f of [buy,sell,await twoHopFeeFixture('buy',null,false),await twoHopFeeFixture('sell',null,false)]){const proof=await adapter.verifySmartWalletSettlement(f.c);assert.equal(proof.swap.quote,USDC);assert.equal(proof.amounts.paths[0].tokens.length,3);assert.equal(proof.amounts.poolLegs.length,1);assert.equal(proof.swap.domainUnits,'13039919');assert.equal(proof.swap.quoteUnits,f.side==='buy'?'2000000':'1993710');assert.equal(proof.volumeMicros.toString(),f.side==='buy'?'1999696':'1995700');assert.equal(proof.amounts.routerFeeUnits,f.side==='sell'?'1995':'0');assert.equal(proof.amounts.routerDomainFeeUnits,f.side==='buy'?'13052':'0');}
+ const mutations=[
+  ['intermediate transfer amount',f=>{f.refs.middleIn.data=v.toHex(f.intermediate+1n,{size:32});},/UNEXPLAINED_TRANSFER/],
+  ['intermediate hop amount',f=>{const a=v.decodeAbiParameters(v.parseAbiParameters('int256,int256,uint160,uint128,int24'),f.refs.hop1.data);const positive=a[0]>0n?0:1;a[positive]++;f.refs.hop1.data=v.encodeAbiParameters(v.parseAbiParameters('int256,int256,uint160,uint128,int24'),a);},/POOL_AMOUNT_MISMATCH/],
+  ['intermediate recipient',f=>{f.refs.hop0.topics[2]=v.pad(f.wallet);},/POOL_AMOUNT_MISMATCH/],
+  ['unregistered intermediate pool',f=>{f.c.poolFor=async()=> '0x'+'0'.repeat(40);},/UNREGISTERED_POOL/],
+  ['missing pool hop',f=>{f.c.receipt.logs=f.c.receipt.logs.filter(l=>l!==f.refs.hop1);},/AMBIGUOUS_POOL/],
+  ['fee token',f=>{f.refs.fee.address=WETH;},/UNEXPLAINED_TRANSFER/],
+  ['fee amount',f=>{f.refs.fee.data=v.toHex(f.fee+1n,{size:32});},/UNEXPLAINED_TRANSFER/],
+  ['fee recipient',f=>{f.refs.fee.topics[2]=v.pad(f.outside);},/UNEXPLAINED_TRANSFER/],
+  ['sweep quantity',f=>{f.refs.sweep.data=v.toHex(f.net+1n,{size:32});},/UNEXPLAINED_TRANSFER/],
+  ['missing intermediate transfer',f=>{f.c.receipt.logs=f.c.receipt.logs.filter(l=>l!==f.refs.middleOut);},/UNEXPLAINED_TRANSFER/],
+  ['extra transfer',f=>{f.c.receipt.logs.push({...clone(f.refs.input),logIndex:'0xffff'});},/UNEXPLAINED_TRANSFER/],
+  ['fake indexed WETH leg',f=>{f.c.swaps[0].quoteUnits=(f.intermediate+1n).toString();},/INDEX_MISMATCH/],
+  ['fake indexed domain amount',f=>{f.c.swaps[0].domainUnits='1';},/INDEX_MISMATCH/],
+ ];
+ for(const side of ['buy','sell'])for(const[label,change,code]of mutations){const f=await twoHopFeeFixture(side);change(f);await assert.rejects(()=>adapter.verifySmartWalletSettlement(f.c),code,side+': '+label);}
+ for(const [label,change]of [['unreviewed middle token',(path)=>path.slice(0,48)+'22'.repeat(20)+path.slice(88)],['third hop',path=>path+'000064'+'22'.repeat(20)]]){const f=await twoHopFeeFixture('buy',(r)=>{const a=v.decodeAbiParameters(v.parseAbiParameters('address,uint256,uint256,bytes,bool'),r[1][1]);a[3]=change(a[3]);r[1][1]=v.encodeAbiParameters(v.parseAbiParameters('address,uint256,uint256,bytes,bool'),a);});await assert.rejects(()=>adapter.verifySmartWalletSettlement(f.c),/UNSUPPORTED_PATH/,label);}
+ const from=Date.parse('2026-10-10T00:00:15.000Z'),through=Date.parse('2026-10-10T00:00:50.000Z'),all=[buy,sell],byTx=new Map(all.map(f=>[f.tx,f]));
+ const source={finalized:async()=>({number:'0xff',timestamp:new Date(through).toISOString()}),indexStatus:async()=>true,swaps:async()=>all.map(f=>f.row),transfers:async()=>all.map(f=>({token:{address_hash:f.domain},transaction_hash:f.tx,timestamp:f.executedAt})),receipt:async tx=>byTx.get(tx).c.receipt,block:async n=>{const f=all.find(f=>f.c.receipt.blockNumber===n);return {hash:f.c.receipt.blockHash,timestamp:f.executedAt};},smartWalletSettlement:async swaps=>adapter.verifySmartWalletSettlement({...byTx.get(swaps[0].tx).c,swaps})};
+ const snap={manifest:{campaign:{id:'test',state:'active',starts_at:new Date(from).toISOString(),ends_at:'2026-10-11T00:00:00.000Z'},participants:[{participant:'synthetic',entered_at:new Date(from).toISOString()}],markets:[{domain_token:buy.domain,quote_token:USDC},{domain_token:buy.domain,quote_token:WETH}]},accounts:[{participant:'synthetic',coverage:{complete:true,coverage_from:new Date(from).toISOString(),confirmed_through:new Date(through).toISOString(),updated_at:new Date(through).toISOString()}}],wallets:[{participant:'synthetic',trade_wallet:buy.wallet,agent:true}],references:[],fills:[]};
+ const result=await collect(snap,source,{now:through+120000});assert.equal(result.report.complete,true);assert.equal(result.packet.fills.length,2);assert.equal(result.report.counts.volumeUsd,'3.995396');assert.ok(result.packet.fills.every(f=>f.quoteToken===USDC));
+ const ledger=await require('./lib/public-accounting.cjs').reconstruct({participant:'synthetic',wallets:[buy.wallet],from,through,markets:snap.manifest.markets,references:[],eligible:result.packet.fills,source:{...source,blockAt:async t=>({number:t<from?'0x1':'0xff'}),nativeBalance:async()=>0n,nativeHistory:async()=>[],nativeTransaction:async()=>({moves:[],fee:0n,payer:buy.outside}),hasCode:async()=>false,balance:async(w,t,at)=>t===USDC?(at==='0x1'?10000000n:9993710n):0n,valueUsd:async(t,n)=>{assert.equal(t,USDC);return n;}}});
+ assert.equal(ledger.complete,true);assert.equal(ledger.events.length,4);assert.equal(ledger.events.find(e=>e.kind==='buy'&&e.token===buy.domain).usd,'2.000000');assert.equal(ledger.events.find(e=>e.kind==='sell').usd,'1.993710');assert.ok([...ledger.events,...ledger.openingLots].every(e=>e.token!==WETH),'routing WETH creates no wallet inventory or capital');assert.equal(ledger.events.find(e=>e.kind==='sell').units,'13039919');assert.ok(ledger.events.every(e=>!['in','deposit','withdrawal'].includes(e.kind)));
+ console.log('PASS synthetic two-hop smart-wallet fees: signed permit/direct buy/sell, exact per-hop conservation, output fees/sweep, 28 hostile mutations, canonical USDC fills, pool-only volume and fee-inclusive closed-roundtrip FIFO without intermediate WETH capital.');
+}
+
 async function main(){
+ await twoHopFeeTests();
  await feeTests();
  await allowanceTests();
  for(const f of fixtures){const result=await adapter.verifySmartWalletSettlement(context(f));assert.equal(result.swap.domainUnits,f.expected.domainUnits);assert.equal(result.amounts.walletQuoteUnits,f.expected.quoteUnits);assert.equal(result.volumeMicros.toString(),f.expected.volumeMicros);assert.equal(result.swap.quote,USDC);assert.equal(result.amounts.paths.length,f.rows.length);}

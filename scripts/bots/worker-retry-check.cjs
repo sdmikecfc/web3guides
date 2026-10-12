@@ -11,7 +11,7 @@ async function scenario(error,{watch=true,published=false}={}){
  Date:class extends Date{constructor(...args){super(...(args.length?args:[now]));}static now(){return now;}},
  setTimeout(fn,delay){pauses.push(delay);now+=delay;queueMicrotask(fn);},
  progress:async(phase,detail,report)=>{records.push({phase,detail,report});return true;},saveReport:r=>reports.push(r),
- run:async()=>{active++;maxActive=Math.max(maxActive,active);calls++;try{if(calls===1)throw Error(error);context.stopping=true;}finally{active--;}}
+ run:async()=>{active++;maxActive=Math.max(maxActive,active);calls++;try{if(calls===1)throw typeof error==='string'?Error(error):error;context.stopping=true;}finally{active--;}}
  };
  await vm.runInNewContext(loop,context,{timeout:1000});
  assert.equal(maxActive,1);assert.equal(calls,watch?2:1);
@@ -22,6 +22,9 @@ async function scenario(error,{watch=true,published=false}={}){
   const x=await scenario(reason,{published:reason==='ACCOUNTING_PUBLICATION_INTERRUPTED'});
   assert.equal(x.record.phase,'AUDIT_COMPLETE');assert.equal(x.report.status,'PENDING');assert.equal(x.wait,300000);assert.equal(x.record.detail.nextCheckMinutes,5);assert.equal(x.report.scoresConfirmed,false);assert.equal(x.report.scoreWrites,reason==='ACCOUNTING_PUBLICATION_INTERRUPTED');
  }
+ const reason=Object.assign(Error('PUBLICATION_SOURCE_CHANGED'),{sourceReason:'ENTRIES'}),diagnosed=await scenario(reason);
+ assert.equal(diagnosed.report.problems[0].code,'PUBLICATION_SOURCE_ENTRIES');assert.equal(diagnosed.wait,300000);
+ const privateReason=await scenario(Object.assign(Error('PUBLICATION_SOURCE_CHANGED'),{sourceReason:'private wallet and secret text'}));assert(!JSON.stringify(privateReason).includes('private wallet'));assert.equal(privateReason.report.problems,undefined);
  const failed=await scenario('RESULT_PUBLICATION_SCHEMA_REQUIRED');assert.equal(failed.record.phase,'AUDIT_FAILED');assert.equal(failed.report.status,'FAILED');assert.equal(failed.wait,900000);
  const sensitive=await scenario('unexpected private wallet 0x123 secret text');assert.equal(sensitive.report.code,'SOURCE_UNAVAILABLE');assert(!JSON.stringify(sensitive).includes('private wallet'));
  const once=await scenario('PRIVATE_COVERAGE_PENDING',{watch:false});assert.equal(once.wait,0);assert.equal(once.exitCode,1);

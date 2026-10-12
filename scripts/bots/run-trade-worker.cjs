@@ -11,7 +11,7 @@ const {startPublication}=require('./lib/start-publication.cjs');
 const {openAccountingCache}=require('./lib/accounting-cache.cjs');
 const {rpcFailure,preflightWorkerPacket}=require('./lib/worker-contract.cjs');
 const safeCode=code=>typeof code==='string'&&/^[A-Z][A-Z0-9_]{2,100}$/.test(code)?code:'SOURCE_UNAVAILABLE';
-const workerVersion='mk-public-worker-12-router-reconciliation';
+const workerVersion='mk-public-worker-13-enrollment-publication';
 let runStartedAt,runPublishedScores=false;
 const output=process.env.MK_WORKER_STATE_DIR||(process.platform==='win32'?'D:/Temp/modelkombat-tracking-review':path.join(process.env.TMPDIR||'/tmp','modelkombat-tracking-review'));
 const pollMinutes=Number(process.env.MK_WORKER_POLL_MINUTES||240);
@@ -57,6 +57,11 @@ async function run(){
  if(args.has('--write')&&['active','closed'].includes(snapshot.manifest.campaign.state)){
   if(Date.parse(result.packet.confirmedThrough)<Date.parse(snapshot.manifest.campaign.confirmed_through||0))throw Error('SOURCE_BEHIND_SAVED_CHECKPOINT');
   publisher=await startPublication({snapshot,packet:result.packet,accountCoverage:result.accountCoverage,rpc,report:safeReport()});
+  if(publisher.pendingEntrants){
+   result.packet.complete=false;result.packet.financialComplete=false;result.report.complete=false;result.report.financialComplete=false;
+   result.accountCoverage=publisher.accountCoverage;
+   result.report.warnings.push('New entrants joined after this verified cutoff and await the next scan.');
+  }
   runPublishedScores=true;
   await progress('RECONSTRUCTING_ACCOUNTING',{}, {...safeReport(),scoreWrites:true,status:result.packet.complete?'VOLUME_VERIFIED_FINANCIALS_PENDING':'PENDING'});
  }
@@ -94,6 +99,7 @@ async function run(){
 }
 let stopping=false;process.on('SIGINT',()=>{stopping=true;});process.on('SIGTERM',()=>{stopping=true;});
 const waitingCodes=new Set(['PUBLICATION_SOURCE_CHANGED','PRIVATE_COVERAGE_PENDING','SOURCE_BEHIND_SAVED_CHECKPOINT','WORKER_COMMIT_MK_WORKER_SOURCE_CHANGED','ACCOUNTING_PUBLICATION_INTERRUPTED']);
+const publicationSourceReasons=new Set(['INVALID_SNAPSHOT','INVALID_SCAN_WINDOW','CAMPAIGN','MANIFEST','ENTRIES','SCAN_COVERAGE','ACCOUNTS','ACCOUNT_IDENTITY','COVERAGE_DOWNGRADE','COVERAGE_INSUFFICIENT','WALLETS','WALLET_OWNERSHIP','MARKETS','REFERENCES','FILLS','ACCOUNTING_REVISIONS']);
 async function main(){do{
  let waitMinutes=pollMinutes;
  try{await run();}catch(e){
@@ -102,6 +108,7 @@ async function main(){do{
   // Previously published results remain in SQL; never certify a newer cutoff.
   if(waiting)waitMinutes=Math.min(pollMinutes,5);
   const failure={workerVersion,status:waiting?'PENDING':'FAILED',code,checkedAt:new Date().toISOString(),scoresConfirmed:false,scoreWrites:runPublishedScores};
+  if(code==='PUBLICATION_SOURCE_CHANGED'&&publicationSourceReasons.has(e.sourceReason))failure.problems=[{code:'PUBLICATION_SOURCE_'+e.sourceReason}];
   failure.healthReportSaved=await progress(waiting?'AUDIT_COMPLETE':'AUDIT_FAILED',{code,nextCheckMinutes:waitMinutes},failure);
   saveReport(failure);console.error(JSON.stringify(failure));
   if(!args.has('--watch')){process.exitCode=1;return;}
