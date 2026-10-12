@@ -4,9 +4,10 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const root=path.resolve(__dirname,'../..');
 function load(file,imports={}){const module={exports:{}};const code=ts.transpileModule(fs.readFileSync(path.join(root,file),'utf8'),{fileName:file,compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;vm.runInNewContext(code,{module,exports:module.exports,require:name=>{if(name in imports)return imports[name];throw Error('Unexpected dependency '+name)},console,Intl,Date,Number,Set,Map,BigInt},{filename:file});return module.exports;}
 const zones=load('src/lib/bots/token-zones.ts');
+const qualification=load('src/lib/bots/qualification-progress.ts',{'./token-zones':zones});
 const {ZoneOverview,FinancialLeaders,PersonalSyncStatus}=load('src/app/bots/_game/TokenZoneBoard.tsx',{
  react:React,'react/jsx-runtime':require('react/jsx-runtime'),'next/dynamic':()=>()=>null,'./EntryDialog':()=>null,'./QuickHelp':()=>null,
- '@/lib/bots/token-zones':zones,'@/lib/bots/workshop8/entry':{PLAY_ENTRY_URL:'/bots/play'},'./token-zone-board.module.css':{__esModule:true,default:new Proxy({},{get:(_,key)=>String(key)})}
+ '@/lib/bots/token-zones':zones,'@/lib/bots/qualification-progress':qualification,'@/lib/bots/workshop8/entry':{PLAY_ENTRY_URL:'/bots/play'},'./token-zone-board.module.css':{__esModule:true,default:new Proxy({},{get:(_,key)=>String(key)})}
 });
 const base={...zones.emptyZoneView(),available:true,state:'active',startsAt:'2026-10-06T14:00:00Z',endsAt:'2026-11-03T14:00:00Z',complete:true,fresh:true,confirmedThrough:'2026-10-06T18:00:00Z',issues:[]};
 const render=delta=>renderToStaticMarkup(React.createElement(ZoneOverview,{view:{...base,...delta}}));

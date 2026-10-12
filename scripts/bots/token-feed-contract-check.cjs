@@ -67,6 +67,9 @@ async function main(){
  const visible=await feed.readTokenZones(new Request('http://local'));
  assert.equal(visible.available,true);assert.equal(visible.volumeUsd,'80');assert.equal(visible.standings.volume[0].score,'80');
  assert.equal(visible.standings.roi.length,0);assert.equal(visible.standings.profit.length,0);
+ assert.equal(visible.personal.qualification.label,'Qualified for rewards');
+ assert.equal(visible.standings.volume[0].qualification.status,'qualified');
+ assert.deepEqual(Object.keys(visible.standings.volume[0].qualification).sort(),['detail','label','status'],'Public guidance contains no raw trading dates or identity data');
  assert.equal(visible.personal.qualified,true);assert.equal(visible.personal.scores.roi,null);assert.equal(visible.personal.scores.profit,null);
  assert.equal(visible.personal.ranks.roi,null);assert.equal(visible.personal.awards.length,0);
  assert.ok(visible.issues.some(i=>i.includes('ROI calculations are still syncing')));
@@ -120,6 +123,7 @@ async function main(){
  assert.equal(performance.financials.verified,1);assert.equal(performance.financials.total,null,'failed trade coverage cannot establish how many total traders exist');
  authenticated=null;performance=await feed.readTokenZones(new Request('http://local'));assert.ok(!JSON.stringify(performance).includes('123456.789012'));assert.ok(!JSON.stringify(performance).includes('888888'));assert.equal(performance.personal,null);
  authenticated={wallet:addr(4)};view.own='456';performance=await feed.readTokenZones(new Request('http://local'));
+ assert.equal(performance.personal.qualification.label,'Checking qualifying days','Unknown account coverage never manufactures missing-day counts');
  assert.equal(performance.personal.syncStatus,'review');assert.equal(performance.personal.qualified,null);assert.equal(performance.personal.volumeUsd,null);assert.equal(performance.personal.ranks.roi,null);assert.equal(performance.personal.scores,undefined);
  view.participants[1].tradeProblem=false;performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.personal.syncStatus,'syncing','new account sync is not accused of a bad trade');
  view.own='123';view.participants[0].financialProblem=true;verifiedFinancials.rows=[];performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.personal.syncStatus,'verified');assert.equal(performance.personal.financialStatus,'review');assert.equal(performance.personal.volumeUsd,'80','accounting issue does not remove verified trade volume');view.participants[0].financialProblem=false;

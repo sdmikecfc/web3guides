@@ -1,4 +1,5 @@
 import 'server-only';
+import {qualificationProgress} from '@/lib/bots/qualification-progress';
 import {createHmac,createHash,timingSafeEqual} from 'node:crypto';
 import {botsDb,Refusal} from './db';
 import {sessionFromRequest} from './session';
@@ -90,10 +91,11 @@ export async function readTokenZones(req:Request):Promise<ZoneView>{
   if(showTrades){
    out.volumeUsd=r.volume;let total=BigInt(0);const chartThrough=out.tracking?.newestThrough??c.confirmed_through;
    out.history=[{day:0,volumeUsd:'0'},...r.days.map((d:any)=>{total+=decimalUnits(d.volume);return {day:Math.min(d.day+1,(Math.min(Date.parse(chartThrough),Date.parse(c.ends_at))-Date.parse(c.starts_at))/DAY),volumeUsd:unitsDecimal(total,6)};})];
-   for(const category of ZONE_CATEGORIES)out.standings[category]=ranked(scores,category).slice(0,100).map(s=>{const owner=participants.find(p=>publicId(p.participant)===s.id);return {id:s.id,name:s.name,rank:s.rank,score:category==='profit'?null:s.scores[category]!,qualified:s.qualified,verifiedThrough:owner&&category!=='battles'?((category==='roi'||category==='profit')?verified.get(owner.participant)?.through??null:isolated?owner.tradeThrough:c.confirmed_through):null}});
+   for(const category of ZONE_CATEGORIES)out.standings[category]=ranked(scores,category).slice(0,100).map(s=>{const owner=participants.find(p=>publicId(p.participant)===s.id);return {id:s.id,name:s.name,rank:s.rank,score:category==='profit'?null:s.scores[category]!,qualified:s.qualified,qualification:qualificationProgress({state:out.state,startsAt:out.startsAt,endsAt:out.endsAt,qualified:s.qualified,delayed:!!owner&&!tradeCurrent.has(owner.participant),times:owner&&tradeVerified.has(owner.participant)?owner.times:undefined,verifiedThrough:owner&&tradeVerified.has(owner.participant)?(isolated?owner.tradeThrough:c.confirmed_through):null}),verifiedThrough:owner&&category!=='battles'?((category==='roi'||category==='profit')?verified.get(owner.participant)?.through??null:isolated?owner.tradeThrough:c.confirmed_through):null}});
   }
   const own=participants.find(p=>p.participant===r.own);
   if(out.personal&&own){out.personal.entered=true;out.personal.attemptsRemaining=own.remaining;
+   out.personal.qualification=qualificationProgress({state:out.state,startsAt:out.startsAt,endsAt:out.endsAt,delayed:!tradeCurrent.has(own.participant),times:tradeVerified.has(own.participant)?own.times:undefined,verifiedThrough:tradeVerified.has(own.participant)?(isolated?own.tradeThrough:c.confirmed_through):null});
    out.personal.tradeThrough=tradeVerified.has(own.participant)?(isolated?own.tradeThrough:c.confirmed_through):null;out.personal.financialThrough=verified.get(own.participant)?.through??null;out.personal.resultsDelayed=!!(retainedShape&&own.tradeDelayed)||verified.get(own.participant)?.retained===true;
    out.personal.syncStatus=isolated&&own.tradeProblem?'review':tradeVerified.has(own.participant)?'verified':'syncing';
    out.personal.financialStatus=isolated&&own.financialProblem?'review':verified.has(own.participant)?'verified':tradeVerified.has(own.participant)&&!traders.has(own.participant)?'no_trades':'syncing';

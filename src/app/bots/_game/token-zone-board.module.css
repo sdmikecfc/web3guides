@@ -42,3 +42,16 @@
 @media(max-width:1000px){.summary{gap:10px}.summaryCard{padding:15px}.metricNumber{font-size:24px}.rewardNumber{font-size:21px}.pending{font-size:16px}}
 @media(max-width:760px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.summaryCard{min-height:125px}.unlockPanel{padding:15px}.unlockHeading{gap:12px}.unlockHeading strong{font-size:14px}.unlockStatus{font-size:11px;max-width:110px;flex-shrink:0}.updateLine{gap:7px 12px}.updateLine details{margin-left:0}.unlockNote{max-width:580px}}
 @media(max-width:420px){.summary{gap:8px}.summaryCard{padding:13px 12px;gap:8px}.metricLabel{font-size:9px;letter-spacing:1px}.metricNumber{font-size:22px}.rewardNumber{font-size:19px}.pending{font-size:16px}.summaryCard small{font-size:10px}.unlockHeading{display:block}.unlockStatus{display:block;text-align:left;max-width:none;margin-top:7px}.unlockBar,.unlockLabels{gap:3px}.unlockSegment{height:12px}.unlockLabels{font-size:9px}.unlockNote{font-size:9px}.updateLine{font-size:10px}}
+
+.qualification{display:flex;flex-direction:column;gap:5px;max-width:280px;line-height:1.45;margin:12px 0}.qualification strong{font-size:13px;color:#f0dca5}.qualification small{font-size:11px;color:var(--muted)}.qualification[data-status=qualified] strong{color:#a9ddbd}.table .qualification{min-width:180px;margin:0}
+@media(max-width:600px){
+ .table{overflow-x:visible}
+ .table table,.table thead,.table tbody{display:block;width:100%}
+ .table tr{display:grid;grid-template-columns:48px minmax(0,1fr) minmax(82px,.8fr);align-items:start;border-bottom:1px solid var(--line)}
+ .table th,.table td{min-width:0;padding:12px 8px;border:0;overflow-wrap:anywhere}
+ .table th:last-child{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+ .table td:last-child{grid-column:1/-1;padding-top:0;padding-bottom:14px}
+ .table .qualification{min-width:0;max-width:none;margin:0}
+ .table .qualification strong{font-size:13px}
+ .table .qualification small{font-size:11px}
+}
