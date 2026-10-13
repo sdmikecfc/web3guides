@@ -11,7 +11,7 @@ const {startPublication}=require('./lib/start-publication.cjs');
 const {openAccountingCache}=require('./lib/accounting-cache.cjs');
 const {rpcFailure,preflightWorkerPacket}=require('./lib/worker-contract.cjs');
 const safeCode=code=>typeof code==='string'&&/^[A-Z][A-Z0-9_]{2,100}$/.test(code)?code:'SOURCE_UNAVAILABLE';
-const workerVersion='mk-public-worker-13-enrollment-publication';
+const workerVersion='mk-public-worker-14-strategy-routes';
 let runStartedAt,runPublishedScores=false;
 const output=process.env.MK_WORKER_STATE_DIR||(process.platform==='win32'?'D:/Temp/modelkombat-tracking-review':path.join(process.env.TMPDIR||'/tmp','modelkombat-tracking-review'));
 const pollMinutes=Number(process.env.MK_WORKER_POLL_MINUTES||240);
