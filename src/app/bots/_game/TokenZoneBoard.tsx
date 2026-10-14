@@ -76,7 +76,7 @@ export function PersonalSyncStatus({personal}:{personal:ZoneView['personal']}){
 }
 export function QualificationStatus({view,progress,qualified,entered=true}:{view:Pick<ZoneView,'state'|'startsAt'|'endsAt'>;progress?:QualificationProgress;qualified?:boolean|null;entered?:boolean}){
  const status=progress??qualificationProgress({state:view.state,startsAt:view.startsAt,endsAt:view.endsAt,qualified,entered});
- return <div className={css.qualification} data-status={status.status}><strong>{status.label}</strong><small>{status.detail}</small></div>;
+ return <div className={css.qualification} data-status={status.status}><strong>{status.label}</strong><small>{status.detail}</small>{status.needsSupport&&<small><a href="https://discord.gg/doma" target="_blank" rel="noopener noreferrer">Get help from @sdmike →</a></small>}</div>;
 }
 function ZoneChart({view}:{view:ZoneView}){
  const volume=verifiedVolume(view),x=(day:number)=>66+Math.min(28,Math.max(0,day))/28*650,y=(volume:number)=>365-Math.min(750000,Math.max(0,volume))/750000*320;

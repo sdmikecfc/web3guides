@@ -4,6 +4,7 @@ export type QualificationProgress = {
  status: 'qualified'|'action'|'waiting'|'closed';
  label: string;
  detail: string;
+ needsSupport?: boolean;
 };
 type Input = {
  state: 'draft'|'active'|'closed'|'frozen'|'unavailable';
@@ -15,6 +16,8 @@ type Input = {
  times?: string[];
  verifiedThrough?: string|null;
  delayed?: boolean;
+ /** The server could not verify one or more newer trades. */
+ review?: boolean;
  now?: number;
 };
 const waiting = ():QualificationProgress => ({status:'waiting',label:'Checking qualifying days',detail:'Your verified trading days will appear here.'});
@@ -39,11 +42,14 @@ export function qualificationProgress(input:Input):QualificationProgress {
  if(state==='frozen')return qualified===false?{status:'closed',label:'Did not qualify',detail:'Needed trades on 3 different days in one week.'}:waiting();
  if(state==='closed'||now>=end)return {status:'closed',label:weeks?`${Math.min(3,Math.max(...weeks))}/3 trading days verified`:'Checking qualifying days',detail:'Trading has closed. Final checks are running.'};
  if(now<start)return {status:'waiting',label:'Trading has not started',detail:rule};
+ const verifiedWeek=weeks?Math.max(0,Math.min(3,Math.floor((Math.min(through,end-1)-start)/(7*DAY)))):null;
+ const lastConfirmed=weeks&&verifiedWeek!==null?`Last confirmed: ${weeks[verifiedWeek]} of 3 trading days in Week ${verifiedWeek+1}. `:'';
+ if(input.review)return {status:'waiting',label:'Our trade check needs review',detail:lastConfirmed?lastConfirmed+'Newer trades could not be verified.':'We could not verify a trade, so we cannot confirm qualification yet.',needsSupport:true};
  if(!weeks)return waiting();
  const week=Math.floor((now-start)/(7*DAY)),weekStart=start+week*7*DAY,weekEnd=Math.min(end,weekStart+7*DAY);
  const days=weeks[week],needed=3-days;
  // Old coverage must never turn missing observations into a new trading demand.
- if(input.delayed||through<weekStart||now-through>ZONE_FRESH_MS||utcDay(through)!==utcDay(now))return {status:'waiting',label:through<weekStart?'Checking this week’s trading days':`${days}/3 trading days verified`,detail:'Newer trades are syncing. '+rule};
+ if(input.delayed||through<weekStart||now-through>ZONE_FRESH_MS||utcDay(through)!==utcDay(now))return {status:'waiting',label:'Waiting for a trading update',detail:lastConfirmed+'Newer trades are still being checked.'};
  const tradedToday=evidence!.some(time=>{const t=Date.parse(time);return t>=weekStart&&t<weekEnd&&utcDay(t)===utcDay(now);});
  const datesLeft=utcDay(weekEnd-1)-utcDay(now)+1-(tradedToday?1:0);
  if(needed>datesLeft){
