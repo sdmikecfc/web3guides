@@ -5,6 +5,7 @@ import {botsDb,Refusal} from './db';
 import {sessionFromRequest} from './session';
 import {sameOrigin} from './workshop-journey';
 import {trackingCredential} from './tracking-credential';
+import {readEntryWalletLabels} from './token-zone-labels';
 import {readZoneBatch,readFeedRegistry} from './token-zone-feed';
 import {TOKEN_ACCOUNTING} from '@/lib/bots/token-zone-accounting';
 import {emptyZoneView,ZONE_CAMPAIGN,ZONE_RULES,ZONE_FRESH_MS,ZONE_CATEGORIES,REWARD_ZONES,DAY,decimalUnits,unitsDecimal,ranked,qualificationDays,tokenAwards,type ZoneScore,type ZoneView,type ZoneAsset} from '@/lib/bots/token-zones';
@@ -32,6 +33,8 @@ export async function readTokenZones(req:Request):Promise<ZoneView>{
   out.startsAt=c.starts_at;out.endsAt=c.ends_at;out.confirmedThrough=c.confirmed_through;
   out.complete=c.complete===true;out.fresh=c.state==='frozen'||(date(c.confirmed_through)&&Math.min(Date.now(),Date.parse(c.ends_at))-Date.parse(c.confirmed_through)<=ZONE_FRESH_MS);
   const participants=r.participants as any[];if(!Array.isArray(participants)||participants.length>20000)throw Error('Participant read incomplete');
+  // Start optional display metadata alongside the remaining score reads.
+  const entryLabels=readEntryWalletLabels(participants.map(p=>p.participant));
   // Saved results are displayed only when SQL revalidates their historical
   // proof. A newer cutoff is never assigned to an older verified result.
   const retainedContract=r.accountScope==='retained-account-results-1';
@@ -76,17 +79,9 @@ export async function readTokenZones(req:Request):Promise<ZoneView>{
   out.financials={verified:financialKnown?verified.size:null,total:financialKnown?financialTotal:null,complete:c.financial_complete===true&&out.complete,confirmedThrough:c.confirmed_through,retained:retainedFinancials,...throughRange([...verified.values()].map(p=>p.through))};
   if(retainedFinancials&&!retainedTrades)out.issues.push('Showing last verified ROI while newer trades sync.');
   else if(!c.financial_complete&&showTrades&&!retainedFinancials)out.issues.push(verified.size?'Verified ROI results are shown while the remaining accounts are checked.':'ROI calculations are still syncing.');
-  // Public name = the entry wallet shortened (0x3b8d…0a35), so the board reads as real wallets
-  // (Mike 2026-10-11, ADR-0171). The hashed id stays the key; a missing wallet keeps the old label.
-  const entryWallets=new Map<string,string>();
-  // Labels are optional: a slow or broken lookup must never erase verified scores.
-  const labelAbort=new AbortController(),labelTimer=setTimeout(()=>labelAbort.abort(),750);
-  try{
-   const {data,error}=await botsDb().from('mkz_entries').select('participant,wallet').eq('campaign_id',ZONE_CAMPAIGN).range(0,19999).abortSignal(labelAbort.signal);
-   if(!error&&Array.isArray(data))for(const e of data)if(e&&typeof e.participant==='string'&&typeof e.wallet==='string'&&/^0x[0-9a-f]{40}$/i.test(e.wallet))entryWallets.set(e.participant,e.wallet);
-  }catch{/* Keep the existing Trader labels when optional metadata is unavailable. */}
-  finally{clearTimeout(labelTimer)}
-  const publicName=(uid:string)=>{const w=entryWallets.get(uid);return w?`${w.slice(0,6)}…${w.slice(-4)}`:`Trader ${publicId(uid).slice(0,6).toUpperCase()}`;};
+  const entryWallets=await entryLabels;
+  // The hashed identity is only a row key, never a substitute display name.
+  const publicName=(uid:string)=>entryWallets.get(uid)??'Wallet unavailable';
   const scores:ZoneScore[]=participants.map(p=>({id:publicId(p.participant),name:publicName(p.participant),qualified:tradeVerified.has(p.participant)&&qualificationDays(p.times,c.starts_at,c.ends_at).some(n=>n>=3),scores:{volume:tradeVerified.has(p.participant)?p.volume:null,roi:verified.get(p.participant)?.roi??null,profit:verified.get(p.participant)?.profit??null,battles:tradeVerified.has(p.participant)?p.battles:null}}));
   if(showTrades){
    out.volumeUsd=r.volume;let total=BigInt(0);const chartThrough=out.tracking?.newestThrough??c.confirmed_through;

@@ -5,7 +5,7 @@ const root=path.resolve(__dirname,'../..');
 function load(file,imports={}){const module={exports:{}};const code=ts.transpileModule(fs.readFileSync(path.join(root,file),'utf8'),{fileName:file,compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;vm.runInNewContext(code,{module,exports:module.exports,require:name=>{if(name in imports)return imports[name];throw Error('Unexpected dependency '+name)},console,Intl,Date,Number,Set,Map,BigInt},{filename:file});return module.exports;}
 const zones=load('src/lib/bots/token-zones.ts');
 const qualification=load('src/lib/bots/qualification-progress.ts',{'./token-zones':zones});
-const {ZoneOverview,FinancialLeaders,PersonalSyncStatus}=load('src/app/bots/_game/TokenZoneBoard.tsx',{
+const {ZoneOverview,FinancialLeaders,PersonalSyncStatus,retainWalletLabels}=load('src/app/bots/_game/TokenZoneBoard.tsx',{
  react:React,'react/jsx-runtime':require('react/jsx-runtime'),'next/dynamic':()=>()=>null,'./EntryDialog':()=>null,'./QuickHelp':()=>null,
  '@/lib/bots/token-zones':zones,'@/lib/bots/qualification-progress':qualification,'@/lib/bots/workshop8/entry':{PLAY_ENTRY_URL:'/bots/play'},'./token-zone-board.module.css':{__esModule:true,default:new Proxy({},{get:(_,key)=>String(key)})}
 });
@@ -45,6 +45,19 @@ html=render({complete:false,fresh:false,tracking:{verified:1,total:2,partial:tru
 html=leaders({complete:false,tracking:{verified:1,total:2,partial:true},financials:{verified:1,total:null,complete:false,retained:true},standings:{volume:[],battles:[],roi:[{name:'Trader ONE',rank:1,score:'12.5',verifiedThrough:'2026-10-06T18:00:00Z'}],profit:[{name:'Trader ONE',rank:1,score:null,verifiedThrough:'2026-10-06T18:00:00Z'}]}});assert.match(html,/\+12\.50%/);assert.match(html,/Last verified returns/);assert.match(html,/Oct 6/);assert.match(html,/18:00 UTC/);
 html=renderToStaticMarkup(React.createElement(PersonalSyncStatus,{personal:{entered:true,syncStatus:'review',resultsDelayed:true,tradeThrough:'2026-10-06T18:00:00Z',financialThrough:'2026-10-06T18:00:00Z'}}));assert.match(html,/Last verified trades/);assert.match(html,/Last verified ROI/);assert.match(html,/@sdmike/);
 console.log('PASS: realized ROI showcase, private-profit rank, pending/stale results and provisional account coverage.');
+// A label failure must not revive any previous score, row or private session.
+const row=(id,name,score)=>({id,name,score,rank:1,qualified:false});
+const named={...base,standings:{volume:[row('A','0x1234…abcd','10'),row('removed','0x9876…4321','90')],roi:[],profit:[],battles:[]},personal:{connected:true,volumeUsd:'PRIVATE'}};
+const failedNames={...base,standings:{volume:[row('A','Wallet unavailable','25'),row('new','Trader ABCDEF','3')],roi:[row('A','Wallet unavailable','2.5')],profit:[],battles:[]},personal:null};
+const originalIncoming=JSON.stringify(failedNames),retained=retainWalletLabels(named,failedNames);
+assert.equal(retained.standings.volume[0].name,'0x1234…abcd');assert.equal(retained.standings.roi[0].name,'0x1234…abcd');
+assert.equal(retained.standings.volume[0].score,'25');assert.equal(retained.standings.volume[1].name,'Wallet unavailable');
+assert.equal(retained.standings.volume.length,2);assert.equal(retained.personal,null);assert.equal(JSON.stringify(failedNames),originalIncoming);
+assert.ok(!JSON.stringify(retained).includes('Trader ABCDEF'));assert.ok(!JSON.stringify(retained).includes('PRIVATE'));
+const correction=retainWalletLabels(retained,{...failedNames,standings:{...failedNames.standings,volume:[row('A','0xabcd…1234','30')]}});
+assert.equal(correction.standings.volume[0].name,'0xabcd…1234');assert.equal(correction.standings.roi[0].name,'0xabcd…1234');
+const empty=retainWalletLabels(named,zones.emptyZoneView());assert.equal(empty.standings.volume.length,0);assert.equal(empty.personal,null);
+console.log('PASS: wallet labels survive failed refreshes by public identity only; corrected labels win; incoming scores, removed rows and cleared sessions remain authoritative.');
 if(process.argv.includes('--strict')){
  const config=ts.readConfigFile(path.join(root,'tsconfig.json'),ts.sys.readFile).config,options=ts.convertCompilerOptionsFromJson(config.compilerOptions,root).options;options.incremental=false;
  const program=ts.createProgram(['next-env.d.ts','src/app/bots/_game/TokenZoneBoard.tsx'].map(p=>path.join(root,p)),options),errors=ts.getPreEmitDiagnostics(program);

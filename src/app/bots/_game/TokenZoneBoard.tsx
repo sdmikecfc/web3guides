@@ -90,6 +90,18 @@ function ZoneChart({view}:{view:ZoneView}){
  {(volume===null)&&<><rect x='210' y='178' width='370' height='72' rx='12' fill='#152624' fillOpacity='.94'/><text x='395' y='209' textAnchor='middle' className={css.emptyChart}>{!view.available?'Competition status unavailable':view.state==='draft'?'Your climb starts together.':awaiting}</text><text x='395' y='232' textAnchor='middle' className={css.axis}>{view.available&&view.state==='draft'?openingText(view):'Trade checks are running.'}</text></>}
  </svg></div>;
 }
+// A refresh may hit a cold server while its optional wallet lookup is down.
+// Retain only public display labels, keyed by identity; all scores and personal
+// state still come exclusively from the newest accepted response.
+export function retainWalletLabels(previous:ZoneView,next:ZoneView):ZoneView{
+ const known=new Map<string,string>(),shortWallet=/^0x[0-9a-f]{4}…[0-9a-f]{4}$/i;
+ for(const view of [previous,next])for(const category of ZONE_CATEGORIES)for(const row of view.standings[category]){
+  if(shortWallet.test(row.name))known.set(row.id,row.name);
+ }
+ const standings={...next.standings};
+ for(const category of ZONE_CATEGORIES)standings[category]=next.standings[category].map(row=>({...row,name:known.get(row.id)??'Wallet unavailable'}));
+ return {...next,standings};
+}
 export default function TokenZoneBoard({compact=false}:{compact?:boolean}){
  const [view,setView]=useState<ZoneView>(emptyZoneView),[error,setError]=useState(''),[connect,setConnect]=useState(false),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[category,setCategory]=useState<ZoneCategory>('volume');
  const registered=useRef(''),requestId=useRef(0),alive=useRef(true),controller=useRef<AbortController|null>(null),identity=useRef<string|null>(null),confirmedIdentity=useRef<string|null>(null),entering=useRef(false);
@@ -111,7 +123,7 @@ export default function TokenZoneBoard({compact=false}:{compact?:boolean}){
   }
   const publicRead=(async()=>{
    const v=await readZones('');
-   if(sameIdentity()&&!personalAccepted){publicAccepted=true;setView({...v,personal:null})}
+   if(sameIdentity()&&!personalAccepted){publicAccepted=true;setView(previous=>retainWalletLabels(previous,{...v,personal:null}))}
   })();
   const personalRead=token?(async()=>{
    if(registered.current!==token){
@@ -123,7 +135,7 @@ export default function TokenZoneBoard({compact=false}:{compact?:boolean}){
    const v=await readZones(token);
    if(!current())return;if(!sameIdentity())throw issue('identity');
    if(!v.personal?.connected)throw issue('auth');
-   personalAccepted=true;confirmedIdentity.current=token;setView(v);
+   personalAccepted=true;confirmedIdentity.current=token;setView(previous=>retainWalletLabels(previous,v));
   })():Promise.resolve();
   try{
    const [publicResult,personalResult]=await Promise.allSettled([publicRead,personalRead]);
@@ -139,7 +151,7 @@ export default function TokenZoneBoard({compact=false}:{compact?:boolean}){
   if(entering.current||loading||error)return;const token=credential();if(!token||confirmedIdentity.current!==token){clearPersonal();setError('Your wallet changed. Refresh its status before continuing.');return;}
   if(!view.available||view.state!=='active'||!p?.connected||!linked||p.entered)return;
   entering.current=true;setBusy(true);setError('');const id=++requestId.current,c=new AbortController();controller.current?.abort();controller.current=c;const timeout=setTimeout(()=>c.abort(),12000);
-  try{const r=await fetch('/api/bots/campaign/zones',{method:'POST',headers:headers(token),signal:c.signal}),v=await r.json();if(!r.ok||v.zones?.schemaVersion!==1)throw issue(r.status===401?'auth':'unavailable');if(!alive.current||id!==requestId.current)return;if(credential()!==token)throw issue('identity');if(!v.zones.personal?.connected)throw issue('auth');confirmedIdentity.current=token;setView(v.zones);
+  try{const r=await fetch('/api/bots/campaign/zones',{method:'POST',headers:headers(token),signal:c.signal}),v=await r.json();if(!r.ok||v.zones?.schemaVersion!==1)throw issue(r.status===401?'auth':'unavailable');if(!alive.current||id!==requestId.current)return;if(credential()!==token)throw issue('identity');if(!v.zones.personal?.connected)throw issue('auth');confirmedIdentity.current=token;setView(previous=>retainWalletLabels(previous,v.zones));
   }catch(e){if(alive.current&&id===requestId.current){clearPersonal();setError((e as {kind?:string})?.kind==='auth'||(e as {kind?:string})?.kind==='identity'?issueText(e):'Entry could not be confirmed. Refresh your status before trading for points.')}}
   finally{clearTimeout(timeout);if(alive.current&&id===requestId.current){entering.current=false;setBusy(false)}}
  }

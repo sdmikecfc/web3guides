@@ -9,7 +9,7 @@ function load(file){file=path.resolve(root,file);if(cache.has(file))return cache
   if(n==='server-only')return {};if(n==='./db')return {Refusal,botsDb:()=>db};
   if(n==='./session')return {sessionFromRequest:()=>authenticated};if(n==='./workshop-journey')return {sameOrigin(){}};
   if(n.startsWith('@/'))return load('src/'+n.slice(2)+'.ts');if(n.startsWith('.'))return load(path.resolve(path.dirname(file),n+'.ts'));return require(n);
- },Buffer,Request,Response,Date,URL,AbortController,setTimeout:trackedTimeout,clearTimeout:trackedClear,process:{env},console});return m.exports;
+ },Buffer,Request,Response,Date,URL,AbortController,AbortSignal,setTimeout:trackedTimeout,clearTimeout:trackedClear,process:{env},console});return m.exports;
 }
 const feed=load('src/app/bots/_server/token-zones.ts'),contract=load('src/app/bots/_server/token-zone-feed.ts'),credentials=load('src/app/bots/_server/tracking-credential.ts');
 const addr=n=>'0x'+n.toString(16).padStart(40,'0'),stamp='2026-09-20T12:00:00.000Z',opening='2026-09-20T00:00:00.000Z';
@@ -51,14 +51,16 @@ async function main(){
  env.BB_SESSION_SECRET='fixture-only-'+ 'x'.repeat(40);authenticated={wallet:addr(1)};
  const day=86400000,start=Date.now()-3*day,at=n=>new Date(start+n*day).toISOString();
  const view={campaign:{rules:'mk-token-zones-1',state:'active',starts_at:at(0),ends_at:at(28),confirmed_through:at(3),complete:true,financial_complete:false},assets:[],own:'123',volume:'80',days:[{day:0,volume:'20'},{day:1,volume:'30'},{day:2,volume:'30'}],participants:[{participant:'123',volume:'80',roi:'33.3',profit:'40',battles:'1',times:[at(0),at(1),at(2)],remaining:11,domains:1}]};
- let verifiedFinancials=null,labelMode='normal',labelRows=[{participant:'123',wallet:addr(1)}],labelActive=0,labelAborts=0;
+ let verifiedFinancials=null,labelMode='normal',labelRows=[{participant:'123',wallet:addr(1)}],labelActive=0,labelAborts=0,labelReads=0;
  db={async rpc(name){if(name==='mkz_verified_financials')return {data:verifiedFinancials,error:verifiedFinancials?null:{code:'PGRST202'}};assert.equal(name,'mkz_read');return {data:view,error:null}},from(table){
   if(table==='mkz_entries'){
+   labelReads++;
    if(labelMode==='throw')throw Error('PRIVATE_LABEL_LOOKUP_DETAIL');
-   let signal;const q={select(fields){assert.equal(fields,'participant,wallet');return q},eq(key,value){assert.equal(key,'campaign_id');assert.equal(value,'model-kombat-zones-1');return q},range(from,to){assert.equal(from,0);assert.equal(to,19999);return q},abortSignal(value){assert.ok(value instanceof AbortSignal);signal=value;return q},then(resolve,reject){
+   let signal,requested;const q={select(fields){assert.equal(fields,'participant,wallet');return q},eq(key,value){assert.equal(key,'campaign_id');assert.equal(value,'model-kombat-zones-1');return q},in(key,ids){assert.equal(key,'participant');assert.ok(Array.isArray(ids)&&ids.length>0&&ids.length<=500,'Label reads are bounded to requested participant chunks');assert.equal(new Set(ids).size,ids.length);assert.ok(ids.every(id=>view.participants.some(p=>p.participant===id)),'Only participants in this snapshot are requested');requested=ids;return q},range(from,to){assert.equal(from,0);assert.equal(to,499);return q},abortSignal(value){assert.ok(value instanceof AbortSignal);signal=value;return q},then(resolve,reject){
     assert.ok(signal,'Optional labels must have an abortable deadline');
+    assert.ok(requested,'Entry labels must be scoped to requested participants');
     if(labelMode==='reject')return Promise.reject(Error('PRIVATE_LABEL_LOOKUP_DETAIL')).then(resolve,reject);
-    if(labelMode==='delayed')return new Promise((done,fail)=>{labelActive++;let completed=false;const finish=(aborted)=>{if(completed)return;completed=true;clearTimeout(timer);signal.removeEventListener('abort',abort);labelActive--;if(aborted){labelAborts++;fail(new DOMException('Labels timed out','AbortError'))}else done({data:labelRows,error:null})},abort=()=>finish(true),timer=setTimeout(()=>finish(false),5000);signal.addEventListener('abort',abort,{once:true});if(signal.aborted)abort()}).then(resolve,reject);
+    if(labelMode==='delayed'||labelMode==='slowSuccess')return new Promise((done,fail)=>{labelActive++;let completed=false;const finish=(aborted)=>{if(completed)return;completed=true;clearTimeout(timer);signal.removeEventListener('abort',abort);labelActive--;if(aborted){labelAborts++;fail(new DOMException('Labels timed out','AbortError'))}else done({data:labelRows,error:null})},abort=()=>finish(true),timer=setTimeout(()=>finish(false),labelMode==='slowSuccess'?900:5000);signal.addEventListener('abort',abort,{once:true});if(signal.aborted)abort()}).then(resolve,reject);
     return Promise.resolve(labelMode==='error'?{data:null,error:{message:'PRIVATE_LABEL_LOOKUP_DETAIL'}}:{data:labelMode==='malformed'?{unexpected:'shape'}:labelRows,error:null}).then(resolve,reject);
    }};return q;
   }
@@ -85,16 +87,32 @@ async function main(){
  const verifiedBaseline=withoutNames(performance);assert.equal(performance.standings.volume[0].name,'0x0000…0001');assert.equal(performance.standings.roi[0].name,'0x0000…0001');
  for(const failure of ['throw','reject','error','malformed','badRows','delayed']){
   labelMode=failure;const originalRows=labelRows;if(failure==='badRows')labelRows=[null,undefined,7,{participant:123,wallet:addr(1)},{participant:'123',wallet:null},{participant:'123',wallet:{toString:()=>addr(1)}},{participant:'123',wallet:'invalid'}];
-  const started=Date.now(),abortsBefore=labelAborts,result=await feed.readTokenZones(new Request('http://local'));
-  assert.deepEqual(withoutNames(result),verifiedBaseline,failure+' must preserve all verified results');assert.match(result.standings.volume[0].name,/^Trader [0-9A-F]{6}$/);assert.equal(result.personal,null);
-  assert.ok(!JSON.stringify(result).includes('123456.789012'));assert.ok(!JSON.stringify(result).includes('PRIVATE_LABEL_LOOKUP_DETAIL'));assert.equal(labelTimers.size,0,'Optional-label timer is cleaned up');assert.equal(labelActive,0,'No optional lookup remains in flight');
-  if(failure==='delayed'){assert.equal(labelAborts,abortsBefore+1,'The actual in-flight lookup is aborted');assert.ok(Date.now()-started<2500,'Optional label deadline is bounded');}
+  const started=Date.now(),abortsBefore=labelAborts,readsBefore=labelReads,result=await feed.readTokenZones(new Request('http://local'));
+  assert.ok(labelReads>readsBefore,'Warm labels still refresh from the canonical entry');
+  assert.deepEqual(withoutNames(result),verifiedBaseline,failure+' must preserve all verified results');for(const rows of Object.values(result.standings))for(const row of rows)assert.equal(row.name,'0x0000…0001',failure+' retains the last validated short wallet label');assert.equal(result.personal,null);
+  assert.ok(!JSON.stringify(result).includes('123456.789012'));assert.ok(!JSON.stringify(result).includes('PRIVATE_LABEL_LOOKUP_DETAIL'));assert.ok(!JSON.stringify(result).includes(addr(1)),'Full entry wallets stay server-side');assert.equal(labelTimers.size,0,'Optional-label timer is cleaned up');assert.equal(labelActive,0,'No optional lookup remains in flight');
+  if(failure==='delayed'){assert.equal(labelAborts,abortsBefore+1,'The actual in-flight lookup is aborted');assert.ok(Date.now()-started<4500,'Optional label deadline is bounded');}
   labelRows=originalRows;
  }
+ // A cold participant must not inherit another account's name, even when all
+ // score values happen to match. Missing names never reveal participant hashes.
+ view.participants[0].participant='cold-label-fixture';view.own='cold-label-fixture';verifiedFinancials.rows[0].participant='cold-label-fixture';
+ labelMode='normal';labelRows=[];
+ const coldBaseline=await feed.readTokenZones(new Request('http://local'));
+ labelMode='error';const coldFailure=await feed.readTokenZones(new Request('http://local'));
+ assert.deepEqual(withoutNames(coldFailure),withoutNames(coldBaseline));assert.equal(coldFailure.available,true);assert.equal(coldFailure.standings.volume[0].score,'80');assert.equal(coldFailure.standings.roi[0].score,'12.5');
+ for(const rows of Object.values(coldFailure.standings))for(const row of rows)assert.equal(row.name,'Wallet unavailable');
+ assert.ok(!JSON.stringify(coldFailure).includes('cold-label-fixture'));assert.ok(!JSON.stringify(coldFailure).includes('Trader '));assert.ok(!JSON.stringify(coldFailure).includes('123456.789012'));assert.equal(coldFailure.personal,null);assert.equal(labelTimers.size,0);
+ view.participants[0].participant='123';view.own='123';verifiedFinancials.rows[0].participant='123';
+ // A response later than the old 750 ms deadline must replace a cached label.
+ labelMode='slowSuccess';labelRows=[{participant:'123',wallet:addr(2)}];
+ const slowStart=Date.now(),slowAborts=labelAborts,slowLabels=await feed.readTokenZones(new Request('http://local'));
+ assert.ok(Date.now()-slowStart>=800);assert.deepEqual(withoutNames(slowLabels),verifiedBaseline);assert.equal(slowLabels.standings.volume[0].name,'0x0000…0002');assert.equal(labelAborts,slowAborts);assert.equal(labelActive,0);assert.equal(labelTimers.size,0);
+ labelMode='error';const cachedCorrection=await feed.readTokenZones(new Request('http://local'));assert.deepEqual(withoutNames(cachedCorrection),verifiedBaseline);assert.equal(cachedCorrection.standings.volume[0].name,'0x0000…0002','A validated correction becomes the failure fallback');
  labelMode='normal';labelRows=[null,{participant:'123',wallet:addr(1)},{participant:'bad',wallet:'not-an-address'}];
  const recoveredLabels=await feed.readTokenZones(new Request('http://local'));assert.deepEqual(withoutNames(recoveredLabels),verifiedBaseline);assert.equal(recoveredLabels.standings.volume[0].name,'0x0000…0001');assert.equal(labelTimers.size,0);
  labelRows=[{participant:'123',wallet:addr(1)}];
- console.log('PASS optional wallet labels: shortened names, thrown/rejected/error/malformed fallback, real abort deadline, no orphan lookup, exact standings/privacy preservation and recovery.');
+ console.log('PASS optional wallet labels: scoped reads, warm failure retention, cold safe fallback, slow success, corrected labels, real abort deadline, no orphan lookup and exact standings/privacy preservation.');
  verifiedFinancials.confirmedThrough=at(2);performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.standings.roi.length,0,'stale snapshot cannot showcase a result');
  view.campaign.financial_complete=true;performance=await feed.readTokenZones(new Request('http://local'));assert.equal(performance.standings.profit[0].score,null,'even final public profit scores stay private');
  view.participants.push({participant:'456',volume:'0',roi:'999',profit:'888888',battles:'0',times:[],remaining:12,domains:0});
