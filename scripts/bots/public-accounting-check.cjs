@@ -39,7 +39,50 @@ async function main(){let f=fixture(),r=await reconstruct(f.options);
  f=fixture();const priorBalance=f.source.balance;f.source.balance=async(w,t,at)=>t===token&&at==='0x11'?11000000n:priorBalance(w,t,at);await assert.rejects(()=>reconstruct(f.options),/OPENING_BALANCE_MISMATCH/);
  f=fixture();f.transactions[0].logs=[log(token,outside,wallet,100000000)];await assert.rejects(()=>reconstruct(f.options),/OPENING_BALANCE_MISMATCH/);
  f=fixture();f.transactions[0].logs.push(log(token,outside,wallet,100000000));const evidencedBalance=f.source.balance;f.source.balance=async(w,t,at)=>t===token?(at==='0x11'?110000000n:100000000n):evidencedBalance(w,t,at);await assert.rejects(()=>reconstruct(f.options),/ACCOUNTING_OPENING_BASIS_REQUIRED/,'a surviving unexplained lot cannot fund a scored sale');
+ await concurrentReadChecks();
+ await unregisteredAssetChecks();
  console.log('PASS independent accounting reconstruction: public FIFO history, fee-inclusive cost, quote funding, balance reconciliation, and rejection of unknown basis or unsupported exchange flows.');
+}
+async function unregisteredAssetChecks(){
+ const f=fixture(),newToken=addr(8),fee=addr(9),baseSwaps=f.source.swaps,baseBalance=f.source.balance;
+ f.transactions[2].block='0x14';
+ const buy={at:35,hash:'0x'+'a'.repeat(64),block:'0x13',blockHash:'0x'+'b'.repeat(64),logs:[log(USDC,wallet,pool,4950000),log(USDC,wallet,fee,50000),log(newToken,pool,wallet,2000000)]};
+ const sell={at:45,hash:'0x'+'c'.repeat(64),block:'0x15',blockHash:'0x'+'d'.repeat(64),logs:[log(newToken,wallet,pool,2000000),log(USDC,pool,wallet,6000000)]};
+ f.transactions.push(buy,sell);
+ const rows=[buy,sell].map((t,i)=>({txHash:t.hash,date:time(t.at),userAddress:wallet,contractType:'LAUNCHPAD',fractionalToken:{address:newToken,chain:{networkId:'eip155:97477'},params:{decimals:6}},quoteToken:{symbol:'USDC.e',decimals:6},fractionalTokenAmount:i===0?'2000000':'-2000000',quoteTokenAmount:i===0?'-5000000':'6000000',priceUsd:i===0?2.5:3}));
+ f.source.swaps=async()=>[...await baseSwaps(),...rows];
+ f.source.balance=async(w,t,b)=>t===newToken?0n:t===USDC&&b==='0x20'?103000000n:baseBalance(w,t,b);
+ const r=await reconstruct(f.options),newEvents=r.events.filter(e=>e.token===newToken);
+ assert.equal(newEvents.length,2);assert.equal(newEvents[0].kind,'buy');assert.equal(newEvents[0].usd,'5.000000','manual launchpad cost includes its separately paid fee');assert.equal(newEvents[1].kind,'sell');assert.equal(newEvents[1].usd,'6.000000');
+ assert.ok(newEvents.every(e=>!e.economicId&&!e.notionalUsd),'discovering an inventory asset does not register a competition market or score manual trading');
+ assert.deepEqual(r.events.filter(e=>e.economicId).map(e=>e.economicId),['sale'],'only the original verified eligible fill is scored');
+ assert.equal(r.events.filter(e=>e.kind==='in').length,0,'manual sale proceeds remain owned quote inventory rather than new external capital');
+ f.source.balance=async(w,t,b)=>t===newToken&&b==='0x20'?1n:t===newToken?0n:t===USDC&&b==='0x20'?103000000n:baseBalance(w,t,b);
+ await assert.rejects(()=>reconstruct(f.options),/CLOSING_BALANCE_MISMATCH/,'discovered inventory must reconcile its actual closing chain balance');
+ f.source.balance=async(w,t,b)=>t===newToken?0n:t===USDC&&b==='0x20'?103000000n:baseBalance(w,t,b);
+ f.source.swaps=async()=>[...await baseSwaps(),...rows.map(r=>({...r,fractionalToken:{...r.fractionalToken,chain:{networkId:'eip155:1'}}}))];
+ await assert.rejects(()=>reconstruct(f.options),/ACCOUNTING_COMPLEX_TRANSFER_REQUIRED|UNSUPPORTED_CONTRACT_OR_LP_FLOW/,'another-chain index cannot supply local domain inventory evidence');
+ console.log('PASS unregistered accounting assets: receipt-proven manual launchpad cost/fees and resale, no extra scoring or external capital, exact closing balance and chain checks.');
+}
+async function concurrentReadChecks(){
+ const baseline=await reconstruct(fixture().options),strip=r=>{const {requestId,...rest}=r;return rest;};
+ const f=fixture();let active=0,peak=0;const completed=[];
+ for(const method of ['receipt','block']){const read=f.source[method];f.source[method]=async key=>{
+  active++;peak=Math.max(peak,active);
+  try{await new Promise(resolve=>setTimeout(resolve,key.endsWith('10')?12:3));return await read(key);}
+  finally{active--;completed.push(method+':'+key);}
+ };}
+ assert.deepEqual(strip(await reconstruct(f.options)),strip(baseline),'out-of-order proof reads preserve exact chronological FIFO, fees and output');
+ assert.ok(peak>1&&peak<=3,'independent immutable reads overlap within three requests');assert.equal(active,0);
+ const broken=fixture(),block=broken.source.block;active=0;peak=0;let resolved=0;
+ broken.source.block=async key=>{active++;peak=Math.max(peak,active);try{await new Promise(resolve=>setTimeout(resolve,key===broken.transactions[1].block?2:8));if(key===broken.transactions[1].block)throw Error('PUBLIC_REQUEST_TIMEOUT');return await block(key);}finally{active--;resolved++;}};
+ await assert.rejects(()=>reconstruct(broken.options),/PUBLIC_REQUEST_TIMEOUT/);assert.equal(active,0,'a failed prefetch drains every started read before returning');
+ const settled=resolved;await new Promise(resolve=>setTimeout(resolve,15));assert.equal(resolved,settled,'no orphan read survives a rejected reconstruction');
+ const stopped=fixture();let reads=0,cancelled=false;const oldReceipt=stopped.source.receipt;
+ stopped.source.checkBudget=()=>{if(cancelled)throw Error('ACCOUNTING_TIME_BUDGET_EXCEEDED');};
+ stopped.source.receipt=async key=>{reads++;cancelled=true;return oldReceipt(key);};
+ await assert.rejects(()=>reconstruct(stopped.options),/ACCOUNTING_TIME_BUDGET_EXCEEDED/);assert.equal(reads,1,'cancellation prevents starting later phases');
+ console.log('PASS accounting prefetch: bounded concurrent receipt/block reads, identical FIFO after reordered completions, drained errors and cancellation.');
 }
 if(require.main===module)main().catch(e=>{console.error(e);process.exitCode=1;});
 module.exports={fixture};

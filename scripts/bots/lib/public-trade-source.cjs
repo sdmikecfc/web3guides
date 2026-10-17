@@ -10,20 +10,21 @@ function lossless(text){
  }
  return JSON.parse(out);
 }
-function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCache=null,accountingAnchor=null,accountingPriorAnchors=[],erc20History='explorer',pricingMode='batched'}){
+function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCache=null,accountingAnchor=null,accountingPriorAnchors=[],erc20History='explorer',pricingMode='batched',tradeCache=null}){
  if(!apiKey)throw Error('EXISTING_DOMA_API_KEY_REQUIRED');
  if(!['explorer','rpc','hybrid'].includes(erc20History))throw Error('INVALID_ERC20_HISTORY_SOURCE');
  const validAnchor=a=>a&&/^0x[0-9a-f]+$/i.test(a.number)&&/^0x[0-9a-f]{64}$/i.test(a.hash);
  if(accountingCache&&(!validAnchor(accountingAnchor)||!Array.isArray(accountingPriorAnchors)||accountingPriorAnchors.length>4||accountingPriorAnchors.some(a=>!validAnchor(a))))throw Error('INVALID_ACCOUNTING_ANCHOR');
  const anchors=accountingCache?[accountingAnchor,...accountingPriorAnchors.filter(a=>BigInt(a.number)<=BigInt(accountingAnchor.number))].map(a=>({number:'0x'+BigInt(a.number).toString(16),hash:a.hash.toLowerCase()})):[];
  const anchorChecks=new Map(),evidence=anchors.map(anchor=>accountingCache.namespace({kind:'finalized-rpc',scope:{anchor}}));
- let deadline=Infinity,budgetController=null;
- const checkBudget=()=>{if(Date.now()>=deadline||budgetController?.signal.aborted)throw Error('ACCOUNTING_TIME_BUDGET_EXCEEDED');};
+ const tradeAnchorChecks=new Map(),tradeReads=new Map(),sourceMetrics={networkRequests:0,factHits:0,factMisses:0,rangeHits:0,rangeMisses:0};let tradeAnchorPromise=null;
+ let deadline=Infinity,budgetController=null,budgetErrorCode='ACCOUNTING_TIME_BUDGET_EXCEEDED';const pendingRequests=new Set();
+ const checkBudget=()=>{if(Date.now()>=deadline||budgetController?.signal.aborted)throw Error(budgetErrorCode);};
  const pause=ms=>new Promise((resolve,reject)=>{
   const signal=budgetController?.signal;
   const done=()=>{signal?.removeEventListener('abort',cancel);resolve();};
   const timer=setTimeout(done,ms);
-  const cancel=()=>{clearTimeout(timer);signal?.removeEventListener('abort',cancel);reject(Error('ACCOUNTING_TIME_BUDGET_EXCEEDED'));};
+  const cancel=()=>{clearTimeout(timer);signal?.removeEventListener('abort',cancel);reject(Error(budgetErrorCode));};
   if(signal?.aborted)cancel();else signal?.addEventListener('abort',cancel,{once:true});
  });
  let last=0,seq=0,requestGate=Promise.resolve();const receipts=new Map(),blocks=new Map(),calls=new Map(),atBlocks=new Map(),balances=new Map(),transactions=new Map(),implementations=new Map(),native=new Map(),codes=new Map(),nativePurchases=new Map();
@@ -34,12 +35,15 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
   try{checkBudget();const wait=Math.max(0,last+delay-Date.now());if(wait)await pause(wait);checkBudget();last=Date.now();return run();}
   finally{release();}
  }
- async function request(url,body,headers={}){
+ function request(url,body,headers={}){
+  const work=requestCore(url,body,headers);pendingRequests.add(work);work.then(()=>pendingRequests.delete(work),()=>pendingRequests.delete(work));return work;
+ }
+ async function requestCore(url,body,headers={}){
   for(let attempt=0;attempt<4;attempt++){
    checkBudget();
    const signals=[AbortSignal.timeout(30000)];if(budgetController)signals.push(budgetController.signal);
    let r,text;
-   try{r=await startRequest(()=>fetcher(url,{method:body?'POST':'GET',redirect:'error',headers:{Accept:'application/json',...(body?{'Content-Type':'application/json'}:{}),...headers},body:body?JSON.stringify(body):undefined,signal:AbortSignal.any(signals)}));text=await r.text();}
+   try{r=await startRequest(()=>{sourceMetrics.networkRequests++;return fetcher(url,{method:body?'POST':'GET',redirect:'error',headers:{Accept:'application/json',...(body?{'Content-Type':'application/json'}:{}),...headers},body:body?JSON.stringify(body):undefined,signal:AbortSignal.any(signals)});});text=await r.text();}
    catch(error){checkBudget();const timeout=['AbortError','TimeoutError'].includes(error.name),network=error instanceof TypeError&&/fetch|network/i.test(error.message);
     if(!timeout&&!network)throw error;
     if(attempt===3)throw Error(timeout?'PUBLIC_REQUEST_TIMEOUT':'PUBLIC_NETWORK_UNAVAILABLE');
@@ -69,12 +73,65 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
   const at=method==='eth_getBlockByNumber'?params[0]:['eth_call','eth_getCode','eth_getBalance'].includes(method)?params[1]:method==='eth_getStorageAt'?params[2]:['eth_getTransactionReceipt','eth_getTransactionByHash'].includes(method)?value?.blockNumber:null;
   return typeof at==='string'&&/^0x[0-9a-f]+$/i.test(at)?BigInt(at):null;
  }
+ async function tradeAnchor(){
+  if(!tradeAnchorPromise){
+   tradeAnchorPromise=(async()=>{
+    if(Number(BigInt(await rawRpc('eth_chainId',[])))!==CHAIN)throw Error('WRONG_PUBLIC_CHAIN');
+    const value=await rawRpc('eth_getBlockByNumber',['finalized',false]);
+    if(!validAnchor(value))throw Error('TRADE_CACHE_ANCHOR_INVALID');
+    const anchor={number:'0x'+BigInt(value.number).toString(16),hash:value.hash.toLowerCase()};
+    tradeAnchorChecks.set(anchor.number+':'+anchor.hash,Promise.resolve(anchor));return anchor;
+   })();tradeAnchorPromise.catch(()=>{tradeAnchorPromise=null;});
+  }
+  const value=await tradeAnchorPromise;checkBudget();return value;
+ }
+ async function validateTradeAnchor(anchor){
+  if(!validAnchor(anchor))throw Error('TRADE_CACHE_ANCHOR_INVALID');
+  const current=await tradeAnchor();if(BigInt(anchor.number)>BigInt(current.number))return false;
+  const key=anchor.number+':'+anchor.hash;
+  if(!tradeAnchorChecks.has(key)){
+   const proof=(async()=>{const block=await rawRpc('eth_getBlockByNumber',[anchor.number,false]);
+    if(block.number?.toLowerCase()!==anchor.number.toLowerCase()||block.hash?.toLowerCase()!==anchor.hash.toLowerCase()){
+     tradeCache.facts.clear();throw Error('TRADE_CACHE_ANCHOR_REORG');
+    }return anchor;
+   })();tradeAnchorChecks.set(key,proof);proof.catch(()=>tradeAnchorChecks.delete(key));
+  }
+  await tradeAnchorChecks.get(key);checkBudget();return true;
+ }
+ async function tradeRpc(method,params){
+  const transaction=['eth_getTransactionReceipt','eth_getTransactionByHash'].includes(method),at=rpcBlock(method,params);
+  const eligible=['eth_getBlockByNumber','eth_call','eth_getCode','eth_getBalance','eth_getStorageAt','eth_getTransactionReceipt','eth_getTransactionByHash'].includes(method);
+  if(!tradeCache||!eligible||(!transaction&&at===null))return rawRpc(method,params);
+  checkBudget();const key=hash({method,params});
+  if(tradeReads.has(key))return tradeReads.get(key);
+  const work=(async()=>{
+   const anchor=await tradeAnchor();if(!transaction&&at>BigInt(anchor.number))return rawRpc(method,params);
+   const identity={method,params},saved=tradeCache.facts.get(identity);
+   if(saved&&validAnchor(saved.anchor)){
+    const block=rpcBlock(method,params,saved.value);
+    if(block!==null&&block<=BigInt(saved.anchor.number)&&block<=BigInt(anchor.number)&&await validateTradeAnchor(saved.anchor)){
+     sourceMetrics.factHits++;return saved.value;
+    }
+   }
+   sourceMetrics.factMisses++;const value=await rawRpc(method,params),block=rpcBlock(method,params,value);
+   if(block!==null&&block<=BigInt(anchor.number)){
+    if(transaction){
+     const actual=method==='eth_getTransactionReceipt'?value?.transactionHash:value?.hash;
+     if(actual?.toLowerCase()!==params[0].toLowerCase()||!/^0x[0-9a-f]{64}$/i.test(value?.blockHash))throw Error('TRADE_CACHE_TRANSACTION_INVALID');
+     const canonical=await tradeRpc('eth_getBlockByNumber',[value.blockNumber,false]);
+     if(canonical.hash?.toLowerCase()!==value.blockHash.toLowerCase())throw Error('TRANSACTION_REORG');
+    }else if(method==='eth_getBlockByNumber'&&(value?.number?.toLowerCase()!==params[0].toLowerCase()||!/^0x[0-9a-f]{64}$/i.test(value?.hash)))throw Error('TRADE_CACHE_BLOCK_INVALID');
+    checkBudget();tradeCache.facts.set(identity,{anchor,value});
+   }
+   return value;
+  })();tradeReads.set(key,work);work.catch(()=>tradeReads.delete(key));return work;
+ }
  async function rpc(method,params){
   const eligible=['eth_getBlockByNumber','eth_call','eth_getCode','eth_getBalance','eth_getStorageAt','eth_getTransactionReceipt','eth_getTransactionByHash'].includes(method);
   // Alias reads are deliberately never persisted, including finalized/latest.
   const transaction=['eth_getTransactionReceipt','eth_getTransactionByHash'].includes(method);
   const requestedBlock=rpcBlock(method,params);
-  if(!accountingCache||!eligible||(!transaction&&(requestedBlock===null||requestedBlock>BigInt(anchors[0].number))))return rawRpc(method,params);
+  if(!accountingCache||!eligible||(!transaction&&(requestedBlock===null||requestedBlock>BigInt(anchors[0].number))))return tradeRpc(method,params);
   await checkAnchor();const identity={method,params};
   for(let i=0;i<evidence.length;i++){
    if(!transaction&&requestedBlock>BigInt(anchors[i].number))continue;
@@ -82,7 +139,7 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
    if(at===null||at>BigInt(anchors[i].number)||at>BigInt(anchors[0].number))continue;
    await checkAnchor(i);return value;
   }
-  const value=await rawRpc(method,params),at=rpcBlock(method,params,value);
+  const value=await tradeRpc(method,params),at=rpcBlock(method,params,value);
   if(at!==null&&at<=BigInt(anchors[0].number)){
    if(transaction){
     const id=method==='eth_getTransactionReceipt'?value.transactionHash:value.hash;
@@ -142,7 +199,7 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
   const target='0xca11bde05977b3631167028862be2a173976ca11',runtime=await code(target,at);
   // Before Multicall3 existed, the original direct getter path still works.
   if(runtime==='0x'){
-   for(const row of missing){try{out[row.index]={success:true,value:await read(row.address,row.definition,row.functionName,row.args,at)};}catch(e){if(e.message==='ACCOUNTING_TIME_BUDGET_EXCEEDED')throw e;out[row.index]={success:false};}}
+   for(const row of missing){try{out[row.index]={success:true,value:await read(row.address,row.definition,row.functionName,row.args,at)};}catch(e){if(e.message===budgetErrorCode)throw e;out[row.index]={success:false};}}
    return out;
   }
   if(keccak256(runtime)!=='0xd5c15df687b16f2ff992fc8d767b4216323184a2bbc6ee2f9c398c318e770891')throw Error('HISTORICAL_PRICE_MULTICALL_UNREVIEWED');
@@ -194,15 +251,42 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
  const fields='txHash date contractType buyerAddress originAddress userAddress fractionalTokenAmount quoteTokenAmount priceUsd fractionalToken { address chain { networkId } params { decimals } } quoteToken {symbol decimals}';
  async function swaps(wallet,from,through){
   if(!/^0x[0-9a-f]{40}$/.test(wallet))throw Error('INVALID_WALLET');
+  if(!Number.isFinite(from)||!Number.isFinite(through))throw Error('INVALID_SWAP_WINDOW');
+  if(from>through)return [];
   const page=async skip=>(await gql(`{ fractionalTokenSwaps(skip:${skip},take:100,address:"eip155:${CHAIN}:${wallet}",sortOrder:DESC) { totalCount items { ${fields} } } }`)).fractionalTokenSwaps;
-  const first=await page(0),fingerprint=hash(first);let p=first,previous=Infinity;const rows=[];
-  for(let i=0;i<maxPages;i++){
-   if(!p||!Array.isArray(p.items)||p.totalCount!==first.totalCount)throw Error('SWAP_INDEX_CHANGED');
-   for(const row of p.items){const at=Date.parse(row.date);if(!Number.isFinite(at)||at>previous)throw Error('SWAP_HISTORY_ORDER');previous=at;if(at>=from&&at<=through)rows.push(row);}
-   if(previous<from||i*100+p.items.length===p.totalCount){if(hash(await page(0))!==fingerprint)throw Error('SWAP_INDEX_CHANGED');return rows;}
-   if(!p.items.length)throw Error('SWAP_HISTORY_INCOMPLETE');p=await page((i+1)*100);
+  const valid=p=>p&&Array.isArray(p.items)&&p.items.length<=100&&Number.isSafeInteger(p.totalCount)&&p.totalCount>=0;
+  async function scan(){
+   let p=await page(0);if(!valid(p))throw Error('SWAP_HISTORY_INCOMPLETE');
+   const initialCount=p.totalCount,rows=[];let previous=Infinity,consumed=0,pages=0,overlap=[];
+   while(pages++<maxPages){
+    checkBudget();if(!valid(p))throw Error('SWAP_HISTORY_INCOMPLETE');
+    if(p.totalCount<initialCount)throw Error('SWAP_INDEX_CHANGED');
+    const skip=overlap.length;
+    if(skip&&hash(p.items.slice(0,skip))!==hash(overlap))throw Error('SWAP_INDEX_CHANGED');
+    for(const row of p.items.slice(skip)){
+     const at=Date.parse(row.date);if(!Number.isFinite(at)||at>previous)throw Error('SWAP_HISTORY_ORDER');previous=at;if(at>=from&&at<=through)rows.push(row);
+    }
+    consumed+=p.items.length-skip;
+    if(consumed>initialCount)throw Error('SWAP_INDEX_CHANGED');
+    if(previous<from||consumed===initialCount)return rows;
+    if(p.items.length<=skip)throw Error('SWAP_HISTORY_INCOMPLETE');
+    overlap=p.items.slice(-Math.min(10,p.items.length));const baseSkip=consumed-overlap.length;
+    // Offset pagination shifts when live swaps are prepended after our fixed
+    // cutoff. Compensate by the count delta, then prove the previous boundary
+    // still overlaps exactly. A deletion or insertion elsewhere fails closed.
+    let shift=p.totalCount-initialCount,aligned=false;
+    for(let attempt=0;attempt<3;attempt++){
+     const next=await page(baseSkip+shift);if(!valid(next))throw Error('SWAP_HISTORY_INCOMPLETE');
+     const nextShift=next.totalCount-initialCount;if(nextShift<0)throw Error('SWAP_INDEX_CHANGED');
+     if(nextShift===shift){p=next;aligned=true;break;}shift=nextShift;
+    }
+    if(!aligned)throw Error('SWAP_INDEX_CHANGED');
+   }
+   throw Error('SWAP_HISTORY_PAGE_LIMIT');
   }
-  throw Error('SWAP_HISTORY_PAGE_LIMIT');
+  // Two independent complete reads detect corrections anywhere in the window,
+  // not just changes on the first page. Neither result is persisted as proof.
+  const first=await scan(),second=await scan();if(hash(first)!==hash(second))throw Error('SWAP_INDEX_CHANGED');return second;
  }
  // Checkpoints retain validated page boundaries, not a claim of completeness.
  // Both passes still make independent HTTP reads; only interrupted work resumes.
@@ -288,7 +372,10 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
  const transferIdentity=row=>row[2]+':'+row[3];
  async function transferReceipt(tx){if(!/^0x[0-9a-f]{64}$/.test(tx))throw Error('INVALID_TRANSACTION_HASH');if(!receipts.has(tx))receipts.set(tx,await rpc('eth_getTransactionReceipt',[tx]));return receipts.get(tx);}
  const rpcTransfers=erc20History!=='explorer'?require('./public-erc20-log-history.cjs').rpcErc20History({rpc:rawRpc,blockAt,receipt:transferReceipt,checkBudget,maxRanges:maxPages,
+  rangeCacheFor:tradeCache?scope=>tradeCache.ranges(scope):null,cachedBlock:tradeCache?number=>rpc('eth_getBlockByNumber',[number,false]):null,onRangeCache:hit=>sourceMetrics[hit?'rangeHits':'rangeMisses']++,
   cacheFor:accountingCache?scope=>{const ns=accountingCache.namespace({kind:'history-checkpoint',scope:{...scope,source:'rpc-erc20-history-1'}});return {get:key=>ns.getCheckpoint(key),set:(key,value)=>ns.setCheckpoint(key,value)};}:null}):null;
+ const rpcTradeCandidates=rpcTransfers?require('./public-erc20-log-history.cjs').rpcErc20History({rpc:rawRpc,blockAt,checkBudget,maxRanges:maxPages,purpose:'trade-candidates',
+  rangeCacheFor:tradeCache?scope=>tradeCache.ranges(scope):null,onRangeCache:hit=>sourceMetrics[hit?'rangeHits':'rangeMisses']++}):null;
  async function transfers(wallet,from,through){
   if(rpcTransfers){if(accountingCache)await checkAnchor();return rpcTransfers(wallet,from,through);}
   return fixedWindow([transferScope(wallet)],{wallet,from,through,proof:transferProof,identityOf:transferIdentity,changed:'TRANSFER_INDEX_CHANGED',kind:'erc20'});
@@ -364,12 +451,32 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
  }
  return {
   checkBudget,
-  async withDeadline(at,task){
-   if(budgetController||!Number.isFinite(at))throw Error('INVALID_ACCOUNTING_BUDGET');
-   deadline=at;budgetController=new AbortController();
+  metrics:()=>({...sourceMetrics}),
+  async verifyFinalizedEvidence(){
+   // A persistent fact may have served an early wallet before a later wallet
+   // observed a reorg. Recheck the run's original anchor from the node before
+   // publication; a cached per-read anchor result is deliberately insufficient.
+   const proofAnchors=[];if(accountingCache)proofAnchors.push(anchors[0]);if(tradeCache&&tradeAnchorPromise)proofAnchors.push(await tradeAnchorPromise);
+   if(!proofAnchors.length)return true;
+   checkBudget();
+   if(Number(BigInt(await rawRpc('eth_chainId',[])))!==CHAIN)throw Error('WRONG_PUBLIC_CHAIN');
+   for(const [i,anchor] of proofAnchors.entries()){
+    const current=await rawRpc('eth_getBlockByNumber',[anchor.number,false]);
+    if(current.number?.toLowerCase()!==anchor.number||current.hash?.toLowerCase()!==anchor.hash){tradeCache?.facts.clear();throw Error(accountingCache&&i===0?'ACCOUNTING_ANCHOR_REORG':'TRADE_CACHE_ANCHOR_REORG');}
+   }
+   checkBudget();return true;
+  },
+  async withDeadline(at,task,{errorCode='ACCOUNTING_TIME_BUDGET_EXCEEDED',acceptPartial=false}={}){
+   if(budgetController||!Number.isFinite(at)||typeof errorCode!=='string'||!/^[A-Z][A-Z0-9_]{0,79}$/.test(errorCode)||typeof acceptPartial!=='boolean')throw Error('INVALID_ACCOUNTING_BUDGET');
+   deadline=at;budgetErrorCode=errorCode;budgetController=new AbortController();
    const timer=setTimeout(()=>budgetController?.abort(),Math.max(0,at-Date.now()));
-   try{checkBudget();const result=await task();checkBudget();return result;}
-   finally{clearTimeout(timer);budgetController=null;deadline=Infinity;}
+   try{checkBudget();const result=await task();if(!acceptPartial)checkBudget();return result;}
+   finally{
+    clearTimeout(timer);budgetController.abort();
+    // A failing task may have other HTTP reads in flight. Drain cancellation
+    // before releasing this source for publication or a later accounting run.
+    await Promise.allSettled([...pendingRequests]);budgetController=null;deadline=Infinity;budgetErrorCode='ACCOUNTING_TIME_BUDGET_EXCEEDED';
+   }
   },
   async nativeQuoteOutput(tx,receipt,native,wallets){
    if(!/^0x[0-9a-f]{64}$/.test(tx))throw Error('INVALID_TRANSACTION_HASH');
@@ -459,6 +566,7 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
    return value;
   },
   block,blockAt,swaps,transfers,transfersForTokens,valueUsd,primeBalances,hasNativeActivity,nativeHistory,nativeTransaction,nativeRouterPurchase,
+  ...(rpcTradeCandidates?{tradeCandidates:async(wallet,from,through)=>{if(accountingCache)await checkAnchor();return rpcTradeCandidates(wallet,from,through);}}:{}),
   nativeBalance:async(wallet,at)=>BigInt(await rpc('eth_getBalance',[wallet,at])),
   balance:async(wallet,token,at)=>{await primeBalances(wallet,[token],at);return balances.get(wallet+':'+token+':'+at);},
   hasCode:async(address,at)=>(await code(address,at))!=='0x',

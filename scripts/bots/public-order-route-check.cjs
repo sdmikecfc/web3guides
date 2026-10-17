@@ -27,12 +27,13 @@ function reencode(c){c.transaction.input=v.encodeFunctionData({abi:outerAbi,func
 function innerChange(c,change){const args=v.decodeAbiParameters(types('address','bytes','uint256'),c.commands[2].data),inner=v.decodeFunctionData({abi:innerAbi,data:args[1]}).args;change(inner);args[1]=v.encodeFunctionData({abi:innerAbi,functionName:'execute',args:inner});c.commands[2].data=v.encodeAbiParameters(types('address','bytes','uint256'),args);reencode(c);}
 
 // Generated identities/amounts only: no participant receipts or Strategy data.
-function extendedFixture({buy=true,inputFee=0n,outputFee=0n,refund=0n,via=false}={}){
- const wallet=addr(11),domain=addr(12),pools=buy?[addr(13),addr(14),addr(15)]:[addr(15),addr(14)],feeTo=addr(16),keeper=addr(17),tx='0x'+(buy?'c':'d').repeat(64),bh='0x'+(buy?'e':'f').repeat(64),block=buy?'0x101':'0x102',at=buy?'2026-10-07T07:01:00.000Z':'2026-10-07T07:02:00.000Z';
+function extendedFixture({buy=true,inputFee=0n,outputFee=0n,refund=0n,via=false,shape='mixed'}={}){
+ const splitSell=!buy&&shape.startsWith('split-');
+ const wallet=addr(11),domain=addr(12),pools=buy?(shape==='direct'?[addr(13),addr(15)]:[addr(13),addr(14),addr(15)]):splitSell?(shape==='split-direct'?[addr(13),addr(15)]:[addr(13),addr(14),addr(15)]):[addr(15),addr(14)],feeTo=addr(16),keeper=addr(17),tx='0x'+(buy?'c':'d').repeat(64),bh='0x'+(buy?'e':'f').repeat(64),block=buy?'0x101':'0x102',at=buy?'2026-10-07T07:01:00.000Z':'2026-10-07T07:02:00.000Z';
  const inputToken=buy?USDC:domain,outputToken=buy?domain:USDC,input=buy?200000n:2000n,output=buy?2000n:220000n,recipient=outputFee?ROUTER:wallet;
- const paths=buy?[[USDC,domain],[USDC,WETH,domain]]:[[domain,WETH,USDC]],routeFees=buy?[[500],[100,500]]:[[500,100]],amounts=buy?[80000n,120000n]:[2000n],outputs=buy?[800n,1200n]:[220000n];
+ const paths=buy?(shape==='direct'?[[USDC,domain],[USDC,domain]]:shape==='reversed'?[[USDC,WETH,domain],[USDC,domain]]:[[USDC,domain],[USDC,WETH,domain]]):splitSell?(shape==='split-direct'?[[domain,USDC],[domain,USDC]]:shape==='split-reversed'?[[domain,WETH,USDC],[domain,USDC]]:[[domain,USDC],[domain,WETH,USDC]]):[[domain,WETH,USDC]],routeFees=buy?(shape==='direct'?[[100],[3000]]:shape==='reversed'?[[100,500],[500]]:[[500],[100,500]]):splitSell?(shape==='split-direct'?[[100],[3000]]:shape==='split-reversed'?[[500,100],[500]]:[[500],[500,100]]):[[500,100]],amounts=buy?[80000n,120000n]:splitSell?[800n,1200n]:[2000n],outputs=buy?[800n,1200n]:splitSell?[88000n,132000n]:[220000n];
  const inputs=paths.map((tokens,i)=>{const path=tokens[0]+tokens.slice(1).map((t,j)=>routeFees[i][j].toString(16).padStart(6,'0')+t.slice(2)).join('');return v.encodeAbiParameters(types('address','uint256','uint256','bytes','bool'),[recipient,amounts[i],outputs[i]-1n,path,true]);});
- const inner=v.encodeFunctionData({abi:innerAbi,functionName:'execute',args:[buy?'0x0000':'0x00',inputs,2000000000n]});
+ const inner=v.encodeFunctionData({abi:innerAbi,functionName:'execute',args:['0x'+'00'.repeat(inputs.length),inputs,2000000000n]});
  const command=(commandType,names,values)=>({commandType,data:v.encodeAbiParameters(types(...names),values)});
  const commands=[command(0,['address','address','uint256'],[inputToken,wallet,input+inputFee+refund]),command(2,['address','address','uint256'],[inputToken,UNIVERSAL,input]),command(3,['address','bytes','uint256'],[UNIVERSAL,inner,0n]),command(4,['address','address','uint256'],[inputToken,wallet,0n])];
  const feeCommand=(token,units)=>command(3,['address','bytes','uint256'],[token,v.encodeFunctionData({abi:v.parseAbi(['function transfer(address to,uint256 amount) returns(bool)']),functionName:'transfer',args:[feeTo,units]}),0n]);
@@ -53,7 +54,7 @@ function extendedFixture({buy=true,inputFee=0n,outputFee=0n,refund=0n,via=false}
  if(inputFee)transfer(inputToken,ROUTER,feeTo,inputFee);if(refund)transfer(inputToken,ROUTER,wallet,refund);if(outputFee){transfer(outputToken,ROUTER,feeTo,outputFee);transfer(outputToken,ROUTER,wallet,output-outputFee);}
  add({address:ROUTER,topics:v.encodeEventTopics({abi:outerAbi,eventName:'OrderExecuted',args:{executionId:91n}}),data:'0x'});
  const transaction={hash:tx,from:keeper,to:ROUTER,chainId:'0x17cc5',value:'0x0',blockHash:bh,blockNumber:block,input:v.encodeFunctionData({abi:outerAbi,functionName:'execute',args:[91n,commands]})},receipt={transactionHash:tx,status:'0x1',blockHash:bh,blockNumber:block,transactionIndex:'0x0',logs};
- const base={wallet,domain,tx,side:buy?'buy':'sell',executedAt:at,decimals:6,priceUsd:100},swaps=buy?[{...base,quote:USDC,domainUnits:'800',quoteUnits:'80000'},{...base,quote:WETH,domainUnits:'1200',quoteUnits:'57'}]:[{...base,quote:WETH,domainUnits:'2000',quoteUnits:'57'}];
+ const base={wallet,domain,tx,side:buy?'buy':'sell',executedAt:at,decimals:6,priceUsd:100},swaps=buy?paths.map((tokens,i)=>({...base,quote:tokens.length===2?USDC:WETH,domainUnits:outputs[i].toString(),quoteUnits:(tokens.length===2?amounts[i]:57n).toString()})):paths.map((tokens,i)=>({...base,quote:tokens.length===2?USDC:WETH,domainUnits:amounts[i].toString(),quoteUnits:(tokens.length===2?outputs[i]:57n).toString()}));
  const refs=[{id:'synthetic:'+tx,revision:1,status:'verified',wallet,transactionHash:tx,domainToken:domain,quoteToken:USDC,domainUnits:'2000',quoteUnits:(buy?input:output).toString(),side:base.side,executedAt:at}];
  const poolFor=async(a,b,f)=>{let index=0;for(let i=0;i<paths.length;i++)for(let h=0;h<paths[i].length-1;h++){const p=pools[index++];if(a===paths[i][h]&&b===paths[i][h+1]&&f===routeFees[i][h])return p;}return addr(0);};
  return {swaps,refs,transaction,receipt,implementation:IMPLEMENTATION,codeAt:async a=>codes[a],poolFor,wallet,domain,pools,commands,transfer,inputToken,outputToken,feeTo};
@@ -79,8 +80,8 @@ async function extendedTests(){
   ['reference quote',c=>c.refs[0].quoteToken=WETH],['reference amount',c=>c.refs[0].quoteUnits='1'],['reference domain amount',c=>c.refs[0].domainUnits='1'],['duplicate reference',c=>c.refs.push({...c.refs[0]})],['reference wallet net instead of gross',c=>c.refs[0].quoteUnits=c.swaps[0].side==='buy'?'200011':'219993'],
  ];
  for(const buy of [true,false])for(const[label,change]of mutations){const c=extendedFixture({buy,inputFee:11n,outputFee:7n,refund:5n});change(c);await assert.rejects(()=>verifyOrderRoute(c),/ORDER_ROUTE_/,label+' '+(buy?'buy':'sell'));}
- const split=extendedFixture();innerChange(split,a=>a[1].reverse());await assert.rejects(()=>verifyOrderRoute(split),/PATH_UNSUPPORTED/,'unreviewed path ordering');
- const buy=extendedFixture({inputFee:1000n}),sell=extendedFixture({buy:false,outputFee:2000n}),all=[buy,sell],byTx=new Map(all.map(c=>[c.transaction.hash,c]));
+ const split=extendedFixture();innerChange(split,a=>a[1].reverse());assert.equal((await verifyOrderRoute(split)).volumeMicros,200000n,'the order of independently proved paths does not change economic volume');
+ const buy=extendedFixture({shape:'direct',inputFee:1000n}),sell=extendedFixture({buy:false,shape:'split-mixed',outputFee:2000n}),all=[buy,sell],byTx=new Map(all.map(c=>[c.transaction.hash,c]));
  const started='2026-10-07T00:00:00Z',cutoff='2026-10-07T08:00:00Z';
  const rows=all.flatMap(c=>c.swaps.map(s=>({txHash:s.tx,date:s.executedAt,userAddress:s.wallet,contractType:'UNISWAP_V3_POOL',fractionalTokenAmount:(s.side==='buy'?'':'-')+s.domainUnits,quoteTokenAmount:(s.side==='buy'?'-':'')+s.quoteUnits,priceUsd:100,fractionalToken:{address:s.domain,chain:{networkId:'eip155:97477'},params:{decimals:6}},quoteToken:{symbol:s.quote===USDC?'USDC.e':'WETH',decimals:s.quote===USDC?6:18}})));
  const snapshot={manifest:{campaign:{id:'test',state:'active',starts_at:started,ends_at:'2026-11-04T00:00:00Z'},participants:[{participant:'synthetic',entered_at:started}],markets:[{domain_token:buy.domain,quote_token:USDC},{domain_token:buy.domain,quote_token:WETH}]},accounts:[{participant:'synthetic',coverage:{complete:true,coverage_from:started,confirmed_through:cutoff,updated_at:cutoff}}],wallets:[{participant:'synthetic',trade_wallet:buy.wallet,agent:false}],references:all.map(c=>({participant:'synthetic',ref:c.refs[0]})),fills:[]};
@@ -92,10 +93,75 @@ async function extendedTests(){
  const manual=await collect({...snapshot,references:[]},{...source,orderRouterSettlement:async()=>{throw Error('MANUAL_PROOF_SHOULD_NOT_RUN')}},{now:Date.parse(cutoff)+120000});assert.equal(manual.packet.fills.length,0);assert.equal(manual.report.complete,true);
  const ledger=await require('./lib/public-accounting.cjs').reconstruct({participant:'synthetic',wallets:[buy.wallet],from:Date.parse(started),through:Date.parse(cutoff),markets:snapshot.manifest.markets,references:snapshot.references,eligible:result.packet.fills,source:{...source,blockAt:async t=>({number:t<Date.parse(started)?'0x10':'0x200'}),nativeBalance:async()=>0n,nativeHistory:async()=>[],nativeTransaction:async()=>({moves:[],fee:0n,payer:addr(17)}),hasCode:async()=>false,balance:async(w,t,b)=>t===USDC?(b==='0x10'?1000000n:1017000n):0n,valueUsd:async(t,n)=>{assert.equal(t,USDC);return n;}}});
  assert.equal(ledger.complete,true);assert.equal(ledger.events.length,4);assert.equal(ledger.events.find(e=>e.kind==='buy'&&e.token===buy.domain).usd,'0.201000');assert.equal(ledger.events.find(e=>e.kind==='sell').usd,'0.218000');assert.equal(ledger.events.find(e=>e.kind==='sell').notionalUsd,'0.220000');assert.equal(ledger.events.find(e=>e.kind==='sell').units,'2000');assert.ok([...ledger.events,...ledger.openingLots].every(e=>e.token!==WETH));assert.ok(ledger.events.every(e=>!['in','deposit','withdrawal'].includes(e.kind)));
- console.log('PASS generated OrderRouter split-buy/reverse-sell: 8 fee/refund/funding variants, '+(mutations.length*2+1)+' hostile mutations, exact indexed-leg aggregation, replay, manual exclusion, fee-inclusive FIFO roundtrip and no intermediate WETH capital.');
+ console.log('PASS generated OrderRouter split-buy/reverse-sell: 8 fee/refund/funding variants, '+(mutations.length*2)+' hostile mutations, exact indexed-leg aggregation, replay, manual exclusion, fee-inclusive FIFO roundtrip and no intermediate WETH capital.');
+}
+
+
+async function splitTopologyTests(){
+ for(const shape of ['reversed','direct'])for(const via of [false,true])for(const fees of [false,true]){
+  const c=extendedFixture({shape,via,inputFee:fees?11n:0n,outputFee:fees?7n:0n,refund:fees?5n:0n}),p=await verifyOrderRoute(c);
+  assert.equal(p.swap.quote,USDC);assert.equal(p.swap.quoteUnits,'200000');assert.equal(p.swap.domainUnits,'2000');assert.equal(p.volumeMicros,200000n);assert.equal(p.amounts.walletQuoteUnits,fees?'200011':'200000');assert.equal(p.amounts.walletDomainUnits,fees?'1993':'2000');assert.equal(p.amounts.pools.length,shape==='direct'?2:3);
+  c.swaps.reverse();const reordered=await verifyOrderRoute(c);assert.equal(reordered.swap.quoteUnits,p.swap.quoteUnits);assert.deepEqual(reordered.amounts,p.amounts);
+ }
+ const mutations=[
+  ['foreign path endpoint',c=>inputChange(c,0,p=>p[3]=p[3].slice(0,-40)+addr(99).slice(2))],
+  ['foreign path input',c=>inputChange(c,0,p=>p[3]=addr(99)+p[3].slice(42))],
+  ['shared pool reused',c=>c.poolFor=async()=>c.pools[0]],
+  ['declared duplicate route',c=>innerChange(c,a=>a[1][1]=a[1][0])],
+  ['false indexed quote',c=>c.swaps[0].quote=c.swaps[0].quote===USDC?WETH:USDC],
+  ['duplicate indexed leg',c=>c.swaps[1]={...c.swaps[0]}],
+  ['changed index domain',c=>c.swaps[0].domain=addr(99)],
+  ['changed index recipient',c=>c.swaps[0].wallet=addr(99)],
+  ['missing second pool event',c=>c.receipt.logs=c.receipt.logs.filter(l=>l!==swapLogs(c).at(-1))],
+  ['extra pool event',c=>c.receipt.logs.push({...swapLogs(c)[0]})],
+  ['missing domain payment',c=>c.receipt.logs=c.receipt.logs.filter(l=>!(l.address===c.domain&&l.topics[1]===v.pad(c.pools[0])))],
+  ['third route',c=>innerChange(c,a=>{a[0]='0x000000';a[1].push(a[1][0]);})],
+  ['one route omitted',c=>innerChange(c,a=>a[1].pop())],
+  ['fee not paid',c=>c.receipt.logs=c.receipt.logs.filter(l=>l.topics[2]!==v.pad(c.feeTo))],
+  ['fee target mismatch',c=>{const l=c.receipt.logs.find(l=>l.topics[2]===v.pad(c.feeTo));l.topics[2]=v.pad(addr(99));}],
+  ['extra refund',c=>c.transfer(USDC,ROUTER,c.wallet,1n)],
+  ['unexplained intermediate credit',c=>c.transfer(WETH,UNIVERSAL,c.wallet,1n)],
+  ['false Strategy aggregate',c=>c.refs[0].domainUnits='1993'],
+  ['false Strategy cost',c=>c.refs[0].quoteUnits='200011'],
+ ];
+ for(const shape of ['reversed','direct'])for(const[label,change]of mutations){const c=extendedFixture({shape,inputFee:11n,outputFee:7n,refund:5n});
+  // Both topologies contain a final domain transfer, at different pool positions.
+  if(label==='missing domain payment')c.receipt.logs=c.receipt.logs.filter(l=>!(l.address===c.domain&&l.topics[1]===v.pad(c.pools.at(-1))));else change(c);
+  await assert.rejects(()=>verifyOrderRoute(c),/ORDER_ROUTE_/,shape+' '+label);
+ }
+ console.log('PASS OrderRouter split topology: reversed direct/WETH order and two direct fee-tier pools; 8 generated fee/refund/funding variants and '+(mutations.length*2)+' hostile cases.');
+}
+
+
+async function splitSellTests(){
+ for(const shape of ['split-mixed','split-reversed','split-direct'])for(const fees of [false,true]){
+  const c=extendedFixture({buy:false,shape,inputFee:fees?11n:0n,outputFee:fees?7n:0n,refund:fees?5n:0n,via:fees}),p=await verifyOrderRoute(c);
+  assert.equal(p.swap.domainUnits,'2000');assert.equal(p.swap.quoteUnits,'220000');assert.equal(p.volumeMicros,220000n);assert.equal(p.amounts.walletDomainUnits,fees?'2011':'2000');assert.equal(p.amounts.walletQuoteUnits,fees?'219993':'220000');assert.equal(p.amounts.route,'DOMAIN_SPLIT_USDC_EXACT_INPUT_V1');
+  c.swaps.reverse();assert.deepEqual((await verifyOrderRoute(c)).amounts,p.amounts);
+ }
+ const mutations=[
+  ['wrong input path',c=>inputChange(c,0,p=>p[3]=addr(99)+p[3].slice(42))],
+  ['wrong terminal quote',c=>inputChange(c,0,p=>p[3]=p[3].slice(0,-40)+addr(99).slice(2))],
+  ['duplicate indexed leg',c=>c.swaps[1]={...c.swaps[0]}],
+  ['wrong indexed quote',c=>c.swaps[0].quote=c.swaps[0].quote===USDC?WETH:USDC],
+  ['wrong indexed amount',c=>c.swaps[0].domainUnits='1'],
+  ['minimum not reached',c=>inputChange(c,0,p=>p[2]=999999n)],
+  ['reused pool',c=>c.poolFor=async()=>c.pools[0]],
+  ['missing pool',c=>c.receipt.logs=c.receipt.logs.filter(l=>l!==swapLogs(c)[0])],
+  ['wrong pool recipient',c=>changePool(c,0,a=>a.recipient=addr(99))],
+  ['missing fee',c=>c.receipt.logs=c.receipt.logs.filter(l=>l.topics[2]!==v.pad(c.feeTo))],
+  ['extra refund',c=>c.transfer(c.domain,ROUTER,c.wallet,1n)],
+  ['extra route',c=>innerChange(c,a=>{a[0]='0x000000';a[1].push(a[1][0]);})],
+  ['wallet proceeds used as Strategy notional',c=>c.refs[0].quoteUnits='219993'],
+  ['wallet domain fee used as Strategy amount',c=>c.refs[0].domainUnits='2011'],
+ ];
+ for(const shape of ['split-mixed','split-reversed','split-direct'])for(const[label,change]of mutations){const c=extendedFixture({buy:false,shape,inputFee:11n,outputFee:7n,refund:5n});change(c);await assert.rejects(()=>verifyOrderRoute(c),/ORDER_ROUTE_/,shape+' '+label);}
+ console.log('PASS OrderRouter split sells: direct/WETH in either order and two direct fee tiers, 6 fee/refund cases and '+mutations.length*3+' hostile cases.');
 }
 
 async function main(){
+ await splitSellTests();
+ await splitTopologyTests();
  await extendedTests();
  let c=fixture({fee:1000n,refund:500n}),p=await verifyOrderRoute(c);assert.equal(p.swap.quote,USDC);assert.equal(p.volumeMicros,200000n);assert.equal(p.amounts.walletQuoteUnits,'201000');assert.equal(p.amounts.routerFeeUnits,'1000');assert.equal(p.amounts.walletDomainUnits,'2000');
  const mutations=[

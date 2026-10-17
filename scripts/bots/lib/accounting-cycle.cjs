@@ -42,7 +42,7 @@ async function accountingCycle({snapshot,packet,accountCoverage=null,cache,sourc
   }
  }
  const accountReady=participant=>accountCoverage===null?packet.complete===true:coverage.get(participant)?.complete===true;
- const ledgers=[],problems=[],end=now()+budgetMs,target=Date.parse(packet.confirmedThrough);
+ const ledgers=[],problems=[],accountResults=[],end=now()+budgetMs,target=Date.parse(packet.confirmedThrough);
  if(!Number.isFinite(target))throw Error('ACCOUNTING_PERIOD_INVALID');
  const initial=jobs.getCheckpoint('cursor'),offset=Number.isInteger(initial?.next)?initial.next%Math.max(accounts.length,1):0;
  let attempted=0,notStarted=0;
@@ -97,15 +97,16 @@ async function accountingCycle({snapshot,packet,accountCoverage=null,cache,sourc
  async function getAnchor(through){if(!anchors.has(through))anchors.set(through,await anchorAt(Date.parse(through),end));return anchors.get(through);}
  for(let n=0;n<accounts.length;n++){
   const index=(offset+n)%accounts.length,{a,periodStart,wallets,identity}=contexts[index];
-  if(!accountReady(a.participant)){problems.push({code:'ACCOUNT_TRADE_COVERAGE_PENDING'});continue;}
-  if(noTrades.has(a.participant))continue;
-  if(instant(periodStart)>instant(packet.confirmedThrough)){notStarted++;continue;}
+  if(!accountReady(a.participant)){problems.push({code:'ACCOUNT_TRADE_COVERAGE_PENDING'});accountResults.push({participant:a.participant,status:'trade_coverage_pending',confirmedThrough:packet.confirmedThrough,elapsedMs:0,code:'ACCOUNT_TRADE_COVERAGE_PENDING'});continue;}
+  if(noTrades.has(a.participant)){accountResults.push({participant:a.participant,status:'no_eligible_trades',confirmedThrough:packet.confirmedThrough,elapsedMs:0});continue;}
+  if(instant(periodStart)>instant(packet.confirmedThrough)){notStarted++;accountResults.push({participant:a.participant,status:'not_started',confirmedThrough:packet.confirmedThrough,elapsedMs:0});continue;}
   if(now()>=end){if(!allCovered())problems.push({code:'ACCOUNTING_TIME_BUDGET_EXCEEDED'});break;}
   const previous=jobs.getCheckpoint(identity);
   let job=previous&&Number.isFinite(Date.parse(previous.through))&&Date.parse(previous.through)>=Date.parse(periodStart)&&Date.parse(previous.through)<=target?previous:null;
   const priorAnchors=job?.priorAnchors||[];
   if(job?.finished&&job.through!==packet.confirmedThrough){priorAnchors.unshift(job.anchor);job=null;}
   const through=job?.through||packet.confirmedThrough;
+  const startedAt=now();
   const {eligible,references,fingerprint}=evidenceFor(a,wallets,periodStart,through);
   // A new attempt must stand on its own. A timeout, correction or source error
   // cannot leave an earlier successful marker confirming this account.
@@ -131,8 +132,12 @@ async function accountingCycle({snapshot,packet,accountCoverage=null,cache,sourc
       // Recheck the saved anchor before every reconstruction attempt.
       const canonical=await source.block(anchor.number);
       if(canonical.hash!==anchor.hash)throw Error('ACCOUNTING_ANCHOR_CHANGED');
-      return await reconstructLedger({participant:a.participant,wallets,from:Date.parse(periodStart),periodStart,through:Date.parse(through),
+      const ledger=await reconstructLedger({participant:a.participant,wallets,from:Date.parse(periodStart),periodStart,through:Date.parse(through),
        markets:snapshot.manifest.markets,references,eligible,source,priorRevision:snapshot.accountingRevisions?.[a.participant]||0});
+      // Long reconstruction must finish on the same finalized chain evidence;
+      // fresh boundary reads cannot be replaced by an in-memory anchor hit.
+      await source.verifyFinalizedEvidence?.();source.checkBudget?.();
+      return ledger;
      }catch(e){
       if(attempt>=2||!['PUBLIC_RETRIES_EXHAUSTED','PUBLIC_REQUEST_TIMEOUT','PUBLIC_NETWORK_UNAVAILABLE'].includes(e?.message))throw e;
      }
@@ -145,13 +150,14 @@ async function accountingCycle({snapshot,packet,accountCoverage=null,cache,sourc
    let published=false;
    if(onLedger){
     try{published=await onLedger(ledger);}catch(e){e.accountingPublicationFailed=true;throw e;}
-    if(published!==true){verified.delete(a.participant);sweep.setCheckpoint(a.participant,null);problems.push({code:'ACCOUNTING_PUBLICATION_REJECTED'});continue;}
+    if(published!==true){verified.delete(a.participant);sweep.setCheckpoint(a.participant,null);problems.push({code:'ACCOUNTING_PUBLICATION_REJECTED'});accountResults.push({participant:a.participant,status:'publication_rejected',confirmedThrough:through,elapsedMs:Math.max(0,now()-startedAt),code:'ACCOUNTING_PUBLICATION_REJECTED'});continue;}
    }
    if(through===packet.confirmedThrough){
     const marker={participant:a.participant,periodStart,through,anchor,fingerprint,ledgerRevision:ledger.revision,requestId:ledger.requestId,checkedAt:now(),committed:published};
     sweep.setCheckpoint(a.participant,marker);if(!published)staged.push(marker);verified.set(a.participant,marker);
    }
    ledgers.push(ledger);
+   accountResults.push({participant:a.participant,status:published?'published':'verified_read_only',confirmedThrough:through,elapsedMs:Math.max(0,now()-startedAt)});
    // Once a fresh attempt completes the sweep, do not spend the remaining
    // slice replacing another valid marker and risk undoing the completed set.
    if(allCovered())break;
@@ -159,6 +165,7 @@ async function accountingCycle({snapshot,packet,accountCoverage=null,cache,sourc
    if(e.accountingPublicationFailed)throw e;
    if(['ACCOUNTING_ANCHOR_CHANGED','ACCOUNTING_CACHE_ANCHOR_CHANGED','ACCOUNTING_ANCHOR_REORG'].includes(e.message))jobs.setCheckpoint(identity,{through:packet.confirmedThrough,finished:false,priorAnchors:[]});
    problems.push({code:code(e)});
+   accountResults.push({participant:a.participant,status:'failed',confirmedThrough:through,elapsedMs:Math.max(0,now()-startedAt),code:code(e)});
   }
  }
  // Every entrant still needs an exact-cutoff disposition. Only independently
@@ -178,6 +185,6 @@ async function accountingCycle({snapshot,packet,accountCoverage=null,cache,sourc
   return confirmed;
  }
  const entrantsPresent=snapshot.manifest.campaign.state==='draft'||accounts.length===entries.size;
- return {ledgers,problems,complete:packet.complete===true&&accounts.length>0&&entrantsPresent&&allCovered(),attempted,completed:verified.size,noTrades:noTrades.size,notStarted,total:entries.size||accounts.length,confirmCommit};
+ return {ledgers,problems,accountResults,complete:packet.complete===true&&accounts.length>0&&entrantsPresent&&allCovered(),attempted,completed:verified.size,noTrades:noTrades.size,notStarted,total:entries.size||accounts.length,confirmCommit};
 }
 module.exports={accountingCycle,exactStart,eligibleCompetitionFills};

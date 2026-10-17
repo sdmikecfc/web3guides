@@ -31,6 +31,22 @@ async function main(){
  let backoffCalls=0;
  const backoff=publicSource({apiKey:'test-only',delay:0,fetcher:async()=>{backoffCalls++;return new Response('{}',{status:503})}});
  const before=Date.now();await assert.rejects(()=>backoff.withDeadline(Date.now()+40,()=>backoff.receipt(receipt)),/ACCOUNTING_TIME_BUDGET_EXCEEDED/);assert.ok(Date.now()-before<400);assert.equal(backoffCalls,1);
- console.log('PASS accounting budget: real in-flight abort, cancelled backoff, no orphan requests or partial result, expired global budget skips work, source recovers, and bounded transient read retry.');
+ let tradeActive=0,tradeAborted=0,tradeStarted=0;
+ const trade=publicSource({apiKey:'test-only',delay:0,fetcher:async(_url,options)=>{
+  tradeStarted++;tradeActive++;return new Promise((_resolve,reject)=>{const abort=()=>{tradeActive--;tradeAborted++;reject(new DOMException('aborted','AbortError'));};if(options.signal.aborted)abort();else options.signal.addEventListener('abort',abort,{once:true});});
+ }});
+ const partial=await trade.withDeadline(Date.now()+50,async()=>{
+  const results=await Promise.allSettled([1,2,3].map(n=>trade.receipt('0x'+String(n).repeat(64))));
+  assert.ok(results.every(r=>r.status==='rejected'&&r.reason.message==='TRADE_TIME_BUDGET_EXCEEDED'));
+  return {complete:false,accounts:[]};
+ },{errorCode:'TRADE_TIME_BUDGET_EXCEEDED',acceptPartial:true});
+ assert.deepEqual(partial,{complete:false,accounts:[]});assert.equal(tradeStarted,3);assert.equal(tradeAborted,3);assert.equal(tradeActive,0);
+ await assert.rejects(()=>trade.withDeadline(Date.now()-1,()=>Promise.resolve('must not run'),{errorCode:'TRADE_TIME_BUDGET_EXCEEDED',acceptPartial:true}),/TRADE_TIME_BUDGET_EXCEEDED/);assert.equal(tradeStarted,3);
+ // An unrelated task error still cancels/drains HTTP before returning. No
+ // abandoned fetch is allowed to finish after another account starts.
+ await assert.rejects(()=>trade.withDeadline(Date.now()+1000,async()=>{
+  const pending=trade.receipt('0x'+'4'.repeat(64));pending.catch(()=>{});await new Promise(r=>setTimeout(r,5));throw Error('TASK_FAILED');
+ }),/TASK_FAILED/);assert.equal(tradeActive,0);assert.equal(tradeAborted,4);
+ console.log('PASS source budgets: real in-flight abort, cancelled backoff, no orphan requests, expired global budget skips work, source recovers, bounded transient retry, explicit partial trade packet, and task-error cleanup.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1});

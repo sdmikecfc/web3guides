@@ -4,14 +4,14 @@ const code=fs.readFileSync(path.join(__dirname,'run-trade-worker.cjs'),'utf8');
 const start=code.indexOf('const waitingCodes='),end=code.indexOf('main().catch(',start);
 assert.ok(start>=0&&end>start,'worker retry loop exists');
 const loop=code.slice(start,end)+'main();';
-async function scenario(error,{watch=true,published=false}={}){
+async function scenario(error,{watch=true,published=false,runtimeMs=0}={}){
  let now=1000000,active=0,maxActive=0,calls=0;
  const records=[],reports=[],pauses=[];
  const context={pollMinutes:15,runPublishedScores:published,workerVersion:'test-worker',stopping:false,args:new Set(watch?['--watch']:[]),process:{exitCode:0},console:{error(){}},safeCode:value=>typeof value==='string'&&/^[A-Z][A-Z0-9_]{2,100}$/.test(value)?value:'SOURCE_UNAVAILABLE',
  Date:class extends Date{constructor(...args){super(...(args.length?args:[now]));}static now(){return now;}},
  setTimeout(fn,delay){pauses.push(delay);now+=delay;queueMicrotask(fn);},
  progress:async(phase,detail,report)=>{records.push({phase,detail,report});return true;},saveReport:r=>reports.push(r),
- run:async()=>{active++;maxActive=Math.max(maxActive,active);calls++;try{if(calls===1)throw typeof error==='string'?Error(error):error;context.stopping=true;}finally{active--;}}
+ run:async()=>{active++;maxActive=Math.max(maxActive,active);calls++;try{now+=runtimeMs;if(calls===1&&error)throw typeof error==='string'?Error(error):error;if(calls>1||!watch)context.stopping=true;}finally{active--;}}
  };
  await vm.runInNewContext(loop,context,{timeout:1000});
  assert.equal(maxActive,1);assert.equal(calls,watch?2:1);
@@ -25,6 +25,7 @@ async function scenario(error,{watch=true,published=false}={}){
  const reason=Object.assign(Error('PUBLICATION_SOURCE_CHANGED'),{sourceReason:'ENTRIES'}),diagnosed=await scenario(reason);
  assert.equal(diagnosed.report.problems[0].code,'PUBLICATION_SOURCE_ENTRIES');assert.equal(diagnosed.wait,300000);
  const privateReason=await scenario(Object.assign(Error('PUBLICATION_SOURCE_CHANGED'),{sourceReason:'private wallet and secret text'}));assert(!JSON.stringify(privateReason).includes('private wallet'));assert.equal(privateReason.report.problems,undefined);
+ const slow=await scenario(null,{runtimeMs:21*60000});assert.equal(slow.wait,60000,'long successful scans do not sleep another full interval');
  const failed=await scenario('RESULT_PUBLICATION_SCHEMA_REQUIRED');assert.equal(failed.record.phase,'AUDIT_FAILED');assert.equal(failed.report.status,'FAILED');assert.equal(failed.wait,900000);
  const sensitive=await scenario('unexpected private wallet 0x123 secret text');assert.equal(sensitive.report.code,'SOURCE_UNAVAILABLE');assert(!JSON.stringify(sensitive).includes('private wallet'));
  const once=await scenario('PRIVATE_COVERAGE_PENDING',{watch:false});assert.equal(once.wait,0);assert.equal(once.exitCode,1);

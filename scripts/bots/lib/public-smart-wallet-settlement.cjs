@@ -57,9 +57,9 @@ async function verifySmartWalletSettlement({swaps,transaction:tx,receipt,codeAt,
  if(lower(target)!==ROUTER||value!==0n)fail('UNSUPPORTED_ACCOUNT_CALL');
  const [commands,allInputs,deadline]=decode(parseAbi(['function execute(bytes commands,bytes[] inputs,uint256 deadline) payable','function execute(bytes commands,bytes[] inputs) payable']),data);
  if(deadline!==undefined&&deadline<BigInt(Math.floor(Date.parse(first.executedAt)/1000)))fail('EXPIRED_DEADLINE');
- const withPermit=commands==='0x0a000604',withFee=withPermit||commands==='0x000604';
+ const withPermit=/^0x0a(?:00){1,2}0604$/.test(commands),withFee=/^0x(?:0a)?(?:00){1,2}0604$/.test(commands);
  if(!(withFee||/^0x(?:00){1,2}$/.test(commands))||allInputs.length!==(commands.length-2)/2||approval&&!withPermit&&!allowance||allowance&&!/^0x(?:00){1,2}$/.test(commands))fail('UNSUPPORTED_COMMANDS');
- const inputs=withFee?[allInputs[withPermit?1:0]]:allInputs;
+ const inputs=withFee?allInputs.slice(withPermit?1:0,-2):allInputs;
  const logs=receipt.logs||[],seen=new Set();
  for(const l of logs){if(l.removed||lower(l.transactionHash)!==first.tx||lower(l.blockHash)!==lower(receipt.blockHash)||BigInt(l.blockNumber)!==BigInt(receipt.blockNumber)||!/^0x[0-9a-f]+$/i.test(l.logIndex)||seen.has(BigInt(l.logIndex).toString()))fail('LOG_IDENTITY_INVALID');seen.add(BigInt(l.logIndex).toString());}
  const eventAbi=parseAbi(['event UserOperationEvent(bytes32 indexed userOpHash,address indexed sender,address indexed paymaster,uint256 nonce,bool success,uint256 actualGasCost,uint256 actualGasUsed)']);
@@ -87,8 +87,8 @@ async function verifySmartWalletSettlement({swaps,transaction:tx,receipt,codeAt,
  let permit=null,feeCommand=null,sweepCommand=null,totalFee=0n;
  if(withFee){
   if(keccak256(await codeAt(PERMIT2,receipt.blockNumber))!==PERMIT2_HASH)fail('UNREVIEWED_PERMIT2');
-  feeCommand=paramsDecode(types('address','address','uint256'),allInputs[withPermit?2:1]);
-  sweepCommand=paramsDecode(types('address','address','uint256'),allInputs[withPermit?3:2]);
+  feeCommand=paramsDecode(types('address','address','uint256'),allInputs.at(-2));
+  sweepCommand=paramsDecode(types('address','address','uint256'),allInputs.at(-1));
  }
  if(withPermit){
   const [p,signature]=paramsDecode(parseAbiParameters('((address token,uint160 amount,uint48 expiration,uint48 nonce) details,address spender,uint256 sigDeadline) permit,bytes signature'),allInputs[0]);permit=p;
@@ -135,19 +135,25 @@ async function verifySmartWalletSettlement({swaps,transaction:tx,receipt,codeAt,
    inputUnits=output;
   }
   if(inputUnits<minOut||!domainLeg)fail('MINIMUM_OUTPUT_MISMATCH');
-  if(withFee){
-   const output=tokens.at(-1),feeTo=resolve(feeCommand[1]),bips=feeCommand[2];
-   if(lower(feeCommand[0])!==output||bips<=0n||bips>=10000n||[zero,wallet,ROUTER,PERMIT2,...tokens,...pools].includes(feeTo))fail('INVALID_FEE');
-   totalFee=inputUnits*bips/10000n;const received=inputUnits-totalFee;
-   if(lower(sweepCommand[0])!==output||resolve(sweepCommand[1])!==wallet||sweepCommand[2]>received)fail('SWEEP_MISMATCH');
-   if(totalFee)expectedTransfers.push({token:output,from:ROUTER,to:feeTo,units:totalFee.toString()});
-   expectedTransfers.push({token:output,from:ROUTER,to:wallet,units:received.toString()});inputUnits=received;
-  }
   walletDomain+=buy?inputUnits:amountIn;walletQuote+=buy?amountIn:inputUnits;
   legs.push(domainLeg);paths.push({tokens,fees,pools});
  }
  if(used.size!==swapLogs.length)fail('UNEXPLAINED_POOL');
+ // PAY_PORTION and SWEEP execute once after all bounded V3 paths. Their basis
+ // is the aggregate output balance, including one integer rounding operation.
+ if(withFee){
+  const buy=first.side==='buy',output=buy?domain:quote,gross=buy?walletDomain:walletQuote,feeTo=resolve(feeCommand[1]),bips=feeCommand[2];
+  const routeAddresses=paths.flatMap(p=>[...p.tokens,...p.pools]);
+  if(lower(feeCommand[0])!==output||bips<=0n||bips>=10000n||[zero,wallet,ROUTER,PERMIT2,...routeAddresses].includes(feeTo))fail('INVALID_FEE');
+  totalFee=gross*bips/10000n;const received=gross-totalFee;
+  if(lower(sweepCommand[0])!==output||resolve(sweepCommand[1])!==wallet||sweepCommand[2]>received)fail('SWEEP_MISMATCH');
+  if(totalFee)expectedTransfers.push({token:output,from:ROUTER,to:feeTo,units:totalFee.toString()});
+  expectedTransfers.push({token:output,from:ROUTER,to:wallet,units:received.toString()});
+  if(buy)walletDomain=received;else walletQuote=received;
+ }
+
  const totalInput=first.side==='buy'?walletQuote:walletDomain;
+ if(permit&&permit.details.amount<totalInput)fail('PERMIT_MISMATCH');
  if(approval&&approval.amount<totalInput)fail('UNSUPPORTED_APPROVAL');
  if(allowance&&allowance.amount<totalInput)fail('UNSUPPORTED_ALLOWANCE');
  const transferKey=t=>[t.token,t.from,t.to,t.units].join(':');
@@ -164,7 +170,7 @@ async function verifySmartWalletSettlement({swaps,transaction:tx,receipt,codeAt,
  if(indexed.size!==legs.length||legs.some(l=>!indexed.has(legKey(l))))fail('INDEX_MISMATCH');
  const volumeMicros=legs.reduce((sum,l)=>sum+volume(indexed.get(legKey(l))),0n);
  const swap={...first,quote,domainUnits:walletDomain.toString(),quoteUnits:walletQuote.toString()};
- const amounts={walletDomainUnits:swap.domainUnits,walletQuoteUnits:swap.quoteUnits,routerFeeUnits:(first.side==='sell'?totalFee:0n).toString(),...(withFee?{routerDomainFeeUnits:(first.side==='buy'?totalFee:0n).toString(),route:withPermit?'SMART_PERMIT_EXACT_INPUT_PORTION_SWEEP_1':'SMART_EXACT_INPUT_PORTION_SWEEP_1'}:{}),...(allowance?{route:'SMART_ALLOWANCE_EXACT_INPUT_1'}:{}),router:ROUTER,entryPoint:ENTRY,accountImplementation:ACCOUNT,userOperationHash:event.userOpHash,paths,poolLegs:legs,routerRuntimeHash:HASHES[ROUTER]};
+ const amounts={walletDomainUnits:swap.domainUnits,walletQuoteUnits:swap.quoteUnits,routerFeeUnits:(first.side==='sell'?totalFee:0n).toString(),...(withFee?{routerDomainFeeUnits:(first.side==='buy'?totalFee:0n).toString(),route:inputs.length===2?(withPermit?'SMART_PERMIT_SPLIT_EXACT_INPUT_PORTION_SWEEP_1':'SMART_SPLIT_EXACT_INPUT_PORTION_SWEEP_1'):(withPermit?'SMART_PERMIT_EXACT_INPUT_PORTION_SWEEP_1':'SMART_EXACT_INPUT_PORTION_SWEEP_1')}:{}),...(allowance?{route:'SMART_ALLOWANCE_EXACT_INPUT_1'}:{}),router:ROUTER,entryPoint:ENTRY,accountImplementation:ACCOUNT,userOperationHash:event.userOpHash,paths,poolLegs:legs,routerRuntimeHash:HASHES[ROUTER]};
  return {swap,amounts,volumeMicros};
 }
 module.exports={verifySmartWalletSettlement,ENTRY,ACCOUNT,ROUTER,HASHES,HASH_ABI,PERMIT2,PERMIT2_HASH,EIP7702_INIT_CODE};

@@ -78,8 +78,9 @@ async function verifyLegacyOrderRoute({swaps,refs=[],transaction:tx,receipt,impl
 
 
 // Preserve the original proof byte-for-byte for its already reviewed buy shape.
-// New shapes are bounded to one reverse two-hop sale, or one direct buy followed
-// by one WETH buy in a single Universal call. Neither route becomes another fill.
+// Extended shapes share the same USDC/domain endpoints: one two-hop sale or
+// two direct/WETH paths for either side. Command order and distinct pool fee
+// tiers do not create another economic fill. Every pool remains uniquely proved.
 async function verifyOrderRoute(context){
  const tx=context.transaction;if(lower(tx?.to)!==ROUTER)return null;
  const {parseAbi,decodeFunctionData,decodeAbiParameters}=require('viem');
@@ -123,10 +124,10 @@ async function verifyExtendedOrderRoute({swaps,refs=[],transaction:tx,receipt,im
   else if(kind===3){const[to,data,value]=params(['address','bytes','uint256'],c.data);if(value!==0n)fail('NATIVE_VALUE_UNSUPPORTED');
    if(lower(to)===UNIVERSAL){
     if(routeCall)fail('MULTIPLE_ROUTES');routeCall=decode(innerAbi,data);
-    if(routeCall.args[0]!== (buy?'0x0000':'0x00')||routeCall.args[1].length!==(buy?2:1))fail('COMMANDS_UNSUPPORTED');
+    if(!(buy?routeCall.args[0]==='0x0000':/^0x(?:00){1,2}$/.test(routeCall.args[0]))||routeCall.args[1].length!==(routeCall.args[0].length-2)/2)fail('COMMANDS_UNSUPPORTED');
     for(const [i,d] of routeCall.args[1].entries()){
      const[recipient,amount,minimum,path,payer]=params(['address','uint256','uint256','bytes','bool'],d);
-     const tokens=buy?(i===0?[USDC,domain]:[USDC,WETH,domain]):[domain,WETH,USDC];
+     const tokens=buy?(path.length===88?[USDC,domain]:[USDC,WETH,domain]):(path.length===88?[domain,USDC]:[domain,WETH,USDC]);
      if(path.length!==2+40*tokens.length+6*(tokens.length-1)||!payer||amount<=0n||![wallet,ROUTER].includes(lower(recipient)))fail('PATH_UNSUPPORTED');
      const routeFees=[];for(let h=0;h<tokens.length;h++){if(lower('0x'+path.slice(2+h*46,42+h*46))!==tokens[h])fail('PATH_UNSUPPORTED');if(h<tokens.length-1)routeFees.push(parseInt(path.slice(42+h*46,48+h*46),16));}
      if(routeFees.some(f=>![100,500,3000,10000].includes(f)))fail('PATH_UNSUPPORTED');
@@ -155,7 +156,7 @@ async function verifyExtendedOrderRoute({swaps,refs=[],transaction:tx,receipt,im
   r.legs=r.pools.map((p,i)=>{const log=swapLogs.find(l=>lower(l.address)===p),a=decodeEventLog({abi:swapAbi,data:log.data,topics:log.topics}).args,input0=BigInt(r.tokens[i])<BigInt(r.tokens[i+1]),paid=input0?a.amount0:a.amount1,received=-(input0?a.amount1:a.amount0),recipient=i===r.pools.length-1?r.recipient:UNIVERSAL;
    if(lower(a.sender)!==UNIVERSAL||lower(a.recipient)!==recipient||paid<=0n||received<=0n)fail('POOL_EVENT_MISMATCH');return {paid,received,index:log.logIndex};});
   if(r.legs[0].paid!==r.amount||r.legs.some((l,i)=>i&&r.legs[i-1].received!==l.paid)||r.legs.at(-1).received<r.minimum)fail('POOL_AMOUNTS_MISMATCH');
-  const domainLeg=buy?r.legs.at(-1):r.legs[0],quote=buy?r.tokens.at(-2):WETH;
+  const domainLeg=buy?r.legs.at(-1):r.legs[0],quote=buy?r.tokens.at(-2):r.tokens[1];
   const matches=swaps.map((s,i)=>({s,i})).filter(({s})=>s.quote===quote&&BigInt(s.domainUnits)===(buy?domainLeg.received:domainLeg.paid)&&BigInt(s.quoteUnits)===(buy?domainLeg.paid:domainLeg.received));
   if(matches.length!==1||usedIndex.has(matches[0].i))fail('POOL_AMOUNTS_MISMATCH');usedIndex.add(matches[0].i);legs.push(...r.legs);
  }
@@ -187,6 +188,6 @@ async function verifyExtendedOrderRoute({swaps,refs=[],transaction:tx,receipt,im
  const quote=buy?input:output,domainUnits=buy?output:input;
  const swap={...indexed,quote:USDC,quoteUnits:quote.toString(),domainUnits:domainUnits.toString()};
  if(refs.length&&(refs.length!==1||refs[0].status!=='verified'||key(referenceSwap(refs[0]))!==key(swap)||Date.parse(refs[0].executedAt)!==Date.parse(swap.executedAt)))fail('STRATEGY_ATTRIBUTION_MISMATCH');
- return {swap,volumeMicros:quote,amounts:{walletDomainUnits:(buy?output-outputFee:input+inputFee).toString(),walletQuoteUnits:(buy?input+inputFee:output-outputFee).toString(),walletQuoteToken:USDC,routerFeeUnits:(buy?inputFee:outputFee).toString(),routerDomainFeeUnits:(buy?outputFee:inputFee).toString(),router:ROUTER,routerImplementation:IMPLEMENTATION,routerRuntimeHashes:PINS,pools,swapLogIndices:legs.map(l=>l.index),executionId:outer.args[0].toString(),route:buy?'USDC_SPLIT_DOMAIN_EXACT_INPUT_V1':'DOMAIN_WETH_USDC_EXACT_INPUT_V1'}};
+ return {swap,volumeMicros:quote,amounts:{walletDomainUnits:(buy?output-outputFee:input+inputFee).toString(),walletQuoteUnits:(buy?input+inputFee:output-outputFee).toString(),walletQuoteToken:USDC,routerFeeUnits:(buy?inputFee:outputFee).toString(),routerDomainFeeUnits:(buy?outputFee:inputFee).toString(),router:ROUTER,routerImplementation:IMPLEMENTATION,routerRuntimeHashes:PINS,pools,swapLogIndices:legs.map(l=>l.index),executionId:outer.args[0].toString(),route:buy?'USDC_SPLIT_DOMAIN_EXACT_INPUT_V1':routes.length===1?'DOMAIN_WETH_USDC_EXACT_INPUT_V1':'DOMAIN_SPLIT_USDC_EXACT_INPUT_V1'}};
 }
 module.exports={verifyOrderRoute,PINS};

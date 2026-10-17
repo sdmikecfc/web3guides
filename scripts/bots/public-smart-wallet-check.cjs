@@ -170,7 +170,83 @@ async function twoHopFeeTests(){
  console.log('PASS synthetic two-hop smart-wallet fees: signed permit/direct buy/sell, exact per-hop conservation, output fees/sweep, 28 hostile mutations, canonical USDC fills, pool-only volume and fee-inclusive closed-roundtrip FIFO without intermediate WETH capital.');
 }
 
+
+// Two generated paths deliberately leave fractional fee remainders: charging
+// each path separately would underpay the single aggregate PAY_PORTION by one.
+async function splitFeeFixture(side='buy',withPermit=true,changeRoute=null,permitLimit=null){
+ const f=await twoHopFeeFixture(side,null,withPermit),buy=side==='buy',signer=require('viem/accounts').privateKeyToAccount('0x'+'1'.repeat(64));
+ const input=buy?USDC:f.domain,output=buy?f.domain:USDC,pool='0x'+'aa'.repeat(19)+'03',extraIn=buy?150000n:946881n,extraOut=buy?947829n:135195n;
+ const totalInput=f.amountIn+extraIn,gross=f.gross+extraOut,fee=gross/1000n,net=gross-fee;
+ const decoded=v.decodeFunctionData({abi:entryAbi,data:f.c.transaction.input}),op=decoded.args[0][0],accountAbi=v.parseAbi(['function execute(address target,uint256 value,bytes data)']),account=v.decodeFunctionData({abi:accountAbi,data:op.callData}).args,routerAbi=v.parseAbi(['function execute(bytes commands,bytes[] inputs) payable']),route=v.decodeFunctionData({abi:routerAbi,data:account[2]}).args;
+ const swapParams=v.parseAbiParameters('address,uint256,uint256,bytes,bool'),moneyParams=v.parseAbiParameters('address,address,uint256');
+ route[0]=withPermit?'0x0a00000604':'0x00000604';route[1].splice(withPermit?2:1,0,v.encodeAbiParameters(swapParams,['0x'+'0'.repeat(39)+'2',extraIn,0n,input+'000bb8'+output.slice(2),true]));
+ route[1][route[1].length-1]=v.encodeAbiParameters(moneyParams,[output,f.wallet,net]);
+ if(withPermit){
+  const permitParams=v.parseAbiParameters('((address token,uint160 amount,uint48 expiration,uint48 nonce) details,address spender,uint256 sigDeadline),bytes'),p=v.decodeAbiParameters(permitParams,route[1][0]);p[0].details.amount=permitLimit??totalInput;
+  p[1]=await signer.signTypedData({domain:{name:'Permit2',chainId:97477,verifyingContract:adapter.PERMIT2},types:{PermitDetails:[{name:'token',type:'address'},{name:'amount',type:'uint160'},{name:'expiration',type:'uint48'},{name:'nonce',type:'uint48'}],PermitSingle:[{name:'details',type:'PermitDetails'},{name:'spender',type:'address'},{name:'sigDeadline',type:'uint256'}]},primaryType:'PermitSingle',message:p[0]});
+  route[1][0]=v.encodeAbiParameters(permitParams,p);f.refs.permit.data=v.encodeAbiParameters(v.parseAbiParameters('uint160,uint48,uint48'),[p[0].details.amount,2000000000,1]);
+ }
+ if(changeRoute)changeRoute(route,{f,withPermit,extraIn,extraOut,totalInput,gross,fee,net,input,output,pool});
+ account[2]=v.encodeFunctionData({abi:routerAbi,functionName:'execute',args:route});op.callData=v.encodeFunctionData({abi:accountAbi,functionName:'execute',args:account});
+ const operationHash=actual=>v.keccak256(v.encodeAbiParameters(v.parseAbiParameters(OP),[{...actual,signature:'0x'}]));
+ const userOpHash=operationHash(op);op.signature=await signer.sign({hash:userOpHash});f.c.transaction.input=v.encodeFunctionData({abi:entryAbi,functionName:'handleOps',args:decoded.args});f.c.userOperationHash=async actual=>operationHash(actual);f.refs.operation.topics[1]=userOpHash;
+ const envelope={...f.refs.input},extraTransfer=(token,from,to,units)=>({...envelope,address:token,topics:[TRANSFER,v.pad(from),v.pad(to)],data:v.toHex(units,{size:32})});
+ const input0=BigInt(input)<BigInt(output),extraLogs=[extraTransfer(input,f.wallet,pool,extraIn),{...envelope,address:pool,topics:v.encodeEventTopics({abi:f.swapEvent,eventName:'Swap',args:{sender:adapter.ROUTER,recipient:adapter.ROUTER}}),data:v.encodeAbiParameters(v.parseAbiParameters('int256,int256,uint160,uint128,int24'),[input0?extraIn:-extraOut,input0?-extraOut:extraIn,1n,1n,0])},extraTransfer(output,pool,adapter.ROUTER,extraOut)];
+ f.c.receipt.logs.splice(f.c.receipt.logs.indexOf(f.refs.fee),0,...extraLogs);f.c.receipt.logs.forEach((l,i)=>l.logIndex=v.toHex(i));f.refs.fee.data=v.toHex(fee,{size:32});f.refs.sweep.data=v.toHex(net,{size:32});f.refs.directIn=extraLogs[0];f.refs.directPool=extraLogs[1];f.refs.directOut=extraLogs[2];
+ const oldPool=f.c.poolFor;f.c.poolFor=async(a,b,fee)=>[a,b].sort().join(':')===[input,output].sort().join(':')&&fee===3000?pool:oldPool(a,b,fee);
+ const row={...f.row,quoteToken:{symbol:'USDC.e',decimals:6},fractionalTokenAmount:(buy?extraOut:-extraIn).toString(),quoteTokenAmount:(buy?-extraIn:extraOut).toString()};f.rows=[f.row,row];f.c.swaps=f.rows.map(normalizePublicSwap);
+ return {...f,rows:f.rows,amountIn:totalInput,gross,fee,net,extraIn,extraOut,pool};
+}
+async function splitFeeTests(){
+ for(const side of ['buy','sell'])for(const permit of [false,true]){
+  const f=await splitFeeFixture(side,permit),p=await adapter.verifySmartWalletSettlement(f.c);
+  assert.equal(p.swap.quote,USDC);assert.equal(p.swap.domainUnits,'13986800');assert.equal(p.swap.quoteUnits,side==='buy'?'2150000':'2128770');assert.equal(p.amounts.paths.length,2);assert.equal(p.amounts.poolLegs.length,2);assert.equal(p.volumeMicros,side==='buy'?2149696n:2130895n);assert.equal(p.amounts.routerFeeUnits,side==='sell'?'2130':'0');assert.equal(p.amounts.routerDomainFeeUnits,side==='buy'?'14000':'0');
+  f.c.swaps.reverse();assert.equal((await adapter.verifySmartWalletSettlement(f.c)).volumeMicros,p.volumeMicros);
+ }
+ const mutations=[
+  ['missing direct pool',f=>f.c.receipt.logs=f.c.receipt.logs.filter(l=>l!==f.refs.directPool),/AMBIGUOUS_POOL/],
+  ['extra pool',f=>f.c.receipt.logs.push({...clone(f.refs.directPool),logIndex:'0xffff'}),/AMBIGUOUS_POOL/],
+  ['wrong direct recipient',f=>f.refs.directPool.topics[2]=v.pad(f.wallet),/POOL_AMOUNT_MISMATCH/],
+  ['missing direct input',f=>f.c.receipt.logs=f.c.receipt.logs.filter(l=>l!==f.refs.directIn),/UNEXPLAINED_TRANSFER/],
+  ['missing direct output',f=>f.c.receipt.logs=f.c.receipt.logs.filter(l=>l!==f.refs.directOut),/UNEXPLAINED_TRANSFER/],
+  ['wrong direct output amount',f=>f.refs.directOut.data=v.toHex(f.extraOut+1n,{size:32}),/UNEXPLAINED_TRANSFER/],
+  ['intermediate amount mismatch',f=>f.refs.middleIn.data=v.toHex(f.intermediate+1n,{size:32}),/UNEXPLAINED_TRANSFER/],
+  ['fee token',f=>f.refs.fee.address=WETH,/UNEXPLAINED_TRANSFER/],
+  ['fee recipient',f=>f.refs.fee.topics[2]=v.pad(f.outside),/UNEXPLAINED_TRANSFER/],
+  ['fee amount',f=>f.refs.fee.data=v.toHex(f.fee+1n,{size:32}),/UNEXPLAINED_TRANSFER/],
+  ['sweep amount',f=>f.refs.sweep.data=v.toHex(f.net+1n,{size:32}),/UNEXPLAINED_TRANSFER/],
+  ['extra wallet transfer',f=>f.c.receipt.logs.push({...clone(f.refs.directIn),logIndex:'0xffff'}),/UNEXPLAINED_TRANSFER/],
+  ['missing indexed leg',f=>f.c.swaps.pop(),/INDEX_MISMATCH/],
+  ['duplicate indexed leg',f=>f.c.swaps[1]={...f.c.swaps[0]},/DUPLICATE_INDEX_ROW/],
+  ['fake direct amount',f=>f.c.swaps[1].quoteUnits='1',/INDEX_MISMATCH/],
+  ['wrong UserOp hash',f=>f.c.userOperationHash=async()=> '0x'+'0'.repeat(64),/OPERATION_EVENT_MISMATCH/],
+  ['wrong signature',f=>alterOp(f.c,op=>op.signature='0x'+'11'.repeat(64)+'1b'),/OPERATION_SIGNATURE_MISMATCH|signature|point/i],
+ ];
+ for(const side of ['buy','sell'])for(const[label,change,error]of mutations){const f=await splitFeeFixture(side);change(f);await assert.rejects(()=>adapter.verifySmartWalletSettlement(f.c),error,side+' '+label);}
+ const swapParams=v.parseAbiParameters('address,uint256,uint256,bytes,bool'),moneyParams=v.parseAbiParameters('address,address,uint256');
+ const attacks=[
+  ['third route',(r)=>{r[0]='0x0a0000000604';r[1].splice(2,0,r[1][1]);},/UNSUPPORTED_COMMANDS/],
+  ['allow-revert',(r)=>r[0]='0x0a80000604',/UNSUPPORTED_COMMANDS/],
+  ['wrong fee token',(r)=>{const p=v.decodeAbiParameters(moneyParams,r[1].at(-2));p[0]=WETH;r[1][r[1].length-2]=v.encodeAbiParameters(moneyParams,p);},/INVALID_FEE/],
+  ['excessive fee',(r)=>{const p=v.decodeAbiParameters(moneyParams,r[1].at(-2));p[2]=10000n;r[1][r[1].length-2]=v.encodeAbiParameters(moneyParams,p);},/INVALID_FEE/],
+  ['wrong sweep recipient',(r)=>{const p=v.decodeAbiParameters(moneyParams,r[1].at(-1));p[1]=adapter.PERMIT2;r[1][r[1].length-1]=v.encodeAbiParameters(moneyParams,p);},/SWEEP_MISMATCH/],
+  ['wrong path input',(r)=>{const p=v.decodeAbiParameters(swapParams,r[1][2]);p[3]='0x'+'22'.repeat(20)+p[3].slice(42);r[1][2]=v.encodeAbiParameters(swapParams,p);},/UNSUPPORTED_PATH/],
+  ['duplicate path',(r)=>r[1][2]=r[1][1],/AMBIGUOUS_POOL/],
+ ];
+ for(const side of ['buy','sell'])for(const[label,change,error]of attacks){const f=await splitFeeFixture(side,true,change);await assert.rejects(()=>adapter.verifySmartWalletSettlement(f.c),error,label);}
+ const under=await splitFeeFixture('buy',true,null,2149999n);await assert.rejects(()=>adapter.verifySmartWalletSettlement(under.c),/PERMIT_MISMATCH/,'the signed permit must cover the sum of both inputs');
+ const rounded=await splitFeeFixture('buy');rounded.refs.fee.data=v.toHex(13999n,{size:32});rounded.refs.sweep.data=v.toHex(13986801n,{size:32});await assert.rejects(()=>adapter.verifySmartWalletSettlement(rounded.c),/UNEXPLAINED_TRANSFER/,'fee rounding must happen once on the aggregate, not once per pool');
+ const buy=await splitFeeFixture('buy'),sell=await splitFeeFixture('sell'),all=[buy,sell],byTx=new Map(all.map(f=>[f.tx,f])),from=Date.parse('2026-10-10T00:00:15.000Z'),through=Date.parse('2026-10-10T00:00:50.000Z');
+ const source={finalized:async()=>({number:'0xff',timestamp:new Date(through).toISOString()}),indexStatus:async()=>true,swaps:async()=>all.flatMap(f=>f.rows),transfers:async()=>all.map(f=>({token:{address_hash:f.domain},transaction_hash:f.tx,timestamp:f.executedAt})),receipt:async tx=>byTx.get(tx).c.receipt,block:async n=>{const f=all.find(f=>f.c.receipt.blockNumber===n);return {hash:f.c.receipt.blockHash,timestamp:f.executedAt};},smartWalletSettlement:async swaps=>adapter.verifySmartWalletSettlement({...byTx.get(swaps[0].tx).c,swaps})};
+ const snap={manifest:{campaign:{id:'test',state:'active',starts_at:new Date(from).toISOString(),ends_at:'2026-10-11T00:00:00.000Z'},participants:[{participant:'synthetic',entered_at:new Date(from).toISOString()}],markets:[{domain_token:buy.domain,quote_token:USDC},{domain_token:buy.domain,quote_token:WETH}]},accounts:[{participant:'synthetic',coverage:{complete:true,coverage_from:new Date(from).toISOString(),confirmed_through:new Date(through).toISOString(),updated_at:new Date(through).toISOString()}}],wallets:[{participant:'synthetic',trade_wallet:buy.wallet,agent:true}],references:[],fills:[]};
+ const result=await collect(snap,source,{now:through+120000});assert.equal(result.report.complete,true);assert.equal(result.packet.fills.length,2);assert.equal(result.report.counts.volumeUsd,'4.280591');assert.deepEqual((await collect({...snap,fills:result.packet.fills},source,{now:through+120000})).packet.fills,result.packet.fills);
+ const ledger=await require('./lib/public-accounting.cjs').reconstruct({participant:'synthetic',wallets:[buy.wallet],from,through,markets:snap.manifest.markets,references:[],eligible:result.packet.fills,source:{...source,blockAt:async t=>({number:t<from?'0x1':'0xff'}),nativeBalance:async()=>0n,nativeHistory:async()=>[],nativeTransaction:async()=>({moves:[],fee:0n,payer:buy.outside}),hasCode:async()=>false,balance:async(w,t,at)=>t===USDC?(at==='0x1'?10000000n:9978770n):0n,valueUsd:async(t,n)=>{assert.equal(t,USDC);return n;}}});
+ assert.equal(ledger.complete,true);assert.equal(ledger.events.length,4);assert.equal(ledger.events.find(e=>e.kind==='buy'&&e.token===buy.domain).usd,'2.150000');assert.equal(ledger.events.find(e=>e.kind==='sell').usd,'2.128770');assert.equal(ledger.events.find(e=>e.kind==='sell').units,'13986800');assert.ok([...ledger.events,...ledger.openingLots].every(e=>e.token!==WETH),'WETH is routing only');assert.ok(ledger.events.every(e=>!['in','deposit','withdrawal'].includes(e.kind)));
+ console.log('PASS generated smart split fees: signed buy/sell with/without permit, '+(mutations.length*2+attacks.length*2+2)+' hostile cases, aggregate-only fee rounding, exact transfers, canonical fills, stable replay and fee-inclusive FIFO without WETH inventory.');
+}
+
 async function main(){
+ await splitFeeTests();
  await twoHopFeeTests();
  await feeTests();
  await allowanceTests();

@@ -8,7 +8,9 @@ const hex=(x,n)=>{if(typeof x!=='string'||!new RegExp('^0x[0-9a-fA-F]{'+n+'}$').
 const quantity=x=>{if(typeof x!=='string'||!/^0x(?:0|[1-9a-f][0-9a-f]*)$/i.test(x))fail('INVALID_QUANTITY');return BigInt(x);};
 const at=n=>'0x'+n.toString(16),id=l=>l.transactionHash+':'+l.logIndex;
 const order=(a,b)=>{for(const k of ['blockNumber','transactionIndex','logIndex']){const x=BigInt(a[k]),y=BigInt(b[k]);if(x!==y)return x<y?-1:1;}return 0;};
-function rpcErc20History({rpc,blockAt,receipt,checkBudget=()=>{},cacheFor=null,maxBlockRange=100000,maxRanges=1000,maxLogs=50000,maxResponseLogs=10000}){
+function rpcErc20History({rpc,blockAt,receipt,checkBudget=()=>{},cacheFor=null,rangeCacheFor=null,cachedBlock=null,onRangeCache=()=>{},maxBlockRange=100000,maxRanges=1000,maxLogs=50000,maxResponseLogs=10000,purpose='accounting'}){
+ if(!['accounting','trade-candidates'].includes(purpose))fail('INVALID_PURPOSE');
+ const candidatesOnly=purpose==='trade-candidates';
  for(const x of [maxBlockRange,maxRanges,maxLogs,maxResponseLogs])if(!Number.isSafeInteger(x)||x<1)fail('INVALID_LIMIT');
  function block(value){
   if(!value||typeof value!=='object')fail('INVALID_BLOCK');const number=quantity(value.number),stamp=quantity(value.timestamp)*1000n;
@@ -50,23 +52,62 @@ function rpcErc20History({rpc,blockAt,receipt,checkBudget=()=>{},cacheFor=null,m
   const [lower,upper]=await Promise.all([canonical(lo),canonical(hi)]);
   if((lo!==0n&&lower.timestamp>from)||upper.timestamp>through||upper.hash!==hex(b.hash,64)||lower.hash!==hex(a.hash,64))fail('ANCHOR_CHANGED');
   if(hi<finalized.number){const next=await canonical(hi+1n);if(next.timestamp<=through||next.parentHash!==upper.hash)fail('INVALID_BOUNDARY');}
-  const count=(hi-lo)/BigInt(maxBlockRange)+1n;if(count>BigInt(maxRanges))fail('RANGE_LIMIT');
-  const cache=cacheFor?.({wallet,from,through,tokens,anchor:{number:at(hi),hash:upper.hash}}),all=[],identities=new Set();
-  for(let left=lo;left<=hi;left+=BigInt(maxBlockRange)){
-   checkBudget();const right=left+BigInt(maxBlockRange)-1n>hi?hi:left+BigInt(maxBlockRange)-1n,key={fromBlock:at(left),toBlock:at(right)};
+  const count=rangeCacheFor?hi/BigInt(maxBlockRange)-lo/BigInt(maxBlockRange)+1n:(hi-lo)/BigInt(maxBlockRange)+1n;if(count>BigInt(maxRanges))fail('RANGE_LIMIT');
+  if(candidatesOnly&&tokens!==null)fail('CANDIDATE_TOKEN_FILTER_FORBIDDEN');
+  const cache=candidatesOnly?null:cacheFor?.({wallet,from,through,tokens,anchor:{number:at(hi),hash:upper.hash}}),rangeCache=rangeCacheFor?.({wallet,tokens,...(candidatesOnly?{purpose:'trade-candidates'}:{})}),pendingRanges=[],all=[],identities=new Set();
+  for(let left=lo;left<=hi;){
+   checkBudget();const end=rangeCache?((left/BigInt(maxBlockRange)+1n)*BigInt(maxBlockRange)-1n):left+BigInt(maxBlockRange)-1n,right=end>hi?hi:end,key={fromBlock:at(left),toBlock:at(right)};
    let logs=cache?.get(key);
+   if(logs===undefined&&rangeCache){
+    const saved=rangeCache.get(key);
+    if(saved){
+     if(!saved.anchor||saved.anchor.number!==at(right)||!Array.isArray(saved.logs)){rangeCache.clear();fail('CACHE_INVALID');}
+     // The query is a bounded exact block interval. Its endpoint hash is read
+     // afresh even when empty; old ranges survive a moving campaign cutoff,
+     // while a reorg invalidates them before any rows can be used.
+     const endpoint=await canonical(right);
+     if(endpoint.hash!==saved.anchor.hash){rangeCache.clear();fail('ANCHOR_CHANGED');}
+     logs=saved.logs;onRangeCache(true);
+    }else onRangeCache(false);
+   }
    if(logs!==undefined){
     if(!Array.isArray(logs)||logs.length>maxLogs)fail('CACHE_INVALID');
     // Cached rows were verified with the same finalized upper hash. Receipts
     // and canonical blocks are still checked below before any result returns.
     for(const l of logs)if(!l||!/^\d+$/.test(l.blockNumber)||BigInt(l.blockNumber)<left||BigInt(l.blockNumber)>right||!Array.isArray(l.topics))fail('CACHE_INVALID');
    }else{
+    const endpoint=rangeCache?await canonical(right):null;
     const first=await range(wallet,left,right,tokens),mid=(left+right)/2n;
     const second=left===right?await range(wallet,left,right,tokens):[...await range(wallet,left,mid,tokens),...await range(wallet,mid+1n,right,tokens)].sort(order);
     if(!isDeepStrictEqual(first,second))fail('LOG_SET_CHANGED');logs=first;
     cache?.set(key,logs);
+    // A discovery range is saved only after every row/receipt/canonical block
+    // in the complete wallet result passes below, never after a partial scan.
+    if(rangeCache){if((await canonical(right)).hash!==endpoint.hash)fail('ANCHOR_CHANGED');pendingRanges.push({key,value:{anchor:{number:at(right),hash:endpoint.hash},logs}});}
    }
    for(const l of logs){const key=id(l);if(identities.has(key))fail('DUPLICATE_LOG');identities.add(key);all.push(l);if(all.length>maxLogs)fail('LOG_LIMIT');}
+   left=right+1n;
+  }
+  if(candidatesOnly){
+   // Discovery only: every emitted transaction must still be receipt-checked
+   // by the collector before it can establish a fill or absence of a swap.
+   // Keep ALL assets, including a quote-only row when a domain leg is absent.
+   // Canonical boundary timestamps establish the window without fetching a
+   // separate historical block for every unrelated transfer transaction.
+   const candidates=new Map();
+   for(const l of all){
+    checkBudget();if(BigInt(l.blockNumber)===lo&&lower.timestamp<from)continue;
+    const prior=candidates.get(l.transactionHash);
+    if(prior&&(prior.blockNumber!==at(BigInt(l.blockNumber))||prior.blockHash!==l.blockHash||prior.transactionIndex!==l.transactionIndex))fail('CANDIDATE_TRANSACTION_MISMATCH');
+    const value=prior||{transactionHash:l.transactionHash,blockNumber:at(BigInt(l.blockNumber)),blockHash:l.blockHash,transactionIndex:l.transactionIndex,tokens:new Set()};
+    value.tokens.add(l.address);candidates.set(l.transactionHash,value);
+   }
+   if((await canonical(hi)).hash!==upper.hash)fail('ANCHOR_CHANGED');checkBudget();
+   // A separate namespace prevents discovery records from being mistaken for
+   // the receipt-proven history consumed by financial reconstruction.
+   for(const entry of pendingRanges){checkBudget();rangeCache.set(entry.key,entry.value);}
+   return [...candidates.values()].sort((a,b)=>BigInt(a.blockNumber)===BigInt(b.blockNumber)?Number(BigInt(b.transactionIndex)-BigInt(a.transactionIndex)):BigInt(a.blockNumber)<BigInt(b.blockNumber)?1:-1)
+    .map(({transactionIndex,...c})=>({...c,tokens:[...c.tokens].sort()}));
   }
   const blocks=new Map([[lo.toString(),lower],[hi.toString(),upper]]),receipts=new Map();
   // Three independent receipt reads at a time; wait for all in-flight reads
@@ -85,7 +126,9 @@ function rpcErc20History({rpc,blockAt,receipt,checkBudget=()=>{},cacheFor=null,m
    checkBudget();const r=receipts.get(l.transactionHash),matches=r.logs.filter(row=>quantity(row.logIndex).toString()===l.logIndex);
    if(matches.length!==1||hex(r.blockHash,64)!==l.blockHash||quantity(r.blockNumber).toString()!==l.blockNumber||quantity(r.transactionIndex).toString()!==l.transactionIndex)fail('RECEIPT_MISMATCH');
    const raw=matches[0],proof=normalize(raw,BigInt(l.blockNumber),BigInt(l.blockNumber),wallet,l.from===wallet?'out':'in',tokens);if(!isDeepStrictEqual(l,proof))fail('RECEIPT_MISMATCH');
-   if(!blocks.has(l.blockNumber))blocks.set(l.blockNumber,await canonical(BigInt(l.blockNumber)));const atBlock=blocks.get(l.blockNumber);
+   if(!blocks.has(l.blockNumber)){
+    const value=cachedBlock?block(await cachedBlock(at(BigInt(l.blockNumber)))):await canonical(BigInt(l.blockNumber));if(value.number!==BigInt(l.blockNumber))fail('INVALID_BLOCK');blocks.set(l.blockNumber,value);
+   }const atBlock=blocks.get(l.blockNumber);
    if(atBlock.hash!==l.blockHash)fail('REORG');if(atBlock.timestamp<from||atBlock.timestamp>through)continue;
    // Decimals are optional display metadata. Consumers discover transactions
    // from these rows and price independently verified receipts/swaps; never
@@ -94,6 +137,7 @@ function rpcErc20History({rpc,blockAt,receipt,checkBudget=()=>{},cacheFor=null,m
   }
   // A reorg during any read invalidates the entire result, including empties.
   if((await canonical(hi)).hash!==upper.hash)fail('ANCHOR_CHANGED');checkBudget();
+  for(const entry of pendingRanges){checkBudget();rangeCache.set(entry.key,entry.value);}
   const positions=new Map(all.map(l=>[id(l),l]));output.sort((a,b)=>-order(positions.get(a.transaction_hash+':'+a.log_index),positions.get(b.transaction_hash+':'+b.log_index)));
   return output;
  };

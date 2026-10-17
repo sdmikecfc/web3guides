@@ -133,8 +133,10 @@ async function isolationChecks(){
  const coverage=[1,2,3,4].map(i=>({participant:String(i),coverageFrom:start,confirmedThrough:through,complete:i!==2,problems:i===2?['SMART_ROUTER_CALLDATA_INVALID']:[]}));
  let r=await s.run({accountCoverage:coverage,budgetMs:1000});
  assert.deepEqual(s.calls,['1','3','4']);assert.equal(r.ledgers.length,3);assert.equal(r.completed,3);assert.equal(r.complete,false,'partial results never finalize all financial awards');s.commit(r);
+ assert.deepEqual(r.accountResults.map(a=>[a.participant,a.status,a.elapsedMs]),[['1','verified_read_only',60],['2','trade_coverage_pending',0],['3','verified_read_only',60],['4','verified_read_only',60]],'private account diagnostics distinguish trade blockers from actual timed reconstruction');
  s.calls=[];s.packet.fills=[];r=await s.run({accountCoverage:coverage,budgetMs:1000});assert.equal(r.noTrades,3);assert.deepEqual(s.calls,[]);assert.equal(r.complete,false,'failed trade coverage never becomes a confirmed zero-trade account');
  s.packet.fills=[fill(1),fill(2),fill(3),fill(4)];s.fail='3';s.calls=[];r=await s.run({accountCoverage:coverage,budgetMs:1000});assert.equal(r.ledgers.length,2);assert.deepEqual(r.ledgers.map(l=>l.participant),['1','4'],'independent FIFO failure cannot remove successful accounts');
+ assert.deepEqual(r.accountResults.find(a=>a.participant==='3'),{participant:'3',status:'failed',confirmedThrough:through,elapsedMs:60,code:'PUBLIC_HISTORY_CORRECTED'},'exact account and failure code survive alongside successful results');
  for(const changed of [coverage.map(a=>({...a,confirmedThrough:'2026-10-07T07:00:00Z'})),[...coverage,coverage[0]],coverage.map(a=>a.participant==='1'?{...a,problems:['BAD']}:a)])await assert.rejects(()=>s.run({accountCoverage:changed}),/ACCOUNTING_COVERAGE_INVALID/);
  const missing=sweepFixture();missing.packet.complete=false;const pending=await missing.run();assert.equal(pending.ledgers.length,0,'partial batch without per-account proof never grants verification');
  const reject=sweepFixture(),staged=await reject.run();
@@ -147,6 +149,7 @@ async function progressiveChecks(){
  const s=sweepFixture(),saved=[];s.fail='2';
  const r=await s.run({budgetMs:1000,onLedger:async l=>{saved.push(l.participant);s.snapshot.accountingRevisions[l.participant]=l.revision;return true;}});
  assert.deepEqual(saved,['1','3','4']);assert.equal(r.completed,3);assert.equal(r.confirmCommit(),0,'published markers are already acknowledged');
+ assert.equal(r.accountResults.filter(a=>a.status==='published').length,3,'only accepted publications are labeled published');
  const rejected=sweepFixture();const q=await rejected.run({budgetMs:1000,onLedger:async l=>l.participant!=='2'});assert.equal(q.completed,3);assert.equal(q.complete,false);assert.deepEqual(q.ledgers.map(l=>l.participant),['1','3','4']);
  const failed=sweepFixture(),published=[];await assert.rejects(()=>failed.run({budgetMs:1000,onLedger:async l=>{if(l.participant==='2')throw Error('SOURCE_CHANGED');published.push(l.participant);return true;}}),/SOURCE_CHANGED/);assert.deepEqual(published,['1'],'already committed account survives an interrupted later publication');assert.deepEqual(failed.calls,['1','2'],'concurrent evidence change halts further accounting');
  console.log('PASS incremental accounting: immediate per-account acknowledgement, later account timeout/rejection isolation, and no lost earlier publication after an interrupted write.');
@@ -181,6 +184,11 @@ async function transientRetryChecks(){
  const write=one();let publications=0,reconstructions=0;
  await assert.rejects(()=>write.run({reconstructLedger:async p=>{reconstructions++;return ledger(p);},onLedger:async()=>{publications++;throw Error('PUBLIC_REQUEST_TIMEOUT');}}),/PUBLIC_REQUEST_TIMEOUT/);
  assert.equal(reconstructions,1);assert.equal(publications,1,'uncertain publication cannot trigger reconstruction or a second write');
+ for(const failure of ['TRADE_CACHE_ANCHOR_REORG','ACCOUNTING_ANCHOR_REORG','ACCOUNTING_TIME_BUDGET_EXCEEDED']){
+  const boundary=one();let finalized=0,published=0;
+  const r=await boundary.run({sourceFactory:()=>({block:async()=>anchor,withDeadline:async(_d,task)=>task(),verifyFinalizedEvidence:async()=>{finalized++;throw Error(failure);}}),reconstructLedger:async p=>ledger(p),onLedger:async()=>{published++;return true;}});
+  assert.equal(finalized,1);assert.equal(published,0);assert.equal(r.ledgers.length,0);assert.equal(r.complete,false);assert.ok(r.problems.some(p=>p.code===failure),'a changed or expired final chain boundary cannot publish a reconstructed ledger');
+ }
  const fresh=one(),instances=[];let sameAuditTries=0;
  const run=()=>fresh.run({sourceFactory:()=>{const source={proofs:new Map(),block:async()=>anchor,withDeadline:async(_d,task)=>task()};instances.push(source);return source;},reconstructLedger:async p=>{sameAuditTries++;p.source.proofs.set(sameAuditTries,true);throw Error('PUBLIC_RETRIES_EXHAUSTED');}});
  await run();await run();assert.equal(instances.length,2);assert.notEqual(instances[0],instances[1],'a later audit receives a fresh source rather than cached mutable histories');assert.equal(instances[0].proofs.size,3);assert.equal(instances[1].proofs.size,3);

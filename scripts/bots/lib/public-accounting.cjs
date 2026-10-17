@@ -40,6 +40,14 @@ function linkedCounterparty(receipt,wallet,token,delta,walletSet){
  if(other.from!==leg.from||other.to!==leg.to||other.units!==leg.units||(receiptFlows(receipt,counter).get(token)||0n)!==-delta)throw Error('ACCOUNTING_COMPLEX_TRANSFER_REQUIRED');
  return counter;
 }
+function historicalExternalIncoming(receipt,wallet,token,delta,walletSet){
+ if(delta<=0n)return false;
+ const legs=(receipt.logs||[]).filter(l=>l.address?.toLowerCase()===token&&l.topics?.[0]===TRANSFER&&l.topics.length===3&&BigInt(l.data)>0n).map(l=>({from:('0x'+l.topics[1].slice(-40)).toLowerCase(),to:('0x'+l.topics[2].slice(-40)).toLowerCase(),units:BigInt(l.data)})).filter(l=>l.from!==l.to&&(l.from===wallet||l.to===wallet));
+ // Multiple old external deposits have the same unknown basis and receipt
+ // time. Coalescing only pure inbound legs preserves that unknown FIFO lot.
+ // Never net an outgoing leg or merge linked-wallet inventory into a deposit.
+ return legs.length>1&&legs.every(l=>l.to===wallet&&!walletSet.has(l.from))&&legs.reduce((n,l)=>n+l.units,0n)===delta;
+}
 async function proveDirectDeposit(source,txHash,receipt,wallet,token,units,native){
  if(!source.transaction)throw Error('EXTERNAL_DOMAIN_COST_BASIS_REQUIRED');
  const tx=await source.transaction(txHash),{parseAbi,decodeFunctionData,encodeFunctionData}=require('viem');
@@ -60,12 +68,31 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
  from=accountingStartMillis(exactStart);
  if(from>through)throw Error('ACCOUNTING_PERIOD_NOT_REACHED');
  const check=()=>source.checkBudget?.();check();
+ // Only independent reads overlap. Results keep input order and every started
+ // read is drained before a failure returns; FIFO mutation below stays serial.
+ const readMany=async(items,read)=>{
+  const results=new Array(items.length);let cursor=0,failure;
+  await Promise.allSettled(Array.from({length:Math.min(3,items.length)},async()=>{
+   try{while(cursor<items.length&&!failure){check();const index=cursor++;results[index]=await read(items[index],index);check();}}
+   catch(error){failure??=error;}
+  }));
+  if(failure)throw failure;check();return results;
+ };
  const supported=new Set([...markets.flatMap(m=>[m.domain_token,m.quote_token]),NATIVE]),walletSet=new Set(wallets);
  const domains=new Set(markets.map(m=>m.domain_token)),openingBalances=new Map(),historicalDomains=new Set();
+ // A manual trade in a newly launched domain still changes this wallet's
+ // quote inventory. Discover its asset before opening/closing reconciliation;
+ // the competition's eligible fill list remains the sole scoring authority.
+ const currentSwaps=new Map();
+ await readMany(wallets,async wallet=>{const rows=await source.swaps(wallet,from,through);currentSwaps.set(wallet,rows);
+  for(const row of rows){check();const s=normalizePublicSwap(row);if(!s||s.wallet!==wallet||Date.parse(s.executedAt)<from||Date.parse(s.executedAt)>through)continue;
+   supported.add(s.domain);supported.add(s.quote);if(![USDC,WETH,NATIVE].includes(s.domain))domains.add(s.domain);
+  }
+ });
  const valueUsd=(token,qty,at)=>qty===0n?Promise.resolve(0n):source.valueUsd(token===NATIVE?WETH:token,qty,at);
  const chainBalance=(wallet,token,at)=>token===NATIVE?source.nativeBalance(wallet,at):source.balance(wallet,token,at);
  const start=await source.blockAt(from-1),end=await source.blockAt(through),all=new Map(),publicSwaps=new Map(),indexedSwaps=new Map();
- for(const wallet of wallets){check();await source.primeBalances?.(wallet,[...supported].filter(t=>t!==NATIVE),start.number);await source.primeBalances?.(wallet,[...supported].filter(t=>t!==NATIVE),end.number);}
+ await readMany(wallets.flatMap(wallet=>[start.number,end.number].map(at=>({wallet,at}))),({wallet,at})=>source.primeBalances?.(wallet,[...supported].filter(t=>t!==NATIVE),at));
  for(const wallet of wallets)for(const token of supported){check();const units=await chainBalance(wallet,token,start.number);if(units<0n)throw Error('OPENING_BALANCE_INVALID');openingBalances.set(wallet+':'+token,units);}
  for(const wallet of wallets){
   check();
@@ -76,8 +103,9 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
  // Inspect every post-entry raw transfer, not only net flow: an outgoing leg
  // can consume opening FIFO even when another leg restores the final balance.
  const receiptCache=new Map();
+ await readMany([...all.values()],async t=>{receiptCache.set(t.tx,await source.receipt(t.tx));});
  for(const t of all.values()){
-  check();const receipt=await source.receipt(t.tx);receiptCache.set(t.tx,receipt);
+  check();const receipt=receiptCache.get(t.tx);
   for(const l of receipt.logs||[]){const token=l.address?.toLowerCase();if(!domains.has(token)||l.topics?.[0]!==TRANSFER||l.topics.length!==3)continue;
    const owner=('0x'+l.topics[1].slice(-40)).toLowerCase(),to=('0x'+l.topics[2].slice(-40)).toLowerCase();
    if(owner!==to&&walletSet.has(owner)&&(openingBalances.get(owner+':'+token)||0n)>0n&&BigInt(l.data)>0n)historicalDomains.add(token);
@@ -91,7 +119,7 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
   for(const t of history){check();const token=t.token?.address_hash?.toLowerCase(),at=Date.parse(t.timestamp);if(historicalDomains.has(token)&&at<from)all.set(t.transaction_hash,{tx:t.transaction_hash,at});}
  }
  const swapFrom=[...all.values()].reduce((earliest,t)=>Math.min(earliest,t.at),from);
- for(const wallet of wallets)for(const s of await source.swaps(wallet,swapFrom,through)){check();const n=normalizePublicSwap(s);if(n&&n.wallet===wallet&&all.has(n.tx)){if(indexedSwaps.has(key(n)))throw Error('ACCOUNTING_DUPLICATE_INDEX_ROW');publicSwaps.set(key(n),n);indexedSwaps.set(key(n),n);}}
+ for(const wallet of wallets)for(const s of swapFrom===from?currentSwaps.get(wallet):await source.swaps(wallet,swapFrom,through)){check();const n=normalizePublicSwap(s);if(n&&n.wallet===wallet&&all.has(n.tx)){if(indexedSwaps.has(key(n)))throw Error('ACCOUNTING_DUPLICATE_INDEX_ROW');publicSwaps.set(key(n),n);indexedSwaps.set(key(n),n);}}
  for(const {ref}of references)if(ref.status==='verified'&&walletSet.has(ref.wallet)&&all.has(ref.transactionHash)&&Date.parse(ref.executedAt)<=through){const r=referenceSwap(ref);if(!publicSwaps.has(key(r)))publicSwaps.set(key(r),r);}
  // Direction and FIFO connectivity come from the full receipt-proven ledger.
  const unknownConsumedBuckets=new Set();
@@ -134,8 +162,10 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
   for(const wallet of wallets)for(const token of supported){check();if(openingBalances.get(wallet+':'+token)!==(balances.get(wallet+':'+token)||0n))throw Error(token===NATIVE?'NATIVE_OPENING_BALANCE_MISMATCH':'OPENING_BALANCE_MISMATCH');}
  }
  function event(tx,at,body){const index=order++;return {id:'chain:'+tx+':'+index,executedAt:new Date(at).toISOString(),order:index,acquisitionOrder:index,evidence:'Finalized public receipt '+tx,...body};}
- const transactions=[];for(const t of all.values()){check();const receipt=receiptCache.get(t.tx)||await source.receipt(t.tx);transactions.push({...t,receipt});}
+ const transactions=await readMany([...all.values()],async t=>({...t,receipt:receiptCache.get(t.tx)||await source.receipt(t.tx)}));
  transactions.sort((a,b)=>Number(BigInt(a.receipt.blockNumber)-BigInt(b.receipt.blockNumber))||Number(BigInt(a.receipt.transactionIndex)-BigInt(b.receipt.transactionIndex)));
+ const transactionBlocks=new Map();
+ await readMany([...new Set(transactions.map(t=>t.receipt.blockNumber))],async number=>{transactionBlocks.set(number,await source.block(number));});
  // Independent trace reads may overlap; FIFO replay below remains strictly
  // chronological. Wait for every started task, including deadline failures.
  if(source.nativeTransaction){let cursor=0,failure;
@@ -161,7 +191,7 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
  for(const t of transactions){
   check();
   if(t.at>=from)await captureOpening();
-  const receipt=t.receipt,block=await source.block(receipt.blockNumber);
+  const receipt=t.receipt,block=transactionBlocks.get(receipt.blockNumber);
   if(block.hash!==receipt.blockHash||Date.parse(block.timestamp)!==t.at||BigInt(receipt.blockNumber)>BigInt(end.number))throw Error('ACCOUNTING_RECEIPT_MISMATCH');
   if(t.historicalGas&&t.at>=from)throw Error('HISTORICAL_NATIVE_GAS_AFTER_ENTRY');
   const batch=[],matched=new Set(),native=t.historicalGas||t.native||{moves:[],fee:0n,payer:null};
@@ -220,6 +250,7 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
      batch.push(event(t.tx,t.at,{wallet,token:s.domain,units:amounts.walletDomainUnits,kind:'buy',usd:usd(money+costGas)}));continue;
     }
     for(const[token,delta]of flows){const marker=wallet+':'+token;if(matched.has(marker))continue;
+      if(historicalExternalIncoming(receipt,wallet,token,delta,walletSet)){batch.push(event(t.tx,t.at,{wallet,token,units:delta.toString(),kind:'in',costKnown:false}));continue;}
      const counter=linkedCounterparty(receipt,wallet,token,delta,walletSet);
      if(counter){matched.add(marker);matched.add(counter+':'+token);batch.push(event(t.tx,t.at,{wallet:delta<0n?wallet:counter,toWallet:delta<0n?counter:wallet,token,units:abs(delta).toString(),kind:'transfer'}));continue;}
      if(delta>0n){
