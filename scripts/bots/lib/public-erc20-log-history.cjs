@@ -8,10 +8,10 @@ const hex=(x,n)=>{if(typeof x!=='string'||!new RegExp('^0x[0-9a-fA-F]{'+n+'}$').
 const quantity=x=>{if(typeof x!=='string'||!/^0x(?:0|[1-9a-f][0-9a-f]*)$/i.test(x))fail('INVALID_QUANTITY');return BigInt(x);};
 const at=n=>'0x'+n.toString(16),id=l=>l.transactionHash+':'+l.logIndex;
 const order=(a,b)=>{for(const k of ['blockNumber','transactionIndex','logIndex']){const x=BigInt(a[k]),y=BigInt(b[k]);if(x!==y)return x<y?-1:1;}return 0;};
-function rpcErc20History({rpc,blockAt,receipt,checkBudget=()=>{},cacheFor=null,rangeCacheFor=null,cachedBlock=null,onRangeCache=()=>{},maxBlockRange=100000,maxRanges=1000,maxLogs=50000,maxResponseLogs=10000,purpose='accounting'}){
+function rpcErc20History({rpc,blockAt,receipt,checkBudget=()=>{},cacheFor=null,rangeCacheFor=null,cachedBlock=null,onRangeCache=()=>{},maxBlockRange=100000,maxRanges=1000,maxLogs=50000,maxResponseLogs=10000,maxLogQueries=maxRanges*8,purpose='accounting'}){
  if(!['accounting','trade-candidates'].includes(purpose))fail('INVALID_PURPOSE');
  const candidatesOnly=purpose==='trade-candidates';
- for(const x of [maxBlockRange,maxRanges,maxLogs,maxResponseLogs])if(!Number.isSafeInteger(x)||x<1)fail('INVALID_LIMIT');
+ for(const x of [maxBlockRange,maxRanges,maxLogs,maxResponseLogs,maxLogQueries])if(!Number.isSafeInteger(x)||x<1)fail('INVALID_LIMIT');
  function block(value){
   if(!value||typeof value!=='object')fail('INVALID_BLOCK');const number=quantity(value.number),stamp=quantity(value.timestamp)*1000n;
   if(stamp>BigInt(Number.MAX_SAFE_INTEGER)||!Number.isFinite(new Date(Number(stamp)).getTime()))fail('INVALID_BLOCK');
@@ -28,15 +28,27 @@ function rpcErc20History({rpc,blockAt,receipt,checkBudget=()=>{},cacheFor=null,r
   if(topics.length===4)return null; // ERC721 Transfer, not an ERC20 balance movement.
   return {address,blockHash:hex(raw.blockHash,64),blockNumber:number.toString(),transactionHash:hex(raw.transactionHash,64),transactionIndex:quantity(raw.transactionIndex).toString(),logIndex:quantity(raw.logIndex).toString(),topics,data:hex(raw.data,64),from,to};
  }
- async function range(wallet,lo,hi,tokens){
+ async function range(wallet,lo,hi,tokens,budget){
+  checkBudget();if(budget.queries+2>maxLogQueries)fail('QUERY_LIMIT');budget.queries+=2;
   const topic='0x'+wallet.slice(2).padStart(64,'0'),filter={fromBlock:at(lo),toBlock:at(hi),...(tokens?{address:tokens}:{}),topics:null};
   const responses=await Promise.allSettled([[TRANSFER,topic],[TRANSFER,null,topic]].map(topics=>rpc('eth_getLogs',[{...filter,topics}])));
-  const rejected=responses.find(r=>r.status==='rejected');if(rejected)throw rejected.reason;
+  // Both directions have drained before any adaptive work. An unrelated
+  // provider/cancellation error must never be hidden by a sibling limit error.
+  checkBudget();const rejected=responses.find(r=>r.status==='rejected'&&r.reason?.message!=='PUBLIC_RPC_LOG_LIMIT');if(rejected)throw rejected.reason;
+  if(responses.some(r=>r.status==='fulfilled'&&!Array.isArray(r.value)))fail('INVALID_RESPONSE');
   const seen=new Map();for(let d=0;d<responses.length;d++){
-   checkBudget();const logs=responses[d].value;if(!Array.isArray(logs))fail('INVALID_RESPONSE');if(logs.length>=maxResponseLogs)fail('LOG_LIMIT');
-   const own=new Set();for(const raw of logs){const row=normalize(raw,lo,hi,wallet,d===0?'out':'in',tokens);if(!row)continue;const key=id(row);if(own.has(key))fail('DUPLICATE_LOG');own.add(key);
+   checkBudget();if(responses[d].status==='rejected')continue;const logs=responses[d].value;if(!Array.isArray(logs))fail('INVALID_RESPONSE');if(logs.length>maxLogs)fail('LOG_LIMIT');
+   const own=new Set();for(const raw of logs){checkBudget();const row=normalize(raw,lo,hi,wallet,d===0?'out':'in',tokens);if(!row)continue;const key=id(row);if(own.has(key))fail('DUPLICATE_LOG');own.add(key);
     if(seen.has(key)){if(row.from!==wallet||row.to!==wallet||!isDeepStrictEqual(seen.get(key),row))fail('DUPLICATE_LOG');}else seen.set(key,row);
    }
+  }
+  const limited=responses.some(r=>r.status==='rejected'||r.value.length>=maxResponseLogs);
+  if(limited){
+   if(lo===hi)fail('LOG_LIMIT');const mid=(lo+hi)/2n;
+   // Re-query both directions in exact disjoint halves. No parent response is
+   // accepted, and the independent verification pass invokes this afresh.
+   const left=await range(wallet,lo,mid,tokens,budget);checkBudget();
+   const right=await range(wallet,mid+1n,hi,tokens,budget),joined=[...left,...right];if(joined.length>maxLogs)fail('LOG_LIMIT');return joined.sort(order);
   }
   return [...seen.values()].sort(order);
  }
@@ -54,6 +66,7 @@ function rpcErc20History({rpc,blockAt,receipt,checkBudget=()=>{},cacheFor=null,r
   if(hi<finalized.number){const next=await canonical(hi+1n);if(next.timestamp<=through||next.parentHash!==upper.hash)fail('INVALID_BOUNDARY');}
   const count=rangeCacheFor?hi/BigInt(maxBlockRange)-lo/BigInt(maxBlockRange)+1n:(hi-lo)/BigInt(maxBlockRange)+1n;if(count>BigInt(maxRanges))fail('RANGE_LIMIT');
   if(candidatesOnly&&tokens!==null)fail('CANDIDATE_TOKEN_FILTER_FORBIDDEN');
+  const queryBudget={queries:0};
   const cache=candidatesOnly?null:cacheFor?.({wallet,from,through,tokens,anchor:{number:at(hi),hash:upper.hash}}),rangeCache=rangeCacheFor?.({wallet,tokens,...(candidatesOnly?{purpose:'trade-candidates'}:{})}),pendingRanges=[],all=[],identities=new Set();
   for(let left=lo;left<=hi;){
    checkBudget();const end=rangeCache?((left/BigInt(maxBlockRange)+1n)*BigInt(maxBlockRange)-1n):left+BigInt(maxBlockRange)-1n,right=end>hi?hi:end,key={fromBlock:at(left),toBlock:at(right)};
@@ -77,8 +90,8 @@ function rpcErc20History({rpc,blockAt,receipt,checkBudget=()=>{},cacheFor=null,r
     for(const l of logs)if(!l||!/^\d+$/.test(l.blockNumber)||BigInt(l.blockNumber)<left||BigInt(l.blockNumber)>right||!Array.isArray(l.topics))fail('CACHE_INVALID');
    }else{
     const endpoint=rangeCache?await canonical(right):null;
-    const first=await range(wallet,left,right,tokens),mid=(left+right)/2n;
-    const second=left===right?await range(wallet,left,right,tokens):[...await range(wallet,left,mid,tokens),...await range(wallet,mid+1n,right,tokens)].sort(order);
+    const first=await range(wallet,left,right,tokens,queryBudget),mid=(left+right)/2n;
+    const second=left===right?await range(wallet,left,right,tokens,queryBudget):[...await range(wallet,left,mid,tokens,queryBudget),...await range(wallet,mid+1n,right,tokens,queryBudget)].sort(order);
     if(!isDeepStrictEqual(first,second))fail('LOG_SET_CHANGED');logs=first;
     cache?.set(key,logs);
     // A discovery range is saved only after every row/receipt/canonical block

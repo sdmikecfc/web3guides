@@ -55,7 +55,7 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
   }
   throw Error('PUBLIC_RETRIES_EXHAUSTED');
  }
- async function rawRpc(method,params){const p=await request('https://rpc.doma.xyz',{jsonrpc:'2.0',id:++seq,method,params});if(p.error||!p.result)throw Error('PUBLIC_RPC_UNAVAILABLE');return p.result;}
+ async function rawRpc(method,params){const p=await request('https://rpc.doma.xyz',{jsonrpc:'2.0',id:++seq,method,params});if(p.error||!p.result){if(method==='eth_getLogs'&&p.error?.code===-32005&&typeof p.error.message==='string'&&/^\s*logs count limit exceeded\b/i.test(p.error.message))throw Error('PUBLIC_RPC_LOG_LIMIT');throw Error('PUBLIC_RPC_UNAVAILABLE');}return p.result;}
  async function checkAnchor(index=0){
   if(!accountingCache)return;checkBudget();const anchor=anchors[index],key=anchor.number+':'+anchor.hash;
   if(!anchorChecks.has(key)){
