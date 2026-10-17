@@ -71,8 +71,8 @@ async function main(){
  // Explicit hybrid selection: short account history uses RPC; targeted old
  // token history uses its unchanged two-pass Explorer proof. Neither failure
  // is permission to silently switch provider or accept an incomplete result.
- function hybridFixture(failure=null){
-  const data=fixture(),routes=[];
+ function hybridFixture(failure=null,options={}){
+  const data=fixture(options),routes=[];let receiptReads=0;
   const source=publicSource({apiKey:'test-only',erc20History:'hybrid',delay:0,fetcher:async(url,options)=>{
    const u=new URL(url);routes.push(u.hostname);
    if(u.hostname==='explorer.doma.xyz'){
@@ -82,15 +82,24 @@ async function main(){
    }
    assert.equal(u.hostname,'rpc.doma.xyz');const q=JSON.parse(options.body);
    if(failure==='rpc')return new Response(JSON.stringify({error:{code:-32000,message:'backend unavailable'}}));
-   const result=q.method==='eth_getTransactionReceipt'?await data.receipt(q.params[0]):await data.rpc(q.method,q.params);
+   const result=q.method==='eth_getTransactionReceipt'?(receiptReads++,await data.receipt(q.params[0])):await data.rpc(q.method,q.params);
    return new Response(JSON.stringify({jsonrpc:'2.0',id:q.id,result}));
   }});
-  return {source,routes};
+  return {source,routes,calls:data.calls,get receiptReads(){return receiptReads;}};
  }
  const hybrid=hybridFixture();assert.equal((await hybrid.source.transfers(wallet,from,through)).length,3);assert.ok(hybrid.routes.every(host=>host==='rpc.doma.xyz'));const beforeFiltered=hybrid.routes.length;
  assert.equal((await hybrid.source.transfersForTokens(wallet,[tokenA],from,through)).length,1);assert.deepEqual(hybrid.routes.slice(beforeFiltered),['explorer.doma.xyz','explorer.doma.xyz']);
  const rpcFailure=hybridFixture('rpc');await assert.rejects(()=>rpcFailure.source.transfers(wallet,from,through),/PUBLIC_RPC_UNAVAILABLE/);assert.deepEqual(rpcFailure.routes,['rpc.doma.xyz']);
  const explorerFailure=hybridFixture('explorer');await assert.rejects(()=>explorerFailure.source.transfersForTokens(wallet,[tokenA],from,through),/PUBLIC_HTTP_400/);assert.deepEqual(explorerFailure.routes,['explorer.doma.xyz']);
+ const period=hybridFixture();assert.deepEqual(await period.source.periodTransfersForTokens(wallet,[tokenA],from,through),rows.filter(r=>r.token.address_hash===tokenA));
+ assert.ok(period.routes.every(host=>host==='rpc.doma.xyz'),'Hybrid current token scope never starts one Explorer scan per asset');assert.ok(period.calls.filter(c=>c.method==='eth_getLogs').every(c=>c.params[0].address.length===1&&c.params[0].address[0]===tokenA));assert.equal(period.receiptReads,2);
+ const failedPeriod=hybridFixture('rpc');await assert.rejects(()=>failedPeriod.source.periodTransfersForTokens(wallet,[tokenA],from,through),/PUBLIC_RPC_UNAVAILABLE/);assert.deepEqual(failedPeriod.routes,['rpc.doma.xyz'],'A failed bounded RPC proof cannot silently fall back to Explorer');
+ const spam=Array.from({length:1000},(_,i)=>({...transfer(6,i<5?tokenA:tokenB,other,wallet,1n,i),transactionHash:hash(10000+i),transactionIndex:hex(i)})),allPeriod=hybridFixture(null,{logs:spam}),filteredPeriod=hybridFixture(null,{logs:spam});
+ const scopedTokens=[tokenA,...Array.from({length:244},(_,i)=>address(100+i))],allRows=await allPeriod.source.transfers(wallet,from,through),filteredRows=await filteredPeriod.source.periodTransfersForTokens(wallet,scopedTokens,from,through);
+ assert.deepEqual(filteredRows,allRows.filter(r=>r.token.address_hash===tokenA),'Scoped current proof equals the original complete proof filtered after receipts');assert.equal(allPeriod.receiptReads,1000);assert.equal(filteredPeriod.receiptReads,5);assert.ok(filteredPeriod.routes.length<allPeriod.routes.length/10,'Irrelevant receipt work is avoided without expanding to per-token Explorer requests');
+ assert.ok(filteredPeriod.calls.filter(c=>c.method==='eth_getLogs').every(c=>c.params[0].address.length===245),'One bounded RPC query includes the entire supported asset set');
+ console.log(JSON.stringify({syntheticCurrentTokenScope:{tokens:scopedTokens.length,unfilteredRequests:allPeriod.routes.length,filteredRequests:filteredPeriod.routes.length,unfilteredReceipts:allPeriod.receiptReads,filteredReceipts:filteredPeriod.receiptReads,explorerRequests:filteredPeriod.routes.filter(h=>h==='explorer.doma.xyz').length}}));
+ let explorerReads=0;const selectedExplorer=publicSource({apiKey:'test-only',erc20History:'explorer',delay:0,fetcher:async url=>{assert.equal(new URL(url).hostname,'explorer.doma.xyz');explorerReads++;return new Response(JSON.stringify({items:[rows[2]],next_page_params:null}));}});assert.deepEqual(await selectedExplorer.periodTransfersForTokens(wallet,[tokenA],from,through),[rows[2]]);assert.equal(explorerReads,2,'Explicit Explorer mode retains both independent scope scans');
  // The real disk cache has stricter namespace and checkpoint APIs than mocks.
  const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),{openAccountingCache}=require('./lib/accounting-cache.cjs');
  const cacheRoot=process.platform==='win32'?'D:/Temp':os.tmpdir();fs.mkdirSync(cacheRoot,{recursive:true});
@@ -105,6 +114,7 @@ async function main(){
   fs.rmSync(target,{recursive:true,force:true});
  }
  const cancelled=sourceFixture('cancel');await assert.rejects(()=>cancelled.source.withDeadline(Date.now()+100,()=>cancelled.source.transfers(wallet,from,through)),/ACCOUNTING_TIME_BUDGET_EXCEEDED/);assert.equal(cancelled.active,0);assert.ok(cancelled.aborted>=1);
+ const cancelledPeriod=sourceFixture('cancel');await assert.rejects(()=>cancelledPeriod.source.withDeadline(Date.now()+100,()=>cancelledPeriod.source.periodTransfersForTokens(wallet,[tokenA],from,through)),/ACCOUNTING_TIME_BUDGET_EXCEEDED/);assert.equal(cancelledPeriod.active,0);assert.ok(cancelledPeriod.aborted>=1);
  console.log('PASS RPC ERC20 history: bounded full/split queries, exact integer units, ERC721 exclusion, self-transfer deduplication, receipts, timestamps, finalized anchors, corrections, omissions, limits, cancellation and anchored cache reuse.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

@@ -387,6 +387,13 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
   if(!Array.isArray(tokens)||tokens.some(t=>typeof t!=='string'||!/^0x[0-9a-f]{40}$/.test(t)))throw Error('INVALID_TRANSFER_TOKEN_FILTER');
   const rows=await fixedWindow([...new Set(tokens)].sort().map(token=>transferScope(wallet,token)),{wallet,from,through,proof:transferProof,identityOf:transferIdentity,changed:'TRANSFER_INDEX_CHANGED',kind:'erc20-filtered'});transferProof(rows);return rows;
  }
+ async function periodTransfersForTokens(wallet,tokens,from,through){
+  // Current accounting uses the same bounded, receipt-proven RPC window as
+  // transfers(), with the complete supported inventory supplied up front.
+  // Historical FIFO calls retain their explicitly selected Explorer route.
+  if(rpcTransfers){if(accountingCache)await checkAnchor();return rpcTransfers(wallet,from,through,tokens);}
+  return transfersForTokens(wallet,tokens,from,through);
+ }
  async function hasNativeActivity(wallet,through){
   if(!/^0x[0-9a-f]{40}$/.test(wallet))throw Error('INVALID_WALLET');
   for(const kind of ['transactions','internal-transactions']){
@@ -565,7 +572,7 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
    if(accountingCache&&BigInt(value.blockNumber)>BigInt(anchors[0].number))throw Error('ACCOUNTING_TRANSACTION_OUTSIDE_ANCHOR');
    return value;
   },
-  block,blockAt,swaps,transfers,transfersForTokens,valueUsd,primeBalances,hasNativeActivity,nativeHistory,nativeTransaction,nativeRouterPurchase,
+  block,blockAt,swaps,transfers,transfersForTokens,periodTransfersForTokens,valueUsd,primeBalances,hasNativeActivity,nativeHistory,nativeTransaction,nativeRouterPurchase,
   ...(rpcTradeCandidates?{tradeCandidates:async(wallet,from,through)=>{if(accountingCache)await checkAnchor();return rpcTradeCandidates(wallet,from,through);}}:{}),
   nativeBalance:async(wallet,at)=>BigInt(await rpc('eth_getBalance',[wallet,at])),
   balance:async(wallet,token,at)=>{await primeBalances(wallet,[token],at);return balances.get(wallet+':'+token+':'+at);},

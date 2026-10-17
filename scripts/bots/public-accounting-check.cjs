@@ -53,6 +53,14 @@ async function unregisteredAssetChecks(){
  f.source.swaps=async()=>[...await baseSwaps(),...rows];
  f.source.balance=async(w,t,b)=>t===newToken?0n:t===USDC&&b==='0x20'?103000000n:baseBalance(w,t,b);
  const r=await reconstruct(f.options),newEvents=r.events.filter(e=>e.token===newToken);
+ const unfiltered=f.source.transfers,tokenQueries=[];
+ f.source.transfers=async()=>{throw Error('UNSCOPED_HISTORY_READ_FORBIDDEN');};
+ f.source.periodTransfersForTokens=f.source.transfersForTokens=async(w,tokens,lo,hi)=>{tokenQueries.push({tokens,lo,hi});return(await unfiltered()).filter(t=>tokens.includes(t.token.address_hash)&&Date.parse(t.timestamp)>=lo&&Date.parse(t.timestamp)<=hi);};
+ const filtered=await reconstruct(f.options),strip=x=>{const {requestId,...body}=x;return body;};
+ assert.deepEqual(strip(filtered),strip(r),'filtering before source receipt work preserves full FIFO, funding, fees and unscored inventory');
+ assert.ok(tokenQueries.filter(q=>q.lo===f.options.from).every(q=>q.tokens.includes(newToken)&&q.tokens.includes(token)&&q.tokens.includes(USDC)),'current discovery includes newly launched manual inventory, eligible domains and quote capital');
+ assert.ok(tokenQueries.every(q=>!q.tokens.includes('0x'+'0'.repeat(40))),'native capital and gas remain exclusively in the complete native history');
+ delete f.source.transfersForTokens;delete f.source.periodTransfersForTokens;f.source.transfers=unfiltered;
  assert.equal(newEvents.length,2);assert.equal(newEvents[0].kind,'buy');assert.equal(newEvents[0].usd,'5.000000','manual launchpad cost includes its separately paid fee');assert.equal(newEvents[1].kind,'sell');assert.equal(newEvents[1].usd,'6.000000');
  assert.ok(newEvents.every(e=>!e.economicId&&!e.notionalUsd),'discovering an inventory asset does not register a competition market or score manual trading');
  assert.deepEqual(r.events.filter(e=>e.economicId).map(e=>e.economicId),['sale'],'only the original verified eligible fill is scored');

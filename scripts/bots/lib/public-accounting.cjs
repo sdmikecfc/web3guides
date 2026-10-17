@@ -96,7 +96,12 @@ async function reconstruct({participant,wallets,from,through,periodStart,markets
  for(const wallet of wallets)for(const token of supported){check();const units=await chainBalance(wallet,token,start.number);if(units<0n)throw Error('OPENING_BALANCE_INVALID');openingBalances.set(wallet+':'+token,units);}
  for(const wallet of wallets){
   check();
-  for(const t of await source.transfers(wallet,from,through)){check();const token=t.token?.address_hash?.toLowerCase(),at=Date.parse(t.timestamp);if(supported.has(token)&&at>=from&&at<=through)all.set(t.transaction_hash,{tx:t.transaction_hash,at});}
+  // The full registry plus independently discovered current Doma inventory is
+  // known above. Apply that same asset filter before source receipt work;
+  // unrelated ERC20 spam cannot affect this ledger. Native history below
+  // remains unfiltered so external capital and every account-paid gas fee stay.
+  const periodTransfers=source.periodTransfersForTokens?await source.periodTransfersForTokens(wallet,[...supported].filter(t=>t!==NATIVE),from,through):await source.transfers(wallet,from,through);
+  for(const t of periodTransfers){check();const token=t.token?.address_hash?.toLowerCase(),at=Date.parse(t.timestamp);if(supported.has(token)&&at>=from&&at<=through)all.set(t.transaction_hash,{tx:t.transaction_hash,at});}
   if(source.nativeHistory&&source.nativeTransaction){for(const t of await source.nativeHistory(wallet,through,from))if(t.at>=from&&t.at<=through)all.set(t.tx,t);}
   else if(await source.nativeBalance(wallet,start.number)!==0n||await source.nativeBalance(wallet,end.number)!==0n||await source.hasNativeActivity(wallet,through))throw Error('NATIVE_CAPITAL_LEDGER_REQUIRED');
  }

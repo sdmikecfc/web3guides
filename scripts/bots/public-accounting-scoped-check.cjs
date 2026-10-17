@@ -9,6 +9,7 @@ function scoped(f){
  const inWindow=(t,lo,hi)=>Date.parse(t.timestamp)>=lo&&Date.parse(t.timestamp)<=hi;
  s.transfers=async(w,lo,hi)=>{calls.push({method:'transfers',wallet:w,lo,hi});return(await transfers(w,lo,hi)).filter(t=>inWindow(t,lo,hi));};
  s.transfersForTokens=async(w,tokens,lo,hi)=>{calls.push({method:'tokenHistory',wallet:w,tokens,lo,hi});return(await transfers(w,lo,hi)).filter(t=>tokens.includes(t.token.address_hash)&&inWindow(t,lo,hi));};
+ s.periodTransfersForTokens=s.transfersForTokens;
  s.swaps=async(w,lo,hi)=>(await swaps(w,lo,hi)).filter(t=>Date.parse(t.date)>=lo&&Date.parse(t.date)<=hi);
  if(native)s.nativeHistory=async(w,hi,lo)=>{calls.push({method:'nativeHistory',wallet:w,lo,hi});return(await native(w,hi,lo)).filter(t=>t.at>=lo&&t.at<=hi);};
  return {...f,calls};
@@ -28,8 +29,9 @@ async function main(){
  const c=await cases();
  for(const f of [c.basic,c.native]){
   assert.ok(f.calls.some(x=>x.method==='tokenHistory'));
-  assert.ok(f.calls.filter(x=>x.method==='tokenHistory').every(x=>x.tokens.length===1&&x.tokens[0]===f.options.markets[0].domain_token&&x.hi===f.options.from-1));
-  assert.ok(f.calls.filter(x=>x.method==='transfers'||x.method==='nativeHistory').every(x=>x.lo===f.options.from&&x.hi===f.options.through));
+  assert.ok(f.calls.filter(x=>x.method==='tokenHistory'&&x.lo===0).every(x=>x.tokens.length===1&&x.tokens[0]===f.options.markets[0].domain_token&&x.hi===f.options.from-1));
+  assert.ok(f.calls.filter(x=>x.method==='tokenHistory'&&x.lo!==0).every(x=>x.tokens.includes(USDC)&&x.tokens.includes(f.options.markets[0].domain_token)));
+  assert.ok(f.calls.filter(x=>x.method==='transfers'||x.method==='nativeHistory'||x.method==='tokenHistory'&&x.lo!==0).every(x=>x.lo===f.options.from&&x.hi===f.options.through));
  }
  assert.equal(c.basic.ledger.openingLots.find(x=>x.token===c.basic.options.markets[0].domain_token).costUsd,'10.000000');
  assert.equal(c.native.ledger.openingLots.find(x=>x.token===c.native.options.markets[0].domain_token).costUsd,'10.000003');
@@ -38,7 +40,7 @@ async function main(){
  // position. It contributes exact opening value without an invented cost.
  const u=c.untouched,old=u.ledger.openingLots.find(x=>x.wallet===u.inactive&&x.token===u.token);
  assert.equal(old.costKnown,false);assert.equal(Object.hasOwn(old,'costUsd'),false);assert.equal(old.valueUsd,'50.000000');
- assert.equal(u.calls.some(x=>x.method==='tokenHistory'),false);
+ assert.equal(u.calls.some(x=>x.method==='tokenHistory'&&x.lo===0),false);
  assert.equal(u.ledger.events.find(x=>x.economicId==='sale').usd,'12.000000');
  assert.equal(u.ledger.events.filter(x=>x.token===u.token&&x.kind==='buy')[0].usd,'10.000000');
  // A later buy must not bypass preexisting FIFO inventory on the SAME wallet.
@@ -47,15 +49,15 @@ async function main(){
  await assert.rejects(()=>reconstruct(consumes.options),/OPENING_BALANCE_MISMATCH/);
  assert.ok(consumes.calls.some(x=>x.method==='tokenHistory'));
  // Missing historical basis remains explicit for a consumed opening position.
- const missing=scoped(fixture());missing.source.transfersForTokens=async()=>[];
+ const missing=scoped(fixture()),knownHistory=missing.source.transfersForTokens;missing.source.transfersForTokens=async(w,t,lo,hi)=>lo===0?[]:knownHistory(w,t,lo,hi);
  await assert.rejects(()=>reconstruct(missing.options),/OPENING_BALANCE_MISMATCH/);
  const exact=scoped(fixture());exact.options.periodStart='2026-10-01T00:00:30.000739Z';
  exact.source.blockAt=async at=>({number:at<=exact.options.from?'0x11':'0x20'});
  const precise=await reconstruct(exact.options);assert.equal(precise.periodStart,exact.options.periodStart);
  assert.equal(accountingStartMillis(exact.options.periodStart),exact.options.from+1);
  assert.equal(accountingStartMillis('2026-10-01T00:00:30.000000+00:00'),exact.options.from);
- assert.ok(exact.calls.filter(x=>x.method==='transfers').every(x=>x.lo===exact.options.from+1));
- assert.ok(exact.calls.filter(x=>x.method==='tokenHistory').every(x=>x.hi===exact.options.from));
+ assert.ok(exact.calls.filter(x=>x.method==='transfers'||x.method==='tokenHistory'&&x.lo!==0).every(x=>x.lo===exact.options.from+1));
+ assert.ok(exact.calls.filter(x=>x.method==='tokenHistory'&&x.lo===0).every(x=>x.hi===exact.options.from));
  // A purchase on the floored millisecond belongs to opening FIFO, not the
  // post-entry event stream. Its true historical cost is still reconstructed.
  const boundary=scoped(fixture());boundary.options.periodStart=exact.options.periodStart;
@@ -105,7 +107,7 @@ async function main(){
  await assert.rejects(()=>reconstruct(futureFraction.options),/ACCOUNTING_PERIOD_NOT_REACHED/);assert.equal(futureFraction.calls.length,0);
  // No trades is verified from the full period, not inferred from an empty
  // eligible list. A pure quote balance can have zero realized gain.
- const empty=untouchedFixture();empty.options.eligible=[];empty.source.transfers=async()=>[];empty.source.swaps=async()=>[];
+ const empty=untouchedFixture();empty.options.eligible=[];empty.source.transfers=async()=>[];empty.source.transfersForTokens=async()=>[];empty.source.periodTransfersForTokens=async()=>[];empty.source.swaps=async()=>[];
  empty.source.balance=async(w,t)=>w===empty.active&&t===USDC?100000000n:0n;
  const zero=await reconstruct(empty.options);assert.equal(zero.events.length,0);assert.equal(zero.openingLots.length,1);assert.equal(zero.openingLots[0].valueUsd,'100.000000');
  // Trace I/O is bounded at three concurrent calls; chronological FIFO output
