@@ -10,14 +10,14 @@ function lossless(text){
  }
  return JSON.parse(out);
 }
-function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCache=null,accountingAnchor=null,accountingPriorAnchors=[],erc20History='explorer',pricingMode='batched',tradeCache=null}){
+function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCache=null,accountingAnchor=null,accountingPriorAnchors=[],erc20History='explorer',pricingMode='batched',tradeCache=null,nativeCheckpointScope=null}){
  if(!apiKey)throw Error('EXISTING_DOMA_API_KEY_REQUIRED');
  if(!['explorer','rpc','hybrid'].includes(erc20History))throw Error('INVALID_ERC20_HISTORY_SOURCE');
  const validAnchor=a=>a&&/^0x[0-9a-f]+$/i.test(a.number)&&/^0x[0-9a-f]{64}$/i.test(a.hash);
  if(accountingCache&&(!validAnchor(accountingAnchor)||!Array.isArray(accountingPriorAnchors)||accountingPriorAnchors.length>4||accountingPriorAnchors.some(a=>!validAnchor(a))))throw Error('INVALID_ACCOUNTING_ANCHOR');
  const anchors=accountingCache?[accountingAnchor,...accountingPriorAnchors.filter(a=>BigInt(a.number)<=BigInt(accountingAnchor.number))].map(a=>({number:'0x'+BigInt(a.number).toString(16),hash:a.hash.toLowerCase()})):[];
  const anchorChecks=new Map(),evidence=anchors.map(anchor=>accountingCache.namespace({kind:'finalized-rpc',scope:{anchor}}));
- const tradeAnchorChecks=new Map(),tradeReads=new Map(),sourceMetrics={networkRequests:0,factHits:0,factMisses:0,rangeHits:0,rangeMisses:0};let tradeAnchorPromise=null;
+ const tradeAnchorChecks=new Map(),tradeReads=new Map(),sourceMetrics={networkRequests:0,factHits:0,factMisses:0,rangeHits:0,rangeMisses:0,nativeProofHits:0,nativeProofMisses:0};let tradeAnchorPromise=null;
  let deadline=Infinity,budgetController=null,budgetErrorCode='ACCOUNTING_TIME_BUDGET_EXCEEDED';const pendingRequests=new Set();
  const checkBudget=()=>{if(Date.now()>=deadline||budgetController?.signal.aborted)throw Error(budgetErrorCode);};
  const pause=ms=>new Promise((resolve,reject)=>{
@@ -289,7 +289,8 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
   const first=await scan(),second=await scan();if(hash(first)!==hash(second))throw Error('SWAP_INDEX_CHANGED');return second;
  }
  // Checkpoints retain validated page boundaries, not a claim of completeness.
- // Both passes still make independent HTTP reads; only interrupted work resumes.
+ // Keep scan A for this exact window, even after a successful comparison. Every
+ // invocation rereads its saved boundary and the entire independent scan B.
  async function fixedWindow(scopes,{wallet,from,through,proof,identityOf,changed,kind}){
   if(!/^0x[0-9a-f]{40}$/.test(wallet))throw Error('INVALID_WALLET');
   if(!Number.isFinite(from)||!Number.isFinite(through))throw Error('INVALID_TRANSFER_WINDOW');
@@ -346,7 +347,7 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
   }
   try{
    const first=await scanAll('a'),rows=(await scanAll('b',first)).flat();
-   checkBudget();cache?.clear();return rows;
+   checkBudget();return rows;
   }catch(error){if(/(?:INDEX_CHANGED|DUPLICATE|ORDER_CHANGED|CURSOR_REPEATED|CURSOR_TOKEN_MISMATCH|_INVALID|PAGE_LIMIT)$/.test(error.message))cache?.clear();throw error;}
  }
  const transferProof=rows=>{
@@ -424,23 +425,34 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
   for(const t of rows){const tx=(t.hash||t.transaction_hash).toLowerCase();found.set(tx,{tx,at:Date.parse(t.timestamp)});}
   return [...found.values()];
  }
+ async function indexStatus(final){
+  const p=await request('https://explorer.doma.xyz/api/v2/main-page/indexing-status');
+  const head=await request('https://explorer.doma.xyz/api/v2/main-page/blocks');
+  return p.finished_indexing===true&&Number(p.indexed_blocks_ratio)===1&&Number(p.indexed_internal_transactions_ratio)===1&&head[0]?.height!=null&&BigInt(head[0].height)>=BigInt(final.number);
+ }
+ async function nativeBoundary(anchor){
+  checkBudget();if(Number(BigInt(await rawRpc('eth_chainId',[])))!==CHAIN)throw Error('WRONG_PUBLIC_CHAIN');
+  const final=await rawRpc('eth_getBlockByNumber',['finalized',false]);
+  if(BigInt(final.number)<BigInt(anchor.number))throw Error('ACCOUNTING_ANCHOR_NOT_FINALIZED');
+  const canonical=await rawRpc('eth_getBlockByNumber',[anchor.number,false]);
+  if(canonical.number?.toLowerCase()!==anchor.number||canonical.hash?.toLowerCase()!==anchor.hash)throw Error('ACCOUNTING_ANCHOR_REORG');
+  if(!await indexStatus(anchor))throw Error('NATIVE_INDEX_NOT_READY');checkBudget();
+ }
+ const nativeCheckpoint=nativeCheckpointScope?require('./native-audit-checkpoint.cjs').nativeAuditCheckpoint({cache:accountingCache,anchor:accountingAnchor,scope:nativeCheckpointScope,checkBudget,verifyBoundary:nativeBoundary,onCache:hit=>sourceMetrics[hit?'nativeProofHits':'nativeProofMisses']++}):null;
  async function nativeTransaction(tx,receipt){
-  if(native.has(tx))return native.get(tx);
+  if(native.has(tx)&&!nativeCheckpoint)return native.get(tx);
   if(!transactions.has(tx))transactions.set(tx,await rpc('eth_getTransactionByHash',[tx]));
-  // A failed transaction reverted every nested value transfer. Its canonical
-  // receipt still proves the paid fees; no mutable trace listing is needed.
+  const transaction=transactions.get(tx);
+  // Reverted transactions have no native value moves and need no Explorer read.
   if(receipt.status==='0x0'){
-   const result=require('./public-native-accounting.cjs').nativeSettlement(transactions.get(tx),receipt,[]);native.set(tx,result);return result;
+   const result=require('./public-native-accounting.cjs').nativeSettlement(transaction,receipt,[]);native.set(tx,result);return result;
   }
-  const base='https://explorer.doma.xyz/api/v2/transactions/'+tx+'/internal-transactions',rows=[],seen=new Set();let params={},first;
-  const anchor=p=>hash({next:p.next_page_params,items:p.items?.map(t=>[t.transaction_hash,t.block_number,t.index,t.from?.hash,t.to?.hash,t.created_contract?.hash,t.type,t.value,t.success,t.error])});
-  for(let i=0;i<maxPages;i++){
-   const u=new URL(base);for(const[k,v]of Object.entries(params)){if(!/^[a-z_]+$/.test(k))throw Error('UNKNOWN_EXPLORER_CURSOR');if(v!==null)u.searchParams.set(k,String(v));}
-   const p=await request(u.toString());if(!Array.isArray(p.items))throw Error('NATIVE_TRACES_UNAVAILABLE');if(!i)first=anchor(p);rows.push(...p.items);
-   if(!p.next_page_params){if(anchor(await request(base))!==first)throw Error('NATIVE_TRACE_INDEX_CHANGED');const result=require('./public-native-accounting.cjs').nativeSettlement(transactions.get(tx),receipt,rows);native.set(tx,result);return result;}
-   const k=hash(p.next_page_params);if(seen.has(k)||!p.items.length)throw Error('NATIVE_TRACE_CURSOR_REPEATED');seen.add(k);params=p.next_page_params;
-  }
-  throw Error('NATIVE_TRACE_PAGE_LIMIT');
+  const loader=()=>require('./native-audit-checkpoint.cjs').completeTraces({tx,receipt,checkBudget,maxPages,page:async(tx,params)=>{
+   const url=new URL('https://explorer.doma.xyz/api/v2/transactions/'+tx+'/internal-transactions');
+   for(const[k,v]of Object.entries(params))if(v!==null)url.searchParams.set(k,String(v));return request(url.toString());
+  }});
+  const result=nativeCheckpoint?await nativeCheckpoint.read(tx,transaction,receipt,loader):require('./public-native-accounting.cjs').nativeSettlement(transaction,receipt,await loader());
+  native.set(tx,result);return result;
  }
  async function nativeRouterPurchase(tx,receipt,nativeFlow,wallets){
   const {UNIVERSAL}=require('./public-router-settlement.cjs');
@@ -460,6 +472,7 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
   checkBudget,
   metrics:()=>({...sourceMetrics}),
   async verifyFinalizedEvidence(){
+   if(nativeCheckpoint?.used)await nativeCheckpoint.finish();
    // A persistent fact may have served an early wallet before a later wallet
    // observed a reorg. Recheck the run's original anchor from the node before
    // publication; a cached per-read anchor result is deliberately insufficient.
@@ -556,13 +569,8 @@ function publicSource({apiKey,fetcher=fetch,delay=300,maxPages=1000,accountingCa
    return verifyRouterSettlement(s,receipt,{transaction:transactions.get(s.tx),implementation:implementations.get(receipt.blockNumber),poolFor:(a,b,fee,at)=>read(factory,'function getPool(address,address,uint24) view returns(address)','getPool',[a,b,fee],at)});
   },
   async finalized(){if(Number(BigInt(await rpc('eth_chainId',[])))!==CHAIN)throw Error('WRONG_PUBLIC_CHAIN');return block('finalized');},
-  async indexStatus(final){
-   const p=await request('https://explorer.doma.xyz/api/v2/main-page/indexing-status');
-   const head=await request('https://explorer.doma.xyz/api/v2/main-page/blocks');
-   // Ratios and block height are necessary, not substitutes for the per-wallet
-   // completed pagination and receipt checks performed by the worker.
-   return p.finished_indexing===true&&Number(p.indexed_blocks_ratio)===1&&Number(p.indexed_internal_transactions_ratio)===1&&head[0]?.height!=null&&BigInt(head[0].height)>=BigInt(final.number);
-  },
+  indexStatus,
+  invalidateNativeCheckpoint:()=>nativeCheckpoint?.invalidate(),
   receipt:async tx=>{if(!/^0x[0-9a-f]{64}$/.test(tx))throw Error('INVALID_TRANSACTION_HASH');if(!receipts.has(tx))receipts.set(tx,await rpc('eth_getTransactionReceipt',[tx]));return receipts.get(tx);},
   transaction:async tx=>{
    if(!/^0x[0-9a-f]{64}$/.test(tx))throw Error('INVALID_TRANSACTION_HASH');

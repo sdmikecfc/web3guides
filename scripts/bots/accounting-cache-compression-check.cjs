@@ -1,0 +1,21 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),crypto=require('node:crypto'),zlib=require('node:zlib');
+const {openAccountingCache}=require('./lib/accounting-cache.cjs');
+const base=path.resolve(process.env.TEMP||os.tmpdir()),root=fs.mkdtempSync(path.join(base,'mk-cache-compression-')),passed=[];
+const hash=x=>crypto.createHash('sha256').update(x).digest('hex');
+function fresh(name,limits={}){const directory=path.join(root,name);return {directory,cache:openAccountingCache({directory,chainId:97477,...limits})};}
+function namespace(cache,name='proof'){return cache.namespace({kind:'history-checkpoint',scope:{name}});}
+function file(directory){const ns=fs.readdirSync(directory).find(n=>n.startsWith('ns-'));return path.join(directory,ns,fs.readdirSync(path.join(directory,ns)).find(n=>n.endsWith('.json')));}
+function rewrite(p,mutate){const {sha256,...body}=JSON.parse(fs.readFileSync(p));mutate(body);fs.writeFileSync(p,JSON.stringify({...body,sha256:hash(JSON.stringify(body))}));}
+function test(name,fn){fn();passed.push(name);}
+const value={code:'0x'+('608060405234801561001057600080fd5b50600436106100415760003560e01c').repeat(200),big:123456789123456789123456789n,rows:[null,true,42,-0,'é',[]]};
+try{
+ test('lossless compressed values survive process-style reopen',()=>{const {directory,cache}=fresh('roundtrip');const ns=namespace(cache);assert.equal(ns.setCheckpoint('x',value),true);const p=file(directory),b=JSON.parse(fs.readFileSync(p));assert.equal(b.valueCodec,'gzip-json-1');const reopened=openAccountingCache({directory,chainId:97477});assert.deepEqual(namespace(reopened).getCheckpoint('x'),value);});
+ test('legacy uncompressed envelopes remain readable',()=>{const {directory,cache}=fresh('legacy');namespace(cache).setCheckpoint('x',value);rewrite(file(directory),b=>{b.value=JSON.parse(zlib.gunzipSync(Buffer.from(b.valueGzip,'base64')));delete b.valueCodec;delete b.valueBytes;delete b.valueGzip;});const reopened=openAccountingCache({directory,chainId:97477});assert.deepEqual(namespace(reopened).getCheckpoint('x'),value);});
+ test('uncompressed entry limit remains enforced',()=>{const {cache}=fresh('logical',{maxBytes:20000,maxEntryBytes:5000});assert.equal(namespace(cache).setCheckpoint('x',value),false);assert.equal(namespace(cache).getCheckpoint('x'),undefined);});
+ test('corrupt compression is quarantined without affecting another namespace',()=>{const {directory,cache}=fresh('corrupt');namespace(cache).setCheckpoint('x',value);const p=file(directory);namespace(cache,'other').setCheckpoint('y',17n);rewrite(p,b=>{b.valueGzip='YWJj';});assert.equal(namespace(cache).getCheckpoint('x'),undefined);assert.equal(namespace(cache,'other').getCheckpoint('y'),17n);});
+ test('decompression cannot exceed configured logical limit',()=>{const {directory,cache}=fresh('bomb',{maxBytes:100000,maxEntryBytes:16000});namespace(cache).setCheckpoint('x',value);rewrite(file(directory),b=>{b.valueBytes=100;b.valueGzip=zlib.gzipSync(Buffer.from('x'.repeat(50000))).toString('base64');});assert.equal(namespace(cache).getCheckpoint('x'),undefined);});
+ test('wrong length and unknown codec are rejected',()=>{for(const change of [b=>b.valueBytes++,b=>b.valueCodec='unknown']){const {directory,cache}=fresh('invalid-'+crypto.randomUUID());namespace(cache).setCheckpoint('x',value);rewrite(file(directory),change);assert.equal(namespace(cache).getCheckpoint('x'),undefined);}});
+ test('physical quota is respected with more reusable facts',()=>{const {directory,cache}=fresh('quota',{maxBytes:60000,maxEntryBytes:20000});const ns=namespace(cache);for(let i=0;i<50;i++)assert.equal(ns.setCheckpoint(i,{...value,index:i}),true);assert(cache.stats().bytes<=60000);const reopened=openAccountingCache({directory,chainId:97477,maxBytes:60000,maxEntryBytes:20000});for(let i=0;i<50;i++)assert.deepEqual(namespace(reopened).getCheckpoint(i),{...value,index:i});});
+ console.log('PASS bounded cache compression: '+passed.length+' checks; lossless reopen, legacy data, logical and physical quotas, corruption quarantine and bounded decompression.');
+}finally{assert.equal(path.dirname(path.resolve(root)),base);assert(path.basename(root).startsWith('mk-cache-compression-'));fs.rmSync(root,{recursive:true,force:true});}

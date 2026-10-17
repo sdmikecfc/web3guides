@@ -1,5 +1,6 @@
 'use strict';
-const {createHash}=require('node:crypto');
+const {createHash,randomUUID}=require('node:crypto');
+const {clearNativeAudit,nativeAuditProgress,validScope,MAX_AGE_MS}=require('./native-audit-checkpoint.cjs');
 const {reconstruct,accountingStartMillis}=require('./public-accounting.cjs');
 const ENGINE_VERSION='mk-accounting-resumable-2';
 const JOBS_VERSION='mk-accounting-resumable-1';
@@ -63,7 +64,7 @@ async function accountingCycle({snapshot,packet,accountCoverage=null,cache,sourc
  // an unrelated personal portfolio. SQL independently repeats this classification
  // against the post-correction fill set; no client exemption list is submitted.
  for(const c of contexts)if(accountReady(c.a.participant)&&['active','closed'].includes(snapshot.manifest.campaign.state)&&snapshot.manifest.campaign.ends_at&&c.wallets.length&&instant(c.periodStart)<=instant(packet.confirmedThrough)&&c.eligible.length===0){
-  noTrades.add(c.a.participant);sweep.setCheckpoint(c.a.participant,null);
+  noTrades.add(c.a.participant);sweep.setCheckpoint(c.a.participant,null);const previous=jobs.getCheckpoint(c.identity);if(previous?.nativeAudit){clearNativeAudit(cache,previous.anchor,previous.nativeAudit);jobs.setCheckpoint(c.identity,{...previous,nativeAudit:null});}
  }
  const allCovered=()=>verified.size+noTrades.size===accounts.length;
  const validAnchor=a=>a&&/^0x[0-9a-f]+$/i.test(a.number)&&/^0x[0-9a-f]{64}$/i.test(a.hash);
@@ -95,30 +96,54 @@ async function accountingCycle({snapshot,packet,accountCoverage=null,cache,sourc
  }
  const anchors=new Map();
  async function getAnchor(through){if(!anchors.has(through))anchors.set(through,await anchorAt(Date.parse(through),end));return anchors.get(through);}
- for(let n=0;n<accounts.length;n++){
-  const index=(offset+n)%accounts.length,{a,periodStart,wallets,identity}=contexts[index];
+ // A sealed unfinished audit gets one early slice, rather than waiting behind
+ // every account until its four-hour proof lease expires. Keep a separate fair
+ // cursor and cap the same job at two consecutive priority slices. Remaining
+ // cycle time always follows that cursor; no job receives an unbounded lease.
+ const rotation=accounts.map((_,n)=>(offset+n)%accounts.length),lastPriority=jobs.getCheckpoint('nativePriority');
+ const resumableJobs=rotation.flatMap(index=>{const c=contexts[index],job=jobs.getCheckpoint(c.identity),scope=job?.nativeAudit;
+  if(!accountReady(c.a.participant)||noTrades.has(c.a.participant)||job?.finished||!scope||!Number.isFinite(Date.parse(job.through))||Date.parse(job.through)>target||Date.parse(job.through)<Date.parse(c.periodStart))return [];
+  try{validScope(scope,job.anchor);}catch{return [];}
+  const age=now()-scope.startedAt,expected={version:1,participant:c.a.participant,wallets:c.wallets,periodStart:c.periodStart,through:job.through,fingerprint:evidenceFor(c.a,c.wallets,c.periodStart,job.through).fingerprint};
+  if(age<0||age>MAX_AGE_MS||job.fingerprint!==expected.fingerprint||Object.entries(expected).some(([key,value])=>hash(scope[key])!==hash(value))||!nativeAuditProgress(cache,job.anchor,scope)||lastPriority?.id===scope.id&&lastPriority.consecutive>=2)return [];
+  return [{index,id:scope.id,startedAt:scope.startedAt}];
+ }).sort((a,b)=>a.startedAt-b.startedAt);
+ const priority=resumableJobs[0]||null,order=priority?[priority.index,...rotation.filter(i=>i!==priority.index)]:rotation;
+ if(!priority)jobs.setCheckpoint('nativePriority',null);
+ for(const index of order){
+  const {a,periodStart,wallets,identity}=contexts[index];
   if(!accountReady(a.participant)){problems.push({code:'ACCOUNT_TRADE_COVERAGE_PENDING'});accountResults.push({participant:a.participant,status:'trade_coverage_pending',confirmedThrough:packet.confirmedThrough,elapsedMs:0,code:'ACCOUNT_TRADE_COVERAGE_PENDING'});continue;}
+  if(verified.has(a.participant)&&!allCovered())continue;
   if(noTrades.has(a.participant)){accountResults.push({participant:a.participant,status:'no_eligible_trades',confirmedThrough:packet.confirmedThrough,elapsedMs:0});continue;}
   if(instant(periodStart)>instant(packet.confirmedThrough)){notStarted++;accountResults.push({participant:a.participant,status:'not_started',confirmedThrough:packet.confirmedThrough,elapsedMs:0});continue;}
   if(now()>=end){if(!allCovered())problems.push({code:'ACCOUNTING_TIME_BUDGET_EXCEEDED'});break;}
   const previous=jobs.getCheckpoint(identity);
   let job=previous&&Number.isFinite(Date.parse(previous.through))&&Date.parse(previous.through)>=Date.parse(periodStart)&&Date.parse(previous.through)<=target?previous:null;
   const priorAnchors=job?.priorAnchors||[];
-  if(job?.finished&&job.through!==packet.confirmedThrough){priorAnchors.unshift(job.anchor);job=null;}
+  if(job?.finished&&job.through!==packet.confirmedThrough){clearNativeAudit(cache,job.anchor,job.nativeAudit);priorAnchors.unshift(job.anchor);job=null;}
   const through=job?.through||packet.confirmedThrough;
   const startedAt=now();
   const {eligible,references,fingerprint}=evidenceFor(a,wallets,periodStart,through);
   // A new attempt must stand on its own. A timeout, correction or source error
   // cannot leave an earlier successful marker confirming this account.
   verified.delete(a.participant);sweep.setCheckpoint(a.participant,null);
+  let source;
   try{
    // A chain anchor pins blocks, not Explorer index completeness. Even a
    // previously finished ledger needs fresh public-history verification.
    const anchor=job?.anchor||await getAnchor(through);
    const prior=[...new Map(priorAnchors.filter(Boolean).map(x=>[x.hash,x])).values()].slice(0,4);
-   const source=sourceFactory({accountingCache:cache,accountingAnchor:anchor,accountingPriorAnchors:prior});
-   attempted++;jobs.setCheckpoint('cursor',{next:(index+1)%Math.max(accounts.length,1)});
-   if(!job||job.fingerprint!==fingerprint){job={through,anchor,priorAnchors:prior,fingerprint,finished:false};jobs.setCheckpoint(identity,job);}
+   const age=job?.nativeAudit?now()-job.nativeAudit.startedAt:Infinity;
+   const scopeExpected={version:1,participant:a.participant,wallets,periodStart,through,fingerprint};
+   const scopeMatches=job?.nativeAudit&&Object.entries(scopeExpected).every(([key,value])=>Object.hasOwn(job.nativeAudit,key)&&hash(job.nativeAudit[key])===hash(value));
+   if(!job||job.finished||job.fingerprint!==fingerprint||!scopeMatches||!Number.isFinite(age)||age<0||age>MAX_AGE_MS){
+    if(job?.nativeAudit)clearNativeAudit(cache,job.anchor,job.nativeAudit);
+    const nativeAudit={version:1,id:randomUUID(),participant:a.participant,wallets,periodStart,through,fingerprint,startedAt:now()};
+    job={through,anchor,priorAnchors:prior,fingerprint,finished:false,nativeAudit};jobs.setCheckpoint(identity,job);
+   }
+   source=sourceFactory({accountingCache:cache,accountingAnchor:anchor,accountingPriorAnchors:prior,nativeCheckpointScope:job.nativeAudit});
+   attempted++;if(priority?.index===index)jobs.setCheckpoint('nativePriority',{id:priority.id,consecutive:lastPriority?.id===priority.id?(lastPriority.consecutive||0)+1:1});else jobs.setCheckpoint('cursor',{next:(index+1)%Math.max(accounts.length,1)});
+
    const deadline=Math.min(end,now()+sliceMs);
    const ledger=await source.withDeadline(deadline,async()=>{
     // An exhausted transient HTTP request must not discard hundreds of already
@@ -145,7 +170,8 @@ async function accountingCycle({snapshot,packet,accountCoverage=null,cache,sourc
    });
    // Persist scheduling/progress only. RPC facts remain cached independently;
    // derived scores never substitute for checking corrected public evidence.
-   jobs.setCheckpoint(identity,{through,anchor,priorAnchors:prior,fingerprint,finished:true});
+   source.invalidateNativeCheckpoint?.();clearNativeAudit(cache,anchor,job.nativeAudit);
+   jobs.setCheckpoint(identity,{through,anchor,priorAnchors:prior,fingerprint,finished:true,nativeAudit:null});
    if(ledger.complete!==true||ledger.participant!==a.participant||ledger.periodStart!==periodStart||Date.parse(ledger.confirmedThrough)!==Date.parse(through)||!Number.isSafeInteger(ledger.revision)||ledger.revision!==Number(snapshot.accountingRevisions?.[a.participant]||0)+1||typeof ledger.requestId!=='string')throw Error('ACCOUNTING_LEDGER_IDENTITY_INVALID');
    let published=false;
    if(onLedger){
@@ -162,6 +188,7 @@ async function accountingCycle({snapshot,packet,accountCoverage=null,cache,sourc
    // slice replacing another valid marker and risk undoing the completed set.
    if(allCovered())break;
   }catch(e){
+   if(!['ACCOUNTING_TIME_BUDGET_EXCEEDED','PUBLIC_REQUEST_TIMEOUT','PUBLIC_NETWORK_UNAVAILABLE','PUBLIC_RETRIES_EXHAUSTED'].includes(e.message)){source?.invalidateNativeCheckpoint?.();if(job?.nativeAudit){clearNativeAudit(cache,job.anchor,job.nativeAudit);jobs.setCheckpoint(identity,{...job,nativeAudit:null,finished:false});}}
    if(e.accountingPublicationFailed)throw e;
    if(['ACCOUNTING_ANCHOR_CHANGED','ACCOUNTING_CACHE_ANCHOR_CHANGED','ACCOUNTING_ANCHOR_REORG'].includes(e.message))jobs.setCheckpoint(identity,{through:packet.confirmedThrough,finished:false,priorAnchors:[]});
    problems.push({code:code(e)});

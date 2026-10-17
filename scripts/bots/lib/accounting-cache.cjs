@@ -5,7 +5,15 @@
 // maxBytes bounds reserved entry bytes; the bounded index and one atomic-write
 // temporary file add at most O(maxEntries) and maxEntryBytes storage overhead.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+const {gzipSync,gunzipSync}=require('node:zlib');
 const FORMAT='mk-accounting-cache',VERSION=1;
+// The envelope remains backwards compatible. Compression changes disk storage
+// only: decoded values and both logical/physical entry limits stay unchanged.
+function storedValue(body,maxEntryBytes){
+ if(body.valueCodec===undefined){if(body.valueBytes!==undefined||body.valueGzip!==undefined)fail('CORRUPT');return body.value;}
+ if(body.valueCodec!=='gzip-json-1'||Object.hasOwn(body,'value')||!Number.isSafeInteger(body.valueBytes)||body.valueBytes<1||body.valueBytes>maxEntryBytes||typeof body.valueGzip!=='string'||body.valueGzip.length>maxEntryBytes||!body.valueGzip.length||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(body.valueGzip))fail('CORRUPT');
+ try{const value=gunzipSync(Buffer.from(body.valueGzip,'base64'),{maxOutputLength:maxEntryBytes});if(value.length!==body.valueBytes)fail('CORRUPT');return JSON.parse(value.toString('utf8'));}catch{fail('CORRUPT');}
+}
 const digest=x=>crypto.createHash('sha256').update(x).digest('hex');
 const fail=code=>{throw Error('ACCOUNTING_CACHE_'+code);};
 const plain=x=>x!==null&&typeof x==='object'&&(Object.getPrototypeOf(x)===Object.prototype||Object.getPrototypeOf(x)===null);
@@ -205,7 +213,7 @@ function openAccountingCache(options={}){
    try{
     const body=verified(read(file,maxEntryBytes));
     if(body.format!==FORMAT||body.version!==VERSION||body.schemaVersion!==schemaVersion||body.chainId!==chainId||body.namespace!==id||body.entry!==entry||body.type!==type)fail('CORRUPT');
-    return decode(body.value);
+    return decode(storedValue(body,maxEntryBytes));
    }catch(e){
     if(e.code==='ENOENT')return undefined;
     if(e.message==='ACCOUNTING_CACHE_PATH_UNSAFE')throw e;
@@ -226,8 +234,13 @@ function openAccountingCache(options={}){
      if(method!=='eth_getBlockByNumber'&&(typeof actual!=='string'||actual.toLowerCase()!==String(identity.params[0]).toLowerCase()))fail('RPC_RESULT_MISMATCH');
     }
    }
-   const text=JSON.stringify(checksum({format:FORMAT,version:VERSION,schemaVersion,chainId,namespace:id,entry,type,value:encode(value)})),bytes=Buffer.byteLength(text);
+   const base={format:FORMAT,version:VERSION,schemaVersion,chainId,namespace:id,entry,type},encoded=encode(value);
+   let text=JSON.stringify(checksum({...base,value:encoded})),bytes=Buffer.byteLength(text);
    if(bytes>maxEntryBytes)return false;
+   if(bytes>=4096){
+    const raw=Buffer.from(JSON.stringify(encoded)),compressed=JSON.stringify(checksum({...base,valueCodec:'gzip-json-1',valueBytes:raw.length,valueGzip:gzipSync(raw).toString('base64')})),packed=Buffer.byteLength(compressed);
+    if(packed<bytes*0.85){text=compressed;bytes=packed;}
+   }
    return locked(()=>{
     const entries=loadIndex(),old=entries.find(e=>e.namespace===name&&e.file===file),reserve=Math.max(bytes,old?.bytes||0),delta=reserve-(old?.bytes||0);
     if(!evict(entries,delta,old?0:1,name+'/'+file))return false;

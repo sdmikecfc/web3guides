@@ -12,7 +12,7 @@ const {openAccountingCache}=require('./lib/accounting-cache.cjs');
 const {openTradeSourceCache}=require('./lib/trade-source-cache.cjs');
 const {rpcFailure,rpcTimeoutMs,preflightWorkerPacket}=require('./lib/worker-contract.cjs');
 const safeCode=code=>typeof code==='string'&&/^[A-Z][A-Z0-9_]{2,100}$/.test(code)?code:'SOURCE_UNAVAILABLE';
-const workerVersion='mk-public-worker-15-incremental-scans';
+const workerVersion='mk-public-worker-16-resumable-accounting';
 let runStartedAt,runPublishedScores=false;
 const output=process.env.MK_WORKER_STATE_DIR||(process.platform==='win32'?'D:/Temp/modelkombat-tracking-review':path.join(process.env.TMPDIR||'/tmp','modelkombat-tracking-review'));
 const pollMinutes=Number(process.env.MK_WORKER_POLL_MINUTES||15);
