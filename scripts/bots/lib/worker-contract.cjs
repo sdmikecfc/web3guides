@@ -14,6 +14,14 @@ function serializeEvidence(proof){
  return encoded;
 }
 const operations={mkz_worker_snapshot:'SNAPSHOT',mkz_worker_commit:'COMMIT',mkz_worker_health:'HEALTH',mkz_collector_check:'PREFLIGHT',mkz_collector_manifest:'MANIFEST',mkz_collector_wallets:'WALLETS'};
+function rpcTimeoutMs(name,args={}){
+ // Large evidence packets need time for upload and transactional validation.
+ // Keep small reads/health fast, and every write finite. This only changes the
+ // request deadline: an uncertain commit is never retried with a new identity.
+ if(!['mkz_collector_check','mkz_worker_commit'].includes(name))return 30000;
+ const bytes=Buffer.byteLength(JSON.stringify(args),'utf8');
+ return Math.min(300000,Math.max(30000,15000+Math.ceil(bytes/4096)*1000));
+}
 const messages=new Set(['MKZ_BATCH_INVALID','MKZ_SETUP_MISSING','MK_WORKER_INVALID','MK_WORKER_REQUEST_CONFLICT','MK_WORKER_SOURCE_CHANGED','MK_WORKER_USE_VERIFIED_ACCOUNTING','MK_WORKER_PAGE_LIMIT','CAMPAIGN_NOT_ACCEPTING','COVERAGE_INVALID','FILLS_INVALID','FILL_EVIDENCE_INVALID','WALLET_NOT_ENROLLED','AGENT_WALLET_UNVERIFIED','FILL_REVISION_CONFLICT','ACCOUNTING_PACKET_INVALID','ACCOUNTING_REVISION_CONFLICT','ACCOUNTING_COVERAGE_REQUIRED','ACCOUNTING_FILL_COVERAGE_INCOMPLETE','FINANCIAL_COVERAGE_INCOMPLETE','FINANCIAL_METHOD_MISMATCH','BATCH_CONFLICT']);
 function rpcFailure(name,error){
  const operation=operations[name]||'UNKNOWN';
@@ -35,4 +43,4 @@ async function preflightWorkerPacket(packet,rpc){
  }
  return {chunks:chunks.length,fills:fills.length,writesPerformed:0};
 }
-module.exports={serializeEvidence,rpcFailure,preflightWorkerPacket,PROOF_LIMIT};
+module.exports={serializeEvidence,rpcFailure,rpcTimeoutMs,preflightWorkerPacket,PROOF_LIMIT};

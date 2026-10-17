@@ -10,7 +10,7 @@ const {accountingCycle}=require('./lib/accounting-cycle.cjs');
 const {startPublication}=require('./lib/start-publication.cjs');
 const {openAccountingCache}=require('./lib/accounting-cache.cjs');
 const {openTradeSourceCache}=require('./lib/trade-source-cache.cjs');
-const {rpcFailure,preflightWorkerPacket}=require('./lib/worker-contract.cjs');
+const {rpcFailure,rpcTimeoutMs,preflightWorkerPacket}=require('./lib/worker-contract.cjs');
 const safeCode=code=>typeof code==='string'&&/^[A-Z][A-Z0-9_]{2,100}$/.test(code)?code:'SOURCE_UNAVAILABLE';
 const workerVersion='mk-public-worker-15-incremental-scans';
 let runStartedAt,runPublishedScores=false;
@@ -26,7 +26,7 @@ const args=new Set(process.argv.slice(2));
 if([...args].some(a=>!['--write','--watch','--allow-old-schema-rehearsal','--test-linked-agent-only'].includes(a)))throw Error('Use --write and/or --watch; omit both for a read-only check.');
 if(args.has('--test-linked-agent-only')&&(args.has('--write')||args.has('--watch')))throw Error('Single test wallet checks are read-only and run once.');
 const db=require('@supabase/supabase-js').createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
-async function rpc(name,p={}){const r=await db.rpc(name,p).abortSignal(AbortSignal.timeout(30000));if(r.error)throw rpcFailure(name,r.error);return r.data;}
+async function rpc(name,p={}){const r=await db.rpc(name,p).abortSignal(AbortSignal.timeout(rpcTimeoutMs(name,p)));if(r.error)throw rpcFailure(name,r.error);return r.data;}
 async function legacyReadOnly(){
  // Only for pre-install testing. This fallback can NEVER write results.
  const manifest=await rpc('mkz_collector_manifest'),rows=[];let after=null;
